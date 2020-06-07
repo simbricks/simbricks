@@ -1,4 +1,9 @@
 #include <iostream>
+#include <deque>
+
+extern "C" {
+    #include <nicsim.h>
+}
 
 #include "Vinterface.h"
 #include "verilated.h"
@@ -141,37 +146,276 @@ static void report_outputs(Vinterface *top)
     report_output("msi_irq", top->msi_irq);
 }
 
+class MMIOInterface {
+    protected:
+        struct Op {
+            uint64_t id;
+            uint64_t addr;
+            uint64_t value;
+            size_t len;
+            bool isWrite;
+        };
+
+        enum OpState {
+            AddrIssued,
+            AddrAcked,
+            AddrDone,
+        };
+
+        Vinterface &top;
+        std::deque<Op *> queue;
+        Op *rCur, *wCur;
+        enum OpState rState, wState;
+
+    public:
+        MMIOInterface(Vinterface &top_)
+            : top(top_), rCur(0), wCur(0)
+        {
+        }
+
+        void step()
+        {
+            if (rCur) {
+                /* work on active read operation */
+
+                if (rState == AddrIssued && top.s_axil_arready) {
+                    /* read handshake is complete */
+                    top.s_axil_arvalid = 0;
+                    rState = AddrAcked;
+                }
+                if (rState == AddrAcked && top.s_axil_rvalid) {
+                    /* read data received */
+                    top.s_axil_rready = 0;
+                    rCur->value = top.s_axil_rdata;
+                    completeRead(*rCur);
+                    rCur = 0;
+                }
+            } else if (wCur) {
+                /* work on active write operation */
+
+                if (wState == AddrIssued && top.s_axil_awready) {
+                    /* write addr handshake is complete */
+                    top.s_axil_awvalid = 0;
+                    wState = AddrAcked;
+                }
+                if (wState == AddrAcked && top.s_axil_wready) {
+                    /* write data handshake is complete */
+                    top.s_axil_wvalid = 0;
+                    top.s_axil_bready = 1;
+                    wState = AddrDone;
+                }
+                if (wState == AddrDone && top.s_axil_bvalid) {
+                    /* write complete */
+                    top.s_axil_bready = 0;
+                    completeWrite(*wCur, top.s_axil_bresp);
+                    wCur = 0;
+                }
+            } else if (/*!top.clk &&*/ !queue.empty()) {
+                /* issue new operation */
+
+                Op *op = queue.front();
+                queue.pop_front();
+                if (!op->isWrite) {
+                    /* issue new read */
+                    rCur = op;
+
+                    rState = AddrIssued;
+
+                    top.s_axil_araddr = rCur->addr;
+                    top.s_axil_arprot = 0x0;
+                    top.s_axil_arvalid = 1;
+                    top.s_axil_rready = 1;
+                } else {
+                    /* issue new write */
+                    wCur = op;
+
+                    wState = AddrIssued;
+
+                    top.s_axil_awaddr = wCur->addr;
+                    top.s_axil_awprot = 0x0;
+                    top.s_axil_awvalid = 1;
+
+                    top.s_axil_wdata = wCur->value;
+                    top.s_axil_wstrb = 0xf;
+                    top.s_axil_wvalid = 1;
+
+                }
+            }
+        }
+
+        void issueRead(uint64_t id, uint64_t addr, size_t len)
+        {
+            Op *op = new Op;
+            op->id = id;
+            op->addr = addr;
+            op->len = len;
+            op->isWrite = false;
+            queue.push_back(op);
+        }
+
+        void completeRead(Op &op)
+        {
+            volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+            volatile struct cosim_pcie_proto_d2h_readcomp *rc;
+
+            if (!msg)
+                throw "completion alloc failed";
+
+            rc = &msg->readcomp;
+            memcpy((void *) rc->data, &op.value, op.len);
+            rc->req_id = op.id;
+
+            //WMB();
+            rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
+                COSIM_PCIE_PROTO_D2H_OWN_HOST;
+
+            std::cout << "read complete addr=" << op.addr << " val=" << op.value << std::endl;
+        }
+
+
+        void issueWrite(uint64_t id, uint64_t addr, size_t len, uint64_t val)
+        {
+            Op *op = new Op;
+            op->id = id;
+            op->addr = addr;
+            op->len = len;
+            op->value = val;
+            op->isWrite = true;
+            queue.push_back(op);
+        }
+
+        void completeWrite(Op &op, uint8_t status)
+        {
+            std::cout << "write complete addr=" << op.addr << " val=" << op.value << std::endl;
+        }
+
+};
+
+static void h2d_read(MMIOInterface &mmio,
+        volatile struct cosim_pcie_proto_h2d_read *read)
+{
+    std::cout << "got read " << read->offset << std::endl;
+    /*printf("read(bar=%u, off=%lu, len=%u) = %lu\n", read->bar, read->offset,
+            read->len, val);*/
+    mmio.issueRead(read->req_id, read->offset, read->len);
+}
+
+
+static void poll_h2d(MMIOInterface &mmio)
+{
+    volatile union cosim_pcie_proto_h2d *msg = nicif_h2d_poll();
+    uint8_t t;
+
+    if (msg == NULL)
+        return;
+
+    t = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
+    switch (t) {
+        case COSIM_PCIE_PROTO_H2D_MSG_READ:
+            h2d_read(mmio, &msg->read);
+            break;
+
+        /*case COSIM_PCIE_PROTO_H2D_MSG_WRITE:
+            h2d_write(&msg->write);
+            break;*/
+
+        default:
+            std::cerr << "poll_h2d: unsupported type=" << t << std::endl;
+    }
+
+    nicif_h2d_done(msg);
+    nicif_h2d_next();
+
+}
+
 int main(int argc, char *argv[])
 {
     Verilated::commandArgs(argc, argv);
+    //Verilated::traceEverOn(true);
+
+    struct cosim_pcie_proto_dev_intro di;
+    memset(&di, 0, sizeof(di));
+
+    di.bars[0].len = 0x1000;
+    di.bars[0].flags = COSIM_PCIE_PROTO_BAR_64;
+
+    di.bars[2].len = 128;
+    di.bars[2].flags = COSIM_PCIE_PROTO_BAR_IO;
+
+    di.pci_vendor_id = 0x4321;
+    di.pci_device_id = 0x1234;
+    di.pci_class = 0x02;
+    di.pci_subclass = 0x00;
+    di.pci_revision = 0x00;
+
+    if (nicsim_init(&di, "/tmp/cosim-pci", "/dev/shm/dummy_nic_shm")) {
+        return EXIT_FAILURE;
+    }
+
+
+
     Vinterface *top = new Vinterface;
 
+    VerilatedVcdC *tr = 0;
+    /*VerilatedVcdC *tr = new VerilatedVcdC;
+    top->trace(tr, 1000);
+    tr->open("debug.vcd");*/
     // size: bar 0: 24 bits
+
+    MMIOInterface mmio(*top);
 
     reset_inputs(top);
     top->rst = 1;
 
     top->eval();
-    std::cout << "0 low:" << std::endl;
-    report_outputs(top);
+    /*std::cout << "0 low:" << std::endl;
+    report_outputs(top);*/
+
+    if (tr)
+        tr->dump(0);
 
     top->clk = !top->clk;
     top->eval();
-    std::cout << "0 high:" << std::endl;
-    report_outputs(top);
+    /*std::cout << "0 high:" << std::endl;
+    report_outputs(top);*/
+
+    if (tr)
+        tr->dump(1);
 
     top->rst = 0;
-    top->clk = !top->clk;
-    top->eval();
-    std::cout << "1 low:" << std::endl;
+
+    /*mmio.issueRead(0x80004, 4);
+    mmio.issueRead(0x80010, 4);
+    mmio.issueRead(0x800080, 4);
+    mmio.issueWrite(0x800080, 4, 0xff);
+    mmio.issueRead(0x800080, 4);*/
+
+
+    //for (int i = 0; i < 128; i++) {
+    while (1) {
+        poll_h2d(mmio);
+
+        top->clk = !top->clk;
+
+        top->eval();
+        /*std::cout << (i + 2) << " low:" << std::endl;
+        report_outputs(top);*/
+
+        /*tr->dump(2 + i * 2);*/
+
+        mmio.step();
+        top->clk = !top->clk;
+
+        top->eval();
+        /*std::cout << (i + 2) << " high:" << std::endl;
+        report_outputs(top);*/
+
+        /*tr->dump(3 + i * 2);*/
+    }
     report_outputs(top);
 
-    top->clk = !top->clk;
-    top->eval();
-    std::cout << "1 high:" << std::endl;
-    report_outputs(top);
-
-
+    if (tr)
+        tr->close();
     top->final();
     delete top;
     return 0;
