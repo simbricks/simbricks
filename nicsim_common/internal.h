@@ -24,24 +24,6 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include "../proto/cosim_pcie_proto.h"
-
-#define D2H_ELEN (4096 + 64)
-#define D2H_ENUM 1024
-
-#define H2D_ELEN (4096 + 64)
-#define H2D_ENUM 1024
-
-extern uint8_t *d2h_queue;
-extern size_t d2h_pos;
-
-extern uint8_t *h2d_queue;
-extern size_t h2d_pos;
-
-/* poll.c */
-void poll_h2d(void);
-
-/* utils.c */
 int uxsocket_init(const char *path);
 int uxsocket_send(int connfd, void *data, size_t len, int fd);
 int shm_create(const char *path, size_t size, void **addr);

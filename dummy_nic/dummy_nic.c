@@ -27,53 +27,91 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "dummy_nic.h"
+#include <nicsim.h>
 
-uint8_t *d2h_queue;
-size_t d2h_pos;
+static volatile union cosim_pcie_proto_d2h *d2h_alloc(void)
+{
+    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    if (msg == NULL) {
+        fprintf(stderr, "d2h_alloc: no entry available\n");
+        abort();
+    }
+    return msg;
+}
 
-uint8_t *h2d_queue;
-size_t h2d_pos;
+static void h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
+{
+    volatile union cosim_pcie_proto_d2h *msg;
+    volatile struct cosim_pcie_proto_d2h_readcomp *rc;
+    uint64_t val;
 
+    msg = d2h_alloc();
+    rc = &msg->readcomp;
+
+    val = read->offset + 42;
+    printf("read(bar=%u, off=%lu, len=%u) = %lu\n", read->bar, read->offset,
+            read->len, val);
+
+    memcpy((void *) rc->data, &val, read->len);
+    rc->req_id = read->req_id;
+
+    //WMB();
+    rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
+        COSIM_PCIE_PROTO_D2H_OWN_HOST;
+}
+
+static void h2d_write(volatile struct cosim_pcie_proto_h2d_write *write)
+{
+    volatile union cosim_pcie_proto_d2h *msg;
+    volatile struct cosim_pcie_proto_d2h_writecomp *wc;
+    uint64_t val;
+
+    msg = d2h_alloc();
+    wc = &msg->writecomp;
+
+    val = 0;
+    memcpy(&val, (void *) write->data, write->len);
+
+    printf("write(bar=%u, off=%lu, len=%u, val=%lu)\n", write->bar,
+            write->offset, write->len, val);
+
+    wc->req_id = write->req_id;
+
+    //WMB();
+    wc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
+        COSIM_PCIE_PROTO_D2H_OWN_HOST;
+}
+
+void poll_h2d(void)
+{
+    volatile union cosim_pcie_proto_h2d *msg = nicif_h2d_poll();
+    uint8_t type;
+
+    if (msg == NULL)
+        return;
+
+    type = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
+    switch (type) {
+        case COSIM_PCIE_PROTO_H2D_MSG_READ:
+            h2d_read(&msg->read);
+            break;
+
+        case COSIM_PCIE_PROTO_H2D_MSG_WRITE:
+            h2d_write(&msg->write);
+            break;
+
+        default:
+            fprintf(stderr, "poll_h2d: unsupported type=%u\n", type);
+    }
+
+    nicif_h2d_done(msg);
+    nicif_h2d_next();
+}
 
 int main(int argc, char *argv[])
 {
-    int shm_fd, pci_lfd, pci_cfd;
-    size_t d2h_off, h2d_off;
-    void *shmptr;
-
-    if ((shm_fd = shm_create("/dev/shm/dummy_nic_shm", 32 * 1024 * 1024, &shmptr)) < 0) {
-        return EXIT_FAILURE;
-    }
-
-    if ((pci_lfd = uxsocket_init("/tmp/cosim-pci")) < 0) {
-        return EXIT_FAILURE;
-    }
-
-    if ((pci_cfd = accept(pci_lfd, NULL, NULL)) < 0) { 
-        perror("accept pci_lfd failed");
-        return EXIT_FAILURE;
-    }
-    printf("connection accepted\n");
-
-    d2h_off = 0;
-    h2d_off = (uint64_t) D2H_ELEN * D2H_ENUM;
-
-    d2h_queue = (uint8_t *) shmptr + d2h_off;
-    h2d_queue = (uint8_t *) shmptr + h2d_off;
-
-    d2h_pos = h2d_pos = 0;
-
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
-
-    di.d2h_offset = d2h_off;
-    di.d2h_elen = D2H_ELEN;
-    di.d2h_nentries = D2H_ENUM;
-
-    di.h2d_offset = h2d_off;
-    di.h2d_elen = H2D_ELEN;
-    di.h2d_nentries = H2D_ENUM;
 
     di.bars[0].len = 0x1000;
     di.bars[0].flags = COSIM_PCIE_PROTO_BAR_64;
@@ -87,23 +125,14 @@ int main(int argc, char *argv[])
     di.pci_subclass = 0x00;
     di.pci_revision = 0x00;
 
-    if (uxsocket_send(pci_cfd, &di, sizeof(di), shm_fd)) {
+    if (nicsim_init(&di, "/tmp/cosim-pci", "/dev/shm/dummy_nic_shm")) {
         return EXIT_FAILURE;
     }
-    printf("connection sent\n");
-
-
-    struct cosim_pcie_proto_host_intro hi;
-    if (recv(pci_cfd, &hi, sizeof(hi), 0) != sizeof(hi)) {
-
-        return EXIT_FAILURE;
-    }
-    printf("host info received\n");
 
     while (1) {
         poll_h2d();
     }
-    close(pci_lfd);
 
+    nicsim_cleanup();
     return 0;
 }

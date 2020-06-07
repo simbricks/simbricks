@@ -31,7 +31,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "dummy_nic.h"
+#include "internal.h"
 
 int uxsocket_init(const char *path)
 {

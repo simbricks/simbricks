@@ -1,5 +1,6 @@
 *.o
 _vimrc_local.vim
 dummy_nic/dummy_nic
+nicsim_common/libnicsim_common.a
 corundum/obj_dir
 corundum/corundum_verilator
