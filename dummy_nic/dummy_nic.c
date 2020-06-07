@@ -81,6 +81,12 @@ int main(int argc, char *argv[])
     di.bars[2].len = 128;
     di.bars[2].flags = COSIM_PCIE_PROTO_BAR_IO;
 
+    di.pci_vendor_id = 0x4321;
+    di.pci_device_id = 0x1234;
+    di.pci_class = 0x02;
+    di.pci_subclass = 0x00;
+    di.pci_revision = 0x00;
+
     if (uxsocket_send(pci_cfd, &di, sizeof(di), shm_fd)) {
         return EXIT_FAILURE;
     }

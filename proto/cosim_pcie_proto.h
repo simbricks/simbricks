@@ -48,6 +48,17 @@ struct cosim_pcie_proto_dev_intro {
         /** flags (see COSIM_PCIE_PROTO_BAR_*) */
         uint64_t flags;
     } __attribute__((packed)) bars[COSIM_PCIE_PROTO_NBARS];
+
+    /** PCI vendor id */
+    uint16_t pci_vendor_id;
+    /** PCI device id */
+    uint16_t pci_device_id;
+    /* PCI class */
+    uint8_t pci_class;
+    /* PCI subclass */
+    uint8_t pci_subclass;
+    /* PCI revision */
+    uint8_t pci_revision;
 } __attribute__((packed));
 
 
