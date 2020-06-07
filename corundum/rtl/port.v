@@ -607,7 +607,8 @@ always @(posedge clk) begin
         axil_ctrl_wready_reg <= 1'b1;
         axil_ctrl_bvalid_reg <= 1'b1;
 
-        case ({{(16 - AXIL_ADDR_WIDTH){1'b0}}, axil_ctrl_awaddr[AXIL_ADDR_WIDTH - 1:2], 2'b00})
+        //case ({{(16 - AXIL_ADDR_WIDTH){1'b0}}, axil_ctrl_awaddr[AXIL_ADDR_WIDTH - 1:2], 2'b00})
+        case ({axil_ctrl_awaddr[AXIL_ADDR_WIDTH - 1:2], 2'b00})
             16'h0040: begin
                 // Scheduler enable
                 if (axil_ctrl_wstrb[0]) begin
@@ -658,7 +659,8 @@ always @(posedge clk) begin
         axil_ctrl_rvalid_reg <= 1'b1;
         axil_ctrl_rdata_reg <= {AXIL_DATA_WIDTH{1'b0}};
 
-        case ({{(16 - AXIL_ADDR_WIDTH){1'b0}}, axil_ctrl_araddr[AXIL_ADDR_WIDTH - 1:2], 2'b00})
+        //case ({{(16 - AXIL_ADDR_WIDTH){1'b0}}, axil_ctrl_araddr[AXIL_ADDR_WIDTH - 1:2], 2'b00})
+        case ({axil_ctrl_araddr[AXIL_ADDR_WIDTH - 1:2], 2'b00})
             16'h0000: axil_ctrl_rdata_reg <= 32'd0;       // port_id
             16'h0004: begin
                 // port_features

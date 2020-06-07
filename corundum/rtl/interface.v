@@ -47,43 +47,43 @@ module interface #
     // DMA length field width
     parameter DMA_LEN_WIDTH = 16,
     // DMA tag field width
-    parameter DMA_TAG_WIDTH = 8,
+    parameter DMA_TAG_WIDTH = 8, /* this one is different */
     // Number of outstanding operations (event queue)
-    parameter EVENT_QUEUE_OP_TABLE_SIZE = 16,
+    parameter EVENT_QUEUE_OP_TABLE_SIZE = 32,
     // Number of outstanding operations (transmit queue)
-    parameter TX_QUEUE_OP_TABLE_SIZE = 16,
+    parameter TX_QUEUE_OP_TABLE_SIZE = 32,
     // Number of outstanding operations (receive queue)
-    parameter RX_QUEUE_OP_TABLE_SIZE = 16,
+    parameter RX_QUEUE_OP_TABLE_SIZE = 32,
     // Number of outstanding operations (transmit completion queue)
-    parameter TX_CPL_QUEUE_OP_TABLE_SIZE = 16,
+    parameter TX_CPL_QUEUE_OP_TABLE_SIZE = 32,
     // Number of outstanding operations (receive completion queue)
-    parameter RX_CPL_QUEUE_OP_TABLE_SIZE = 16,
+    parameter RX_CPL_QUEUE_OP_TABLE_SIZE = 32,
     // Event queue index width
-    parameter EVENT_QUEUE_INDEX_WIDTH = 5,
+    parameter EVENT_QUEUE_INDEX_WIDTH = 5,   /* this one is not explicitly set */
     // Transmit queue index width
-    parameter TX_QUEUE_INDEX_WIDTH = 8,
+    parameter TX_QUEUE_INDEX_WIDTH = 13,
     // Receive queue index width
     parameter RX_QUEUE_INDEX_WIDTH = 8,
     // Transmit completion queue index width
-    parameter TX_CPL_QUEUE_INDEX_WIDTH = 8,
+    parameter TX_CPL_QUEUE_INDEX_WIDTH = 13,
     // Receive completion queue index width
     parameter RX_CPL_QUEUE_INDEX_WIDTH = 8,
     // Pipeline setting (event queue)
     parameter EVENT_QUEUE_PIPELINE = 3,
     // Pipeline setting (transmit queue)
-    parameter TX_QUEUE_PIPELINE = 3,
+    parameter TX_QUEUE_PIPELINE = 4,
     // Pipeline setting (receive queue)
     parameter RX_QUEUE_PIPELINE = 3,
     // Pipeline setting (transmit completion queue)
-    parameter TX_CPL_QUEUE_PIPELINE = 3,
+    parameter TX_CPL_QUEUE_PIPELINE = 4,
     // Pipeline setting (receive completion queue)
     parameter RX_CPL_QUEUE_PIPELINE = 3,
     // Transmit descriptor table size (number of in-flight operations)
-    parameter TX_DESC_TABLE_SIZE = 16,
+    parameter TX_DESC_TABLE_SIZE = 32,
     // Transmit packet table size (number of in-progress packets)
     parameter TX_PKT_TABLE_SIZE = 8,
     // Receive descriptor table size (number of in-flight operations)
-    parameter RX_DESC_TABLE_SIZE = 16,
+    parameter RX_DESC_TABLE_SIZE = 32,
     // Receive packet table size (number of in-progress packets)
     parameter RX_PKT_TABLE_SIZE = 8,
     // Transmit scheduler type
@@ -91,9 +91,9 @@ module interface #
     // Scheduler operation table size
     parameter TX_SCHEDULER_OP_TABLE_SIZE = 32,
     // Scheduler pipeline setting
-    parameter TX_SCHEDULER_PIPELINE = 3,
+    parameter TX_SCHEDULER_PIPELINE = 4,
     // Scheduler TDMA index width
-    parameter TDMA_INDEX_WIDTH = 8,
+    parameter TDMA_INDEX_WIDTH = 6,
     // Interrupt number width
     parameter INT_WIDTH = 8,
     // Queue element pointer width
@@ -101,7 +101,7 @@ module interface #
     // Queue log size field width
     parameter LOG_QUEUE_SIZE_WIDTH = 4,
     // Log desc block size field width
-    parameter LOG_BLOCK_SIZE_WIDTH = 2,
+    parameter LOG_BLOCK_SIZE_WIDTH = 2,  /* this one is not explicitly set */
     // Enable PTP timestamping
     parameter PTP_TS_ENABLE = 1,
     // PTP timestamp width
@@ -117,25 +117,25 @@ module interface #
     // Width of AXI lite data bus in bits
     parameter AXIL_DATA_WIDTH = 32,
     // Width of AXI lite address bus in bits
-    parameter AXIL_ADDR_WIDTH = 16,
+    parameter AXIL_ADDR_WIDTH = 24,
     // Width of AXI lite wstrb (width of data bus in words)
     parameter AXIL_STRB_WIDTH = (AXIL_DATA_WIDTH/8),
     // DMA RAM segment count
-    parameter SEG_COUNT = 2,
+    parameter SEG_COUNT = (512 * 2 / 128),
     // DMA RAM segment data width
-    parameter SEG_DATA_WIDTH = 64,
+    parameter SEG_DATA_WIDTH = (512 * 2 / SEG_COUNT),
     // DMA RAM segment address width
-    parameter SEG_ADDR_WIDTH = 8,
+    parameter SEG_ADDR_WIDTH = 12,
     // DMA RAM segment byte enable width
     parameter SEG_BE_WIDTH = SEG_DATA_WIDTH/8,
     // DMA RAM segment select width
-    parameter RAM_SEL_WIDTH = $clog2(PORTS),
+    parameter RAM_SEL_WIDTH = 1,
     // DMA RAM address width
     parameter RAM_ADDR_WIDTH = SEG_ADDR_WIDTH+$clog2(SEG_COUNT)+$clog2(SEG_BE_WIDTH),
     // DMA RAM pipeline stages
     parameter RAM_PIPELINE = 2,
     // Width of AXI stream interfaces in bits
-    parameter AXIS_DATA_WIDTH = 256,
+    parameter AXIS_DATA_WIDTH = 64,
     // AXI stream tkeep signal width (words per cycle)
     parameter AXIS_KEEP_WIDTH = AXIS_DATA_WIDTH/8,
     // Max transmit packet size
