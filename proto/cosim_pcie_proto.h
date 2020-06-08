@@ -59,6 +59,8 @@ struct cosim_pcie_proto_dev_intro {
     uint8_t pci_subclass;
     /* PCI revision */
     uint8_t pci_revision;
+    /* PCI number of MSI vectors */
+    uint8_t pci_msi_nvecs;
 } __attribute__((packed));
 
 
