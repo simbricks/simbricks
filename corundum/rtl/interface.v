@@ -61,7 +61,7 @@ module interface #
     // Event queue index width
     parameter EVENT_QUEUE_INDEX_WIDTH = 5,   /* this one is not explicitly set */
     // Transmit queue index width
-    parameter TX_QUEUE_INDEX_WIDTH = 13,
+    parameter TX_QUEUE_INDEX_WIDTH = 8,
     // Receive queue index width
     parameter RX_QUEUE_INDEX_WIDTH = 8,
     // Transmit completion queue index width
