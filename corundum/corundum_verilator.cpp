@@ -291,13 +291,50 @@ class MMIOInterface {
 
 };
 
+static uint64_t csr_read(uint64_t off)
+{
+    switch (off) {
+        case 0x00: return 32; /* firmware id */
+        case 0x04: return 1; /* firmware version */
+        case 0x08: return 0x43215678; /* board id */
+        case 0x0c: return 0x1; /* board version */
+        case 0x10: return 1; /* phc count */
+        case 0x14: return 0x200; /* phc offset */
+        case 0x18: return 0x80; /* phc stride */
+        case 0x20: return 1; /* if_count */
+        case 0x24: return 0x80000; /* if stride */
+        case 0x2c: return 0x80000; /* if csr offset */
+        default:
+            std::cerr << "csr_read(" << off << ") unimplemented" << std::endl;
+            return 0;
+    }
+}
+
 static void h2d_read(MMIOInterface &mmio,
         volatile struct cosim_pcie_proto_h2d_read *read)
 {
     std::cout << "got read " << read->offset << std::endl;
-    /*printf("read(bar=%u, off=%lu, len=%u) = %lu\n", read->bar, read->offset,
-            read->len, val);*/
-    mmio.issueRead(read->req_id, read->offset, read->len);
+    if (read->offset < 0x80000) {
+        volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+        volatile struct cosim_pcie_proto_d2h_readcomp *rc;
+
+        if (!msg)
+            throw "completion alloc failed";
+
+        rc = &msg->readcomp;
+        memset((void *) rc->data, 0, read->len);
+        uint64_t val = csr_read(read->offset);
+        memcpy((void *) rc->data, &val, read->len);
+        rc->req_id = read->req_id;
+
+        //WMB();
+        rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    } else {
+        /*printf("read(bar=%u, off=%lu, len=%u) = %lu\n", read->bar, read->offset,
+                read->len, val);*/
+        mmio.issueRead(read->req_id, read->offset, read->len);
+    }
 }
 
 
@@ -310,6 +347,7 @@ static void poll_h2d(MMIOInterface &mmio)
         return;
 
     t = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
+    std::cerr << "poll_h2d: polled type=" << t << std::endl;
     switch (t) {
         case COSIM_PCIE_PROTO_H2D_MSG_READ:
             h2d_read(mmio, &msg->read);
@@ -336,14 +374,14 @@ int main(int argc, char *argv[])
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
 
-    di.bars[0].len = 0x1000;
+    di.bars[0].len = 1 << 24;
     di.bars[0].flags = COSIM_PCIE_PROTO_BAR_64;
 
-    di.bars[2].len = 128;
-    di.bars[2].flags = COSIM_PCIE_PROTO_BAR_IO;
+    /*di.bars[2].len = 1024;
+    di.bars[2].flags = COSIM_PCIE_PROTO_BAR_IO;*/
 
-    di.pci_vendor_id = 0x4321;
-    di.pci_device_id = 0x1234;
+    di.pci_vendor_id = 0x5543;
+    di.pci_device_id = 0x1001;
     di.pci_class = 0x02;
     di.pci_subclass = 0x00;
     di.pci_revision = 0x00;
@@ -384,14 +422,6 @@ int main(int argc, char *argv[])
 
     top->rst = 0;
 
-    /*mmio.issueRead(0x80004, 4);
-    mmio.issueRead(0x80010, 4);
-    mmio.issueRead(0x800080, 4);
-    mmio.issueWrite(0x800080, 4, 0xff);
-    mmio.issueRead(0x800080, 4);*/
-
-
-    //for (int i = 0; i < 128; i++) {
     while (1) {
         poll_h2d(mmio);
 
