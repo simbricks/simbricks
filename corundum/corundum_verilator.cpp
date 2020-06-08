@@ -11,12 +11,15 @@ extern "C" {
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
+#include "corundum.h"
+#include "dma.h"
+#include "mem.h"
+
 struct DMAOp;
 
 static volatile int exiting = 0;
 static uint64_t main_time = 0;
 
-static void pci_dma_issue(DMAOp *op);
 
 
 static void sigint_handler(int dummy)
@@ -319,6 +322,7 @@ class MMIOInterface {
 
 };
 
+#if 0
 class MemAccessor {
     protected:
         Vinterface &top;
@@ -359,100 +363,11 @@ class MemAccessor {
         {
         }
 };
-
-static const size_t MAX_DMA_LEN = 2048;
-
-class DMAEngine;
-struct DMAOp {
-    DMAEngine *engine;
-    uint64_t dma_addr;
-    size_t len;
-    uint64_t ram_addr;
-    bool write;
-    uint8_t  ram_sel;
-    uint8_t tag;
-    uint8_t data[MAX_DMA_LEN];
-};
-
-class DMAEngine {
-    protected:
-
-        Vinterface &top;
-        std::set<DMAOp *> pending;
-
-        const char *label;
-        bool read;
-
-        MemAccessor &ma;
-
-        /* inputs to DMA engine */
-        vluint64_t &p_dma_addr;
-        vluint8_t  &p_dma_ram_sel;
-        vluint32_t &p_dma_ram_addr;
-        vluint16_t &p_dma_len;
-        vluint8_t  &p_dma_tag;
-        vluint8_t  &p_dma_valid;
-
-        /* outputs of DMA engine */
-        vluint8_t &p_dma_ready;
-        vluint8_t &p_dma_status_tag;
-        vluint8_t &p_dma_status_valid;
-
-    public:
-        DMAEngine(Vinterface &top_, const char *label_, bool dma_read,
-                MemAccessor &ma_,
-                vluint64_t &p_dma_addr_,
-                vluint8_t &p_dma_ram_sel_,
-                vluint32_t &p_dma_ram_addr_,
-                vluint16_t &p_dma_len_,
-                vluint8_t &p_dma_tag_,
-                vluint8_t &p_dma_valid_,
-                vluint8_t &p_dma_ready_,
-                vluint8_t &p_dma_status_tag_,
-                vluint8_t &p_dma_status_valid_)
-            : top(top_), label(label_), read(dma_read), ma(ma_),
-            p_dma_addr(p_dma_addr_),
-            p_dma_ram_sel(p_dma_ram_sel_), p_dma_ram_addr(p_dma_ram_addr_),
-            p_dma_len(p_dma_len_), p_dma_tag(p_dma_tag_),
-            p_dma_valid(p_dma_valid_), p_dma_ready(p_dma_ready_),
-            p_dma_status_tag(p_dma_status_tag_),
-            p_dma_status_valid(p_dma_status_valid_)
-        {
-        }
-
-        void pci_op_complete(DMAOp *op)
-        {
-            std::cout << "dma pci complete " << op->dma_addr << std::endl;
-        }
-
-        void step()
-        {
-            p_dma_ready = 1;
-            if (p_dma_valid) {
-                DMAOp *op = new DMAOp;
-                op->engine = this;
-                op->dma_addr = p_dma_addr;
-                op->ram_sel = p_dma_ram_sel;
-                op->ram_addr = p_dma_ram_addr;
-                op->len = p_dma_len;
-                op->tag = p_dma_tag;
-                pending.insert(op);
-                std::cout << "dma op " << op->dma_addr << " -> " <<
-                    op->ram_sel << ":" << op->ram_addr <<
-                    "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;
-
-                if (read) {
-                    pci_dma_issue(op);
-                } else {
-                    std::cerr << "TODO: DMA write" << std::endl;
-                }
-            }
-        }
-};
+#endif
 
 std::set<DMAOp *> pci_dma_pending;
 
-static void pci_dma_issue(DMAOp *op)
+void pci_dma_issue(DMAOp *op)
 {
     volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
     uint8_t ty;
@@ -494,6 +409,13 @@ static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc)
     pci_dma_pending.erase(op);
 
     memcpy(op->data, (void *) rc->data, op->len);
+
+    std::cerr << "dma read comp: ";
+    for (size_t i = 0; i < op->len; i++)
+        std::cerr << (unsigned) op->data[i] << " ";
+    std::cerr << std::endl;
+
+
     op->engine->pci_op_complete(op);
 }
 
@@ -624,6 +546,28 @@ static void poll_h2d(MMIOInterface &mmio)
 
 }
 
+class EthernetTx {
+    protected:
+        Vinterface &top;
+
+    public:
+        EthernetTx(Vinterface &top_)
+            : top(top_)
+        {
+        }
+
+        void step()
+        {
+            top.tx_axis_tready = 1;
+
+            if (top.tx_axis_tvalid) {
+                std::cerr << "valid data: keep=" << (uintptr_t) top.tx_axis_tkeep <<
+                    " last=" << (bool) top.tx_axis_tlast << "  " << top.tx_axis_tdata << std::endl;
+            }
+        }
+};
+
+
 int main(int argc, char *argv[])
 {
     Verilated::commandArgs(argc, argv);
@@ -651,18 +595,38 @@ int main(int argc, char *argv[])
 
     Vinterface *top = new Vinterface;
 
-    MMIOInterface mmio(*top);
-    MemAccessor mem_writer(*top, false,
+    MemWritePort p_mem_write_ctrl_dma(
             top->ctrl_dma_ram_wr_cmd_sel,
-            &top->ctrl_dma_ram_wr_cmd_be /*14 */,
+            top->ctrl_dma_ram_wr_cmd_be,
             top->ctrl_dma_ram_wr_cmd_addr,
-            top->ctrl_dma_ram_wr_cmd_valid,
-            (vluint8_t *) 0,
             top->ctrl_dma_ram_wr_cmd_data,
-            top->ctrl_dma_ram_wr_cmd_ready,
-            (vluint8_t *) 0);
+            top->ctrl_dma_ram_wr_cmd_valid,
+            top->ctrl_dma_ram_wr_cmd_ready);
+    MemReadPort p_mem_read_ctrl_dma(
+            top->ctrl_dma_ram_rd_cmd_sel,
+            top->ctrl_dma_ram_rd_cmd_addr,
+            top->ctrl_dma_ram_rd_cmd_valid,
+            top->ctrl_dma_ram_rd_cmd_ready,
+            top->ctrl_dma_ram_rd_resp_data,
+            top->ctrl_dma_ram_rd_resp_valid,
+            top->ctrl_dma_ram_rd_resp_ready);
+    MemWritePort p_mem_write_data_dma(
+            top->data_dma_ram_wr_cmd_sel,
+            top->data_dma_ram_wr_cmd_be,
+            top->data_dma_ram_wr_cmd_addr,
+            top->data_dma_ram_wr_cmd_data,
+            top->data_dma_ram_wr_cmd_valid,
+            top->data_dma_ram_wr_cmd_ready);
+    MemReadPort p_mem_read_data_dma(
+            top->data_dma_ram_rd_cmd_sel,
+            top->data_dma_ram_rd_cmd_addr,
+            top->data_dma_ram_rd_cmd_valid,
+            top->data_dma_ram_rd_cmd_ready,
+            top->data_dma_ram_rd_resp_data,
+            top->data_dma_ram_rd_resp_valid,
+            top->data_dma_ram_rd_resp_ready);
 
-    DMAEngine dma_read_ctrl(*top, "read ctrl", true, mem_writer,
+    DMAPorts p_dma_read_ctrl(
             top->m_axis_ctrl_dma_read_desc_dma_addr,
             top->m_axis_ctrl_dma_read_desc_ram_sel,
             top->m_axis_ctrl_dma_read_desc_ram_addr,
@@ -672,7 +636,7 @@ int main(int argc, char *argv[])
             top->m_axis_ctrl_dma_read_desc_ready,
             top->s_axis_ctrl_dma_read_desc_status_tag,
             top->s_axis_ctrl_dma_read_desc_status_valid);
-    DMAEngine dma_write_ctrl(*top, "write ctrl", false, mem_writer/*should be reader*/,
+    DMAPorts p_dma_write_ctrl(
             top->m_axis_ctrl_dma_write_desc_dma_addr,
             top->m_axis_ctrl_dma_write_desc_ram_sel,
             top->m_axis_ctrl_dma_write_desc_ram_addr,
@@ -682,6 +646,37 @@ int main(int argc, char *argv[])
             top->m_axis_ctrl_dma_write_desc_ready,
             top->s_axis_ctrl_dma_write_desc_status_tag,
             top->s_axis_ctrl_dma_write_desc_status_valid);
+    DMAPorts p_dma_read_data(
+            top->m_axis_data_dma_read_desc_dma_addr,
+            top->m_axis_data_dma_read_desc_ram_sel,
+            top->m_axis_data_dma_read_desc_ram_addr,
+            top->m_axis_data_dma_read_desc_len,
+            top->m_axis_data_dma_read_desc_tag,
+            top->m_axis_data_dma_read_desc_valid,
+            top->m_axis_data_dma_read_desc_ready,
+            top->s_axis_data_dma_read_desc_status_tag,
+            top->s_axis_data_dma_read_desc_status_valid);
+    DMAPorts p_dma_write_data(
+            top->m_axis_data_dma_write_desc_dma_addr,
+            top->m_axis_data_dma_write_desc_ram_sel,
+            top->m_axis_data_dma_write_desc_ram_addr,
+            top->m_axis_data_dma_write_desc_len,
+            top->m_axis_data_dma_write_desc_tag,
+            top->m_axis_data_dma_write_desc_valid,
+            top->m_axis_data_dma_write_desc_ready,
+            top->s_axis_data_dma_write_desc_status_tag,
+            top->s_axis_data_dma_write_desc_status_valid);
+
+
+    MMIOInterface mmio(*top);
+    MemReader mem_control_reader(p_mem_read_ctrl_dma);
+    MemWriter mem_control_writer(p_mem_write_ctrl_dma);
+    MemWriter mem_data_writer(p_mem_write_data_dma);
+    DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer);
+    DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer);
+    //DMAEngine dma_write_ctrl(*top, "write ctrl", false, mem_writer/*should be reader*/,
+
+    EthernetTx tx(*top);
 
     reset_inputs(top);
     top->rst = 1;
@@ -703,7 +698,11 @@ int main(int argc, char *argv[])
 
         mmio.step();
         dma_read_ctrl.step();
-        dma_write_ctrl.step();
+        dma_read_data.step();
+        mem_control_writer.step();
+        mem_data_writer.step();
+        //dma_write_ctrl.step();
+        tx.step();
 
         /* raising edge */
         top->clk = !top->clk;

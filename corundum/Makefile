@@ -5,13 +5,13 @@ VFLAGS = +1364-2005ext+v \
     -Wno-WIDTH -Wno-PINMISSING -Wno-LITENDIAN -Wno-IMPLICIT -Wno-SELRANGE \
     -Wno-CASEINCOMPLETE -Wno-UNSIGNED
 
-SRCS = corundum_verilator.cpp
+SRCS = corundum_verilator.cpp dma.cpp mem.cpp
 
 all: corundum_verilator
 
 obj_dir/Vinterface.cpp: rtl/interface.v
 	$(VERILATOR) $(VFLAGS) --cc -O3 \
-	    -CFLAGS "-I$(PWD)/../nicsim_common/include -I$(PWD)/../proto -O3" \
+	    -CFLAGS "-I$(PWD)/../nicsim_common/include -I$(PWD)/../proto -O3 -g -Wall" \
 	    -y rtl \
 	    -y lib/axi/rtl \
 	    -y lib/eth/lib/axis/rtl/ \
