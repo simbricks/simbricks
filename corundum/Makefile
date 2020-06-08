@@ -10,8 +10,8 @@ SRCS = corundum_verilator.cpp
 all: corundum_verilator
 
 obj_dir/Vinterface.cpp: rtl/interface.v
-	$(VERILATOR) $(VFLAGS) --cc --trace \
-	    -CFLAGS "-I$(PWD)/../nicsim_common/include -I$(PWD)/../proto" \
+	$(VERILATOR) $(VFLAGS) --cc -O3 \
+	    -CFLAGS "-I$(PWD)/../nicsim_common/include -I$(PWD)/../proto -O3" \
 	    -y rtl \
 	    -y lib/axi/rtl \
 	    -y lib/eth/lib/axis/rtl/ \

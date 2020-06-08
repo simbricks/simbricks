@@ -1,5 +1,7 @@
 #include <iostream>
 #include <deque>
+#include <set>
+#include <signal.h>
 
 extern "C" {
     #include <nicsim.h>
@@ -9,7 +11,18 @@ extern "C" {
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
+struct DMAOp;
+
+static volatile int exiting = 0;
 static uint64_t main_time = 0;
+
+static void pci_dma_issue(DMAOp *op);
+
+
+static void sigint_handler(int dummy)
+{
+    exiting = 1;
+}
 
 double sc_time_stamp()
 {
@@ -188,6 +201,7 @@ class MMIOInterface {
                     top.s_axil_rready = 0;
                     rCur->value = top.s_axil_rdata;
                     completeRead(*rCur);
+                    delete rCur;
                     rCur = 0;
                 }
             } else if (wCur) {
@@ -208,6 +222,7 @@ class MMIOInterface {
                     /* write complete */
                     top.s_axil_bready = 0;
                     completeWrite(*wCur, top.s_axil_bresp);
+                    delete wCur;
                     wCur = 0;
                 }
             } else if (/*!top.clk &&*/ !queue.empty()) {
@@ -269,7 +284,7 @@ class MMIOInterface {
             rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
                 COSIM_PCIE_PROTO_D2H_OWN_HOST;
 
-            std::cout << "read complete addr=" << op.addr << " val=" << op.value << std::endl;
+            //std::cout << "read complete addr=" << op.addr << " val=" << op.value << std::endl;
         }
 
 
@@ -286,34 +301,240 @@ class MMIOInterface {
 
         void completeWrite(Op &op, uint8_t status)
         {
-            std::cout << "write complete addr=" << op.addr << " val=" << op.value << std::endl;
+            volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+            volatile struct cosim_pcie_proto_d2h_writecomp *rc;
+
+            if (!msg)
+                throw "completion alloc failed";
+
+            rc = &msg->writecomp;
+            rc->req_id = op.id;
+
+            //WMB();
+            rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
+                COSIM_PCIE_PROTO_D2H_OWN_HOST;
+
+            //std::cout << "write complete addr=" << op.addr << " val=" << op.value << std::endl;
         }
 
 };
 
+class MemAccessor {
+    protected:
+        Vinterface &top;
+
+        /* outputs to memory */
+        vluint8_t   &p_mem_sel;
+        vluint32_t (*p_mem_be)[4]; /* for write only */
+        vluint32_t (&p_mem_addr)[3];
+        vluint8_t   &p_mem_valid;
+        vluint8_t   *p_mem_resp_ready; /* for read only */
+
+        /* direction depends */
+        vluint32_t (&p_mem_data)[32];
+
+        /* inputs from memory */
+        vluint8_t   &p_mem_ready;
+        vluint8_t   *p_mem_resp_valid; /* for read only */
+
+    public:
+        MemAccessor(Vinterface &top_, bool read,
+                vluint8_t &p_mem_sel_,
+                vluint32_t (*p_mem_be_)[4],
+                vluint32_t (&p_mem_addr_)[3],
+                vluint8_t &p_mem_valid_,
+                vluint8_t *p_mem_resp_ready_,
+                vluint32_t (&p_mem_data_)[32],
+                vluint8_t &p_mem_ready_,
+                vluint8_t *p_mem_resp_valid_)
+            : top(top_),
+            p_mem_sel(p_mem_sel_), p_mem_be(p_mem_be_), p_mem_addr(p_mem_addr_),
+            p_mem_valid(p_mem_valid_), p_mem_resp_ready(p_mem_resp_ready_),
+            p_mem_data(p_mem_data_), p_mem_ready(p_mem_ready_),
+            p_mem_resp_valid(p_mem_resp_valid_)
+        {
+        }
+
+        void step()
+        {
+        }
+};
+
+static const size_t MAX_DMA_LEN = 2048;
+
+class DMAEngine;
+struct DMAOp {
+    DMAEngine *engine;
+    uint64_t dma_addr;
+    size_t len;
+    uint64_t ram_addr;
+    bool write;
+    uint8_t  ram_sel;
+    uint8_t tag;
+    uint8_t data[MAX_DMA_LEN];
+};
+
+class DMAEngine {
+    protected:
+
+        Vinterface &top;
+        std::set<DMAOp *> pending;
+
+        const char *label;
+        bool read;
+
+        MemAccessor &ma;
+
+        /* inputs to DMA engine */
+        vluint64_t &p_dma_addr;
+        vluint8_t  &p_dma_ram_sel;
+        vluint32_t &p_dma_ram_addr;
+        vluint16_t &p_dma_len;
+        vluint8_t  &p_dma_tag;
+        vluint8_t  &p_dma_valid;
+
+        /* outputs of DMA engine */
+        vluint8_t &p_dma_ready;
+        vluint8_t &p_dma_status_tag;
+        vluint8_t &p_dma_status_valid;
+
+    public:
+        DMAEngine(Vinterface &top_, const char *label_, bool dma_read,
+                MemAccessor &ma_,
+                vluint64_t &p_dma_addr_,
+                vluint8_t &p_dma_ram_sel_,
+                vluint32_t &p_dma_ram_addr_,
+                vluint16_t &p_dma_len_,
+                vluint8_t &p_dma_tag_,
+                vluint8_t &p_dma_valid_,
+                vluint8_t &p_dma_ready_,
+                vluint8_t &p_dma_status_tag_,
+                vluint8_t &p_dma_status_valid_)
+            : top(top_), label(label_), read(dma_read), ma(ma_),
+            p_dma_addr(p_dma_addr_),
+            p_dma_ram_sel(p_dma_ram_sel_), p_dma_ram_addr(p_dma_ram_addr_),
+            p_dma_len(p_dma_len_), p_dma_tag(p_dma_tag_),
+            p_dma_valid(p_dma_valid_), p_dma_ready(p_dma_ready_),
+            p_dma_status_tag(p_dma_status_tag_),
+            p_dma_status_valid(p_dma_status_valid_)
+        {
+        }
+
+        void pci_op_complete(DMAOp *op)
+        {
+            std::cout << "dma pci complete " << op->dma_addr << std::endl;
+        }
+
+        void step()
+        {
+            p_dma_ready = 1;
+            if (p_dma_valid) {
+                DMAOp *op = new DMAOp;
+                op->engine = this;
+                op->dma_addr = p_dma_addr;
+                op->ram_sel = p_dma_ram_sel;
+                op->ram_addr = p_dma_ram_addr;
+                op->len = p_dma_len;
+                op->tag = p_dma_tag;
+                pending.insert(op);
+                std::cout << "dma op " << op->dma_addr << " -> " <<
+                    op->ram_sel << ":" << op->ram_addr <<
+                    "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;
+
+                if (read) {
+                    pci_dma_issue(op);
+                } else {
+                    std::cerr << "TODO: DMA write" << std::endl;
+                }
+            }
+        }
+};
+
+std::set<DMAOp *> pci_dma_pending;
+
+static void pci_dma_issue(DMAOp *op)
+{
+    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    uint8_t ty;
+
+    if (!msg)
+        throw "completion alloc failed";
+
+    if (op->write) {
+        volatile struct cosim_pcie_proto_d2h_write *write = &msg->write;
+        write->req_id = (uintptr_t) op;
+        write->offset = op->dma_addr;
+        write->len = op->len;
+
+        // TODO: check DMA length
+        memcpy((void *) write->data, op->data, op->len);
+
+        // WMB();
+        write->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITE |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    } else {
+        volatile struct cosim_pcie_proto_d2h_read *read = &msg->read;
+        read->req_id = (uintptr_t) op;
+        read->offset = op->dma_addr;
+        read->len = op->len;
+
+        // WMB();
+        read->own_type = COSIM_PCIE_PROTO_D2H_MSG_READ |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    }
+
+    pci_dma_pending.insert(op);
+}
+
+static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc)
+{
+    DMAOp *op = (DMAOp *) (uintptr_t) rc->req_id;
+    if (pci_dma_pending.find(op) == pci_dma_pending.end())
+        throw "unexpected completion";
+    pci_dma_pending.erase(op);
+
+    memcpy(op->data, (void *) rc->data, op->len);
+    op->engine->pci_op_complete(op);
+}
+
+static void h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
+{
+    DMAOp *op = (DMAOp *) (uintptr_t) wc->req_id;
+    if (pci_dma_pending.find(op) == pci_dma_pending.end())
+        throw "unexpected completion";
+    pci_dma_pending.erase(op);
+
+    op->engine->pci_op_complete(op);
+}
+
 static uint64_t csr_read(uint64_t off)
 {
     switch (off) {
-        case 0x00: return 32; /* firmware id */
-        case 0x04: return 1; /* firmware version */
-        case 0x08: return 0x43215678; /* board id */
-        case 0x0c: return 0x1; /* board version */
-        case 0x10: return 1; /* phc count */
-        case 0x14: return 0x200; /* phc offset */
-        case 0x18: return 0x80; /* phc stride */
-        case 0x20: return 1; /* if_count */
-        case 0x24: return 0x80000; /* if stride */
-        case 0x2c: return 0x80000; /* if csr offset */
+        case   0x00: return 32; /* firmware id */
+        case   0x04: return 1; /* firmware version */
+        case   0x08: return 0x43215678; /* board id */
+        case   0x0c: return 0x1; /* board version */
+        case   0x10: return 1; /* phc count */
+        case   0x14: return 0x200; /* phc offset */
+        case   0x18: return 0x80; /* phc stride */
+        case   0x20: return 1; /* if_count */
+        case   0x24: return 0x80000; /* if stride */
+        case   0x2c: return 0x80000; /* if csr offset */
+        case  0x200: return 0x1; /* phc features */
         default:
             std::cerr << "csr_read(" << off << ") unimplemented" << std::endl;
             return 0;
     }
 }
 
+static void csr_write(uint64_t off, uint64_t val)
+{
+}
+
 static void h2d_read(MMIOInterface &mmio,
         volatile struct cosim_pcie_proto_h2d_read *read)
 {
-    std::cout << "got read " << read->offset << std::endl;
+    //std::cout << "got read " << read->offset << std::endl;
     if (read->offset < 0x80000) {
         volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
         volatile struct cosim_pcie_proto_d2h_readcomp *rc;
@@ -337,6 +558,35 @@ static void h2d_read(MMIOInterface &mmio,
     }
 }
 
+static void h2d_write(MMIOInterface &mmio,
+        volatile struct cosim_pcie_proto_h2d_write *write)
+{
+    uint64_t val = 0;
+
+    memcpy(&val, (void *) write->data, write->len);
+
+    //std::cout << "got write " << write->offset << " = " << val << std::endl;
+
+    if (write->offset < 0x80000) {
+        volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+        volatile struct cosim_pcie_proto_d2h_writecomp *wc;
+
+        if (!msg)
+            throw "completion alloc failed";
+
+        csr_write(write->offset, val);
+
+        wc = &msg->writecomp;
+        wc->req_id = write->req_id;
+
+        //WMB();
+        wc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    } else {
+        mmio.issueWrite(write->req_id, write->offset, write->len, val);
+    }
+}
+
 
 static void poll_h2d(MMIOInterface &mmio)
 {
@@ -347,15 +597,23 @@ static void poll_h2d(MMIOInterface &mmio)
         return;
 
     t = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
-    std::cerr << "poll_h2d: polled type=" << t << std::endl;
+    //std::cerr << "poll_h2d: polled type=" << (int) t << std::endl;
     switch (t) {
         case COSIM_PCIE_PROTO_H2D_MSG_READ:
             h2d_read(mmio, &msg->read);
             break;
 
-        /*case COSIM_PCIE_PROTO_H2D_MSG_WRITE:
-            h2d_write(&msg->write);
-            break;*/
+        case COSIM_PCIE_PROTO_H2D_MSG_WRITE:
+            h2d_write(mmio, &msg->write);
+            break;
+
+        case COSIM_PCIE_PROTO_H2D_MSG_READCOMP:
+            h2d_readcomp(&msg->readcomp);
+            break;
+
+        case COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP:
+            h2d_writecomp(&msg->writecomp);
+            break;
 
         default:
             std::cerr << "poll_h2d: unsupported type=" << t << std::endl;
@@ -377,9 +635,6 @@ int main(int argc, char *argv[])
     di.bars[0].len = 1 << 24;
     di.bars[0].flags = COSIM_PCIE_PROTO_BAR_64;
 
-    /*di.bars[2].len = 1024;
-    di.bars[2].flags = COSIM_PCIE_PROTO_BAR_IO;*/
-
     di.pci_vendor_id = 0x5543;
     di.pci_device_id = 0x1001;
     di.pci_class = 0x02;
@@ -391,62 +646,73 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    signal(SIGINT, sigint_handler);
 
 
     Vinterface *top = new Vinterface;
 
-    VerilatedVcdC *tr = 0;
-    /*VerilatedVcdC *tr = new VerilatedVcdC;
-    top->trace(tr, 1000);
-    tr->open("debug.vcd");*/
-    // size: bar 0: 24 bits
-
     MMIOInterface mmio(*top);
+    MemAccessor mem_writer(*top, false,
+            top->ctrl_dma_ram_wr_cmd_sel,
+            &top->ctrl_dma_ram_wr_cmd_be /*14 */,
+            top->ctrl_dma_ram_wr_cmd_addr,
+            top->ctrl_dma_ram_wr_cmd_valid,
+            (vluint8_t *) 0,
+            top->ctrl_dma_ram_wr_cmd_data,
+            top->ctrl_dma_ram_wr_cmd_ready,
+            (vluint8_t *) 0);
+
+    DMAEngine dma_read_ctrl(*top, "read ctrl", true, mem_writer,
+            top->m_axis_ctrl_dma_read_desc_dma_addr,
+            top->m_axis_ctrl_dma_read_desc_ram_sel,
+            top->m_axis_ctrl_dma_read_desc_ram_addr,
+            top->m_axis_ctrl_dma_read_desc_len,
+            top->m_axis_ctrl_dma_read_desc_tag,
+            top->m_axis_ctrl_dma_read_desc_valid,
+            top->m_axis_ctrl_dma_read_desc_ready,
+            top->s_axis_ctrl_dma_read_desc_status_tag,
+            top->s_axis_ctrl_dma_read_desc_status_valid);
+    DMAEngine dma_write_ctrl(*top, "write ctrl", false, mem_writer/*should be reader*/,
+            top->m_axis_ctrl_dma_write_desc_dma_addr,
+            top->m_axis_ctrl_dma_write_desc_ram_sel,
+            top->m_axis_ctrl_dma_write_desc_ram_addr,
+            top->m_axis_ctrl_dma_write_desc_len,
+            top->m_axis_ctrl_dma_write_desc_tag,
+            top->m_axis_ctrl_dma_write_desc_valid,
+            top->m_axis_ctrl_dma_write_desc_ready,
+            top->s_axis_ctrl_dma_write_desc_status_tag,
+            top->s_axis_ctrl_dma_write_desc_status_valid);
 
     reset_inputs(top);
     top->rst = 1;
-
     top->eval();
-    /*std::cout << "0 low:" << std::endl;
-    report_outputs(top);*/
 
-    if (tr)
-        tr->dump(0);
-
+    /* raising edge */
     top->clk = !top->clk;
     top->eval();
-    /*std::cout << "0 high:" << std::endl;
-    report_outputs(top);*/
-
-    if (tr)
-        tr->dump(1);
 
     top->rst = 0;
 
-    while (1) {
+    while (!exiting) {
         poll_h2d(mmio);
 
+        /* falling edge */
         top->clk = !top->clk;
-
+        main_time++;
         top->eval();
-        /*std::cout << (i + 2) << " low:" << std::endl;
-        report_outputs(top);*/
-
-        /*tr->dump(2 + i * 2);*/
 
         mmio.step();
+        dma_read_ctrl.step();
+        dma_write_ctrl.step();
+
+        /* raising edge */
         top->clk = !top->clk;
+        main_time++;
 
         top->eval();
-        /*std::cout << (i + 2) << " high:" << std::endl;
-        report_outputs(top);*/
-
-        /*tr->dump(3 + i * 2);*/
     }
     report_outputs(top);
 
-    if (tr)
-        tr->close();
     top->final();
     delete top;
     return 0;
