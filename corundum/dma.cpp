@@ -17,9 +17,9 @@ void DMAReader::step()
         op->tag = p.dma_tag;
         op->write = false;
         pending.insert(op);
-        std::cout << "dma[" << label << "] op " << op->dma_addr << " -> " <<
+        /*std::cout << "dma[" << label << "] op " << op->dma_addr << " -> " <<
             op->ram_sel << ":" << op->ram_addr <<
-            "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;
+            "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;*/
 
         pci_dma_issue(op);
     }
@@ -29,7 +29,7 @@ void DMAReader::step()
         DMAOp *op = completed.front();
         completed.pop_front();
 
-        std::cout << "dma[" << label << "] status complete " << op->dma_addr << std::endl;
+        //std::cout << "dma[" << label << "] status complete " << op->dma_addr << std::endl;
 
         p.dma_status_valid = 1;
         p.dma_status_tag = op->tag;
@@ -46,5 +46,5 @@ void DMAReader::pci_op_complete(DMAOp *op)
 void DMAReader::mem_op_complete(DMAOp *op)
 {
     completed.push_back(op);
-    std::cout << "dma[" << label << "] mem complete " << op->dma_addr << std::endl;
+    //std::cout << "dma[" << label << "] mem complete " << op->dma_addr << std::endl;
 }

@@ -18,7 +18,7 @@
 void MemWriter::step()
 {
     if (cur && p.mem_ready) {
-        std::cerr << "completed write to: " << cur->ram_addr << std::endl;
+        //std::cerr << "completed write to: " << cur->ram_addr << std::endl;
         p.mem_valid = 0;
         p.mem_be[0] = p.mem_be[1] = p.mem_be[2] = p.mem_be[3] = 0;
 
@@ -30,10 +30,11 @@ void MemWriter::step()
         cur = pending.front();
         pending.pop_front();
 
-        std::cerr << "issuing write to " << cur->ram_addr << std::endl;
+        //std::cerr << "issuing write to " << cur->ram_addr << std::endl;
 
         size_t data_byte_width = DATA_WIDTH / 8;
         size_t data_offset = cur->ram_addr % data_byte_width;
+
         if (cur->len > data_byte_width - data_offset) {
             std::cerr << "MemWriter::step: cannot be written in one cycle TODO" << std::endl;
             throw "unsupported";
@@ -75,6 +76,6 @@ void MemWriter::step()
 
 void MemWriter::op_issue(DMAOp *op)
 {
-    std::cerr << "enqueued write to " << op->ram_addr << std::endl;
+    //std::cerr << "enqueued write to " << op->ram_addr << std::endl;
     pending.push_back(op);
 }

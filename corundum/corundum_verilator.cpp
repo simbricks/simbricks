@@ -410,10 +410,12 @@ static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc)
 
     memcpy(op->data, (void *) rc->data, op->len);
 
+#if 0
     std::cerr << "dma read comp: ";
     for (size_t i = 0; i < op->len; i++)
         std::cerr << (unsigned) op->data[i] << " ";
     std::cerr << std::endl;
+#endif
 
 
     op->engine->pci_op_complete(op);
@@ -549,11 +551,22 @@ static void poll_h2d(MMIOInterface &mmio)
 class EthernetTx {
     protected:
         Vinterface &top;
+        uint8_t packet_buf[2048];
+        size_t packet_len;
 
     public:
         EthernetTx(Vinterface &top_)
-            : top(top_)
+            : top(top_), packet_len(0)
         {
+        }
+
+        void packet_done()
+        {
+            std::cerr << "packet len=" << std::hex << packet_len << " ";
+            for (size_t i = 0; i < packet_len; i++) {
+                std::cerr << (unsigned) packet_buf[i] << " ";
+            }
+            std::cerr << std::endl;
         }
 
         void step()
@@ -561,10 +574,21 @@ class EthernetTx {
             top.tx_axis_tready = 1;
 
             if (top.tx_axis_tvalid) {
-                std::cerr << "valid data: keep=" << (uintptr_t) top.tx_axis_tkeep <<
-                    " last=" << (bool) top.tx_axis_tlast << "  " << top.tx_axis_tdata << std::endl;
+                /* iterate over all 8 bytes */
+                for (size_t i = 0; i < 8; i++) {
+                    if ((top.tx_axis_tkeep & (1 << i)) != 0) {
+                        assert(packet_len < 2048);
+                        packet_buf[packet_len++] = (top.tx_axis_tdata >> (i * 8));
+                    }
+                }
+
+                if (top.tx_axis_tlast) {
+                    packet_done();
+                    packet_len = 0;
+                }
             }
         }
+
 };
 
 
