@@ -630,10 +630,10 @@ int main(int argc, char *argv[])
             top->ctrl_dma_ram_rd_cmd_sel,
             top->ctrl_dma_ram_rd_cmd_addr,
             top->ctrl_dma_ram_rd_cmd_valid,
-            top->ctrl_dma_ram_rd_cmd_ready,
+            top->ctrl_dma_ram_rd_resp_ready,
             top->ctrl_dma_ram_rd_resp_data,
-            top->ctrl_dma_ram_rd_resp_valid,
-            top->ctrl_dma_ram_rd_resp_ready);
+            top->ctrl_dma_ram_rd_cmd_ready,
+            top->ctrl_dma_ram_rd_resp_valid);
     MemWritePort p_mem_write_data_dma(
             top->data_dma_ram_wr_cmd_sel,
             top->data_dma_ram_wr_cmd_be,
@@ -645,10 +645,10 @@ int main(int argc, char *argv[])
             top->data_dma_ram_rd_cmd_sel,
             top->data_dma_ram_rd_cmd_addr,
             top->data_dma_ram_rd_cmd_valid,
-            top->data_dma_ram_rd_cmd_ready,
+            top->data_dma_ram_rd_resp_ready,
             top->data_dma_ram_rd_resp_data,
-            top->data_dma_ram_rd_resp_valid,
-            top->data_dma_ram_rd_resp_ready);
+            top->data_dma_ram_rd_cmd_ready,
+            top->data_dma_ram_rd_resp_valid);
 
     DMAPorts p_dma_read_ctrl(
             top->m_axis_ctrl_dma_read_desc_dma_addr,
@@ -693,12 +693,16 @@ int main(int argc, char *argv[])
 
 
     MMIOInterface mmio(*top);
-    MemReader mem_control_reader(p_mem_read_ctrl_dma);
+
     MemWriter mem_control_writer(p_mem_write_ctrl_dma);
+    MemReader mem_control_reader(p_mem_read_ctrl_dma);
     MemWriter mem_data_writer(p_mem_write_data_dma);
+    MemReader mem_data_reader(p_mem_read_data_dma);
+
     DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer);
+    DMAWriter dma_write_ctrl("write ctrl", p_dma_write_ctrl, mem_control_reader);
     DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer);
-    //DMAEngine dma_write_ctrl(*top, "write ctrl", false, mem_writer/*should be reader*/,
+    DMAWriter dma_write_data("write data", p_dma_write_data, mem_data_reader);
 
     EthernetTx tx(*top);
 
@@ -721,16 +725,24 @@ int main(int argc, char *argv[])
         top->eval();
 
         mmio.step();
+
         dma_read_ctrl.step();
+        dma_write_ctrl.step();
         dma_read_data.step();
+        dma_write_data.step();
+
         mem_control_writer.step();
+        mem_control_reader.step();
         mem_data_writer.step();
-        //dma_write_ctrl.step();
+        mem_data_reader.step();
         tx.step();
 
         /* raising edge */
         top->clk = !top->clk;
         main_time++;
+
+        //top->s_axis_tx_ptp_ts_96 = main_time;
+        top->s_axis_tx_ptp_ts_valid = 1;
 
         top->eval();
     }

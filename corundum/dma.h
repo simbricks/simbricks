@@ -11,6 +11,7 @@
 
 class DMAEngine;
 class MemWriter;
+class MemReader;
 
 struct DMAPorts {
     /* inputs to DMA engine */
@@ -81,5 +82,24 @@ class DMAReader : public DMAEngine {
         virtual void mem_op_complete(DMAOp *op);
         void step();
 };
+
+class DMAWriter : public DMAEngine {
+    protected:
+        std::set<DMAOp *> pending;
+        std::deque<DMAOp *> completed;
+        const char *label;
+        MemReader &mr;
+
+    public:
+        DMAWriter(const char *label_, DMAPorts &p_, MemReader &mr_)
+            : DMAEngine(p_), label(label_), mr(mr_)
+        {
+        }
+
+        virtual void pci_op_complete(DMAOp *op);
+        virtual void mem_op_complete(DMAOp *op);
+        void step();
+};
+
 
 #endif /* ndef DMA_H_ */

@@ -55,11 +55,18 @@ class MemReader {
     protected:
         MemReadPort &p;
 
+        std::deque<DMAOp *> pending;
+        DMAOp *cur;
+        size_t cur_off;
+
     public:
         MemReader(MemReadPort &p_)
-            : p(p_)
+            : p(p_), cur(0), cur_off(0)
         {
         }
+
+        void step();
+        void op_issue(DMAOp *op);
 };
 
 class MemWriter {
