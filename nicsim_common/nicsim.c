@@ -145,7 +145,7 @@ static int accept_conns(struct cosim_pcie_proto_dev_intro *di,
                 await_pci = 0;
             }
             if (pfds[1].revents) {
-                if (accept_eth(pci_lfd) != 0)
+                if (accept_eth(eth_lfd) != 0)
                     return -1;
                 await_eth = 0;
             }
