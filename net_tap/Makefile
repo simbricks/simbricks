@@ -1,5 +1,6 @@
 CPPFLAGS += -I../proto
 CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3
+LDLIBS += -lpthread
 
 net_tap: net_tap.o
 

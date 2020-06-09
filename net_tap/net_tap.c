@@ -22,6 +22,7 @@
  */
 
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -56,7 +57,7 @@ int uxsocket_connect(const char *path)
     /* prepare and connect socket */
     memset(&saun, 0, sizeof(saun));
     saun.sun_family = AF_UNIX;
-    strcpy(saun.sun_path, "/tmp/cosim-eth");
+    strcpy(saun.sun_path, path);
 
     if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("socket failed");
@@ -155,16 +156,11 @@ static int tap_open(const char *name)
 
 static void d2n_send(volatile struct cosim_eth_proto_d2n_send *s)
 {
+    printf("sent packet: len=%u\n", s->len);
 
     if (write(tap_fd, (void *) s->data, s->len) != (ssize_t) s->len) {
         perror("d2n_send: send failed");
     }
-    /*uint16_t i;
-    printf("packet [len=%u]:", s->len);
-    for (i = 0; i < s->len; i++) {
-        printf(" %02x", s->data[i]);
-    }
-    printf("\n");*/
 }
 
 static void poll_d2n(void)
@@ -192,6 +188,39 @@ static void poll_d2n(void)
     msg->dummy.own_type = (msg->dummy.own_type & COSIM_ETH_PROTO_D2N_MSG_MASK)
         | COSIM_ETH_PROTO_D2N_OWN_DEV;
     d2n_pos = (d2n_pos + 1) % d2n_enum;
+}
+
+static void *rx_handler(void *arg)
+{
+    volatile union cosim_eth_proto_n2d *msg;
+    volatile struct cosim_eth_proto_n2d_recv *rx;
+    ssize_t len;
+
+    while (1) {
+        msg = (volatile union cosim_eth_proto_n2d *)
+                (n2d_queue + n2d_pos * n2d_elen);
+
+        if ((msg->dummy.own_type & COSIM_ETH_PROTO_N2D_OWN_MASK) !=
+                COSIM_ETH_PROTO_N2D_OWN_NET)
+        {
+            fprintf(stderr, "coudl not allocate message for rx\n");
+            abort();
+        }
+        rx = &msg->recv;
+
+        len = read(tap_fd, (void *) rx->data, n2d_elen - sizeof(*msg));
+        if (len <= 0) {
+            perror("rx handler: read failed");
+        }
+        rx->len = len;
+        rx->port = 0;
+        printf("received packet: len=%u\n", rx->len);
+
+        // WMB();
+        rx->own_type = COSIM_ETH_PROTO_N2D_MSG_RECV |
+            COSIM_ETH_PROTO_N2D_OWN_DEV;
+        n2d_pos = (n2d_pos + 1) % n2d_enum;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -236,6 +265,11 @@ int main(int argc, char *argv[])
     d2n_enum = di.d2n_nentries;
     n2d_enum = di.n2d_nentries;
     d2n_pos = n2d_pos = 0;
+
+    pthread_t worker;
+    if (pthread_create(&worker, NULL, rx_handler, NULL) != 0) {
+        return EXIT_FAILURE;
+    }
 
     printf("start polling\n");
     while (1) {
