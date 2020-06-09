@@ -696,6 +696,35 @@ static void poll_n2d(EthernetRx &rx)
     nicif_n2d_next();
 }
 
+static void msi_issue(uint8_t vec)
+{
+    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    volatile struct cosim_pcie_proto_d2h_interrupt *intr;
+
+    std::cerr << "MSI interrupt vec=" << (int) vec << std::endl;
+
+    intr = &msg->interrupt;
+    intr->vector = vec;
+    intr->inttype = COSIM_PCIE_PROTO_INT_MSI;
+
+    // WMB();
+    intr->own_type = COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT |
+        COSIM_PCIE_PROTO_D2H_OWN_HOST;
+}
+
+static void msi_step(Vinterface &top)
+{
+    if (!top.msi_irq)
+        return;
+
+    for (size_t i = 0; i < 32; i++) {
+        if (!((1ULL << i) & top.msi_irq))
+            continue;
+
+        msi_issue(i);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     Verilated::commandArgs(argc, argv);
@@ -847,12 +876,15 @@ int main(int argc, char *argv[])
         tx.step();
         rx.step();
 
+        msi_step(*top);
+
         /* raising edge */
         top->clk = !top->clk;
         main_time++;
 
         //top->s_axis_tx_ptp_ts_96 = main_time;
         top->s_axis_tx_ptp_ts_valid = 1;
+        top->s_axis_rx_ptp_ts_valid = 1;
 
         top->eval();
     }
