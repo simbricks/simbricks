@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     di.pci_revision = 0x00;
     di.pci_msi_nvecs = 0x00;
 
-    if (nicsim_init(&di, "/tmp/cosim-pci", "/dev/shm/dummy_nic_shm")) {
+    if (nicsim_init(&di, "/tmp/cosim-pci", NULL, "/dev/shm/dummy_nic_shm")) {
         return EXIT_FAILURE;
     }
 

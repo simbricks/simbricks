@@ -25,15 +25,25 @@
 #define COSIM_NICSIM_H_
 
 #include <cosim_pcie_proto.h>
+#include <cosim_eth_proto.h>
 
 int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
-        const char *uxsocket_path, const char *shm_path);
+        const char *pci_socket_path, const char *eth_socket_path,
+        const char *shm_path);
 void nicsim_cleanup(void);
+
 
 volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(void);
 void nicif_h2d_done(volatile union cosim_pcie_proto_h2d *msg);
 void nicif_h2d_next(void);
 
 volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(void);
+
+
+volatile union cosim_eth_proto_n2d *nicif_n2d_poll(void);
+void nicif_n2d_done(volatile union cosim_eth_proto_n2d *msg);
+void nicif_n2d_next(void);
+
+volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(void);
 
 #endif /* ndef COSIM_NICSIM_H_ */
