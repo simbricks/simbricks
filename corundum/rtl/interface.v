@@ -65,7 +65,7 @@ module interface #
     // Receive queue index width
     parameter RX_QUEUE_INDEX_WIDTH = 8,
     // Transmit completion queue index width
-    parameter TX_CPL_QUEUE_INDEX_WIDTH = 13,
+    parameter TX_CPL_QUEUE_INDEX_WIDTH = 8,
     // Receive completion queue index width
     parameter RX_CPL_QUEUE_INDEX_WIDTH = 8,
     // Pipeline setting (event queue)
