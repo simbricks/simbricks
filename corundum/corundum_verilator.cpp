@@ -562,6 +562,20 @@ class EthernetTx {
 
         void packet_done()
         {
+            volatile union cosim_eth_proto_d2n *msg = nicsim_d2n_alloc();
+            volatile struct cosim_eth_proto_d2n_send *send;
+
+            if (!msg)
+                throw "completion alloc failed";
+
+            send = &msg->send;
+            memcpy((void *) send->data, packet_buf, packet_len);
+            send->len = packet_len;
+
+            //WMB();
+            send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND |
+                COSIM_ETH_PROTO_D2N_OWN_NET;
+
             std::cerr << "packet len=" << std::hex << packet_len << " ";
             for (size_t i = 0; i < packet_len; i++) {
                 std::cerr << (unsigned) packet_buf[i] << " ";
@@ -610,7 +624,9 @@ int main(int argc, char *argv[])
     di.pci_revision = 0x00;
     di.pci_msi_nvecs = 32;
 
-    if (nicsim_init(&di, "/tmp/cosim-pci", NULL, "/dev/shm/dummy_nic_shm")) {
+    if (nicsim_init(&di, "/tmp/cosim-pci", "/tmp/cosim-eth",
+                "/dev/shm/dummy_nic_shm"))
+    {
         return EXIT_FAILURE;
     }
 
