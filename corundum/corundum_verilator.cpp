@@ -546,7 +546,7 @@ static void poll_h2d(MMIOInterface &mmio)
     nicif_h2d_done(msg);
     nicif_h2d_next();
 
-}
+};
 
 class EthernetTx {
     protected:
@@ -576,7 +576,7 @@ class EthernetTx {
             send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND |
                 COSIM_ETH_PROTO_D2N_OWN_NET;
 
-            std::cerr << "packet len=" << std::hex << packet_len << " ";
+            std::cerr << "EthernetTx: packet len=" << std::hex << packet_len << " ";
             for (size_t i = 0; i < packet_len; i++) {
                 std::cerr << (unsigned) packet_buf[i] << " ";
             }
@@ -602,9 +602,99 @@ class EthernetTx {
                 }
             }
         }
+};
+
+class EthernetRx {
+    protected:
+        Vinterface &top;
+        uint8_t packet_buf[2048];
+        size_t packet_len;
+        size_t packet_off;
+
+    public:
+        EthernetRx(Vinterface &top_)
+            : top(top_), packet_len(0), packet_off(0)
+        {
+        }
+
+        void packet_received(const void *data, size_t len)
+        {
+            if (packet_len != 0) {
+                std::cerr << "EthernetRx: dropping packet" << std::endl;
+                return;
+            }
+
+            packet_off = 0;
+            packet_len = len;
+            memcpy(packet_buf, data, len);
+
+            std::cerr << "EthernetRx: packet len=" << std::hex << packet_len << " ";
+            for (size_t i = 0; i < packet_len; i++) {
+                std::cerr << (unsigned) packet_buf[i] << " ";
+            }
+            std::cerr << std::endl;
+        }
+
+        void step()
+        {
+            if (packet_len != 0) {
+                // we have data to send
+                if (packet_off != 0 && !top.rx_axis_tready) {
+                    // no ready signal, can't advance
+                } else if (packet_off == packet_len) {
+                    // done with packet
+                    std::cerr << "EthernetRx: finished packet" << std::endl;
+                    top.rx_axis_tvalid = 0;
+                    packet_off = packet_len = 0;
+                } else {
+                    // put out more packet data
+                    std::cerr << "EthernetRx: push flit " << packet_off << std::endl;
+                    top.rx_axis_tkeep = 0;
+                    top.rx_axis_tdata = 0;
+
+                    for (size_t i = 0; i < 8 && packet_off < packet_len; i++) {
+                        top.rx_axis_tdata |=
+                            ((uint64_t) packet_buf[packet_off]) << (i * 8);
+                        top.rx_axis_tkeep |= (1 << i);
+                        packet_off++;
+                    }
+                    top.rx_axis_tlast = (packet_off == packet_len);
+                }
+            } else {
+                // no data
+                top.rx_axis_tvalid = 0;
+            }
+        }
 
 };
 
+static void n2d_recv(EthernetRx &rx,
+        volatile struct cosim_eth_proto_n2d_recv *recv)
+{
+    rx.packet_received((const void *) recv->data, recv->len);
+}
+
+static void poll_n2d(EthernetRx &rx)
+{
+    volatile union cosim_eth_proto_n2d *msg = nicif_n2d_poll();
+    uint8_t t;
+
+    if (msg == NULL)
+        return;
+
+    t = msg->dummy.own_type & COSIM_ETH_PROTO_N2D_MSG_MASK;
+    switch (t) {
+        case COSIM_ETH_PROTO_N2D_MSG_RECV:
+            n2d_recv(rx, &msg->recv);
+            break;
+
+        default:
+            std::cerr << "poll_n2d: unsupported type=" << t << std::endl;
+    }
+
+    nicif_n2d_done(msg);
+    nicif_n2d_next();
+}
 
 int main(int argc, char *argv[])
 {
@@ -721,6 +811,7 @@ int main(int argc, char *argv[])
     DMAWriter dma_write_data("write data", p_dma_write_data, mem_data_reader);
 
     EthernetTx tx(*top);
+    EthernetRx rx(*top);
 
     reset_inputs(top);
     top->rst = 1;
@@ -734,6 +825,7 @@ int main(int argc, char *argv[])
 
     while (!exiting) {
         poll_h2d(mmio);
+        poll_n2d(rx);
 
         /* falling edge */
         top->clk = !top->clk;
@@ -751,7 +843,9 @@ int main(int argc, char *argv[])
         mem_control_reader.step();
         mem_data_writer.step();
         mem_data_reader.step();
+
         tx.step();
+        rx.step();
 
         /* raising edge */
         top->clk = !top->clk;
