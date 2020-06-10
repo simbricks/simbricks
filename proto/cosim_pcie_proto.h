@@ -64,7 +64,7 @@ struct cosim_pcie_proto_dev_intro {
 } __attribute__((packed));
 
 
-#define COSIM_PCIE_PROTO_FLAGS_IH_SYNC (1 << 0)
+#define COSIM_PCIE_PROTO_FLAGS_HI_SYNC (1 << 0)
 
 /** welcome message sent by host to device */
 struct cosim_pcie_proto_host_intro {
