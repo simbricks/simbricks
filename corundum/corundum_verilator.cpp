@@ -19,7 +19,7 @@ struct DMAOp;
 
 static volatile int exiting = 0;
 static uint64_t main_time = 0;
-static VerilatedVcdC* trace;
+//static VerilatedVcdC* trace;
 
 
 
@@ -646,25 +646,27 @@ class EthernetRx {
                     // done with packet
                     std::cerr << "EthernetRx: finished packet" << std::endl;
                     top.rx_axis_tvalid = 0;
+                    top.rx_axis_tlast = 0;
                     packet_off = packet_len = 0;
                 } else {
                     // put out more packet data
                     std::cerr << "EthernetRx: push flit " << packet_off << std::endl;
                     top.rx_axis_tkeep = 0;
                     top.rx_axis_tdata = 0;
-
                     for (size_t i = 0; i < 8 && packet_off < packet_len; i++) {
                         top.rx_axis_tdata |=
                             ((uint64_t) packet_buf[packet_off]) << (i * 8);
                         top.rx_axis_tkeep |= (1 << i);
                         packet_off++;
                     }
+                    top.rx_axis_tvalid = 1;
                     top.rx_axis_tlast = (packet_off == packet_len);
                 }
-                trace->dump(main_time);
+                //trace->dump(main_time);
             } else {
                 // no data
                 top.rx_axis_tvalid = 0;
+                top.rx_axis_tlast = 0;
             }
         }
 
@@ -755,9 +757,9 @@ int main(int argc, char *argv[])
 
 
     Vinterface *top = new Vinterface;
-    trace = new VerilatedVcdC;
+    /*trace = new VerilatedVcdC;
     top->trace(trace, 99);
-    trace->open("debug.vcd");
+    trace->open("debug.vcd");*/
 
     MemWritePort p_mem_write_ctrl_dma(
             top->ctrl_dma_ram_wr_cmd_sel,
@@ -895,7 +897,7 @@ int main(int argc, char *argv[])
     }
     report_outputs(top);
 
-    trace->close();
+    //trace->close();
     top->final();
     delete top;
     return 0;
