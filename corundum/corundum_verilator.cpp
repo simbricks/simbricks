@@ -19,6 +19,7 @@ struct DMAOp;
 
 static volatile int exiting = 0;
 static uint64_t main_time = 0;
+static VerilatedVcdC* trace;
 
 
 
@@ -660,6 +661,7 @@ class EthernetRx {
                     }
                     top.rx_axis_tlast = (packet_off == packet_len);
                 }
+                trace->dump(main_time);
             } else {
                 // no data
                 top.rx_axis_tvalid = 0;
@@ -728,7 +730,7 @@ static void msi_step(Vinterface &top)
 int main(int argc, char *argv[])
 {
     Verilated::commandArgs(argc, argv);
-    //Verilated::traceEverOn(true);
+    Verilated::traceEverOn(true);
 
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
@@ -753,6 +755,9 @@ int main(int argc, char *argv[])
 
 
     Vinterface *top = new Vinterface;
+    trace = new VerilatedVcdC;
+    top->trace(trace, 99);
+    trace->open("debug.vcd");
 
     MemWritePort p_mem_write_ctrl_dma(
             top->ctrl_dma_ram_wr_cmd_sel,
@@ -890,6 +895,7 @@ int main(int argc, char *argv[])
     }
     report_outputs(top);
 
+    trace->close();
     top->final();
     delete top;
     return 0;
