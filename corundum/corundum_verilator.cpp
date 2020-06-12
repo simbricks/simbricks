@@ -11,7 +11,9 @@ extern "C" {
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
+#include "debug.h"
 #include "corundum.h"
+#include "coord.h"
 #include "dma.h"
 #include "mem.h"
 
@@ -408,6 +410,7 @@ void pci_dma_issue(DMAOp *op)
     pci_dma_pending.insert(op);
 }
 
+
 static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc)
 {
     DMAOp *op = (DMAOp *) (uintptr_t) rc->req_id;
@@ -591,11 +594,13 @@ class EthernetTx {
             send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND |
                 COSIM_ETH_PROTO_D2N_OWN_NET;
 
+#ifdef ETH_DEBUG
             std::cerr << "EthernetTx: packet len=" << std::hex << packet_len << " ";
             for (size_t i = 0; i < packet_len; i++) {
                 std::cerr << (unsigned) packet_buf[i] << " ";
             }
             std::cerr << std::endl;
+#endif
         }
 
         void step()
@@ -643,11 +648,13 @@ class EthernetRx {
             packet_len = len;
             memcpy(packet_buf, data, len);
 
+#ifdef ETH_DEBUG
             std::cerr << "EthernetRx: packet len=" << std::hex << packet_len << " ";
             for (size_t i = 0; i < packet_len; i++) {
                 std::cerr << (unsigned) packet_buf[i] << " ";
             }
             std::cerr << std::endl;
+#endif
         }
 
         void step()
@@ -656,18 +663,24 @@ class EthernetRx {
                 // we have data to send
                 if (packet_off != 0 && !top.rx_axis_tready) {
                     // no ready signal, can't advance
+                    std::cerr << "eth rx: no ready" << std::endl;
                 } else if (packet_off == packet_len) {
                     // done with packet
+#ifdef ETH_DEBUG
                     std::cerr << "EthernetRx: finished packet" << std::endl;
+#endif
                     top.rx_axis_tvalid = 0;
                     top.rx_axis_tlast = 0;
                     packet_off = packet_len = 0;
                 } else {
                     // put out more packet data
+#ifdef ETH_DEBUG
                     std::cerr << "EthernetRx: push flit " << packet_off << std::endl;
+#endif
                     top.rx_axis_tkeep = 0;
                     top.rx_axis_tdata = 0;
-                    for (size_t i = 0; i < 8 && packet_off < packet_len; i++) {
+                    size_t i;
+                    for (i = 0; i < 8 && packet_off < packet_len; i++) {
                         top.rx_axis_tdata |=
                             ((uint64_t) packet_buf[packet_off]) << (i * 8);
                         top.rx_axis_tkeep |= (1 << i);
@@ -714,12 +727,89 @@ static void poll_n2d(EthernetRx &rx)
     nicif_n2d_next();
 }
 
-static void msi_issue(uint8_t vec)
+#if 0
+class PCICoordinator {
+    protected:
+        struct PCIOp {
+            union {
+                DMAOp *dma_op;
+                uint32_t msi_vec;
+            };
+            bool isDma;
+            bool ready;
+        };
+
+        Vinterface &top;
+        std::deque<PCIOp *> queue;
+        std::map<DMAOp *, PCIOp *> dmamap;
+
+        void process()
+        {
+            PCIOp *op;
+            while (queue.empty()) {
+                op = queue.front();
+                if (!op->ready)
+                    break;
+
+                queue.pop_front();
+                if (!op->isDma) {
+                    pci_msi_issue(op->msi_vec);
+                    delete op;
+                } else {
+                    pci_dma_issue(op->dma_op);
+                    dmamap.erase(op->dma_op);
+                    delete op;
+                }
+            }
+        }
+
+    public:
+        PCICoordinator(Vinterface &top_)
+            : top(top_)
+        {
+        }
+
+        void dma_register(DMAOp *dma_op, bool ready)
+        {
+            PCIOp *op = new PCIOp;
+            op->dma_op = vec;
+            op->isDma = true;
+            op->ready = ready;
+
+            queue.push_back(op);
+            dmamap[op] = dma_op;
+
+            process();
+        }
+
+        void dma_mark_ready(DMAOp *op)
+        {
+            dmamap[op]->ready = true;
+
+            process();
+        }
+
+        void msi_enqueue(uint32_t vec)
+        {
+            PCIOp *op = new PCIOp;
+            op->msi_vec = vec;
+            op->isDma = false;
+            op->ready = true;
+            queue.push_back(op);
+
+            process();
+        }
+};
+#endif
+
+void pci_msi_issue(uint8_t vec)
 {
     volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
     volatile struct cosim_pcie_proto_d2h_interrupt *intr;
 
+#ifdef MSI_DEBUG
     std::cerr << "MSI interrupt vec=" << (int) vec << std::endl;
+#endif
 
     intr = &msg->interrupt;
     intr->vector = vec;
@@ -730,16 +820,19 @@ static void msi_issue(uint8_t vec)
         COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
 
-static void msi_step(Vinterface &top)
+
+static void msi_step(Vinterface &top, PCICoordinator &coord)
 {
     if (!top.msi_irq)
         return;
 
+#ifdef MSI_DEBUG
+    std::cerr << "msi_step: MSI interrupt raw vec=" << (int) top.msi_irq << std::endl;
+#endif
     for (size_t i = 0; i < 32; i++) {
         if (!((1ULL << i) & top.msi_irq))
             continue;
-
-        msi_issue(i);
+        coord.msi_enqueue(i);
     }
 }
 
@@ -884,10 +977,11 @@ int main(int argc, char *argv[])
     MemWriter mem_data_writer(p_mem_write_data_dma);
     MemReader mem_data_reader(p_mem_read_data_dma);
 
-    DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer);
-    DMAWriter dma_write_ctrl("write ctrl", p_dma_write_ctrl, mem_control_reader);
-    DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer);
-    DMAWriter dma_write_data("write data", p_dma_write_data, mem_data_reader);
+    PCICoordinator pci_coord;
+    DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer, pci_coord);
+    DMAWriter dma_write_ctrl("write ctrl", p_dma_write_ctrl, mem_control_reader, pci_coord);
+    DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer, pci_coord);
+    DMAWriter dma_write_data("write data", p_dma_write_data, mem_data_reader, pci_coord);
 
     EthernetTx tx(*top);
     EthernetRx rx(*top);
@@ -930,7 +1024,7 @@ int main(int argc, char *argv[])
         tx.step();
         rx.step();
 
-        msi_step(*top);
+        msi_step(*top, pci_coord);
 
         /* raising edge */
         top->clk = !top->clk;

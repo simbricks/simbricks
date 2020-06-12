@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "debug.h"
 #include "mem.h"
 #include "dma.h"
 
@@ -49,6 +50,8 @@ void MemWriter::step()
         p.mem_addr[0] = p.mem_addr[1] = p.mem_addr[2] = 0;
         p.mem_be[0] = p.mem_be[1] = p.mem_be[2] = p.mem_be[3] = 0;
         p.mem_valid = 0;
+        for (size_t i = 0; i < data_byte_width / 4; i++)
+            p.mem_data[i] = 0;
 
 
         /* put data bytes in the right places */
@@ -57,9 +60,6 @@ void MemWriter::step()
                 data_byte_width - data_offset : cur->len - cur_off);
         for (size_t i = 0; i < cur_len; i++, off++) {
             size_t byte_off = off % 4;
-            // first clear data byte
-            p.mem_data[off / 4] &= ~(0xffu << (byte_off * 8));
-            // then set data byte
             p.mem_data[off / 4] |= (((uint32_t) cur->data[i]) << (byte_off * 8));
             p.mem_be[off / 32] |= (1 << (off % 32));
             p.mem_valid |= (1 << (off / (SEG_WIDTH / 8)));
@@ -96,7 +96,9 @@ void MemReader::step()
     size_t data_byte_width = DATA_WIDTH / 8;
 
     if (cur && p.mem_resvalid) {
+#ifdef MEM_DEBUG
         std::cerr << "completed read from: " << std::hex << cur->ram_addr << std::endl;
+#endif
         p.mem_valid = 0;
         /*for (size_t i = 0; i < 32; i++)
             std::cerr << "    val = " << p.mem_data[i] << std::endl;*/
@@ -118,11 +120,12 @@ void MemReader::step()
         cur = 0;
     } else if (!cur && !pending.empty()) {
         cur = pending.front();
-
-        std::cerr << "issuing read from " << std::hex << cur->ram_addr << std::endl;
-
         size_t data_offset = (cur->ram_addr + cur_off) % data_byte_width;
+
+#ifdef MEM_DEBUG
+        std::cerr << "issuing read from " << std::hex << cur->ram_addr << std::endl;
         std::cerr << "    off=" << data_offset << std::endl;
+#endif
 
         /*if (cur->len > data_byte_width - data_offset) {
             std::cerr << "MemReader::step: cannot be written in one cycle TODO" << std::endl;
@@ -168,6 +171,8 @@ void MemReader::step()
 
 void MemReader::op_issue(DMAOp *op)
 {
+#ifdef MEM_DEBUG
     std::cerr << "enqueued read from " << op->ram_addr << std::endl;
+#endif
     pending.push_back(op);
 }

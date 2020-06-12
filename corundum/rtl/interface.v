@@ -103,7 +103,7 @@ module interface #
     // Log desc block size field width
     parameter LOG_BLOCK_SIZE_WIDTH = 2,  /* this one is not explicitly set */
     // Enable PTP timestamping
-    parameter PTP_TS_ENABLE = 1,
+    parameter PTP_TS_ENABLE = 0,
     // PTP timestamp width
     parameter PTP_TS_WIDTH = 96,
     // Enable TX checksum offload
