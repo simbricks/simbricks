@@ -627,30 +627,38 @@ class EthernetTx {
 class EthernetRx {
     protected:
         Vinterface &top;
-        uint8_t packet_buf[2048];
-        size_t packet_len;
+
+        static const size_t FIFO_SIZE = 32;
+        uint8_t fifo_bufs[FIFO_SIZE][2048];
+        size_t fifo_lens[FIFO_SIZE];
+        size_t fifo_pos_rd;
+        size_t fifo_pos_wr;
+
+
         size_t packet_off;
 
     public:
         EthernetRx(Vinterface &top_)
-            : top(top_), packet_len(0), packet_off(0)
+            : top(top_), fifo_pos_rd(0), fifo_pos_wr(0), packet_off(0)
         {
+            for (size_t i = 0; i < FIFO_SIZE; i++)
+                fifo_lens[i] = 0;
         }
 
         void packet_received(const void *data, size_t len)
         {
-            if (packet_len != 0) {
+            if (fifo_lens[fifo_pos_wr] != 0) {
                 std::cerr << "EthernetRx: dropping packet" << std::endl;
                 return;
             }
 
-            packet_off = 0;
-            packet_len = len;
-            memcpy(packet_buf, data, len);
+            memcpy(fifo_bufs[fifo_pos_wr], data, len);
+            fifo_lens[fifo_pos_wr] = len;
+            fifo_pos_wr = (fifo_pos_wr + 1) % FIFO_SIZE;
 
 #ifdef ETH_DEBUG
-            std::cerr << "EthernetRx: packet len=" << std::hex << packet_len << " ";
-            for (size_t i = 0; i < packet_len; i++) {
+            std::cerr << "EthernetRx: packet len=" << std::hex << len << " ";
+            for (size_t i = 0; i < len; i++) {
                 std::cerr << (unsigned) packet_buf[i] << " ";
             }
             std::cerr << std::endl;
@@ -659,19 +667,22 @@ class EthernetRx {
 
         void step()
         {
-            if (packet_len != 0) {
+            if (fifo_lens[fifo_pos_rd] != 0) {
                 // we have data to send
                 if (packet_off != 0 && !top.rx_axis_tready) {
                     // no ready signal, can't advance
                     std::cerr << "eth rx: no ready" << std::endl;
-                } else if (packet_off == packet_len) {
+                } else if (packet_off == fifo_lens[fifo_pos_rd]) {
                     // done with packet
 #ifdef ETH_DEBUG
                     std::cerr << "EthernetRx: finished packet" << std::endl;
 #endif
                     top.rx_axis_tvalid = 0;
                     top.rx_axis_tlast = 0;
-                    packet_off = packet_len = 0;
+
+                    packet_off = 0;
+                    fifo_lens[fifo_pos_rd] = 0;
+                    fifo_pos_rd = (fifo_pos_rd + 1) % FIFO_SIZE;
                 } else {
                     // put out more packet data
 #ifdef ETH_DEBUG
@@ -680,14 +691,15 @@ class EthernetRx {
                     top.rx_axis_tkeep = 0;
                     top.rx_axis_tdata = 0;
                     size_t i;
-                    for (i = 0; i < 8 && packet_off < packet_len; i++) {
+                    for (i = 0; i < 8 && packet_off < fifo_lens[fifo_pos_rd]; i++) {
                         top.rx_axis_tdata |=
-                            ((uint64_t) packet_buf[packet_off]) << (i * 8);
+                            ((uint64_t) fifo_bufs[fifo_pos_rd][packet_off]) <<
+                            (i * 8);
                         top.rx_axis_tkeep |= (1 << i);
                         packet_off++;
                     }
                     top.rx_axis_tvalid = 1;
-                    top.rx_axis_tlast = (packet_off == packet_len);
+                    top.rx_axis_tlast = (packet_off == fifo_lens[fifo_pos_rd]);
                 }
                 //trace->dump(main_time);
             } else {
