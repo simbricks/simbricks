@@ -28,7 +28,8 @@
 #include <cosim_eth_proto.h>
 
 int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
-        const char *pci_socket_path, const char *eth_socket_path,
+        const char *pci_socket_path, int *sync_pci,
+        const char *eth_socket_path, int *sync_eth,
         const char *shm_path);
 void nicsim_cleanup(void);
 

@@ -66,7 +66,8 @@ static int shm_fd = -1;
 static int pci_cfd = -1;
 static int eth_cfd = -1;
 
-static int accept_pci(struct cosim_pcie_proto_dev_intro *di, int pci_lfd)
+static int accept_pci(struct cosim_pcie_proto_dev_intro *di, int pci_lfd,
+        int *sync_pci)
 {
     if ((pci_cfd = accept(pci_lfd, NULL, NULL)) < 0) {
         return -1;
@@ -82,6 +83,11 @@ static int accept_pci(struct cosim_pcie_proto_dev_intro *di, int pci_lfd)
     di->h2d_elen = H2D_ELEN;
     di->h2d_nentries = H2D_ENUM;
 
+    if (*sync_pci)
+        di->flags |= COSIM_PCIE_PROTO_FLAGS_DI_SYNC;
+    else
+        di->flags &= ~((uint64_t) COSIM_PCIE_PROTO_FLAGS_DI_SYNC);
+
     if (uxsocket_send(pci_cfd, di, sizeof(*di), shm_fd)) {
         return -1;
     }
@@ -89,7 +95,7 @@ static int accept_pci(struct cosim_pcie_proto_dev_intro *di, int pci_lfd)
     return 0;
 }
 
-static int accept_eth(int eth_lfd)
+static int accept_eth(int eth_lfd, int *sync_eth)
 {
     struct cosim_eth_proto_dev_intro di;
 
@@ -101,6 +107,8 @@ static int accept_eth(int eth_lfd)
 
     memset(&di, 0, sizeof(di));
     di.flags = 0;
+    if (*sync_eth)
+        di.flags |= COSIM_ETH_PROTO_FLAGS_DI_SYNC;
 
     di.d2n_offset = d2n_off;
     di.d2n_elen = D2N_ELEN;
@@ -118,7 +126,7 @@ static int accept_eth(int eth_lfd)
 }
 
 static int accept_conns(struct cosim_pcie_proto_dev_intro *di,
-        int pci_lfd, int eth_lfd)
+        int pci_lfd, int *sync_pci, int eth_lfd, int *sync_eth)
 {
     struct pollfd pfds[2];
     int await_pci = pci_lfd != -1;
@@ -140,23 +148,23 @@ static int accept_conns(struct cosim_pcie_proto_dev_intro *di,
             }
 
             if (pfds[0].revents) {
-                if (accept_pci(di, pci_lfd) != 0)
+                if (accept_pci(di, pci_lfd, sync_pci) != 0)
                     return -1;
                 await_pci = 0;
             }
             if (pfds[1].revents) {
-                if (accept_eth(eth_lfd) != 0)
+                if (accept_eth(eth_lfd, sync_eth) != 0)
                     return -1;
                 await_eth = 0;
             }
         } else if (await_pci) {
             /* waiting just on pci */
-            if (accept_pci(di, pci_lfd) != 0)
+            if (accept_pci(di, pci_lfd, sync_pci) != 0)
                 return -1;
             await_pci = 0;
         } else {
             /* waiting just on ethernet */
-            if (accept_eth(eth_lfd) != 0)
+            if (accept_eth(eth_lfd, sync_eth) != 0)
                 return -1;
             await_eth = 0;
         }
@@ -166,7 +174,8 @@ static int accept_conns(struct cosim_pcie_proto_dev_intro *di,
 }
 
 int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
-        const char *pci_socket_path, const char *eth_socket_path,
+        const char *pci_socket_path, int *sync_pci,
+        const char *eth_socket_path, int *sync_eth,
         const char *shm_path)
 {
     int pci_lfd = -1, eth_lfd = -1;
@@ -202,7 +211,7 @@ int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
     }
 
     /* accept connection fds */
-    if (accept_conns(di, pci_lfd, eth_lfd) != 0) {
+    if (accept_conns(di, pci_lfd, sync_pci, eth_lfd, sync_eth) != 0) {
         return -1;
     }
 
@@ -212,6 +221,8 @@ int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
         if (recv(pci_cfd, &hi, sizeof(hi), 0) != sizeof(hi)) {
             return -1;
         }
+        if ((hi.flags & COSIM_PCIE_PROTO_FLAGS_HI_SYNC) == 0)
+            *sync_pci = 0;
         printf("pci host info received\n");
     }
     if (eth_socket_path != NULL) {
@@ -219,6 +230,8 @@ int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
         if (recv(eth_cfd, &ni, sizeof(ni), 0) != sizeof(ni)) {
             return -1;
         }
+        if ((ni.flags & COSIM_ETH_PROTO_FLAGS_NI_SYNC) == 0)
+            *sync_eth = 0;
         printf("eth net info received\n");
     }
 

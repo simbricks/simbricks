@@ -33,7 +33,7 @@ struct cosim_eth_proto_dev_intro {
 } __attribute__((packed));
 
 
-#define COSIM_ETH_PROTO_FLAGS_IN_SYNC (1 << 0)
+#define COSIM_ETH_PROTO_FLAGS_NI_SYNC (1 << 0)
 
 /** welcome message sent by network to device */
 struct cosim_eth_proto_net_intro {

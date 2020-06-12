@@ -15,10 +15,16 @@ extern "C" {
 #include "dma.h"
 #include "mem.h"
 
+#define CLOCK_PERIOD (10 * 1000 * 1000ULL) // 200KHz
+#define PCI_ASYNCHRONY (500 * 1000 * 1000ULL) // 200us
+#define ETH_ASYNCHRONY (500 * 1000 * 1000ULL) // 200us
+
 struct DMAOp;
 
 static volatile int exiting = 0;
 static uint64_t main_time = 0;
+static uint64_t pci_last_time = 0;
+static uint64_t eth_last_time = 0;
 //static VerilatedVcdC* trace;
 
 
@@ -512,6 +518,10 @@ static void h2d_write(MMIOInterface &mmio,
     }
 }
 
+static void h2d_sync(volatile struct cosim_pcie_proto_h2d_sync *sync)
+{
+    pci_last_time = sync->timestamp;
+}
 
 static void poll_h2d(MMIOInterface &mmio)
 {
@@ -538,6 +548,10 @@ static void poll_h2d(MMIOInterface &mmio)
 
         case COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP:
             h2d_writecomp(&msg->writecomp);
+            break;
+
+        case COSIM_PCIE_PROTO_H2D_MSG_SYNC:
+            h2d_sync(&msg->sync);
             break;
 
         default:
@@ -729,11 +743,36 @@ static void msi_step(Vinterface &top)
     }
 }
 
+static void sync_pci(MMIOInterface &mmio)
+{
+    uint64_t cur_ts = (main_time / 2) * CLOCK_PERIOD;
+    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    volatile struct cosim_pcie_proto_d2h_sync *sync;
+
+    sync = &msg->sync;
+
+    sync->timestamp = cur_ts + PCI_ASYNCHRONY;
+    // WMB();
+    sync->own_type = COSIM_PCIE_PROTO_D2H_MSG_SYNC |
+        COSIM_PCIE_PROTO_D2H_OWN_HOST;
+
+    while (pci_last_time < cur_ts && !exiting) {
+        /*std::cout << "waiting for pci pci_time=" << pci_last_time <<
+            "  cur=" << cur_ts << std::endl;*/
+        poll_h2d(mmio);
+    }
+}
+
+static void sync_eth(EthernetRx &rx)
+{
+}
+
 int main(int argc, char *argv[])
 {
     Verilated::commandArgs(argc, argv);
     Verilated::traceEverOn(true);
 
+    int sync_pci_en, sync_eth_en;
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
 
@@ -747,11 +786,15 @@ int main(int argc, char *argv[])
     di.pci_revision = 0x00;
     di.pci_msi_nvecs = 32;
 
-    if (nicsim_init(&di, "/tmp/cosim-pci", "/tmp/cosim-eth",
-                "/dev/shm/dummy_nic_shm"))
+    sync_pci_en = 1;
+    sync_eth_en = 1;
+    if (nicsim_init(&di, "/tmp/cosim-pci", &sync_pci_en,
+                "/tmp/cosim-eth", &sync_eth_en, "/dev/shm/dummy_nic_shm"))
     {
         return EXIT_FAILURE;
     }
+    std::cout << "sync_pci=" << sync_pci_en << "  sync_eth=" << sync_eth_en <<
+        std::endl;
 
     signal(SIGINT, sigint_handler);
 
@@ -860,6 +903,10 @@ int main(int argc, char *argv[])
     top->rst = 0;
 
     while (!exiting) {
+        if (sync_pci_en)
+            sync_pci(mmio);
+        if (sync_eth_en)
+            sync_eth(rx);
         poll_h2d(mmio);
         poll_n2d(rx);
 
