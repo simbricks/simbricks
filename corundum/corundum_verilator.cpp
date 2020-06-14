@@ -9,7 +9,9 @@ extern "C" {
 
 #include "Vinterface.h"
 #include "verilated.h"
+#ifdef TRACE_ENABLED
 #include "verilated_vcd_c.h"
+#endif
 
 #include "debug.h"
 #include "corundum.h"
@@ -27,7 +29,9 @@ static volatile int exiting = 0;
 static uint64_t main_time = 0;
 static uint64_t pci_last_time = 0;
 static uint64_t eth_last_time = 0;
-//static VerilatedVcdC* trace;
+#ifdef TRACE_ENABLED
+static VerilatedVcdC* trace;
+#endif
 
 
 
@@ -171,15 +175,16 @@ static void report_outputs(Vinterface *top)
     report_output("msi_irq", top->msi_irq);
 }
 
+struct MMIOOp {
+    uint64_t id;
+    uint64_t addr;
+    uint64_t value;
+    size_t len;
+    bool isWrite;
+};
+
 class MMIOInterface {
     protected:
-        struct Op {
-            uint64_t id;
-            uint64_t addr;
-            uint64_t value;
-            size_t len;
-            bool isWrite;
-        };
 
         enum OpState {
             AddrIssued,
@@ -188,13 +193,14 @@ class MMIOInterface {
         };
 
         Vinterface &top;
-        std::deque<Op *> queue;
-        Op *rCur, *wCur;
+        PCICoordinator &coord;
+        std::deque<MMIOOp *> queue;
+        MMIOOp *rCur, *wCur;
         enum OpState rState, wState;
 
     public:
-        MMIOInterface(Vinterface &top_)
-            : top(top_), rCur(0), wCur(0)
+        MMIOInterface(Vinterface &top_,  PCICoordinator &coord_)
+            : top(top_), coord(coord_), rCur(0), wCur(0)
         {
         }
 
@@ -212,8 +218,11 @@ class MMIOInterface {
                     /* read data received */
                     top.s_axil_rready = 0;
                     rCur->value = top.s_axil_rdata;
-                    completeRead(*rCur);
-                    delete rCur;
+                    coord.mmio_comp_enqueue(rCur);
+#ifdef MMIO_DEBUG
+                    std::cout << "MMIO: completed AXI read op=" << rCur << " val=" <<
+                        rCur->value << std::endl;
+#endif
                     rCur = 0;
                 }
             } else if (wCur) {
@@ -233,14 +242,18 @@ class MMIOInterface {
                 if (wState == AddrDone && top.s_axil_bvalid) {
                     /* write complete */
                     top.s_axil_bready = 0;
-                    completeWrite(*wCur, top.s_axil_bresp);
-                    delete wCur;
+                    // TODO: check top.s_axil_bresp
+#ifdef MMIO_DEBUG
+                    std::cout << "MMIO: completed AXI write op=" << wCur <<
+                        std::endl;
+#endif
+                    coord.mmio_comp_enqueue(wCur);
                     wCur = 0;
                 }
             } else if (/*!top.clk &&*/ !queue.empty()) {
                 /* issue new operation */
 
-                Op *op = queue.front();
+                MMIOOp *op = queue.front();
                 queue.pop_front();
                 if (!op->isWrite) {
                     /* issue new read */
@@ -272,7 +285,11 @@ class MMIOInterface {
 
         void issueRead(uint64_t id, uint64_t addr, size_t len)
         {
-            Op *op = new Op;
+            MMIOOp *op = new MMIOOp;
+#ifdef MMIO_DEBUG
+            std::cout << "MMIO: read id=" << id << " addr=" << std::hex << addr
+                << " len=" << len << " op=" << op << std::endl;
+#endif
             op->id = id;
             op->addr = addr;
             op->len = len;
@@ -280,29 +297,14 @@ class MMIOInterface {
             queue.push_back(op);
         }
 
-        void completeRead(Op &op)
-        {
-            volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
-            volatile struct cosim_pcie_proto_d2h_readcomp *rc;
-
-            if (!msg)
-                throw "completion alloc failed";
-
-            rc = &msg->readcomp;
-            memcpy((void *) rc->data, &op.value, op.len);
-            rc->req_id = op.id;
-
-            //WMB();
-            rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
-                COSIM_PCIE_PROTO_D2H_OWN_HOST;
-
-            //std::cout << "read complete addr=" << op.addr << " val=" << op.value << std::endl;
-        }
-
 
         void issueWrite(uint64_t id, uint64_t addr, size_t len, uint64_t val)
         {
-            Op *op = new Op;
+            MMIOOp *op = new MMIOOp;
+#ifdef MMIO_DEBUG
+            std::cout << "MMIO: write id=" << id << " addr=" << std::hex << addr
+                << " len=" << len << " val=" << val << " op=" << op << std::endl;
+#endif
             op->id = id;
             op->addr = addr;
             op->len = len;
@@ -311,25 +313,36 @@ class MMIOInterface {
             queue.push_back(op);
         }
 
-        void completeWrite(Op &op, uint8_t status)
-        {
-            volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
-            volatile struct cosim_pcie_proto_d2h_writecomp *rc;
-
-            if (!msg)
-                throw "completion alloc failed";
-
-            rc = &msg->writecomp;
-            rc->req_id = op.id;
-
-            //WMB();
-            rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
-                COSIM_PCIE_PROTO_D2H_OWN_HOST;
-
-            //std::cout << "write complete addr=" << op.addr << " val=" << op.value << std::endl;
-        }
-
 };
+
+void pci_rwcomp_issue(MMIOOp *op)
+{
+    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    volatile struct cosim_pcie_proto_d2h_readcomp *rc;
+    volatile struct cosim_pcie_proto_d2h_writecomp *wc;
+
+    if (!msg)
+        throw "completion alloc failed";
+
+    if (op->isWrite) {
+        wc = &msg->writecomp;
+        wc->req_id = op->id;
+
+        //WMB();
+        wc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    } else {
+        rc = &msg->readcomp;
+        memcpy((void *) rc->data, &op->value, op->len);
+        rc->req_id = op->id;
+
+        //WMB();
+        rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    }
+
+    delete op;
+}
 
 #if 0
 class MemAccessor {
@@ -654,15 +667,17 @@ class EthernetRx {
 
             memcpy(fifo_bufs[fifo_pos_wr], data, len);
             fifo_lens[fifo_pos_wr] = len;
-            fifo_pos_wr = (fifo_pos_wr + 1) % FIFO_SIZE;
 
 #ifdef ETH_DEBUG
+            std::cout << "rx into " << fifo_pos_wr << std::endl;
             std::cerr << "EthernetRx: packet len=" << std::hex << len << " ";
             for (size_t i = 0; i < len; i++) {
-                std::cerr << (unsigned) packet_buf[i] << " ";
+                std::cerr << (unsigned) fifo_bufs[fifo_pos_wr][i] << " ";
             }
             std::cerr << std::endl;
 #endif
+
+            fifo_pos_wr = (fifo_pos_wr + 1) % FIFO_SIZE;
         }
 
         void step()
@@ -687,6 +702,8 @@ class EthernetRx {
                     // put out more packet data
 #ifdef ETH_DEBUG
                     std::cerr << "EthernetRx: push flit " << packet_off << std::endl;
+                    if (packet_off == 0)
+                        std::cout << "rx from " << fifo_pos_rd << std::endl;
 #endif
                     top.rx_axis_tkeep = 0;
                     top.rx_axis_tdata = 0;
@@ -874,8 +891,17 @@ static void sync_eth(EthernetRx &rx)
 
 int main(int argc, char *argv[])
 {
-    Verilated::commandArgs(argc, argv);
+    char *vargs[2] = { argv[0], NULL };
+    Verilated::commandArgs(1, vargs);
+#ifdef TRACE_ENABLED
     Verilated::traceEverOn(true);
+#endif
+
+    if (argc != 4) {
+        fprintf(stderr, "Usage: corundum_verilator PCI-SOCKET ETH-SOCKET "
+                "SHM\n");
+        return EXIT_FAILURE;
+    }
 
     int sync_pci_en, sync_eth_en;
     struct cosim_pcie_proto_dev_intro di;
@@ -893,8 +919,8 @@ int main(int argc, char *argv[])
 
     sync_pci_en = 1;
     sync_eth_en = 1;
-    if (nicsim_init(&di, "/tmp/cosim-pci", &sync_pci_en,
-                "/tmp/cosim-eth", &sync_eth_en, "/dev/shm/dummy_nic_shm"))
+    if (nicsim_init(&di, argv[1], &sync_pci_en, argv[2], &sync_eth_en,
+                argv[3]))
     {
         return EXIT_FAILURE;
     }
@@ -905,9 +931,11 @@ int main(int argc, char *argv[])
 
 
     Vinterface *top = new Vinterface;
-    /*trace = new VerilatedVcdC;
+#ifdef TRACE_ENABLED
+    trace = new VerilatedVcdC;
     top->trace(trace, 99);
-    trace->open("debug.vcd");*/
+    trace->open("debug.vcd");
+#endif
 
     MemWritePort p_mem_write_ctrl_dma(
             top->ctrl_dma_ram_wr_cmd_sel,
@@ -981,15 +1009,14 @@ int main(int argc, char *argv[])
             top->s_axis_data_dma_write_desc_status_tag,
             top->s_axis_data_dma_write_desc_status_valid);
 
-
-    MMIOInterface mmio(*top);
+    PCICoordinator pci_coord;
+    MMIOInterface mmio(*top, pci_coord);
 
     MemWriter mem_control_writer(p_mem_write_ctrl_dma);
     MemReader mem_control_reader(p_mem_read_ctrl_dma);
     MemWriter mem_data_writer(p_mem_write_data_dma);
     MemReader mem_data_reader(p_mem_read_data_dma);
 
-    PCICoordinator pci_coord;
     DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer, pci_coord);
     DMAWriter dma_write_ctrl("write ctrl", p_dma_write_ctrl, mem_control_reader, pci_coord);
     DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer, pci_coord);
@@ -1050,7 +1077,10 @@ int main(int argc, char *argv[])
     }
     report_outputs(top);
 
-    //trace->close();
+#ifdef TRACE_ENABLED
+    trace->dump(main_time + 1);
+    trace->close();
+#endif
     top->final();
     delete top;
     return 0;

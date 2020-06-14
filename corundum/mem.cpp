@@ -18,8 +18,12 @@
 
 void MemWriter::step()
 {
-    if (cur && p.mem_ready) {
-        //std::cerr << "completed write to: " << cur->ram_addr << std::endl;
+    if (cur && p.mem_ready &&
+            ((p.mem_ready & p.mem_valid) == p.mem_valid))
+    {
+#ifdef MEM_DEBUG
+        std::cerr << "completed write to: " << cur->ram_addr << std::endl;
+#endif
         p.mem_valid = 0;
         p.mem_be[0] = p.mem_be[1] = p.mem_be[2] = p.mem_be[3] = 0;
 
@@ -35,15 +39,12 @@ void MemWriter::step()
     } else if (!cur && !pending.empty()) {
         cur = pending.front();
 
-        //std::cerr << "issuing write to " << cur->ram_addr << std::endl;
+#ifdef MEM_DEBUG
+        std::cerr << "issuing write to " << cur->ram_addr << std::endl;
+#endif
 
         size_t data_byte_width = DATA_WIDTH / 8;
         size_t data_offset = (cur->ram_addr + cur_off) % data_byte_width;
-
-        /*if (cur->len > data_byte_width - data_offset) {
-            std::cerr << "MemWriter::step: cannot be written in one cycle TODO" << std::endl;
-            throw "unsupported";
-        }*/
 
         /* first reset everything */
         p.mem_sel = 0;
@@ -84,7 +85,9 @@ void MemWriter::step()
 
 void MemWriter::op_issue(DMAOp *op)
 {
-    //std::cerr << "enqueued write to " << op->ram_addr << std::endl;
+#ifdef MEM_DEBUG
+    std::cerr << "enqueued write to " << op->ram_addr << std::endl;
+#endif
     pending.push_back(op);
 }
 
@@ -95,13 +98,17 @@ void MemReader::step()
 {
     size_t data_byte_width = DATA_WIDTH / 8;
 
-    if (cur && p.mem_resvalid) {
+    if (cur && p.mem_resvalid &&
+            ((p.mem_resvalid & p.mem_valid) == p.mem_valid)) {
 #ifdef MEM_DEBUG
         std::cerr << "completed read from: " << std::hex << cur->ram_addr << std::endl;
+        std::cerr << "  reval = " << (unsigned) p.mem_resvalid << std::endl;
 #endif
         p.mem_valid = 0;
-        /*for (size_t i = 0; i < 32; i++)
-            std::cerr << "    val = " << p.mem_data[i] << std::endl;*/
+#ifdef MEM_DEBUG
+        for (size_t i = 0; i < 32; i++)
+            std::cerr << "    val = " << p.mem_data[i] << std::endl;
+#endif
         size_t off = cur->ram_addr % data_byte_width;
         for (size_t i = 0; i < cur->len; i++, off++) {
             size_t byte_off = (off % 4);
@@ -123,14 +130,9 @@ void MemReader::step()
         size_t data_offset = (cur->ram_addr + cur_off) % data_byte_width;
 
 #ifdef MEM_DEBUG
-        std::cerr << "issuing read from " << std::hex << cur->ram_addr << std::endl;
+        std::cerr << "issuing op=" << cur << " read from " << std::hex << cur->ram_addr << std::endl;
         std::cerr << "    off=" << data_offset << std::endl;
 #endif
-
-        /*if (cur->len > data_byte_width - data_offset) {
-            std::cerr << "MemReader::step: cannot be written in one cycle TODO" << std::endl;
-            throw "unsupported";
-        }*/
 
         /* first reset everything */
         p.mem_sel = 0;
@@ -146,7 +148,8 @@ void MemReader::step()
             size_t byte_off = off % 4;
             p.mem_valid |= (1 << (off / (SEG_WIDTH / 8)));
         }
-        p.mem_resready = p.mem_valid;
+        //p.mem_resready = p.mem_valid;
+        p.mem_resready = 0xff;
 
         uint64_t seg_addr = (cur->ram_addr + cur_off) / data_byte_width;
         size_t seg_addr_bits = 12;
@@ -161,9 +164,11 @@ void MemReader::step()
             }
         }
 
-        /*for (size_t i = 0; i < 3; i++)
+#ifdef MEM_DEBUG
+        for (size_t i = 0; i < 3; i++)
             std::cerr << "    addr = " << p.mem_addr[i] << std::endl;
-        std::cerr << "    mem_valid = " << (unsigned) p.mem_valid << std::endl;*/
+        std::cerr << "    mem_valid = " << (unsigned) p.mem_valid << std::endl;
+#endif
 
         cur_off += cur_len;
     }

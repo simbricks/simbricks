@@ -8,18 +8,25 @@
 #include "debug.h"
 
 class DMAOp;
+struct MMIOOp;
 
 void pci_dma_issue(DMAOp *op);
 void pci_msi_issue(uint8_t vec);
+void pci_rwcomp_issue(MMIOOp *op);
 
 class PCICoordinator {
     protected:
         struct PCIOp {
             union {
                 DMAOp *dma_op;
+                MMIOOp *mmio_op;
                 uint32_t msi_vec;
             };
-            bool isDma;
+            enum {
+                OP_DMA,
+                OP_MSI,
+                OP_RWCOMP,
+            } type;
             bool ready;
         };
 
@@ -35,18 +42,26 @@ class PCICoordinator {
                     break;
 
                 queue.pop_front();
-                if (!op->isDma) {
+                if (op->type == PCIOp::OP_MSI) {
 #ifdef COORD_DEBUG
                     std::cout << "issuing msi " << op->msi_vec << std::endl;
 #endif
                     pci_msi_issue(op->msi_vec);
-                } else {
+                } else if (op->type == PCIOp::OP_DMA) {
 #ifdef COORD_DEBUG
                     std::cout << "issuing dma " << op->dma_op << std::endl;
 #endif
                     pci_dma_issue(op->dma_op);
                     dmamap.erase(op->dma_op);
+                } else if (op->type == PCIOp::OP_RWCOMP) {
+#ifdef COORD_DEBUG
+                    std::cout << "issuing mmio " << op->mmio_op << std::endl;
+#endif
+                    pci_rwcomp_issue(op->mmio_op);
+                } else {
+                    throw "unknown type";
                 }
+
                 delete op;
             }
         }
@@ -59,7 +74,7 @@ class PCICoordinator {
 #endif
             PCIOp *op = new PCIOp;
             op->dma_op = dma_op;
-            op->isDma = true;
+            op->type = PCIOp::OP_DMA;
             op->ready = ready;
 
             queue.push_back(op);
@@ -85,11 +100,26 @@ class PCICoordinator {
 #endif
             PCIOp *op = new PCIOp;
             op->msi_vec = vec;
-            op->isDma = false;
+            op->type = PCIOp::OP_MSI;
             op->ready = true;
             queue.push_back(op);
 
             process();
+        }
+
+        void mmio_comp_enqueue(MMIOOp *mmio_op)
+        {
+#ifdef COORD_DEBUG
+            std::cout << "enqueuing MMIO comp " << mmio_op <<  std::endl;
+#endif
+            PCIOp *op = new PCIOp;
+            op->mmio_op = mmio_op;
+            op->type = PCIOp::OP_RWCOMP;
+            op->ready = true;
+            queue.push_back(op);
+
+            process();
+
         }
 };
 
