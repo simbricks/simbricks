@@ -7,6 +7,9 @@
 #include "Vinterface.h"
 #include "verilated.h"
 
+#include "debug.h"
+#include "coord.h"
+
 #define MAX_DMA_LEN 2048
 
 class DMAEngine;
@@ -56,9 +59,10 @@ struct DMAOp {
 class DMAEngine {
     protected:
         DMAPorts &p;
+        PCICoordinator &coord;
 
-        DMAEngine(DMAPorts &p_)
-            : p(p_) { }
+        DMAEngine(DMAPorts &p_, PCICoordinator &coord_)
+            : p(p_), coord(coord_) { }
 
     public:
         virtual void pci_op_complete(DMAOp *op) = 0;
@@ -73,8 +77,9 @@ class DMAReader : public DMAEngine {
         MemWriter &mw;
 
     public:
-        DMAReader(const char *label_, DMAPorts &p_, MemWriter &mw_)
-            : DMAEngine(p_), label(label_), mw(mw_)
+        DMAReader(const char *label_, DMAPorts &p_, MemWriter &mw_,
+                PCICoordinator &coord_)
+            : DMAEngine(p_, coord_), label(label_), mw(mw_)
         {
         }
 
@@ -91,8 +96,9 @@ class DMAWriter : public DMAEngine {
         MemReader &mr;
 
     public:
-        DMAWriter(const char *label_, DMAPorts &p_, MemReader &mr_)
-            : DMAEngine(p_), label(label_), mr(mr_)
+        DMAWriter(const char *label_, DMAPorts &p_, MemReader &mr_,
+                PCICoordinator &coord_)
+            : DMAEngine(p_, coord_), label(label_), mr(mr_)
         {
         }
 

@@ -1,0 +1,55 @@
+/*
+ * Copyright 2020 Max Planck Institute for Software Systems
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#ifndef COSIM_NETSIM_H_
+#define COSIM_NETSIM_H_
+
+#include <stddef.h>
+#include <stdint.h>
+#include <cosim_eth_proto.h>
+
+struct netsim_interface {
+    uint8_t *d2n_queue;
+    size_t d2n_pos;
+    size_t d2n_elen;
+    size_t d2n_enum;
+
+    uint8_t *n2d_queue;
+    size_t n2d_pos;
+    size_t n2d_elen;
+    size_t n2d_enum;
+};
+
+int netsim_init(struct netsim_interface *nsif,
+        const char *eth_socket_path, int *sync_eth);
+void netsim_cleanup(struct netsim_interface *nsif);
+
+volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
+        struct netsim_interface *nsif);
+void netsim_d2n_done(struct netsim_interface *nsif,
+        volatile union cosim_eth_proto_d2n *msg);
+
+volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
+        struct netsim_interface *nsif);
+
+#endif /* ndef COSIM_NETSIM_H_ */

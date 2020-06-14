@@ -1,8 +1,10 @@
 #include <iostream>
 
+#include "debug.h"
 #include "corundum.h"
 #include "dma.h"
 #include "mem.h"
+
 
 void DMAReader::step()
 {
@@ -17,11 +19,14 @@ void DMAReader::step()
         op->tag = p.dma_tag;
         op->write = false;
         pending.insert(op);
-        /*std::cout << "dma[" << label << "] op " << op->dma_addr << " -> " <<
-            op->ram_sel << ":" << op->ram_addr <<
-            "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;*/
 
-        pci_dma_issue(op);
+#ifdef DMA_DEBUG
+        std::cout << "dma[" << label << "] op " << std::hex << op->dma_addr << " -> " <<
+            op->ram_sel << ":" << op->ram_addr <<
+            "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;
+#endif
+
+        coord.dma_register(op, true);
     }
 
     p.dma_status_valid = 0;
@@ -64,10 +69,14 @@ void DMAWriter::step()
         op->tag = p.dma_tag;
         op->write = true;
         pending.insert(op);
-        std::cout << "dma write [" << label << "] op " << op->dma_addr << " -> " <<
+
+#ifdef DMA_DEBUG
+        std::cout << "dma write [" << label << "] op " << std::hex << op->dma_addr << " -> " <<
             op->ram_sel << ":" << op->ram_addr <<
             "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;
+#endif
 
+        coord.dma_register(op, false);
         mr.op_issue(op);
     }
 
@@ -76,23 +85,33 @@ void DMAWriter::step()
         DMAOp *op = completed.front();
         completed.pop_front();
 
+#ifdef DMA_DEBUG
         std::cout << "dma write [" << label << "] status complete " << op->dma_addr << std::endl;
+#endif
 
         p.dma_status_valid = 1;
         p.dma_status_tag = op->tag;
         pending.erase(op);
+        //coord.msi_enqueue(0);
         delete op;
     }
 }
 
 void DMAWriter::pci_op_complete(DMAOp *op)
 {
+#ifdef DMA_DEBUG
     std::cout << "dma write [" << label << "] pci complete " << op->dma_addr << std::endl;
+#endif
     completed.push_back(op);
 }
 
 void DMAWriter::mem_op_complete(DMAOp *op)
 {
-    std::cout << "dma write [" << label << "] mem complete " << op->dma_addr << std::endl;
-    pci_dma_issue(op);
+#ifdef DMA_DEBUG
+    std::cout << "dma write [" << label << "] mem complete " << op->dma_addr << ": ";
+    for (size_t i = 0; i < op->len; i++)
+        std::cout << (unsigned) op->data[i] << " ";
+    std::cout << std::endl;
+#endif
+    coord.dma_mark_ready(op);
 }

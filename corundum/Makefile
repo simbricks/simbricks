@@ -10,7 +10,7 @@ SRCS = corundum_verilator.cpp dma.cpp mem.cpp
 all: corundum_verilator
 
 obj_dir/Vinterface.cpp: rtl/interface.v
-	$(VERILATOR) $(VFLAGS) --cc -O3  \
+	$(VERILATOR) $(VFLAGS) --cc -O3 \
 	    -CFLAGS "-I$(PWD)/../nicsim_common/include -I$(PWD)/../proto -O3 -g -Wall" \
 	    -y rtl \
 	    -y lib/axi/rtl \
@@ -39,7 +39,9 @@ corundum_verilator: obj_dir/Vinterface
 #	    obj_dir/Vinterface__Trace__Slow.o
 #	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
+lightclean:
+	rm -f obj_dir/Vinterface corundum_verilator obj_dir/mem.o obj_dir/dma.o
 clean:
 	rm -rf obj_dir corundum_verilator *.o
 
-.PHONY: all clean
+.PHONY: all clean lightclean
