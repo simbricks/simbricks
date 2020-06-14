@@ -34,6 +34,8 @@
 
 #include <netsim.h>
 
+//#define DEBUG_PKTMETA
+
 static struct netsim_interface nsif;
 static int tap_fd;
 
@@ -62,7 +64,9 @@ static int tap_open(const char *name)
 
 static void d2n_send(volatile struct cosim_eth_proto_d2n_send *s)
 {
+#ifdef DEBUG_PKTMETA
     printf("sent packet: len=%u\n", s->len);
+#endif
 
     if (write(tap_fd, (void *) s->data, s->len) != (ssize_t) s->len) {
         perror("d2n_send: send failed");
@@ -111,7 +115,9 @@ static void *rx_handler(void *arg)
         }
         rx->len = len;
         rx->port = 0;
+#ifdef DEBUG_PKTMETA
         printf("received packet: len=%u\n", rx->len);
+#endif
 
         // WMB();
         rx->own_type = COSIM_ETH_PROTO_N2D_MSG_RECV |
