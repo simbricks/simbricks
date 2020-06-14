@@ -61,7 +61,7 @@ void MemWriter::step()
                 data_byte_width - data_offset : cur->len - cur_off);
         for (size_t i = 0; i < cur_len; i++, off++) {
             size_t byte_off = off % 4;
-            p.mem_data[off / 4] |= (((uint32_t) cur->data[i]) << (byte_off * 8));
+            p.mem_data[off / 4] |= (((uint32_t) cur->data[cur_off + i]) << (byte_off * 8));
             p.mem_be[off / 32] |= (1 << (off % 32));
             p.mem_valid |= (1 << (off / (SEG_WIDTH / 8)));
         }
@@ -109,11 +109,15 @@ void MemReader::step()
         for (size_t i = 0; i < 32; i++)
             std::cerr << "    val = " << p.mem_data[i] << std::endl;
 #endif
-        size_t off = cur->ram_addr % data_byte_width;
-        for (size_t i = 0; i < cur->len; i++, off++) {
+
+        size_t off = (cur->ram_addr + cur_off) % data_byte_width;
+        size_t cur_len = (cur->len - cur_off > data_byte_width - off ?
+                data_byte_width - off : cur->len - cur_off);
+        for (size_t i = 0; i < cur_len; i++, off++) {
             size_t byte_off = (off % 4);
-            cur->data[i] = (p.mem_data[off / 4] >> (byte_off * 8)) & 0xff;
+            cur->data[cur_off + i] = (p.mem_data[off / 4] >> (byte_off * 8)) & 0xff;
         }
+        cur_off += cur_len;
 
         if (cur_off == cur->len) {
             /* operation is done */
@@ -145,7 +149,6 @@ void MemReader::step()
         size_t cur_len = (cur->len - cur_off > data_byte_width - data_offset ?
                 data_byte_width - data_offset : cur->len - cur_off);
         for (size_t i = 0; i < cur_len; i++, off++) {
-            size_t byte_off = off % 4;
             p.mem_valid |= (1 << (off / (SEG_WIDTH / 8)));
         }
         //p.mem_resready = p.mem_valid;
@@ -170,7 +173,6 @@ void MemReader::step()
         std::cerr << "    mem_valid = " << (unsigned) p.mem_valid << std::endl;
 #endif
 
-        cur_off += cur_len;
     }
 }
 
