@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include <corundum_bm.h>
+#include "corundum_bm.h"
 
 extern "C" {
     #include <nicsim.h>
@@ -19,14 +19,142 @@ Corundum::~Corundum()
 {
 }
 
+reg_t
+Corundum::readReg(addr_t addr)
+{
+    switch (addr) {
+        case REG_FW_ID:
+            return 32;
+        case REG_FW_VER:
+            return 1;
+        case REG_BOARD_ID:
+            return 0x43215678;
+        case REG_BOARD_VER:
+            return 1;
+        case REG_PHC_COUNT:
+            return 1;
+        case REG_PHC_OFFSET:
+            return 0x200;
+        case REG_PHC_STRIDE:
+            return 0x80;
+        case REG_IF_COUNT:
+            return 1;
+        case REG_IF_STRIDE:
+            return 0x80000;
+        case REG_IF_CSR_OFFSET:
+            return 0x80000;
+        case PHC_REG_FEATURES:
+            return 0x1;
+        case IF_REG_IF_ID:
+            return 0;
+        case IF_REG_IF_FEATURES:
+            return 0x711;
+        case IF_REG_EVENT_QUEUE_COUNT:
+            return 1;
+        case IF_REG_EVENT_QUEUE_OFFSET:
+            return 0x100000;
+        case IF_REG_TX_QUEUE_COUNT:
+            return 1;
+        case IF_REG_TX_QUEUE_OFFSET:
+            return 0x200000;
+        case IF_REG_TX_CPL_QUEUE_COUNT:
+            return 1;
+        case IF_REG_TX_CPL_QUEUE_OFFSET:
+            return 0x400000;
+        case IF_REG_RX_QUEUE_COUNT:
+            return 1;
+        case IF_REG_RX_QUEUE_OFFSET:
+            return 0x600000;
+        case IF_REG_RX_CPL_QUEUE_COUNT:
+            return 1;
+        case IF_REG_RX_CPL_QUEUE_OFFSET:
+            return 0x700000;
+        case IF_REG_PORT_COUNT:
+            return 1;
+        case IF_REG_PORT_OFFSET:
+            return 0x800000;
+        case IF_REG_PORT_STRIDE:
+            return 0x200000;
+        case TX_QUEUE_ACTIVE_LOG_SIZE_REG:
+            return this->txRing.sizeLog();
+        default:
+            fprintf(stderr, "Unknown register read %lx\n", addr);
+            abort();
+    }
+}
+
+void
+Corundum::writeReg(addr_t addr, reg_t val)
+{
+    switch (addr) {
+        case REG_FW_ID:
+        case REG_FW_VER:
+        case REG_BOARD_ID:
+        case REG_BOARD_VER:
+        case REG_PHC_COUNT:
+        case REG_PHC_OFFSET:
+        case REG_PHC_STRIDE:
+        case REG_IF_COUNT:
+        case REG_IF_STRIDE:
+        case REG_IF_CSR_OFFSET:
+        case PHC_REG_FEATURES:
+        case PHC_REG_PTP_SET_FNS:
+        case PHC_REG_PTP_SET_NS:
+        case PHC_REG_PTP_SET_SEC_L:
+        case PHC_REG_PTP_SET_SEC_H:
+            break;
+        case EVENT_QUEUE_BASE_ADDR_REG:
+            this->eqRing.setDMALower(val);
+            break;
+        case EVENT_QUEUE_BASE_ADDR_REG + 4:
+            this->eqRing.setDMAUpper(val);
+            break;
+        case EVENT_QUEUE_ACTIVE_LOG_SIZE_REG:
+            this->eqRing.setSizeLog(val & 0xFF);
+            break;
+        case EVENT_QUEUE_INTERRUPT_INDEX_REG:
+            this->eqRing.setIndex(val);
+            break;
+        case EVENT_QUEUE_HEAD_PTR_REG:
+            this->eqRing.setHeadPtr(val);
+            break;
+        case EVENT_QUEUE_TAIL_PTR_REG:
+            this->eqRing.setTailPtr(val);
+            break;
+        case TX_QUEUE_BASE_ADDR_REG:
+            this->txRing.setDMALower(val);
+            break;
+        case TX_QUEUE_BASE_ADDR_REG + 4:
+            this->txRing.setDMAUpper(val);
+            break;
+        case TX_QUEUE_ACTIVE_LOG_SIZE_REG:
+            this->txRing.setSizeLog(val & 0xFF);
+            break;
+        case TX_QUEUE_INTERRUPT_INDEX_REG:
+            this->txRing.setIndex(val);
+            break;
+        case TX_QUEUE_HEAD_PTR_REG:
+            this->txRing.setHeadPtr(val);
+            break;
+        case TX_QUEUE_TAIL_PTR_REG:
+            this->txRing.setTailPtr(val);
+            break;
+        default:
+            fprintf(stderr, "Unknown register write %lx\n", addr);
+            abort();
+    }
+}
+
 static volatile int exiting = 0;
 
-static void sigint_handler(int dummy)
+static void
+sigint_handler(int dummy)
 {
     exiting = 1;
 }
 
-static volatile union cosim_pcie_proto_d2h *d2h_alloc(void)
+static volatile union cosim_pcie_proto_d2h *
+d2h_alloc(void)
 {
     volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
     if (msg == NULL) {
@@ -36,31 +164,8 @@ static volatile union cosim_pcie_proto_d2h *d2h_alloc(void)
     return msg;
 }
 
-static uint64_t csr_read(uint64_t off)
-{
-    switch (off) {
-        case   0x00: return 32; /* firmware id */
-        case   0x04: return 1; /* firmware version */
-        case   0x08: return 0x43215678; /* board id */
-        case   0x0c: return 0x1; /* board version */
-        case   0x10: return 1; /* phc count */
-        case   0x14: return 0x200; /* phc offset */
-        case   0x18: return 0x80; /* phc stride */
-        case   0x20: return 1; /* if_count */
-        case   0x24: return 0x80000; /* if stride */
-        case   0x2c: return 0x80000; /* if csr offset */
-        case  0x200: return 0x1; /* phc features */
-        default:
-            fprintf(stderr, "csr_read(%lu) unimplemented\n", off);
-            return 0;
-    }
-}
-
-static void csr_write(uint64_t off, uint64_t val)
-{
-}
-
-static void read_complete(uint64_t req_id, void *val, uint16_t len)
+static void
+read_complete(uint64_t req_id, void *val, uint16_t len)
 {
     volatile union cosim_pcie_proto_d2h *msg;
     volatile struct cosim_pcie_proto_d2h_readcomp *rc;
@@ -76,7 +181,8 @@ static void read_complete(uint64_t req_id, void *val, uint16_t len)
         COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
 
-static void h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
+static void
+h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
 {
     printf("read(bar=0x%x, off=0x%lx, len=%u)\n", read->bar, read->offset, read->len);
     if (read->offset < 0x80000) {
@@ -86,7 +192,8 @@ static void h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
     }
 }
 
-static void h2d_write(volatile struct cosim_pcie_proto_h2d_write *write)
+static void
+h2d_write(volatile struct cosim_pcie_proto_h2d_write *write)
 {
     uint64_t val = 0;
     memcpy(&val, (void *)write->data, write->len);
