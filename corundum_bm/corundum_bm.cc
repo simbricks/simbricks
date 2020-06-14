@@ -6,10 +6,20 @@
 #include <signal.h>
 
 #include <corundum_bm.h>
-#include <nicsim.h>
+
+extern "C" {
+    #include <nicsim.h>
+}
+
+Corundum::Corundum()
+{
+}
+
+Corundum::~Corundum()
+{
+}
 
 static volatile int exiting = 0;
-static struct CorundumRegs regs;
 
 static void sigint_handler(int dummy)
 {
@@ -73,58 +83,6 @@ static void h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
         uint64_t val = csr_read(read->offset);
         read_complete(read->req_id, &val, read->len);
     } else {
-        switch (read->offset - 0x80000) {
-        case REG_A:
-            read_complete(read->req_id, &regs.reg_a, read->len);
-            break;
-        case REG_B:
-            read_complete(read->req_id, &regs.reg_b, read->len);
-            break;
-        case REG_C:
-            read_complete(read->req_id, &regs.reg_c, read->len);
-            break;
-        case REG_D:
-            read_complete(read->req_id, &regs.reg_d, read->len);
-            break;
-        case REG_E:
-            read_complete(read->req_id, &regs.reg_e, read->len);
-            break;
-        case REG_F:
-            read_complete(read->req_id, &regs.reg_f, read->len);
-            break;
-        case REG_G:
-            read_complete(read->req_id, &regs.reg_g, read->len);
-            break;
-        case REG_H:
-            read_complete(read->req_id, &regs.reg_h, read->len);
-            break;
-        case REG_I:
-            read_complete(read->req_id, &regs.reg_i, read->len);
-            break;
-        case REG_J:
-            read_complete(read->req_id, &regs.reg_j, read->len);
-            break;
-        case REG_K:
-            read_complete(read->req_id, &regs.reg_k, read->len);
-            break;
-        case REG_L:
-            read_complete(read->req_id, &regs.reg_l, read->len);
-            break;
-        case REG_M:
-            read_complete(read->req_id, &regs.reg_m, read->len);
-            break;
-        case REG_N:
-            read_complete(read->req_id, &regs.reg_n, read->len);
-            break;
-        case REG_O:
-            read_complete(read->req_id, &regs.reg_o, read->len);
-            break;
-        default:
-            fprintf(stderr, "unimplemented read at off=0x%lx len=%u\n", read->offset, read->len);
-            uint64_t val = 0;
-            read_complete(read->req_id, &val, read->len);
-            break;
-        }
     }
 }
 
