@@ -11,8 +11,228 @@ extern "C" {
     #include <nicsim.h>
 }
 
+namespace corundum {
+
+DescRing::DescRing()
+    : active(false)
+{
+}
+
+DescRing::~DescRing()
+{
+}
+
+
+addr_t
+DescRing::dmaAddr()
+{
+    return this->_dmaAddr;
+}
+
+size_t
+DescRing::sizeLog()
+{
+    return this->_sizeLog;
+}
+
+unsigned
+DescRing::index()
+{
+    return this->_index;
+}
+
+unsigned
+DescRing::headPtr()
+{
+    return this->_headPtr;
+}
+
+unsigned
+DescRing::tailPtr()
+{
+    return this->_tailPtr;
+}
+
+void
+DescRing::setDMALower(uint32_t addr)
+{
+    this->_dmaAddr &= 0xFFFFFFFF00000000;
+    this->_dmaAddr |= (addr_t)addr;
+}
+
+void
+DescRing::setDMAUpper(uint32_t addr)
+{
+    this->_dmaAddr &= 0xFFFFFFFF;
+    this->_dmaAddr |= ((addr_t)addr << 32);
+}
+
+void
+DescRing::setSizeLog(size_t size_log)
+{
+    if (size_log & QUEUE_ACTIVE_MASK) {
+        this->active = true;
+    } else {
+        this->active = false;
+    }
+
+    this->_sizeLog = size_log & 0xFF;
+    this->_size = 1 << this->_sizeLog;
+}
+
+void
+DescRing::setIndex(unsigned index)
+{
+    this->_index = index;
+}
+
+void
+DescRing::setHeadPtr(unsigned ptr)
+{
+    this->_headPtr = ptr;
+}
+
+void
+DescRing::setTailPtr(unsigned ptr)
+{
+    this->_tailPtr = ptr;
+}
+
+Port::Port()
+    : _id(0), _features(0), _mtu(0),
+    _schedCount(0), _schedOffset(0), _schedStride(0),
+    _schedType(0), _rssMask(0), _schedEnable(false)
+{
+}
+
+Port::~Port()
+{
+}
+
+unsigned
+Port::id()
+{
+    return this->_id;
+}
+
+unsigned
+Port::features()
+{
+    return this->_features;
+}
+
+size_t
+Port::mtu()
+{
+    return this->_mtu;
+}
+
+size_t
+Port::schedCount()
+{
+    return this->_schedCount;
+}
+
+addr_t
+Port::schedOffset()
+{
+    return this->_schedOffset;
+}
+
+addr_t
+Port::schedStride()
+{
+    return this->_schedStride;
+}
+
+unsigned
+Port::schedType()
+{
+    return this->_schedType;
+}
+
+
+unsigned
+Port::rssMask()
+{
+    return this->_rssMask;
+}
+
+void
+Port::setId(unsigned id)
+{
+    this->_id = id;
+}
+
+void
+Port::setFeatures(unsigned features)
+{
+    this->_features = features & (IF_FEATURE_RSS     |
+                                  IF_FEATURE_PTP_TS  |
+                                  IF_FEATURE_TX_CSUM |
+                                  IF_FEATURE_RX_CSUM |
+                                  IF_FEATURE_RX_HASH);
+}
+
+void
+Port::setMtu(size_t mtu)
+{
+    this->_mtu = mtu;
+}
+
+void
+Port::setSchedCount(size_t count)
+{
+    this->_schedCount = count;
+}
+
+void
+Port::setSchedOffset(addr_t offset)
+{
+    this->_schedOffset = offset;
+}
+
+void
+Port::setSchedStride(addr_t stride)
+{
+    this->_schedStride = stride;
+}
+
+void
+Port::setSchedType(unsigned type)
+{
+    this->_schedType = type;
+}
+
+void
+Port::setRssMask(unsigned mask)
+{
+    this->_rssMask = mask;
+}
+
+void
+Port::schedEnable()
+{
+    this->_schedEnable = true;
+}
+
+void
+Port::schedDisable()
+{
+    this->_schedEnable = false;
+}
+
 Corundum::Corundum()
 {
+    this->port.setId(0);
+    this->port.setFeatures(0x711);
+    this->port.setMtu(2048);
+    this->port.setSchedCount(1);
+    this->port.setSchedOffset(0x100000);
+    this->port.setSchedStride(0x100000);
+    this->port.setSchedType(0);
+    this->port.setRssMask(0);
+    this->port.schedDisable();
 }
 
 Corundum::~Corundum()
@@ -77,6 +297,20 @@ Corundum::readReg(addr_t addr)
             return 0x200000;
         case TX_QUEUE_ACTIVE_LOG_SIZE_REG:
             return this->txRing.sizeLog();
+        case PORT_REG_PORT_ID:
+            return this->port.id();
+        case PORT_REG_PORT_FEATURES:
+            return this->port.features();
+        case PORT_REG_PORT_MTU:
+            return this->port.mtu();
+        case PORT_REG_SCHED_COUNT:
+            return this->port.schedCount();
+        case PORT_REG_SCHED_OFFSET:
+            return this->port.schedOffset();
+        case PORT_REG_SCHED_STRIDE:
+            return this->port.schedStride();
+        case PORT_REG_SCHED_TYPE:
+            return this->port.schedType();
         default:
             fprintf(stderr, "Unknown register read %lx\n", addr);
             abort();
@@ -110,7 +344,7 @@ Corundum::writeReg(addr_t addr, reg_t val)
             this->eqRing.setDMAUpper(val);
             break;
         case EVENT_QUEUE_ACTIVE_LOG_SIZE_REG:
-            this->eqRing.setSizeLog(val & 0xFF);
+            this->eqRing.setSizeLog(val);
             break;
         case EVENT_QUEUE_INTERRUPT_INDEX_REG:
             this->eqRing.setIndex(val);
@@ -128,9 +362,9 @@ Corundum::writeReg(addr_t addr, reg_t val)
             this->txRing.setDMAUpper(val);
             break;
         case TX_QUEUE_ACTIVE_LOG_SIZE_REG:
-            this->txRing.setSizeLog(val & 0xFF);
+            this->txRing.setSizeLog(val);
             break;
-        case TX_QUEUE_INTERRUPT_INDEX_REG:
+        case TX_QUEUE_CPL_QUEUE_INDEX_REG:
             this->txRing.setIndex(val);
             break;
         case TX_QUEUE_HEAD_PTR_REG:
@@ -139,11 +373,77 @@ Corundum::writeReg(addr_t addr, reg_t val)
         case TX_QUEUE_TAIL_PTR_REG:
             this->txRing.setTailPtr(val);
             break;
+        case TX_CPL_QUEUE_BASE_ADDR_REG:
+            this->txCplRing.setDMALower(val);
+            break;
+        case TX_CPL_QUEUE_BASE_ADDR_REG + 4:
+            this->txCplRing.setDMAUpper(val);
+            break;
+        case TX_CPL_QUEUE_ACTIVE_LOG_SIZE_REG:
+            this->txCplRing.setSizeLog(val);
+            break;
+        case TX_CPL_QUEUE_INTERRUPT_INDEX_REG:
+            this->txCplRing.setIndex(val);
+            break;
+        case TX_CPL_QUEUE_HEAD_PTR_REG:
+            this->txCplRing.setHeadPtr(val);
+            break;
+        case TX_CPL_QUEUE_TAIL_PTR_REG:
+            this->txCplRing.setTailPtr(val);
+            break;
+        case RX_QUEUE_BASE_ADDR_REG:
+            this->rxRing.setDMALower(val);
+            break;
+        case RX_QUEUE_BASE_ADDR_REG + 4:
+            this->rxRing.setDMAUpper(val);
+            break;
+        case RX_QUEUE_ACTIVE_LOG_SIZE_REG:
+            this->rxRing.setSizeLog(val);
+            break;
+        case RX_QUEUE_CPL_QUEUE_INDEX_REG:
+            this->rxRing.setIndex(val);
+            break;
+        case RX_QUEUE_HEAD_PTR_REG:
+            this->rxRing.setHeadPtr(val);
+            break;
+        case RX_QUEUE_TAIL_PTR_REG:
+            this->rxRing.setTailPtr(val);
+            break;
+        case RX_CPL_QUEUE_BASE_ADDR_REG:
+            this->rxCplRing.setDMALower(val);
+            break;
+        case RX_CPL_QUEUE_BASE_ADDR_REG + 4:
+            this->rxCplRing.setDMAUpper(val);
+            break;
+        case RX_CPL_QUEUE_ACTIVE_LOG_SIZE_REG:
+            this->rxCplRing.setSizeLog(val);
+            break;
+        case RX_CPL_QUEUE_INTERRUPT_INDEX_REG:
+            this->rxCplRing.setIndex(val);
+            break;
+        case RX_CPL_QUEUE_HEAD_PTR_REG:
+            this->rxCplRing.setHeadPtr(val);
+            break;
+        case RX_CPL_QUEUE_TAIL_PTR_REG:
+            this->rxCplRing.setTailPtr(val);
+            break;
+        case PORT_REG_SCHED_ENABLE:
+            if (val) {
+                this->port.schedEnable();
+            } else {
+                this->port.schedDisable();
+            }
+            break;
+        case PORT_REG_RSS_MASK:
+            this->port.setRssMask(val);
+            break;
         default:
             fprintf(stderr, "Unknown register write %lx\n", addr);
             abort();
     }
 }
+
+} //namespace corundum
 
 static volatile int exiting = 0;
 
@@ -182,48 +482,42 @@ read_complete(uint64_t req_id, void *val, uint16_t len)
 }
 
 static void
-h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
+h2d_read(corundum::Corundum &nic, volatile struct cosim_pcie_proto_h2d_read *read)
 {
-    printf("read(bar=0x%x, off=0x%lx, len=%u)\n", read->bar, read->offset, read->len);
-    if (read->offset < 0x80000) {
-        uint64_t val = csr_read(read->offset);
-        read_complete(read->req_id, &val, read->len);
-    } else {
-    }
+    reg_t val = nic.readReg(read->offset);
+    printf("read(off=0x%lx, len=%u, val=0x%x)\n", read->offset, read->len, val);
+    read_complete(read->req_id, &val, read->len);
 }
 
 static void
-h2d_write(volatile struct cosim_pcie_proto_h2d_write *write)
+h2d_write(corundum::Corundum &nic, volatile struct cosim_pcie_proto_h2d_write *write)
 {
-    uint64_t val = 0;
+    reg_t val = 0;
     memcpy(&val, (void *)write->data, write->len);
 
-    if (write->offset < 0x80000) {
-        volatile union cosim_pcie_proto_d2h *msg;
-        volatile struct cosim_pcie_proto_d2h_writecomp *wc;
+    volatile union cosim_pcie_proto_d2h *msg;
+    volatile struct cosim_pcie_proto_d2h_writecomp *wc;
 
-        msg = d2h_alloc();
-        wc = &msg->writecomp;
+    msg = d2h_alloc();
+    wc = &msg->writecomp;
 
-        printf("write(bar=0x%x, off=0x%lx, len=%u)\n", write->bar, write->offset, write->len);
+    printf("write(off=0x%lx, len=%u, val=0x%x)\n", write->offset, write->len, val);
+    nic.writeReg(write->offset, val);
+    wc->req_id = write->req_id;
 
-        csr_write(write->offset, val);
-        wc->req_id = write->req_id;
-
-        //WMB();
-        wc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
-            COSIM_PCIE_PROTO_D2H_OWN_HOST;
-    } else {
-        fprintf(stderr, "unimplemented write at off=0x%lx\n", write->offset);
-    }
+    //WMB();
+    wc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
+        COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
 
-static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc)
+static void h2d_readcomp(corundum::Corundum &nic,
+                         volatile struct cosim_pcie_proto_h2d_readcomp *rc)
 {
     printf("read complete(req_id=%lu)\n", rc->req_id);
 }
 
-static void h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
+static void h2d_writecomp(corundum::Corundum &nic,
+                          volatile struct cosim_pcie_proto_h2d_writecomp *wc)
 {
     printf("write complete(req_id=%lu\n", wc->req_id);
 }
@@ -233,7 +527,7 @@ static void n2d_recv(volatile struct cosim_eth_proto_n2d_recv *recv)
     printf("RX recv(port=%u, len=%u)\n", recv->port, recv->len);
 }
 
-static void poll_h2d(void)
+static void poll_h2d(corundum::Corundum &nic)
 {
     volatile union cosim_pcie_proto_h2d *msg = nicif_h2d_poll();
     uint8_t type;
@@ -244,19 +538,19 @@ static void poll_h2d(void)
     type = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
     switch (type) {
         case COSIM_PCIE_PROTO_H2D_MSG_READ:
-            h2d_read(&msg->read);
+            h2d_read(nic, &msg->read);
             break;
 
         case COSIM_PCIE_PROTO_H2D_MSG_WRITE:
-            h2d_write(&msg->write);
+            h2d_write(nic, &msg->write);
             break;
 
         case COSIM_PCIE_PROTO_H2D_MSG_READCOMP:
-            h2d_readcomp(&msg->readcomp);
+            h2d_readcomp(nic, &msg->readcomp);
             break;
 
         case COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP:
-            h2d_writecomp(&msg->writecomp);
+            h2d_writecomp(nic, &msg->writecomp);
             break;
 
         default:
@@ -291,12 +585,12 @@ static void poll_n2d(void)
 
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, sigint_handler);
+
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
-
     di.bars[0].len = 1 << 24;
     di.bars[0].flags = COSIM_PCIE_PROTO_BAR_64;
-
     di.pci_vendor_id = 0x5543;
     di.pci_device_id = 0x1001;
     di.pci_class = 0x02;
@@ -311,12 +605,10 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    signal(SIGINT, sigint_handler);
-
-    memset(&regs, 0, sizeof(regs));
+    corundum::Corundum nic;
 
     while (!exiting) {
-        poll_h2d();
+        poll_h2d(nic);
         poll_n2d();
     }
 

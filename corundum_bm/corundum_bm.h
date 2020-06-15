@@ -16,6 +16,12 @@ typedef uint64_t addr_t;
 #define REG_IF_STRIDE               0x0024
 #define REG_IF_CSR_OFFSET           0x002C
 
+#define IF_FEATURE_RSS              (1 << 0)
+#define IF_FEATURE_PTP_TS           (1 << 4)
+#define IF_FEATURE_TX_CSUM          (1 << 8)
+#define IF_FEATURE_RX_CSUM          (1 << 9)
+#define IF_FEATURE_RX_HASH          (1 << 10)
+
 #define PHC_REG_FEATURES            0x0200
 #define PHC_REG_PTP_SET_FNS         0x0230
 #define PHC_REG_PTP_SET_NS          0x0234
@@ -38,6 +44,8 @@ typedef uint64_t addr_t;
 #define IF_REG_PORT_OFFSET          0x80044
 #define IF_REG_PORT_STRIDE          0x80048
 
+#define QUEUE_ACTIVE_MASK 0x80000000
+
 #define EVENT_QUEUE_BASE_ADDR_REG       0x100000
 #define EVENT_QUEUE_ACTIVE_LOG_SIZE_REG 0x100008
 #define EVENT_QUEUE_INTERRUPT_INDEX_REG 0x10000C
@@ -49,6 +57,36 @@ typedef uint64_t addr_t;
 #define TX_QUEUE_CPL_QUEUE_INDEX_REG 0x20000C
 #define TX_QUEUE_HEAD_PTR_REG        0x200010
 #define TX_QUEUE_TAIL_PTR_REG        0x200018
+
+#define TX_CPL_QUEUE_BASE_ADDR_REG       0x400000
+#define TX_CPL_QUEUE_ACTIVE_LOG_SIZE_REG 0x400008
+#define TX_CPL_QUEUE_INTERRUPT_INDEX_REG 0x40000C
+#define TX_CPL_QUEUE_HEAD_PTR_REG        0x400010
+#define TX_CPL_QUEUE_TAIL_PTR_REG        0x400018
+
+#define RX_QUEUE_BASE_ADDR_REG       0x600000
+#define RX_QUEUE_ACTIVE_LOG_SIZE_REG 0x600008
+#define RX_QUEUE_CPL_QUEUE_INDEX_REG 0x60000C
+#define RX_QUEUE_HEAD_PTR_REG        0x600010
+#define RX_QUEUE_TAIL_PTR_REG        0x600018
+
+#define RX_CPL_QUEUE_BASE_ADDR_REG       0x700000
+#define RX_CPL_QUEUE_ACTIVE_LOG_SIZE_REG 0x700008
+#define RX_CPL_QUEUE_INTERRUPT_INDEX_REG 0x70000C
+#define RX_CPL_QUEUE_HEAD_PTR_REG        0x700010
+#define RX_CPL_QUEUE_TAIL_PTR_REG        0x700018
+
+#define PORT_REG_PORT_ID                    0x800000
+#define PORT_REG_PORT_FEATURES              0x800004
+#define PORT_REG_PORT_MTU                   0x800008
+#define PORT_REG_SCHED_COUNT                0x800010
+#define PORT_REG_SCHED_OFFSET               0x800014
+#define PORT_REG_SCHED_STRIDE               0x800018
+#define PORT_REG_SCHED_TYPE                 0x80001C
+#define PORT_REG_SCHED_ENABLE               0x800040
+#define PORT_REG_RSS_MASK                   0x800080
+
+namespace corundum {
 
 class DescRing {
 public:
@@ -75,6 +113,44 @@ private:
     unsigned _index;
     unsigned _headPtr;
     unsigned _tailPtr;
+    bool active;
+};
+
+class Port {
+public:
+    Port();
+    ~Port();
+
+    unsigned id();
+    unsigned features();
+    size_t mtu();
+    size_t schedCount();
+    addr_t schedOffset();
+    addr_t schedStride();
+    unsigned schedType();
+    unsigned rssMask();
+
+    void setId(unsigned id);
+    void setFeatures(unsigned features);
+    void setMtu(size_t mtu);
+    void setSchedCount(size_t count);
+    void setSchedOffset(addr_t offset);
+    void setSchedStride(addr_t stride);
+    void setSchedType(unsigned type);
+    void setRssMask(unsigned mask);
+    void schedEnable();
+    void schedDisable();
+
+private:
+    unsigned _id;
+    unsigned _features;
+    size_t _mtu;
+    size_t _schedCount;
+    addr_t _schedOffset;
+    addr_t _schedStride;
+    unsigned _schedType;
+    unsigned _rssMask;
+    bool _schedEnable;
 };
 
 class Corundum {
@@ -88,7 +164,10 @@ public:
 private:
     DescRing eqRing;
     DescRing txRing;
-    DescRing txCqRing;
+    DescRing txCplRing;
     DescRing rxRing;
-    DescRing rxCqRing;
+    DescRing rxCplRing;
+    Port port;
 };
+
+} // namespace corundum
