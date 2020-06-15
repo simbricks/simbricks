@@ -92,6 +92,15 @@ typedef uint64_t addr_t;
 
 namespace corundum {
 
+#define DESC_SIZE 16
+
+struct Desc {
+    uint16_t rsvd0;
+    uint16_t tx_csum_cmd;
+    uint32_t len;
+    uint64_t addr;
+} __attribute__((packed)) ;
+
 class DescRing {
 public:
     DescRing();
@@ -107,17 +116,26 @@ public:
     void setDMAUpper(uint32_t addr);
     void setSizeLog(size_t size_log);
     void setIndex(unsigned index);
-    void setHeadPtr(unsigned ptr);
+    virtual void setHeadPtr(unsigned ptr);
     void setTailPtr(unsigned ptr);
 
-private:
+protected:
     addr_t _dmaAddr;
     size_t _sizeLog;
     size_t _size;
+    size_t _sizeMask;
     unsigned _index;
     unsigned _headPtr;
     unsigned _tailPtr;
     bool active;
+};
+
+class TxRing : public DescRing {
+public:
+    TxRing();
+    ~TxRing();
+
+    virtual void setHeadPtr(unsigned ptr) override;
 };
 
 class Port {
@@ -170,7 +188,7 @@ public:
 
 private:
     DescRing eqRing;
-    DescRing txRing;
+    TxRing txRing;
     DescRing txCplRing;
     DescRing rxRing;
     DescRing rxCplRing;

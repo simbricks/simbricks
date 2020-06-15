@@ -79,6 +79,7 @@ DescRing::setSizeLog(size_t size_log)
 
     this->_sizeLog = size_log & 0xFF;
     this->_size = 1 << this->_sizeLog;
+    this->_sizeMask = this->_size - 1;
 }
 
 void
@@ -98,6 +99,22 @@ void
 DescRing::setTailPtr(unsigned ptr)
 {
     this->_tailPtr = ptr;
+}
+
+TxRing::TxRing()
+{
+}
+
+TxRing::~TxRing()
+{
+}
+
+void
+TxRing::setHeadPtr(unsigned ptr)
+{
+    DescRing::setHeadPtr(ptr);
+    unsigned index = (this->_headPtr - 1) & this->_sizeMask;
+    struct Desc *desc = (struct Desc *)(this->_dmaAddr + index * DESC_SIZE);
 }
 
 Port::Port()
