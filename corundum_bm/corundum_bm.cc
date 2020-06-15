@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <signal.h>
+#include <cassert>
 
 #include "corundum_bm.h"
 
@@ -83,7 +84,8 @@ DescRing::setSizeLog(size_t size_log)
 void
 DescRing::setIndex(unsigned index)
 {
-    this->_index = index;
+    assert(!(index & QUEUE_CONT_MASK));
+    this->_index = index & 0xFF;
 }
 
 void
@@ -101,7 +103,8 @@ DescRing::setTailPtr(unsigned ptr)
 Port::Port()
     : _id(0), _features(0), _mtu(0),
     _schedCount(0), _schedOffset(0), _schedStride(0),
-    _schedType(0), _rssMask(0), _schedEnable(false)
+    _schedType(0), _rssMask(0), _schedEnable(false),
+    _queueEnable(false)
 {
 }
 
@@ -222,6 +225,19 @@ Port::schedDisable()
     this->_schedEnable = false;
 }
 
+void
+Port::queueEnable()
+{
+    this->_queueEnable = true;
+}
+
+void
+Port::queueDisable()
+{
+    this->_queueEnable = false;
+}
+
+void queueDisable();
 Corundum::Corundum()
 {
     this->port.setId(0);
@@ -436,6 +452,13 @@ Corundum::writeReg(addr_t addr, reg_t val)
             break;
         case PORT_REG_RSS_MASK:
             this->port.setRssMask(val);
+            break;
+        case PORT_QUEUE_ENABLE:
+            if (val) {
+                this->port.queueEnable();
+            } else {
+                this->port.queueDisable();
+            }
             break;
         default:
             fprintf(stderr, "Unknown register write %lx\n", addr);

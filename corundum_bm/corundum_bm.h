@@ -45,6 +45,8 @@ typedef uint64_t addr_t;
 #define IF_REG_PORT_STRIDE          0x80048
 
 #define QUEUE_ACTIVE_MASK 0x80000000
+#define QUEUE_ARM_MASK 0x80000000
+#define QUEUE_CONT_MASK 0x40000000
 
 #define EVENT_QUEUE_BASE_ADDR_REG       0x100000
 #define EVENT_QUEUE_ACTIVE_LOG_SIZE_REG 0x100008
@@ -85,6 +87,8 @@ typedef uint64_t addr_t;
 #define PORT_REG_SCHED_TYPE                 0x80001C
 #define PORT_REG_SCHED_ENABLE               0x800040
 #define PORT_REG_RSS_MASK                   0x800080
+
+#define PORT_QUEUE_ENABLE   0x900000
 
 namespace corundum {
 
@@ -140,6 +144,8 @@ public:
     void setRssMask(unsigned mask);
     void schedEnable();
     void schedDisable();
+    void queueEnable();
+    void queueDisable();
 
 private:
     unsigned _id;
@@ -151,6 +157,7 @@ private:
     unsigned _schedType;
     unsigned _rssMask;
     bool _schedEnable;
+    bool _queueEnable;
 };
 
 class Corundum {
