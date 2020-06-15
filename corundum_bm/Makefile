@@ -7,7 +7,7 @@ corundum.o: corundum.cc
 	g++ $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 corundum_bm: corundum_bm.o ../nicsim_common/libnicsim_common.a
-	g++ $^ -o $@ -lm -lstdc++
+	g++ $^ -o $@
 
 tester: tester.o ../nicsim_common/libnicsim_common.a
 
