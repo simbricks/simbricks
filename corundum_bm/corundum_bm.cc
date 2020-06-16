@@ -381,8 +381,14 @@ Corundum::readReg(addr_t addr)
             return 0x800000;
         case IF_REG_PORT_STRIDE:
             return 0x200000;
+        case EVENT_QUEUE_HEAD_PTR_REG:
+            return this->eqRing.headPtr();
         case TX_QUEUE_ACTIVE_LOG_SIZE_REG:
             return this->txRing.sizeLog();
+        case TX_QUEUE_TAIL_PTR_REG:
+            return this->txRing.tailPtr();
+        case TX_CPL_QUEUE_HEAD_PTR_REG:
+            return this->txCplRing.headPtr();
         case PORT_REG_PORT_ID:
             return this->port.id();
         case PORT_REG_PORT_FEATURES:
