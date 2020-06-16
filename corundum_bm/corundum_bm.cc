@@ -10,7 +10,11 @@
 
 extern "C" {
     #include <nicsim.h>
+    #include <netsim.h>
 }
+
+static void issue_dma_op(corundum::DMAOp *op);
+static void eth_send(void *data, size_t len);
 
 namespace corundum {
 
@@ -101,6 +105,18 @@ DescRing::setTailPtr(unsigned ptr)
     this->_tailPtr = ptr;
 }
 
+void
+DescRing::dmaDone(DMAOp *op)
+{
+    // No action by default
+}
+
+bool
+DescRing::empty()
+{
+    return (this->_headPtr == this->_tailPtr);
+}
+
 TxRing::TxRing()
 {
 }
@@ -113,8 +129,45 @@ void
 TxRing::setHeadPtr(unsigned ptr)
 {
     DescRing::setHeadPtr(ptr);
-    unsigned index = (this->_headPtr - 1) & this->_sizeMask;
-    struct Desc *desc = (struct Desc *)(this->_dmaAddr + index * DESC_SIZE);
+    if (!empty()) {
+        unsigned index = (this->_headPtr - 1) & this->_sizeMask;
+        addr_t dma_addr = this->_dmaAddr + index * DESC_SIZE;
+        /* Issue DMA read */
+        DMAOp *op = new DMAOp;
+        op->type = DMA_TYPE_DESC;
+        op->dma_addr = dma_addr;
+        op->len = DESC_SIZE;
+        op->ring = this;
+        op->tag = this->_headPtr;
+        op->write = false;
+        issue_dma_op(op);
+    }
+}
+
+void
+TxRing::dmaDone(DMAOp *op)
+{
+    assert(!op->write);
+    switch (op->type) {
+    case DMA_TYPE_DESC: {
+        Desc *desc = (Desc *)op->data;
+        op->type = DMA_TYPE_MEM;
+        op->dma_addr = desc->addr;
+        op->len = desc->len;
+        op->write = false;
+        issue_dma_op(op);
+        break;
+    }
+    case DMA_TYPE_MEM:
+        eth_send(op->data, op->len);
+        // TODO: assume in order transmission
+        this->_tailPtr = (unsigned)op->tag;
+        delete op;
+        break;
+    default:
+        fprintf(stderr, "Unknown DMA type %u\n", op->type);
+        abort();
+    }
 }
 
 Port::Port()
@@ -485,6 +538,8 @@ Corundum::writeReg(addr_t addr, reg_t val)
 
 } //namespace corundum
 
+using namespace corundum;
+
 static volatile int exiting = 0;
 
 static void
@@ -504,17 +559,57 @@ d2h_alloc(void)
     return msg;
 }
 
-static void
-read_complete(uint64_t req_id, void *val, uint16_t len)
+static volatile union cosim_eth_proto_d2n *
+d2n_alloc(void)
 {
+    volatile union cosim_eth_proto_d2n *msg = nicsim_d2n_alloc();
+    if (msg == NULL) {
+        fprintf(stderr, "d2n_alloc: no entry available\n");
+        abort();
+    }
+    return msg;
+}
+
+static void
+issue_dma_op(DMAOp *op)
+{
+    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
+    printf("issue dma op %p addr %lx len %u\n", op, op->dma_addr, op->len);
+
+    if (op->write) {
+        volatile struct cosim_pcie_proto_d2h_write *write = &msg->write;
+        write->req_id = (uintptr_t)op;
+        write->offset = op->dma_addr;
+        write->len = op->len;
+        memcpy((void *)write->data, op->data, op->len);
+        // WMB();
+        write->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITE |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    } else {
+        volatile struct cosim_pcie_proto_d2h_read *read = &msg->read;
+        read->req_id = (uintptr_t)op;
+        read->offset = op->dma_addr;
+        read->len = op->len;
+        // WMB();
+        read->own_type = COSIM_PCIE_PROTO_D2H_MSG_READ |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    }
+}
+
+static void
+h2d_read(Corundum &nic, volatile struct cosim_pcie_proto_h2d_read *read)
+{
+    reg_t val = nic.readReg(read->offset);
+    printf("read(off=0x%lx, len=%u, val=0x%x)\n", read->offset, read->len, val);
+
     volatile union cosim_pcie_proto_d2h *msg;
     volatile struct cosim_pcie_proto_d2h_readcomp *rc;
 
     msg = d2h_alloc();
     rc = &msg->readcomp;
 
-    memcpy((void *)rc->data, val, len);
-    rc->req_id = req_id;
+    memcpy((void *)rc->data, &val, read->len);
+    rc->req_id = read->req_id;
 
     //WMB();
     rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
@@ -522,15 +617,7 @@ read_complete(uint64_t req_id, void *val, uint16_t len)
 }
 
 static void
-h2d_read(corundum::Corundum &nic, volatile struct cosim_pcie_proto_h2d_read *read)
-{
-    reg_t val = nic.readReg(read->offset);
-    printf("read(off=0x%lx, len=%u, val=0x%x)\n", read->offset, read->len, val);
-    read_complete(read->req_id, &val, read->len);
-}
-
-static void
-h2d_write(corundum::Corundum &nic, volatile struct cosim_pcie_proto_h2d_write *write)
+h2d_write(Corundum &nic, volatile struct cosim_pcie_proto_h2d_write *write)
 {
     reg_t val = 0;
     memcpy(&val, (void *)write->data, write->len);
@@ -550,24 +637,36 @@ h2d_write(corundum::Corundum &nic, volatile struct cosim_pcie_proto_h2d_write *w
         COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
 
-static void h2d_readcomp(corundum::Corundum &nic,
-                         volatile struct cosim_pcie_proto_h2d_readcomp *rc)
+static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc)
 {
-    printf("read complete(req_id=%lu)\n", rc->req_id);
+    DMAOp *op = (DMAOp *)(uintptr_t)rc->req_id;
+    memcpy(op->data, (void *)rc->data, op->len);
+    op->ring->dmaDone(op);
 }
 
-static void h2d_writecomp(corundum::Corundum &nic,
-                          volatile struct cosim_pcie_proto_h2d_writecomp *wc)
+static void h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
 {
-    printf("write complete(req_id=%lu\n", wc->req_id);
+    DMAOp *op = (DMAOp *)(uintptr_t)wc->req_id;
+    op->ring->dmaDone(op);
 }
 
-static void n2d_recv(volatile struct cosim_eth_proto_n2d_recv *recv)
+static void eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv)
 {
     printf("RX recv(port=%u, len=%u)\n", recv->port, recv->len);
 }
 
-static void poll_h2d(corundum::Corundum &nic)
+static void eth_send(void *data, size_t len)
+{
+    volatile union cosim_eth_proto_d2n *msg = d2n_alloc();
+    volatile struct cosim_eth_proto_d2n_send *send = &msg->send;
+    send->port = 0; // single port
+    send->len = len;
+    memcpy((void *)send->data, data, len);
+    send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND |
+        COSIM_ETH_PROTO_D2N_OWN_NET;
+}
+
+static void poll_h2d(Corundum &nic)
 {
     volatile union cosim_pcie_proto_h2d *msg = nicif_h2d_poll();
     uint8_t type;
@@ -586,11 +685,11 @@ static void poll_h2d(corundum::Corundum &nic)
             break;
 
         case COSIM_PCIE_PROTO_H2D_MSG_READCOMP:
-            h2d_readcomp(nic, &msg->readcomp);
+            h2d_readcomp(&msg->readcomp);
             break;
 
         case COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP:
-            h2d_writecomp(nic, &msg->writecomp);
+            h2d_writecomp(&msg->writecomp);
             break;
 
         default:
@@ -612,7 +711,7 @@ static void poll_n2d(void)
     t = msg->dummy.own_type & COSIM_ETH_PROTO_N2D_MSG_MASK;
     switch (t) {
         case COSIM_ETH_PROTO_N2D_MSG_RECV:
-            n2d_recv(&msg->recv);
+            eth_recv(&msg->recv);
             break;
 
         default:
@@ -640,12 +739,12 @@ int main(int argc, char *argv[])
 
     int sync_pci_en = 0, sync_eth_en = 0;
     if (nicsim_init(&di, "/tmp/cosim-pci", &sync_pci_en,
-                NULL, &sync_eth_en,
+                "/tmp/cosim-eth", &sync_eth_en,
                 "/dev/shm/dummy_nic_shm")) {
         return EXIT_FAILURE;
     }
 
-    corundum::Corundum nic;
+    Corundum nic;
 
     while (!exiting) {
         poll_h2d(nic);

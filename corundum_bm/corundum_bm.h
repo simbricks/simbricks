@@ -93,6 +93,10 @@ typedef uint64_t addr_t;
 namespace corundum {
 
 #define DESC_SIZE 16
+#define MAX_DMA_LEN 2048
+#define HW_PTR_MASK 0xFFFF
+
+class DescRing;
 
 struct Desc {
     uint16_t rsvd0;
@@ -100,6 +104,20 @@ struct Desc {
     uint32_t len;
     uint64_t addr;
 } __attribute__((packed)) ;
+
+
+#define DMA_TYPE_DESC 0
+#define DMA_TYPE_MEM  1
+
+struct DMAOp {
+    uint8_t type;
+    addr_t dma_addr;
+    size_t len;
+    DescRing *ring;
+    uint64_t tag;
+    bool write;
+    uint8_t data[MAX_DMA_LEN];
+};
 
 class DescRing {
 public:
@@ -119,7 +137,11 @@ public:
     virtual void setHeadPtr(unsigned ptr);
     void setTailPtr(unsigned ptr);
 
+    virtual void dmaDone(DMAOp *op);
+
 protected:
+    bool empty();
+
     addr_t _dmaAddr;
     size_t _sizeLog;
     size_t _size;
@@ -136,6 +158,7 @@ public:
     ~TxRing();
 
     virtual void setHeadPtr(unsigned ptr) override;
+    virtual void dmaDone(DMAOp *op) override;
 };
 
 class Port {
