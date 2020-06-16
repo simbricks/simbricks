@@ -108,22 +108,16 @@ DescRing::setTailPtr(ptr_t ptr)
     this->_tailPtr = ptr;
 }
 
-void
-DescRing::dmaDone(DMAOp *op)
-{
-    // No action by default
-}
-
 bool
 DescRing::empty()
 {
-    return (this->_headPtr == this->_tailPtr);
+    return (this->_headPtr == this->_currTail);
 }
 
 bool
 DescRing::full()
 {
-    return (this->_headPtr - this->_tailPtr >= this->_size);
+    return (this->_currHead - this->_tailPtr >= this->_size);
 }
 
 EventRing::EventRing()
@@ -191,13 +185,17 @@ CplRing::dmaDone(DMAOp *op)
 {
     assert(op->write);
     switch (op->type) {
-    case DMA_TYPE_CPL:
+    case DMA_TYPE_TX_CPL:
+    case DMA_TYPE_RX_CPL: {
         // TODO: assume in order transmission
         assert(this->_headPtr == op->tag);
         this->_headPtr++;
-        this->eventRing->issueEvent(EVENT_TYPE_TX_CPL, 0);
+        unsigned type = op->type == DMA_TYPE_TX_CPL ? EVENT_TYPE_TX_CPL :
+                                                      EVENT_TYPE_RX_CPL;
+        this->eventRing->issueEvent(type, 0);
         delete op;
         break;
+    }
     default:
         fprintf(stderr, "Unknown DMA type %u\n", op->type);
         abort();
@@ -205,7 +203,7 @@ CplRing::dmaDone(DMAOp *op)
 }
 
 void
-CplRing::complete(unsigned index, size_t len)
+CplRing::complete(unsigned index, size_t len, bool tx)
 {
     if (full()) {
         fprintf(stderr, "Completion ring is full\n");
@@ -214,7 +212,7 @@ CplRing::complete(unsigned index, size_t len)
     addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * CPL_SIZE;
     /* Issue DMA write */
     DMAOp *op = new DMAOp;
-    op->type = DMA_TYPE_CPL;
+    op->type = tx ? DMA_TYPE_TX_CPL : DMA_TYPE_RX_CPL;
     op->dma_addr = dma_addr;
     op->len = CPL_SIZE;
     op->ring = this;
@@ -260,9 +258,9 @@ TxRing::setHeadPtr(ptr_t ptr)
 void
 TxRing::dmaDone(DMAOp *op)
 {
-    assert(!op->write);
     switch (op->type) {
     case DMA_TYPE_DESC: {
+        assert(!op->write);
         Desc *desc = (Desc *)op->data;
         op->type = DMA_TYPE_MEM;
         op->dma_addr = desc->addr;
@@ -272,17 +270,78 @@ TxRing::dmaDone(DMAOp *op)
         break;
     }
     case DMA_TYPE_MEM:
+        assert(!op->write);
         eth_send(op->data, op->len);
         // TODO: assume in order transmission
         assert(this->_tailPtr == op->tag);
         this->_tailPtr++;
-        this->txCplRing->complete(op->tag, op->len);
+        this->txCplRing->complete(op->tag, op->len, true);
         delete op;
         break;
     default:
         fprintf(stderr, "Unknown DMA type %u\n", op->type);
         abort();
     }
+}
+
+RxRing::RxRing(CplRing *cplRing)
+    : rxCplRing(cplRing)
+{
+}
+
+RxRing::~RxRing()
+{
+}
+
+void
+RxRing::dmaDone(DMAOp *op)
+{
+    switch (op->type) {
+    case DMA_TYPE_DESC: {
+        assert(!op->write);
+        Desc *desc = (Desc *)op->data;
+        op->type = DMA_TYPE_MEM;
+        op->dma_addr = desc->addr;
+        op->len = op->rx_data->len;
+        memcpy((void *)op->data, (void *)op->rx_data->data, op->len);
+        delete op->rx_data;
+        op->write = true;
+        issue_dma_op(op);
+        break;
+    }
+    case DMA_TYPE_MEM:
+        assert(op->write);
+        // TODO: assume in order transmission
+        assert(this->_tailPtr == op->tag);
+        this->_tailPtr++;
+        this->rxCplRing->complete(op->tag, op->len, false);
+        delete op;
+        break;
+    default:
+        fprintf(stderr, "Unknown DMA type %u\n", op->type);
+        abort();
+    }
+}
+
+void
+RxRing::rx(RxData *rx_data)
+{
+    if (empty()) {
+        delete rx_data;
+        return;
+    }
+    addr_t dma_addr = this->_dmaAddr + (this->_currTail & this->_sizeMask) * DESC_SIZE;
+    /* Issue DMA read */
+    DMAOp *op = new DMAOp;
+    op->type = DMA_TYPE_DESC;
+    op->dma_addr = dma_addr;
+    op->len = DESC_SIZE;
+    op->ring = this;
+    op->rx_data = rx_data;
+    op->tag = this->_currTail;
+    op->write = false;
+    issue_dma_op(op);
+    this->_currTail++;
 }
 
 Port::Port()
@@ -424,7 +483,7 @@ Port::queueDisable()
 
 Corundum::Corundum()
     : txCplRing(&this->eventRing), rxCplRing(&this->eventRing),
-    txRing(&this->txCplRing)
+    txRing(&this->txCplRing), rxRing(&this->rxCplRing)
 {
     this->port.setId(0);
     this->port.setFeatures(0x711);
@@ -467,6 +526,10 @@ Corundum::readReg(addr_t addr)
             return 0x80000;
         case PHC_REG_FEATURES:
             return 0x1;
+        case PHC_REG_PTP_CUR_SEC_L:
+            return 0x0;
+        case PHC_REG_PTP_CUR_SEC_H:
+            return 0x0;
         case IF_REG_IF_ID:
             return 0;
         case IF_REG_IF_FEATURES:
@@ -505,6 +568,10 @@ Corundum::readReg(addr_t addr)
             return this->txRing.tailPtr();
         case TX_CPL_QUEUE_HEAD_PTR_REG:
             return this->txCplRing.headPtr();
+        case RX_QUEUE_TAIL_PTR_REG:
+            return this->rxRing.tailPtr();
+        case RX_CPL_QUEUE_HEAD_PTR_REG:
+            return this->rxCplRing.headPtr();
         case PORT_REG_PORT_ID:
             return this->port.id();
         case PORT_REG_PORT_FEATURES:
@@ -658,6 +725,12 @@ Corundum::writeReg(addr_t addr, reg_t val)
     }
 }
 
+void
+Corundum::rx(uint8_t port, RxData *rx_data)
+{
+    this->rxRing.rx(rx_data);
+}
+
 } //namespace corundum
 
 using namespace corundum;
@@ -696,14 +769,14 @@ static void
 issue_dma_op(DMAOp *op)
 {
     volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
-    printf("issue dma op %p addr %lx len %u\n", op, op->dma_addr, op->len);
+    //printf("issue dma op %p addr %lx len %u\n", op, op->dma_addr, op->len);
 
     if (op->write) {
         volatile struct cosim_pcie_proto_d2h_write *write = &msg->write;
         write->req_id = (uintptr_t)op;
         write->offset = op->dma_addr;
         write->len = op->len;
-        memcpy((void *)write->data, op->data, op->len);
+        memcpy((void *)write->data, (void *)op->data, op->len);
         // WMB();
         write->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITE |
             COSIM_PCIE_PROTO_D2H_OWN_HOST;
@@ -722,7 +795,7 @@ static void
 msi_issue(uint8_t vec)
 {
     volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
-    printf("issue MSI interrupt vec %u\n", vec);
+    //printf("issue MSI interrupt vec %u\n", vec);
     volatile struct cosim_pcie_proto_d2h_interrupt *intr = &msg->interrupt;
     intr->vector = vec;
     intr->inttype = COSIM_PCIE_PROTO_INT_MSI;
@@ -736,7 +809,7 @@ static void
 h2d_read(Corundum &nic, volatile struct cosim_pcie_proto_h2d_read *read)
 {
     reg_t val = nic.readReg(read->offset);
-    printf("read(off=0x%lx, len=%u, val=0x%x)\n", read->offset, read->len, val);
+    //printf("read(off=0x%lx, len=%u, val=0x%x)\n", read->offset, read->len, val);
 
     volatile union cosim_pcie_proto_d2h *msg;
     volatile struct cosim_pcie_proto_d2h_readcomp *rc;
@@ -764,7 +837,7 @@ h2d_write(Corundum &nic, volatile struct cosim_pcie_proto_h2d_write *write)
     msg = d2h_alloc();
     wc = &msg->writecomp;
 
-    printf("write(off=0x%lx, len=%u, val=0x%x)\n", write->offset, write->len, val);
+    //printf("write(off=0x%lx, len=%u, val=0x%x)\n", write->offset, write->len, val);
     nic.writeReg(write->offset, val);
     wc->req_id = write->req_id;
 
@@ -786,9 +859,14 @@ static void h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
     op->ring->dmaDone(op);
 }
 
-static void eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv)
+static void eth_recv(Corundum &nic,
+                     volatile struct cosim_eth_proto_n2d_recv *recv)
 {
-    printf("RX recv(port=%u, len=%u)\n", recv->port, recv->len);
+    //printf("RX recv(port=%u, len=%u)\n", recv->port, recv->len);
+    RxData *rx_data = new RxData;
+    memcpy((void *)rx_data->data, (void *)recv->data, recv->len);
+    rx_data->len = recv->len;
+    nic.rx(recv->port, rx_data);
 }
 
 static void eth_send(void *data, size_t len)
@@ -836,7 +914,7 @@ static void poll_h2d(Corundum &nic)
     nicif_h2d_next();
 }
 
-static void poll_n2d(void)
+static void poll_n2d(Corundum &nic)
 {
     volatile union cosim_eth_proto_n2d *msg = nicif_n2d_poll();
     uint8_t t;
@@ -847,7 +925,7 @@ static void poll_n2d(void)
     t = msg->dummy.own_type & COSIM_ETH_PROTO_N2D_MSG_MASK;
     switch (t) {
         case COSIM_ETH_PROTO_N2D_MSG_RECV:
-            eth_recv(&msg->recv);
+            eth_recv(nic, &msg->recv);
             break;
 
         default:
@@ -884,7 +962,7 @@ int main(int argc, char *argv[])
 
     while (!exiting) {
         poll_h2d(nic);
-        poll_n2d();
+        poll_n2d(nic);
     }
 
     nicsim_cleanup();

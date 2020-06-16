@@ -24,6 +24,8 @@ typedef uint16_t ptr_t;
 #define IF_FEATURE_RX_HASH          (1 << 10)
 
 #define PHC_REG_FEATURES            0x0200
+#define PHC_REG_PTP_CUR_SEC_L       0x0218
+#define PHC_REG_PTP_CUR_SEC_H       0x021C
 #define PHC_REG_PTP_SET_FNS         0x0230
 #define PHC_REG_PTP_SET_NS          0x0234
 #define PHC_REG_PTP_SET_SEC_L       0x0238
@@ -132,16 +134,23 @@ struct Event {
     uint16_t source;
 } __attribute__((packed)) ;
 
-#define DMA_TYPE_DESC  0
-#define DMA_TYPE_MEM   1
-#define DMA_TYPE_CPL   2
-#define DMA_TYPE_EVENT 3
+struct RxData {
+    size_t len;
+    uint8_t data[MAX_DMA_LEN];
+};
+
+#define DMA_TYPE_DESC   0
+#define DMA_TYPE_MEM    1
+#define DMA_TYPE_TX_CPL 2
+#define DMA_TYPE_RX_CPL 3
+#define DMA_TYPE_EVENT  4
 
 struct DMAOp {
     uint8_t type;
     addr_t dma_addr;
     size_t len;
     DescRing *ring;
+    RxData *rx_data;
     uint64_t tag;
     bool write;
     uint8_t data[MAX_DMA_LEN];
@@ -165,7 +174,7 @@ public:
     virtual void setHeadPtr(ptr_t ptr);
     void setTailPtr(ptr_t ptr);
 
-    virtual void dmaDone(DMAOp *op);
+    virtual void dmaDone(DMAOp *op) = 0;
 
 protected:
     bool empty();
@@ -198,7 +207,7 @@ public:
     ~CplRing();
 
     virtual void dmaDone(DMAOp *op) override;
-    void complete(unsigned index, size_t len);
+    void complete(unsigned index, size_t len, bool tx);
 
 private:
     EventRing *eventRing;
@@ -214,6 +223,18 @@ public:
 
 private:
     CplRing *txCplRing;
+};
+
+class RxRing : public DescRing {
+public:
+    RxRing(CplRing *cplRing);
+    ~RxRing();
+
+    virtual void dmaDone(DMAOp *op) override;
+    void rx(RxData *rx_data);
+
+private:
+    CplRing *rxCplRing;
 };
 
 class Port {
@@ -263,12 +284,13 @@ public:
 
     reg_t readReg(addr_t addr);
     void writeReg(addr_t addr, reg_t val);
+    void rx(uint8_t port, RxData *rx_data);
 
 private:
     EventRing eventRing;
     TxRing txRing;
     CplRing txCplRing;
-    DescRing rxRing;
+    RxRing rxRing;
     CplRing rxCplRing;
     Port port;
 };
