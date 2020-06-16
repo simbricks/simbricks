@@ -14,14 +14,15 @@ extern "C" {
 }
 
 static void issue_dma_op(corundum::DMAOp *op);
+static void msi_issue(uint8_t vec);
 static void eth_send(void *data, size_t len);
 
 namespace corundum {
 
 DescRing::DescRing()
     : _dmaAddr(0), _sizeLog(0), _size(0), _sizeMask(0),
-    _index(0), _headPtr(0), _tailPtr(0), _currTail(0),
-    active(false)
+    _index(0), _headPtr(0), _tailPtr(0),
+    _currHead(0), _currTail(0), active(false)
 {
 }
 
@@ -119,7 +120,116 @@ DescRing::empty()
     return (this->_headPtr == this->_tailPtr);
 }
 
-TxRing::TxRing()
+bool
+DescRing::full()
+{
+    return (this->_headPtr - this->_tailPtr >= this->_size);
+}
+
+EventRing::EventRing()
+{
+}
+
+EventRing::~EventRing()
+{
+}
+
+void
+EventRing::dmaDone(DMAOp *op)
+{
+    assert(op->write);
+    switch (op->type) {
+    case DMA_TYPE_EVENT:
+        // TODO: assume in order transmission
+        assert(this->_headPtr == op->tag);
+        this->_headPtr++;
+        msi_issue(0);
+        delete op;
+        break;
+    default:
+        fprintf(stderr, "Unknown DMA type %u\n", op->type);
+        abort();
+    }
+}
+
+void
+EventRing::issueEvent(unsigned type, unsigned source)
+{
+    assert(type == EVENT_TYPE_TX_CPL || type == EVENT_TYPE_RX_CPL);
+    if (full()) {
+        fprintf(stderr, "Event ring is rull\n");
+        abort();
+    }
+    addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * EVENT_SIZE;
+    /* Issue DMA write */
+    DMAOp *op = new DMAOp;
+    op->type = DMA_TYPE_EVENT;
+    op->dma_addr = dma_addr;
+    op->len = EVENT_SIZE;
+    op->ring = this;
+    op->tag = this->_currHead;
+    op->write = true;
+    Event *event = (Event *)op->data;
+    memset(event, 0, sizeof(Event));
+    event->type = type;
+    event->source = source;
+    issue_dma_op(op);
+    this->_currHead++;
+}
+
+CplRing::CplRing(EventRing *eventRing)
+    : eventRing(eventRing)
+{
+}
+
+CplRing::~CplRing()
+{
+}
+
+void
+CplRing::dmaDone(DMAOp *op)
+{
+    assert(op->write);
+    switch (op->type) {
+    case DMA_TYPE_CPL:
+        // TODO: assume in order transmission
+        assert(this->_headPtr == op->tag);
+        this->_headPtr++;
+        this->eventRing->issueEvent(EVENT_TYPE_TX_CPL, 0);
+        delete op;
+        break;
+    default:
+        fprintf(stderr, "Unknown DMA type %u\n", op->type);
+        abort();
+    }
+}
+
+void
+CplRing::complete(unsigned index, size_t len)
+{
+    if (full()) {
+        fprintf(stderr, "Completion ring is full\n");
+        abort();
+    }
+    addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * CPL_SIZE;
+    /* Issue DMA write */
+    DMAOp *op = new DMAOp;
+    op->type = DMA_TYPE_CPL;
+    op->dma_addr = dma_addr;
+    op->len = CPL_SIZE;
+    op->ring = this;
+    op->tag = this->_currHead;
+    op->write = true;
+    Cpl *cpl = (Cpl *)op->data;
+    memset(cpl, 0, sizeof(Cpl));
+    cpl->index = index;
+    cpl->len = len;
+    issue_dma_op(op);
+    this->_currHead++;
+}
+
+TxRing::TxRing(CplRing *cplRing)
+    : txCplRing(cplRing)
 {
 }
 
@@ -166,6 +276,7 @@ TxRing::dmaDone(DMAOp *op)
         // TODO: assume in order transmission
         assert(this->_tailPtr == op->tag);
         this->_tailPtr++;
+        this->txCplRing->complete(op->tag, op->len);
         delete op;
         break;
     default:
@@ -312,6 +423,8 @@ Port::queueDisable()
 }
 
 Corundum::Corundum()
+    : txCplRing(&this->eventRing), rxCplRing(&this->eventRing),
+    txRing(&this->txCplRing)
 {
     this->port.setId(0);
     this->port.setFeatures(0x711);
@@ -385,7 +498,7 @@ Corundum::readReg(addr_t addr)
         case IF_REG_PORT_STRIDE:
             return 0x200000;
         case EVENT_QUEUE_HEAD_PTR_REG:
-            return this->eqRing.headPtr();
+            return this->eventRing.headPtr();
         case TX_QUEUE_ACTIVE_LOG_SIZE_REG:
             return this->txRing.sizeLog();
         case TX_QUEUE_TAIL_PTR_REG:
@@ -433,22 +546,22 @@ Corundum::writeReg(addr_t addr, reg_t val)
         case PHC_REG_PTP_SET_SEC_H:
             break;
         case EVENT_QUEUE_BASE_ADDR_REG:
-            this->eqRing.setDMALower(val);
+            this->eventRing.setDMALower(val);
             break;
         case EVENT_QUEUE_BASE_ADDR_REG + 4:
-            this->eqRing.setDMAUpper(val);
+            this->eventRing.setDMAUpper(val);
             break;
         case EVENT_QUEUE_ACTIVE_LOG_SIZE_REG:
-            this->eqRing.setSizeLog(val);
+            this->eventRing.setSizeLog(val);
             break;
         case EVENT_QUEUE_INTERRUPT_INDEX_REG:
-            this->eqRing.setIndex(val);
+            this->eventRing.setIndex(val);
             break;
         case EVENT_QUEUE_HEAD_PTR_REG:
-            this->eqRing.setHeadPtr(val);
+            this->eventRing.setHeadPtr(val);
             break;
         case EVENT_QUEUE_TAIL_PTR_REG:
-            this->eqRing.setTailPtr(val);
+            this->eventRing.setTailPtr(val);
             break;
         case TX_QUEUE_BASE_ADDR_REG:
             this->txRing.setDMALower(val);
@@ -603,6 +716,20 @@ issue_dma_op(DMAOp *op)
         read->own_type = COSIM_PCIE_PROTO_D2H_MSG_READ |
             COSIM_PCIE_PROTO_D2H_OWN_HOST;
     }
+}
+
+static void
+msi_issue(uint8_t vec)
+{
+    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
+    printf("issue MSI interrupt vec %u\n", vec);
+    volatile struct cosim_pcie_proto_d2h_interrupt *intr = &msg->interrupt;
+    intr->vector = vec;
+    intr->inttype = COSIM_PCIE_PROTO_INT_MSI;
+
+    // WMB();
+    intr->own_type = COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT |
+        COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
 
 static void

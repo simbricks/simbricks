@@ -94,6 +94,8 @@ typedef uint16_t ptr_t;
 namespace corundum {
 
 #define DESC_SIZE 16
+#define CPL_SIZE 32
+#define EVENT_SIZE 32
 #define MAX_DMA_LEN 2048
 
 class DescRing;
@@ -105,9 +107,35 @@ struct Desc {
     uint64_t addr;
 } __attribute__((packed)) ;
 
+struct Cpl {
+    uint16_t queue;
+    uint16_t index;
+    uint16_t len;
+    uint16_t rsvd0;
+    uint32_t ts_ns;
+    uint16_t ts_s;
+    uint16_t rx_csum;
+    uint32_t rx_hash;
+    uint8_t rx_hash_type;
+    uint8_t rsvd1;
+    uint8_t rsvd2;
+    uint8_t rsvd3;
+    uint32_t rsvd4;
+    uint32_t rsvd5;
+} __attribute__((packed)) ;
 
-#define DMA_TYPE_DESC 0
-#define DMA_TYPE_MEM  1
+#define EVENT_TYPE_TX_CPL 0x0000
+#define EVENT_TYPE_RX_CPL 0x0001
+
+struct Event {
+    uint16_t type;
+    uint16_t source;
+} __attribute__((packed)) ;
+
+#define DMA_TYPE_DESC  0
+#define DMA_TYPE_MEM   1
+#define DMA_TYPE_CPL   2
+#define DMA_TYPE_EVENT 3
 
 struct DMAOp {
     uint8_t type;
@@ -141,6 +169,7 @@ public:
 
 protected:
     bool empty();
+    bool full();
 
     addr_t _dmaAddr;
     size_t _sizeLog;
@@ -149,17 +178,42 @@ protected:
     unsigned _index;
     ptr_t _headPtr;
     ptr_t _tailPtr;
+    ptr_t _currHead;
     ptr_t _currTail;
     bool active;
 };
 
+class EventRing : public DescRing {
+public:
+    EventRing();
+    ~EventRing();
+
+    virtual void dmaDone(DMAOp *op) override;
+    void issueEvent(unsigned type, unsigned source);
+};
+
+class CplRing : public DescRing {
+public:
+    CplRing(EventRing *eventRing);
+    ~CplRing();
+
+    virtual void dmaDone(DMAOp *op) override;
+    void complete(unsigned index, size_t len);
+
+private:
+    EventRing *eventRing;
+};
+
 class TxRing : public DescRing {
 public:
-    TxRing();
+    TxRing(CplRing *cplRing);
     ~TxRing();
 
     virtual void setHeadPtr(ptr_t ptr) override;
     virtual void dmaDone(DMAOp *op) override;
+
+private:
+    CplRing *txCplRing;
 };
 
 class Port {
@@ -211,11 +265,11 @@ public:
     void writeReg(addr_t addr, reg_t val);
 
 private:
-    DescRing eqRing;
+    EventRing eventRing;
     TxRing txRing;
-    DescRing txCplRing;
+    CplRing txCplRing;
     DescRing rxRing;
-    DescRing rxCplRing;
+    CplRing rxCplRing;
     Port port;
 };
 
