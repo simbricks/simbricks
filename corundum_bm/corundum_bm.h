@@ -4,6 +4,7 @@
 
 typedef uint32_t reg_t;
 typedef uint64_t addr_t;
+typedef uint16_t ptr_t;
 
 #define REG_FW_ID                   0x0000
 #define REG_FW_VER                  0x0004
@@ -94,7 +95,6 @@ namespace corundum {
 
 #define DESC_SIZE 16
 #define MAX_DMA_LEN 2048
-#define HW_PTR_MASK 0xFFFF
 
 class DescRing;
 
@@ -127,15 +127,15 @@ public:
     addr_t dmaAddr();
     size_t sizeLog();
     unsigned index();
-    unsigned headPtr();
-    unsigned tailPtr();
+    ptr_t headPtr();
+    ptr_t tailPtr();
 
     void setDMALower(uint32_t addr);
     void setDMAUpper(uint32_t addr);
     void setSizeLog(size_t size_log);
     void setIndex(unsigned index);
-    virtual void setHeadPtr(unsigned ptr);
-    void setTailPtr(unsigned ptr);
+    virtual void setHeadPtr(ptr_t ptr);
+    void setTailPtr(ptr_t ptr);
 
     virtual void dmaDone(DMAOp *op);
 
@@ -147,8 +147,9 @@ protected:
     size_t _size;
     size_t _sizeMask;
     unsigned _index;
-    unsigned _headPtr;
-    unsigned _tailPtr;
+    ptr_t _headPtr;
+    ptr_t _tailPtr;
+    ptr_t _currTail;
     bool active;
 };
 
@@ -157,7 +158,7 @@ public:
     TxRing();
     ~TxRing();
 
-    virtual void setHeadPtr(unsigned ptr) override;
+    virtual void setHeadPtr(ptr_t ptr) override;
     virtual void dmaDone(DMAOp *op) override;
 };
 

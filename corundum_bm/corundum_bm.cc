@@ -19,7 +19,9 @@ static void eth_send(void *data, size_t len);
 namespace corundum {
 
 DescRing::DescRing()
-    : active(false)
+    : _dmaAddr(0), _sizeLog(0), _size(0), _sizeMask(0),
+    _index(0), _headPtr(0), _tailPtr(0), _currTail(0),
+    active(false)
 {
 }
 
@@ -46,13 +48,13 @@ DescRing::index()
     return this->_index;
 }
 
-unsigned
+ptr_t
 DescRing::headPtr()
 {
     return this->_headPtr;
 }
 
-unsigned
+ptr_t
 DescRing::tailPtr()
 {
     return this->_tailPtr;
@@ -94,13 +96,13 @@ DescRing::setIndex(unsigned index)
 }
 
 void
-DescRing::setHeadPtr(unsigned ptr)
+DescRing::setHeadPtr(ptr_t ptr)
 {
     this->_headPtr = ptr;
 }
 
 void
-DescRing::setTailPtr(unsigned ptr)
+DescRing::setTailPtr(ptr_t ptr)
 {
     this->_tailPtr = ptr;
 }
@@ -126,11 +128,11 @@ TxRing::~TxRing()
 }
 
 void
-TxRing::setHeadPtr(unsigned ptr)
+TxRing::setHeadPtr(ptr_t ptr)
 {
     DescRing::setHeadPtr(ptr);
-    if (!empty()) {
-        unsigned index = (this->_headPtr - 1) & this->_sizeMask;
+    while (this->_currTail != this->_headPtr) {
+        unsigned index = this->_currTail & this->_sizeMask;
         addr_t dma_addr = this->_dmaAddr + index * DESC_SIZE;
         /* Issue DMA read */
         DMAOp *op = new DMAOp;
@@ -138,9 +140,10 @@ TxRing::setHeadPtr(unsigned ptr)
         op->dma_addr = dma_addr;
         op->len = DESC_SIZE;
         op->ring = this;
-        op->tag = this->_headPtr;
+        op->tag = this->_currTail;
         op->write = false;
         issue_dma_op(op);
+        this->_currTail++;
     }
 }
 
@@ -161,7 +164,8 @@ TxRing::dmaDone(DMAOp *op)
     case DMA_TYPE_MEM:
         eth_send(op->data, op->len);
         // TODO: assume in order transmission
-        this->_tailPtr = (unsigned)op->tag;
+        assert(this->_tailPtr == op->tag);
+        this->_tailPtr++;
         delete op;
         break;
     default:
@@ -307,7 +311,6 @@ Port::queueDisable()
     this->_queueEnable = false;
 }
 
-void queueDisable();
 Corundum::Corundum()
 {
     this->port.setId(0);
