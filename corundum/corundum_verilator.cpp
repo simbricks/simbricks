@@ -19,20 +19,25 @@ extern "C" {
 #include "dma.h"
 #include "mem.h"
 
-#define CLOCK_PERIOD (10 * 1000 * 1000ULL) // 200KHz
-#define PCI_ASYNCHRONY (500 * 1000 * 1000ULL) // 200us
-#define ETH_ASYNCHRONY (500 * 1000 * 1000ULL) // 200us
+#define CLOCK_PERIOD (100 * 1000ULL) // 100ns -> 10MHz
+#define SYNC_PERIOD (500 * 1000ULL) // 100ns
+#define PCI_LATENCY (1 * 1000 * 1000ULL) // 1us
+#define ETH_ASYNCHRONY (1 * 1000 * 1000ULL) // 1us
 
 struct DMAOp;
 
 static volatile int exiting = 0;
+static int sync_pci_en, sync_eth_en;
 static uint64_t main_time = 0;
-static uint64_t pci_last_time = 0;
-static uint64_t eth_last_time = 0;
+static uint64_t pci_last_rx_time = 0;
+static uint64_t pci_last_tx_time = 0;
+static uint64_t eth_last_rx_time = 0;
+static uint64_t eth_last_tx_time = 0;
 #ifdef TRACE_ENABLED
 static VerilatedVcdC* trace;
 #endif
 
+static volatile union cosim_pcie_proto_d2h *d2h_alloc(void);
 
 
 static void sigint_handler(int dummy)
@@ -317,7 +322,7 @@ class MMIOInterface {
 
 void pci_rwcomp_issue(MMIOOp *op)
 {
-    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
     volatile struct cosim_pcie_proto_d2h_readcomp *rc;
     volatile struct cosim_pcie_proto_d2h_writecomp *wc;
 
@@ -391,7 +396,7 @@ std::set<DMAOp *> pci_dma_pending;
 
 void pci_dma_issue(DMAOp *op)
 {
-    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
     uint8_t ty;
 
     if (!msg)
@@ -483,7 +488,7 @@ static void h2d_read(MMIOInterface &mmio,
 {
     //std::cout << "got read " << read->offset << std::endl;
     if (read->offset < 0x80000) {
-        volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+        volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
         volatile struct cosim_pcie_proto_d2h_readcomp *rc;
 
         if (!msg)
@@ -515,7 +520,7 @@ static void h2d_write(MMIOInterface &mmio,
     //std::cout << "got write " << write->offset << " = " << val << std::endl;
 
     if (write->offset < 0x80000) {
-        volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+        volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
         volatile struct cosim_pcie_proto_d2h_writecomp *wc;
 
         if (!msg)
@@ -534,11 +539,6 @@ static void h2d_write(MMIOInterface &mmio,
     }
 }
 
-static void h2d_sync(volatile struct cosim_pcie_proto_h2d_sync *sync)
-{
-    pci_last_time = sync->timestamp;
-}
-
 static void poll_h2d(MMIOInterface &mmio)
 {
     volatile union cosim_pcie_proto_h2d *msg = nicif_h2d_poll();
@@ -548,6 +548,12 @@ static void poll_h2d(MMIOInterface &mmio)
         return;
 
     t = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
+    pci_last_rx_time = msg->dummy.timestamp;
+
+    // we're running synchronized but it's not time for this message yet
+    if (sync_pci_en && pci_last_rx_time > main_time)
+        return;
+
     //std::cerr << "poll_h2d: polled type=" << (int) t << std::endl;
     switch (t) {
         case COSIM_PCIE_PROTO_H2D_MSG_READ:
@@ -567,7 +573,6 @@ static void poll_h2d(MMIOInterface &mmio)
             break;
 
         case COSIM_PCIE_PROTO_H2D_MSG_SYNC:
-            h2d_sync(&msg->sync);
             break;
 
         default:
@@ -578,6 +583,14 @@ static void poll_h2d(MMIOInterface &mmio)
     nicif_h2d_next();
 
 };
+
+static volatile union cosim_pcie_proto_d2h *d2h_alloc(void)
+{
+    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    msg->dummy.timestamp = main_time + PCI_LATENCY;
+    pci_last_tx_time = main_time;
+    return msg;
+}
 
 class EthernetTx {
     protected:
@@ -833,7 +846,7 @@ class PCICoordinator {
 
 void pci_msi_issue(uint8_t vec)
 {
-    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
     volatile struct cosim_pcie_proto_d2h_interrupt *intr;
 
 #ifdef MSI_DEBUG
@@ -865,23 +878,17 @@ static void msi_step(Vinterface &top, PCICoordinator &coord)
     }
 }
 
-static void sync_pci(MMIOInterface &mmio)
+static void send_sync_pci(MMIOInterface &mmio)
 {
-    uint64_t cur_ts = (main_time / 2) * CLOCK_PERIOD;
-    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    volatile union cosim_pcie_proto_d2h *msg;
     volatile struct cosim_pcie_proto_d2h_sync *sync;
 
-    sync = &msg->sync;
-
-    sync->timestamp = cur_ts + PCI_ASYNCHRONY;
-    // WMB();
-    sync->own_type = COSIM_PCIE_PROTO_D2H_MSG_SYNC |
-        COSIM_PCIE_PROTO_D2H_OWN_HOST;
-
-    while (pci_last_time < cur_ts && !exiting) {
-        /*std::cout << "waiting for pci pci_time=" << pci_last_time <<
-            "  cur=" << cur_ts << std::endl;*/
-        poll_h2d(mmio);
+    if (pci_last_tx_time == 0 || main_time - pci_last_tx_time >= SYNC_PERIOD) {
+        msg = d2h_alloc();
+        sync = &msg->sync;
+        // WMB();
+        sync->own_type = COSIM_PCIE_PROTO_D2H_MSG_SYNC |
+            COSIM_PCIE_PROTO_D2H_OWN_HOST;
     }
 }
 
@@ -897,13 +904,14 @@ int main(int argc, char *argv[])
     Verilated::traceEverOn(true);
 #endif
 
-    if (argc != 4) {
+    if (argc != 4 && argc != 5) {
         fprintf(stderr, "Usage: corundum_verilator PCI-SOCKET ETH-SOCKET "
-                "SHM\n");
+                "SHM [START-TICK]\n");
         return EXIT_FAILURE;
     }
+    if (argc == 5)
+        main_time = strtoull(argv[4], NULL, 0);
 
-    int sync_pci_en, sync_eth_en;
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
 
@@ -1037,15 +1045,18 @@ int main(int argc, char *argv[])
 
     while (!exiting) {
         if (sync_pci_en)
-            sync_pci(mmio);
+            send_sync_pci(mmio);
         if (sync_eth_en)
             sync_eth(rx);
-        poll_h2d(mmio);
-        poll_n2d(rx);
+
+        do {
+            poll_h2d(mmio);
+            poll_n2d(rx);
+        } while (sync_pci_en && pci_last_rx_time < main_time && !exiting);
 
         /* falling edge */
         top->clk = !top->clk;
-        main_time++;
+        main_time += CLOCK_PERIOD / 2;
         top->eval();
 
         mmio.step();
@@ -1067,7 +1078,7 @@ int main(int argc, char *argv[])
 
         /* raising edge */
         top->clk = !top->clk;
-        main_time++;
+        main_time += CLOCK_PERIOD / 2;
 
         //top->s_axis_tx_ptp_ts_96 = main_time;
         top->s_axis_tx_ptp_ts_valid = 1;
@@ -1076,6 +1087,7 @@ int main(int argc, char *argv[])
         top->eval();
     }
     report_outputs(top);
+    std::cout << std::endl << std::endl << "main_time:" << main_time << std::endl;
 
 #ifdef TRACE_ENABLED
     trace->dump(main_time + 1);

@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+//#define COSIM_PCI_MSG_SZCHECK(s) static_assert(sizeof(s) == 64)
+//#define COSIM_PCI_MSG_SZCHECK(s) _Static_assert(sizeof(s) == 64)
+#define COSIM_PCI_MSG_SZCHECK(s)
+
 /******************************************************************************/
 /* Initialization messages on Unix socket */
 
@@ -93,34 +97,43 @@ struct cosim_pcie_proto_host_intro {
 #define COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP 0x6
 
 struct cosim_pcie_proto_d2h_dummy {
-    uint8_t pad[63];
+    uint8_t pad[48];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
 } __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_dummy);
 
 struct cosim_pcie_proto_d2h_sync {
+    uint8_t pad[48];
     uint64_t timestamp;
-    uint8_t pad[55];
+    uint8_t pad_[7];
     uint8_t own_type;
 } __attribute__((packed));
-
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_sync);
 
 struct cosim_pcie_proto_d2h_read {
     uint64_t req_id;
     uint64_t offset;
     uint16_t len;
-    uint8_t pad[45];
+    uint8_t pad[30];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
 } __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_read);
 
 struct cosim_pcie_proto_d2h_write {
     uint64_t req_id;
     uint64_t offset;
     uint16_t len;
-    uint8_t pad[45];
+    uint8_t pad[30];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
     uint8_t data[];
 } __attribute__((packed));
-
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_write);
 
 #define COSIM_PCIE_PROTO_INT_LEGACY_HI 0
 #define COSIM_PCIE_PROTO_INT_LEGACY_LO 1
@@ -130,22 +143,31 @@ struct cosim_pcie_proto_d2h_write {
 struct cosim_pcie_proto_d2h_interrupt {
     uint16_t vector;
     uint8_t inttype;
-    uint8_t pad[60];
+    uint8_t pad[45];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
 } __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_interrupt);
 
 struct cosim_pcie_proto_d2h_readcomp {
     uint64_t req_id;
-    uint8_t pad[55];
+    uint8_t pad[40];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
     uint8_t data[];
-};
+} __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_readcomp);
 
 struct cosim_pcie_proto_d2h_writecomp {
     uint64_t req_id;
-    uint8_t pad[55];
+    uint8_t pad[40];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
-};
+} __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_writecomp);
 
 union cosim_pcie_proto_d2h {
     struct cosim_pcie_proto_d2h_dummy dummy;
@@ -155,7 +177,8 @@ union cosim_pcie_proto_d2h {
     struct cosim_pcie_proto_d2h_interrupt interrupt;
     struct cosim_pcie_proto_d2h_readcomp readcomp;
     struct cosim_pcie_proto_d2h_writecomp writecomp;
-};
+} __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_d2h);
 
 
 /******************************************************************************/
@@ -175,47 +198,64 @@ union cosim_pcie_proto_d2h {
 #define COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP 0x5
 
 struct cosim_pcie_proto_h2d_dummy {
-    uint8_t pad[63];
+    uint8_t pad[48];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
 } __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_dummy);
 
 struct cosim_pcie_proto_h2d_sync {
+    uint8_t pad[48];
     uint64_t timestamp;
-    uint8_t pad[55];
+    uint8_t pad_[7];
     uint8_t own_type;
 } __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_sync);
 
 struct cosim_pcie_proto_h2d_read {
     uint64_t req_id;
     uint64_t offset;
     uint16_t len;
     uint8_t bar;
-    uint8_t pad[44];
+    uint8_t pad[29];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
 } __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_read);
 
 struct cosim_pcie_proto_h2d_write {
     uint64_t req_id;
     uint64_t offset;
     uint16_t len;
     uint8_t bar;
-    uint8_t pad[44];
+    uint8_t pad[29];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
     uint8_t data[];
 } __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_write);
 
 struct cosim_pcie_proto_h2d_readcomp {
     uint64_t req_id;
-    uint8_t pad[55];
+    uint8_t pad[40];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
     uint8_t data[];
-};
+} __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_readcomp);
 
 struct cosim_pcie_proto_h2d_writecomp {
     uint64_t req_id;
-    uint8_t pad[55];
+    uint8_t pad[40];
+    uint64_t timestamp;
+    uint8_t pad_[7];
     uint8_t own_type;
-};
+} __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_writecomp);
 
 union cosim_pcie_proto_h2d {
     struct cosim_pcie_proto_h2d_dummy dummy;
@@ -224,6 +264,7 @@ union cosim_pcie_proto_h2d {
     struct cosim_pcie_proto_h2d_write write;
     struct cosim_pcie_proto_h2d_readcomp readcomp;
     struct cosim_pcie_proto_h2d_writecomp writecomp;
-};
+} __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_h2d);
 
 #endif /* ndef COSIM_PCIE_PROTO_H_ */
