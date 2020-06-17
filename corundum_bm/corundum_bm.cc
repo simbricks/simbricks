@@ -22,7 +22,7 @@ namespace corundum {
 DescRing::DescRing()
     : _dmaAddr(0), _sizeLog(0), _size(0), _sizeMask(0),
     _index(0), _headPtr(0), _tailPtr(0),
-    _currHead(0), _currTail(0), active(false)
+    _currHead(0), _currTail(0), active(false), armed(false)
 {
 }
 
@@ -93,6 +93,9 @@ void
 DescRing::setIndex(unsigned index)
 {
     assert(!(index & QUEUE_CONT_MASK));
+    if (index & QUEUE_ARM_MASK) {
+        this->armed = true;
+    }
     this->_index = index & 0xFF;
 }
 
@@ -150,25 +153,28 @@ void
 EventRing::issueEvent(unsigned type, unsigned source)
 {
     assert(type == EVENT_TYPE_TX_CPL || type == EVENT_TYPE_RX_CPL);
-    if (full()) {
-        fprintf(stderr, "Event ring is rull\n");
-        abort();
+    if (this->armed) {
+        if (full()) {
+            fprintf(stderr, "Event ring is rull\n");
+            return;
+        }
+        addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * EVENT_SIZE;
+        /* Issue DMA write */
+        DMAOp *op = new DMAOp;
+        op->type = DMA_TYPE_EVENT;
+        op->dma_addr = dma_addr;
+        op->len = EVENT_SIZE;
+        op->ring = this;
+        op->tag = this->_currHead;
+        op->write = true;
+        Event *event = (Event *)op->data;
+        memset(event, 0, sizeof(Event));
+        event->type = type;
+        event->source = source;
+        issue_dma_op(op);
+        this->_currHead++;
+        this->armed = false;
     }
-    addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * EVENT_SIZE;
-    /* Issue DMA write */
-    DMAOp *op = new DMAOp;
-    op->type = DMA_TYPE_EVENT;
-    op->dma_addr = dma_addr;
-    op->len = EVENT_SIZE;
-    op->ring = this;
-    op->tag = this->_currHead;
-    op->write = true;
-    Event *event = (Event *)op->data;
-    memset(event, 0, sizeof(Event));
-    event->type = type;
-    event->source = source;
-    issue_dma_op(op);
-    this->_currHead++;
 }
 
 CplRing::CplRing(EventRing *eventRing)
@@ -191,7 +197,7 @@ CplRing::dmaDone(DMAOp *op)
         assert(this->_headPtr == op->tag);
         this->_headPtr++;
         unsigned type = op->type == DMA_TYPE_TX_CPL ? EVENT_TYPE_TX_CPL :
-                                                      EVENT_TYPE_RX_CPL;
+            EVENT_TYPE_RX_CPL;
         this->eventRing->issueEvent(type, 0);
         delete op;
         break;
@@ -205,25 +211,30 @@ CplRing::dmaDone(DMAOp *op)
 void
 CplRing::complete(unsigned index, size_t len, bool tx)
 {
-    if (full()) {
-        fprintf(stderr, "Completion ring is full\n");
-        abort();
+    CplData data;
+    data.index = index;
+    data.len = len;
+    data.tx = tx;
+    this->pending.push_back(data);
+    while (!full() && !this->pending.empty()) {
+        CplData &data = this->pending.front();
+        addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * CPL_SIZE;
+        /* Issue DMA write */
+        DMAOp *op = new DMAOp;
+        op->type = data.tx ? DMA_TYPE_TX_CPL : DMA_TYPE_RX_CPL;
+        op->dma_addr = dma_addr;
+        op->len = CPL_SIZE;
+        op->ring = this;
+        op->tag = this->_currHead;
+        op->write = true;
+        Cpl *cpl = (Cpl *)op->data;
+        memset(cpl, 0, sizeof(Cpl));
+        cpl->index = data.index;
+        cpl->len = data.len;
+        this->pending.pop_front();
+        issue_dma_op(op);
+        this->_currHead++;
     }
-    addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * CPL_SIZE;
-    /* Issue DMA write */
-    DMAOp *op = new DMAOp;
-    op->type = tx ? DMA_TYPE_TX_CPL : DMA_TYPE_RX_CPL;
-    op->dma_addr = dma_addr;
-    op->len = CPL_SIZE;
-    op->ring = this;
-    op->tag = this->_currHead;
-    op->write = true;
-    Cpl *cpl = (Cpl *)op->data;
-    memset(cpl, 0, sizeof(Cpl));
-    cpl->index = index;
-    cpl->len = len;
-    issue_dma_op(op);
-    this->_currHead++;
 }
 
 TxRing::TxRing(CplRing *cplRing)
@@ -483,10 +494,10 @@ Port::queueDisable()
 
 Corundum::Corundum()
     : txCplRing(&this->eventRing), rxCplRing(&this->eventRing),
-    txRing(&this->txCplRing), rxRing(&this->rxCplRing)
+    txRing(&this->txCplRing), rxRing(&this->rxCplRing), features(0)
 {
     this->port.setId(0);
-    this->port.setFeatures(0x711);
+    this->port.setFeatures(this->features);
     this->port.setMtu(2048);
     this->port.setSchedCount(1);
     this->port.setSchedOffset(0x100000);
@@ -533,7 +544,7 @@ Corundum::readReg(addr_t addr)
         case IF_REG_IF_ID:
             return 0;
         case IF_REG_IF_FEATURES:
-            return 0x711;
+            return this->features;
         case IF_REG_EVENT_QUEUE_COUNT:
             return 1;
         case IF_REG_EVENT_QUEUE_OFFSET:

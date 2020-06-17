@@ -1,5 +1,6 @@
 #pragma once
 
+#include <list>
 #include <stdint.h>
 
 typedef uint32_t reg_t;
@@ -190,6 +191,7 @@ protected:
     ptr_t _currHead;
     ptr_t _currTail;
     bool active;
+    bool armed;
 };
 
 class EventRing : public DescRing {
@@ -210,7 +212,13 @@ public:
     void complete(unsigned index, size_t len, bool tx);
 
 private:
+    struct CplData {
+        unsigned index;
+        size_t len;
+        bool tx;
+    };
     EventRing *eventRing;
+    std::list<CplData> pending;
 };
 
 class TxRing : public DescRing {
@@ -293,6 +301,7 @@ private:
     RxRing rxRing;
     CplRing rxCplRing;
     Port port;
+    uint32_t features;
 };
 
 } // namespace corundum
