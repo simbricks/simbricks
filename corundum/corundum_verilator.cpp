@@ -41,6 +41,11 @@ static void sigint_handler(int dummy)
     exiting = 1;
 }
 
+static void sigusr1_handler(int dummy)
+{
+    fprintf(stderr, "main_time = %lu\n", main_time);
+}
+
 double sc_time_stamp()
 {
     return main_time;
@@ -918,6 +923,7 @@ int main(int argc, char *argv[])
         "  sync_eth=" << nsparams.sync_eth << std::endl;
 
     signal(SIGINT, sigint_handler);
+    signal(SIGUSR1, sigusr1_handler);
 
 
     Vinterface *top = new Vinterface;

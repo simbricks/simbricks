@@ -755,10 +755,14 @@ using namespace corundum;
 
 static volatile int exiting = 0;
 
-static void
-sigint_handler(int dummy)
+static void sigint_handler(int dummy)
 {
     exiting = 1;
+}
+
+static void sigusr1_handler(int dummy)
+{
+    fprintf(stderr, "main_time = %lu\n", main_time);
 }
 
 static volatile union cosim_pcie_proto_d2h *
@@ -978,6 +982,7 @@ int main(int argc, char *argv[])
 
 
     signal(SIGINT, sigint_handler);
+    signal(SIGUSR1, sigusr1_handler);
 
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
