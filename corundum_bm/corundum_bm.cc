@@ -13,9 +13,16 @@ extern "C" {
     #include <netsim.h>
 }
 
+#define SYNC_PERIOD (500 * 1000ULL) // 100ns
+#define PCI_LATENCY (1 * 1000 * 1000ULL) // 1us
+#define ETH_LATENCY (1 * 1000 * 1000ULL) // 1us
+
 static void issue_dma_op(corundum::DMAOp *op);
 static void msi_issue(uint8_t vec);
 static void eth_send(void *data, size_t len);
+
+static uint64_t main_time = 0;
+static struct nicsim_params nsparams;
 
 namespace corundum {
 
@@ -757,7 +764,8 @@ sigint_handler(int dummy)
 static volatile union cosim_pcie_proto_d2h *
 d2h_alloc(void)
 {
-    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
+    volatile union cosim_pcie_proto_d2h *msg =
+        nicsim_d2h_alloc(&nsparams, main_time);
     if (msg == NULL) {
         fprintf(stderr, "d2h_alloc: no entry available\n");
         abort();
@@ -768,7 +776,8 @@ d2h_alloc(void)
 static volatile union cosim_eth_proto_d2n *
 d2n_alloc(void)
 {
-    volatile union cosim_eth_proto_d2n *msg = nicsim_d2n_alloc();
+    volatile union cosim_eth_proto_d2n *msg =
+        nicsim_d2n_alloc(&nsparams, main_time);
     if (msg == NULL) {
         fprintf(stderr, "d2n_alloc: no entry available\n");
         abort();
@@ -893,7 +902,8 @@ static void eth_send(void *data, size_t len)
 
 static void poll_h2d(Corundum &nic)
 {
-    volatile union cosim_pcie_proto_h2d *msg = nicif_h2d_poll();
+    volatile union cosim_pcie_proto_h2d *msg =
+        nicif_h2d_poll(&nsparams, main_time);
     uint8_t type;
 
     if (msg == NULL)
@@ -927,7 +937,8 @@ static void poll_h2d(Corundum &nic)
 
 static void poll_n2d(Corundum &nic)
 {
-    volatile union cosim_eth_proto_n2d *msg = nicif_n2d_poll();
+    volatile union cosim_eth_proto_n2d *msg =
+        nicif_n2d_poll(&nsparams, main_time);
     uint8_t t;
 
     if (msg == NULL)
@@ -949,6 +960,17 @@ static void poll_n2d(Corundum &nic)
 
 int main(int argc, char *argv[])
 {
+    uint64_t next_ts;
+
+    if (argc != 4 && argc != 5) {
+        fprintf(stderr, "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
+                "SHM [START-TICK]\n");
+        return EXIT_FAILURE;
+    }
+    if (argc == 5)
+        main_time = strtoull(argv[4], NULL, 0);
+
+
     signal(SIGINT, sigint_handler);
 
     struct cosim_pcie_proto_dev_intro di;
@@ -962,18 +984,34 @@ int main(int argc, char *argv[])
     di.pci_revision = 0x00;
     di.pci_msi_nvecs = 32;
 
-    int sync_pci_en = 0, sync_eth_en = 0;
-    if (nicsim_init(&di, "/tmp/cosim-pci", &sync_pci_en,
-                "/tmp/cosim-eth", &sync_eth_en,
-                "/dev/shm/dummy_nic_shm")) {
+    nsparams.sync_pci = 1;
+    nsparams.sync_eth = 1;
+    nsparams.pci_socket_path = argv[1];
+    nsparams.eth_socket_path = argv[2];
+    nsparams.shm_path = argv[3];
+    nsparams.pci_latency = PCI_LATENCY;
+    nsparams.eth_latency = ETH_LATENCY;
+    nsparams.sync_delay = SYNC_PERIOD;
+    if (nicsim_init(&nsparams, &di)) {
         return EXIT_FAILURE;
     }
+    fprintf(stderr, "sync_pci=%d sync_eth=%d\n", nsparams.sync_pci,
+        nsparams.sync_eth);
 
     Corundum nic;
 
     while (!exiting) {
-        poll_h2d(nic);
-        poll_n2d(nic);
+        while (nicsim_sync(&nsparams, main_time)) {
+            fprintf(stderr, "warn: nicsim_sync failed (t=%llu)\n", main_time);
+        }
+
+        do {
+            poll_h2d(nic);
+            poll_n2d(nic);
+            next_ts = netsim_next_timestamp(&nsparams);
+        } while ((nsparams.sync_pci || nsparams.sync_eth) &&
+            next_ts <= main_time && !exiting);
+        main_time = next_ts;
     }
 
     nicsim_cleanup();

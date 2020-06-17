@@ -22,17 +22,13 @@ extern "C" {
 #define CLOCK_PERIOD (100 * 1000ULL) // 100ns -> 10MHz
 #define SYNC_PERIOD (500 * 1000ULL) // 100ns
 #define PCI_LATENCY (1 * 1000 * 1000ULL) // 1us
-#define ETH_ASYNCHRONY (1 * 1000 * 1000ULL) // 1us
+#define ETH_LATENCY (1 * 1000 * 1000ULL) // 1us
 
 struct DMAOp;
 
 static volatile int exiting = 0;
-static int sync_pci_en, sync_eth_en;
 static uint64_t main_time = 0;
-static uint64_t pci_last_rx_time = 0;
-static uint64_t pci_last_tx_time = 0;
-static uint64_t eth_last_rx_time = 0;
-static uint64_t eth_last_tx_time = 0;
+static struct nicsim_params nsparams;
 #ifdef TRACE_ENABLED
 static VerilatedVcdC* trace;
 #endif
@@ -541,18 +537,14 @@ static void h2d_write(MMIOInterface &mmio,
 
 static void poll_h2d(MMIOInterface &mmio)
 {
-    volatile union cosim_pcie_proto_h2d *msg = nicif_h2d_poll();
+    volatile union cosim_pcie_proto_h2d *msg =
+        nicif_h2d_poll(&nsparams, main_time);
     uint8_t t;
 
     if (msg == NULL)
         return;
 
     t = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
-    pci_last_rx_time = msg->dummy.timestamp;
-
-    // we're running synchronized but it's not time for this message yet
-    if (sync_pci_en && pci_last_rx_time > main_time)
-        return;
 
     //std::cerr << "poll_h2d: polled type=" << (int) t << std::endl;
     switch (t) {
@@ -586,10 +578,7 @@ static void poll_h2d(MMIOInterface &mmio)
 
 static volatile union cosim_pcie_proto_d2h *d2h_alloc(void)
 {
-    volatile union cosim_pcie_proto_d2h *msg = nicsim_d2h_alloc();
-    msg->dummy.timestamp = main_time + PCI_LATENCY;
-    pci_last_tx_time = main_time;
-    return msg;
+    return nicsim_d2h_alloc(&nsparams, main_time);
 }
 
 class EthernetTx {
@@ -606,7 +595,8 @@ class EthernetTx {
 
         void packet_done()
         {
-            volatile union cosim_eth_proto_d2n *msg = nicsim_d2n_alloc();
+            volatile union cosim_eth_proto_d2n *msg =
+                nicsim_d2n_alloc(&nsparams, main_time);
             volatile struct cosim_eth_proto_d2n_send *send;
 
             if (!msg)
@@ -615,6 +605,7 @@ class EthernetTx {
             send = &msg->send;
             memcpy((void *) send->data, packet_buf, packet_len);
             send->len = packet_len;
+            send->timestamp = main_time + ETH_LATENCY;
 
             //WMB();
             send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND |
@@ -749,16 +740,21 @@ static void n2d_recv(EthernetRx &rx,
 
 static void poll_n2d(EthernetRx &rx)
 {
-    volatile union cosim_eth_proto_n2d *msg = nicif_n2d_poll();
+    volatile union cosim_eth_proto_n2d *msg =
+        nicif_n2d_poll(&nsparams, main_time);
     uint8_t t;
 
     if (msg == NULL)
         return;
 
     t = msg->dummy.own_type & COSIM_ETH_PROTO_N2D_MSG_MASK;
+
     switch (t) {
         case COSIM_ETH_PROTO_N2D_MSG_RECV:
             n2d_recv(rx, &msg->recv);
+            break;
+
+        case COSIM_ETH_PROTO_N2D_MSG_SYNC:
             break;
 
         default:
@@ -878,24 +874,6 @@ static void msi_step(Vinterface &top, PCICoordinator &coord)
     }
 }
 
-static void send_sync_pci(MMIOInterface &mmio)
-{
-    volatile union cosim_pcie_proto_d2h *msg;
-    volatile struct cosim_pcie_proto_d2h_sync *sync;
-
-    if (pci_last_tx_time == 0 || main_time - pci_last_tx_time >= SYNC_PERIOD) {
-        msg = d2h_alloc();
-        sync = &msg->sync;
-        // WMB();
-        sync->own_type = COSIM_PCIE_PROTO_D2H_MSG_SYNC |
-            COSIM_PCIE_PROTO_D2H_OWN_HOST;
-    }
-}
-
-static void sync_eth(EthernetRx &rx)
-{
-}
-
 int main(int argc, char *argv[])
 {
     char *vargs[2] = { argv[0], NULL };
@@ -925,15 +903,19 @@ int main(int argc, char *argv[])
     di.pci_revision = 0x00;
     di.pci_msi_nvecs = 32;
 
-    sync_pci_en = 1;
-    sync_eth_en = 1;
-    if (nicsim_init(&di, argv[1], &sync_pci_en, argv[2], &sync_eth_en,
-                argv[3]))
-    {
+    nsparams.sync_pci = 1;
+    nsparams.sync_eth = 1;
+    nsparams.pci_socket_path = argv[1];
+    nsparams.eth_socket_path = argv[2];
+    nsparams.shm_path = argv[3];
+    nsparams.pci_latency = PCI_LATENCY;
+    nsparams.eth_latency = ETH_LATENCY;
+    nsparams.sync_delay = SYNC_PERIOD;
+    if (nicsim_init(&nsparams, &di)) {
         return EXIT_FAILURE;
     }
-    std::cout << "sync_pci=" << sync_pci_en << "  sync_eth=" << sync_eth_en <<
-        std::endl;
+    std::cout << "sync_pci=" << nsparams.sync_pci <<
+        "  sync_eth=" << nsparams.sync_eth << std::endl;
 
     signal(SIGINT, sigint_handler);
 
@@ -1044,15 +1026,16 @@ int main(int argc, char *argv[])
     top->rst = 0;
 
     while (!exiting) {
-        if (sync_pci_en)
-            send_sync_pci(mmio);
-        if (sync_eth_en)
-            sync_eth(rx);
+        while (nicsim_sync(&nsparams, main_time)) {
+            std::cerr << "warn: nicsim_sync failed (t=" << main_time << ")" <<
+                std::endl;
+        }
 
         do {
             poll_h2d(mmio);
             poll_n2d(rx);
-        } while (sync_pci_en && pci_last_rx_time < main_time && !exiting);
+        } while ((nsparams.sync_pci || nsparams.sync_eth) &&
+            netsim_next_timestamp(&nsparams) <= main_time && !exiting);
 
         /* falling edge */
         top->clk = !top->clk;

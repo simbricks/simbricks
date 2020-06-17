@@ -61,6 +61,10 @@ static uint8_t *n2d_queue;
 static size_t n2d_pos;
 static size_t n2d_off; /* offset in shm region */
 
+static uint64_t pci_last_rx_time = 0;
+static uint64_t pci_last_tx_time = 0;
+static uint64_t eth_last_rx_time = 0;
+static uint64_t eth_last_tx_time = 0;
 
 static int shm_fd = -1;
 static int pci_cfd = -1;
@@ -173,16 +177,17 @@ static int accept_conns(struct cosim_pcie_proto_dev_intro *di,
     return 0;
 }
 
-int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
-        const char *pci_socket_path, int *sync_pci,
-        const char *eth_socket_path, int *sync_eth,
-        const char *shm_path)
+int nicsim_init(struct nicsim_params *params,
+        struct cosim_pcie_proto_dev_intro *di)
 {
     int pci_lfd = -1, eth_lfd = -1;
     void *shmptr;
 
     /* ready in memory queues */
-    if ((shm_fd = shm_create(shm_path, 32 * 1024 * 1024, &shmptr)) < 0) {
+    if ((shm_fd = shm_create(params->shm_path, 32 * 1024 * 1024, &shmptr))
+            < 0)
+    {
+
         return -1;
     }
 
@@ -199,39 +204,41 @@ int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
     d2h_pos = h2d_pos = d2n_pos = n2d_pos = 0;
 
     /* get listening sockets ready */
-    if (pci_socket_path != NULL) {
-        if ((pci_lfd = uxsocket_init(pci_socket_path)) < 0) {
+    if (params->pci_socket_path != NULL) {
+        if ((pci_lfd = uxsocket_init(params->pci_socket_path)) < 0) {
             return -1;
         }
     }
-    if (eth_socket_path != NULL) {
-        if ((eth_lfd = uxsocket_init(eth_socket_path)) < 0) {
+    if (params->eth_socket_path != NULL) {
+        if ((eth_lfd = uxsocket_init(params->eth_socket_path)) < 0) {
             return -1;
         }
     }
 
     /* accept connection fds */
-    if (accept_conns(di, pci_lfd, sync_pci, eth_lfd, sync_eth) != 0) {
+    if (accept_conns(di, pci_lfd, &params->sync_pci, eth_lfd,
+                &params->sync_eth) != 0)
+    {
         return -1;
     }
 
     /* receive introductions from other end */
-    if (pci_socket_path != NULL) {
+    if (params->pci_socket_path != NULL) {
         struct cosim_pcie_proto_host_intro hi;
         if (recv(pci_cfd, &hi, sizeof(hi), 0) != sizeof(hi)) {
             return -1;
         }
         if ((hi.flags & COSIM_PCIE_PROTO_FLAGS_HI_SYNC) == 0)
-            *sync_pci = 0;
+            params->sync_pci = 0;
         printf("pci host info received\n");
     }
-    if (eth_socket_path != NULL) {
+    if (params->eth_socket_path != NULL) {
         struct cosim_eth_proto_net_intro ni;
         if (recv(eth_cfd, &ni, sizeof(ni), 0) != sizeof(ni)) {
             return -1;
         }
         if ((ni.flags & COSIM_ETH_PROTO_FLAGS_NI_SYNC) == 0)
-            *sync_eth = 0;
+            params->sync_eth = 0;
         printf("eth net info received\n");
     }
 
@@ -245,9 +252,62 @@ void nicsim_cleanup(void)
 }
 
 /******************************************************************************/
+/* Sync */
+
+int nicsim_sync(struct nicsim_params *params, uint64_t timestamp)
+{
+    int ret = 0;
+    volatile union cosim_pcie_proto_d2h *d2h;
+    volatile union cosim_eth_proto_d2n *d2n;
+
+    /* sync PCI if necessary */
+    if (params->sync_pci &&
+            timestamp - pci_last_tx_time >= params->sync_delay)
+    {
+        d2h = nicsim_d2h_alloc(params, timestamp);
+        if (d2h == NULL) {
+            ret = -1;
+        } else {
+            d2h->sync.own_type = COSIM_PCIE_PROTO_D2H_MSG_SYNC |
+                COSIM_PCIE_PROTO_D2H_OWN_HOST;
+        }
+    }
+
+    /* sync Ethernet if necessary */
+    if (params->sync_eth &&
+            timestamp - eth_last_tx_time >= params->sync_delay)
+    {
+        d2n = nicsim_d2n_alloc(params, timestamp);
+        if (d2n == NULL) {
+            ret = -1;
+        } else {
+            d2n->sync.own_type = COSIM_ETH_PROTO_D2N_MSG_SYNC |
+                COSIM_ETH_PROTO_D2N_OWN_NET;
+        }
+    }
+
+    return ret;
+}
+
+uint64_t netsim_next_timestamp(struct nicsim_params *params)
+{
+    if (params->sync_pci && params->sync_eth) {
+        return (pci_last_rx_time <= eth_last_rx_time ? pci_last_rx_time :
+                eth_last_rx_time);
+    } else if (params->sync_pci) {
+        return pci_last_rx_time;
+    } else if (params->sync_eth) {
+        return eth_last_rx_time;
+    } else {
+        return 0;
+    }
+}
+
+/******************************************************************************/
 /* PCI */
 
-volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(void)
+volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(
+        struct nicsim_params *params, uint64_t timestamp)
 {
     volatile union cosim_pcie_proto_h2d *msg =
         (volatile union cosim_pcie_proto_h2d *)
@@ -256,6 +316,11 @@ volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(void)
     /* message not ready */
     if ((msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_OWN_MASK) !=
             COSIM_PCIE_PROTO_H2D_OWN_DEV)
+        return NULL;
+
+    /* if in sync mode, wait till message is ready */
+    pci_last_rx_time = msg->dummy.timestamp;
+    if (params->sync_pci && pci_last_rx_time > timestamp)
         return NULL;
 
     return msg;
@@ -272,7 +337,8 @@ void nicif_h2d_next(void)
     h2d_pos = (h2d_pos + 1) % H2D_ENUM;
 }
 
-volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(void)
+volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(
+        struct nicsim_params *params, uint64_t timestamp)
 {
     volatile union cosim_pcie_proto_d2h *msg =
         (volatile union cosim_pcie_proto_d2h *)
@@ -284,6 +350,9 @@ volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(void)
         return NULL;
     }
 
+    msg->dummy.timestamp = timestamp + params->pci_latency;;
+    pci_last_tx_time = timestamp;
+
     d2h_pos = (d2h_pos + 1) % D2H_ENUM;
     return msg;
 }
@@ -291,7 +360,8 @@ volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(void)
 /******************************************************************************/
 /* Ethernet */
 
-volatile union cosim_eth_proto_n2d *nicif_n2d_poll(void)
+volatile union cosim_eth_proto_n2d *nicif_n2d_poll(
+        struct nicsim_params *params, uint64_t timestamp)
 {
     volatile union cosim_eth_proto_n2d *msg =
         (volatile union cosim_eth_proto_n2d *)
@@ -300,6 +370,11 @@ volatile union cosim_eth_proto_n2d *nicif_n2d_poll(void)
     /* message not ready */
     if ((msg->dummy.own_type & COSIM_ETH_PROTO_N2D_OWN_MASK) !=
             COSIM_ETH_PROTO_N2D_OWN_DEV)
+        return NULL;
+
+    /* if in sync mode, wait till message is ready */
+    eth_last_rx_time = msg->dummy.timestamp;
+    if (params->sync_eth && eth_last_rx_time > timestamp)
         return NULL;
 
     return msg;
@@ -316,7 +391,8 @@ void nicif_n2d_next(void)
     n2d_pos = (n2d_pos + 1) % N2D_ENUM;
 }
 
-volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(void)
+volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(
+        struct nicsim_params *params, uint64_t timestamp)
 {
     volatile union cosim_eth_proto_d2n *msg =
         (volatile union cosim_eth_proto_d2n *)
@@ -327,6 +403,9 @@ volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(void)
     {
         return NULL;
     }
+
+    msg->dummy.timestamp = timestamp + params->eth_latency;
+    eth_last_tx_time = timestamp;
 
     d2n_pos = (d2n_pos + 1) % D2N_ENUM;
     return msg;

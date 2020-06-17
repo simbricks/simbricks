@@ -27,24 +27,41 @@
 #include <cosim_pcie_proto.h>
 #include <cosim_eth_proto.h>
 
-int nicsim_init(struct cosim_pcie_proto_dev_intro *di,
-        const char *pci_socket_path, int *sync_pci,
-        const char *eth_socket_path, int *sync_eth,
-        const char *shm_path);
+struct nicsim_params {
+    const char *pci_socket_path;
+    const char *eth_socket_path;
+    const char *shm_path;
+
+    uint64_t pci_latency;
+    uint64_t eth_latency;
+    uint64_t sync_delay;
+
+    int sync_pci;
+    int sync_eth;
+};
+
+int nicsim_init(struct nicsim_params *params,
+        struct cosim_pcie_proto_dev_intro *di);
 void nicsim_cleanup(void);
 
+int nicsim_sync(struct nicsim_params *params, uint64_t timestamp);
+uint64_t netsim_next_timestamp(struct nicsim_params *params);
 
-volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(void);
+volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(
+        struct nicsim_params *params, uint64_t timestamp);
 void nicif_h2d_done(volatile union cosim_pcie_proto_h2d *msg);
 void nicif_h2d_next(void);
 
-volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(void);
+volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(
+        struct nicsim_params *params, uint64_t timestamp);
 
 
-volatile union cosim_eth_proto_n2d *nicif_n2d_poll(void);
+volatile union cosim_eth_proto_n2d *nicif_n2d_poll(
+        struct nicsim_params *params, uint64_t timestamp);
 void nicif_n2d_done(volatile union cosim_eth_proto_n2d *msg);
 void nicif_n2d_next(void);
 
-volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(void);
+volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(
+        struct nicsim_params *params, uint64_t timestamp);
 
 #endif /* ndef COSIM_NICSIM_H_ */
