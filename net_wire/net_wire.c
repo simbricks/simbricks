@@ -66,6 +66,7 @@ static void move_pkt(uint64_t cur_ts, struct netsim_interface *from,
         } else {
             fprintf(stderr, "move_pkt: dropping packet\n");
         }
+    } else if (type == COSIM_ETH_PROTO_D2N_MSG_SYNC) {
     } else {
         fprintf(stderr, "move_pkt: unsupported type=%u\n", type);
         abort();
@@ -107,8 +108,8 @@ int main(int argc, char *argv[])
         do {
             move_pkt(cur_ts, &nsif_a, &nsif_b);
             move_pkt(cur_ts, &nsif_b, &nsif_a);
-            ts_a = netsim_n2d_timestamp(&nsif_a);
-            ts_b = netsim_n2d_timestamp(&nsif_b);
+            ts_a = netsim_d2n_timestamp(&nsif_a);
+            ts_b = netsim_d2n_timestamp(&nsif_b);
         } while ((sync_a && ts_a <= cur_ts) ||
                 (sync_b && ts_b <= cur_ts));
 

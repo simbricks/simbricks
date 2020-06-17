@@ -350,7 +350,7 @@ volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(
         return NULL;
     }
 
-    msg->dummy.timestamp = timestamp + params->pci_latency;;
+    msg->dummy.timestamp = timestamp + params->pci_latency;
     pci_last_tx_time = timestamp;
 
     d2h_pos = (d2h_pos + 1) % D2H_ENUM;

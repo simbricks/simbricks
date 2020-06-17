@@ -52,15 +52,15 @@ volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
         struct netsim_interface *nsif, uint64_t timestamp);
 void netsim_d2n_done(struct netsim_interface *nsif,
         volatile union cosim_eth_proto_d2n *msg);
+static inline uint64_t netsim_d2n_timestamp(struct netsim_interface *nsif)
+{
+    return nsif->d2n_timestamp;
+}
 
 volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
         struct netsim_interface *nsif, uint64_t timestamp,
         uint64_t latency);
 int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
         uint64_t latency, uint64_t sync_delay);
-static inline uint64_t netsim_n2d_timestamp(struct netsim_interface *nsif)
-{
-    return nsif->n2d_timestamp;
-}
 
 #endif /* ndef COSIM_NETSIM_H_ */
