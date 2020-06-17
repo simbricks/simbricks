@@ -927,6 +927,9 @@ static void poll_h2d(Corundum &nic)
             h2d_writecomp(&msg->writecomp);
             break;
 
+        case COSIM_PCIE_PROTO_H2D_MSG_SYNC:
+            break;
+
         default:
             fprintf(stderr, "poll_h2d: unsupported type=%u\n", type);
     }
@@ -948,6 +951,9 @@ static void poll_n2d(Corundum &nic)
     switch (t) {
         case COSIM_ETH_PROTO_N2D_MSG_RECV:
             eth_recv(nic, &msg->recv);
+            break;
+
+        case COSIM_ETH_PROTO_N2D_MSG_SYNC:
             break;
 
         default:
@@ -1014,6 +1020,7 @@ int main(int argc, char *argv[])
         main_time = next_ts;
     }
 
+    fprintf(stderr, "main_time: %lu\n", main_time);
     nicsim_cleanup();
     return 0;
 }
