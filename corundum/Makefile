@@ -7,16 +7,20 @@ VFLAGS = +1364-2005ext+v \
 
 SRCS = corundum_verilator.cpp dma.cpp mem.cpp
 
+
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+BASEDIR := $(abspath $(dir $(mkfile_path))/../)
+
 all: corundum_verilator
 
 obj_dir/Vinterface.cpp: rtl/interface.v
 	$(VERILATOR) $(VFLAGS) --cc -O3 \
-	    -CFLAGS "-I$(PWD)/../nicsim_common/include -I$(PWD)/../proto -O3 -g -Wall" \
+	    -CFLAGS "-I$(BASEDIR)/nicsim_common/include -I$(BASEDIR)/proto -O3 -g -Wall" \
 	    -y rtl \
 	    -y lib/axi/rtl \
 	    -y lib/eth/lib/axis/rtl/ \
 	    -y ./lib/pcie/rtl \
-	    rtl/interface.v --exe $(SRCS) "$(PWD)/../nicsim_common/libnicsim_common.a"
+	    rtl/interface.v --exe $(SRCS) "$(BASEDIR)/nicsim_common/libnicsim_common.a"
 
 obj_dir/Vinterface: obj_dir/Vinterface.cpp $(SRCS)
 	 $(MAKE) -C obj_dir -f Vinterface.mk
