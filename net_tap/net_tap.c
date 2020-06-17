@@ -75,7 +75,7 @@ static void d2n_send(volatile struct cosim_eth_proto_d2n_send *s)
 
 static void poll_d2n(void)
 {
-    volatile union cosim_eth_proto_d2n *msg = netsim_d2n_poll(&nsif);
+    volatile union cosim_eth_proto_d2n *msg = netsim_d2n_poll(&nsif, 0);
     uint8_t type;
 
     /* message not ready */
@@ -102,7 +102,7 @@ static void *rx_handler(void *arg)
     ssize_t len;
 
     while (1) {
-        msg = netsim_n2d_alloc(&nsif);
+        msg = netsim_n2d_alloc(&nsif, 0, 0);
         if (msg == NULL) {
             fprintf(stderr, "coudl not allocate message for rx\n");
             abort();

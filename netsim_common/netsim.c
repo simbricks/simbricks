@@ -62,8 +62,12 @@ int netsim_init(struct netsim_interface *nsif,
     }
     close(shm_fd);
 
-    if ((di.flags & COSIM_ETH_PROTO_FLAGS_DI_SYNC) == 0)
+    if ((di.flags & COSIM_ETH_PROTO_FLAGS_DI_SYNC) == 0) {
         *sync_eth = 0;
+        nsif->sync = 1;
+    } else {
+        nsif->sync = *sync_eth;
+    }
 
     nsif->d2n_queue = (uint8_t *) p + di.d2n_offset;
     nsif->n2d_queue = (uint8_t *) p + di.n2d_offset;
@@ -72,6 +76,7 @@ int netsim_init(struct netsim_interface *nsif,
     nsif->d2n_enum = di.d2n_nentries;
     nsif->n2d_enum = di.n2d_nentries;
     nsif->d2n_pos = nsif->n2d_pos = 0;
+    nsif->d2n_timestamp = nsif->n2d_timestamp = 0;
 
     return 0;
 }
@@ -83,7 +88,7 @@ void netsim_cleanup(struct netsim_interface *nsif)
 }
 
 volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
-        struct netsim_interface *nsif)
+        struct netsim_interface *nsif, uint64_t timestamp)
 {
     volatile union cosim_eth_proto_d2n *msg =
         (volatile union cosim_eth_proto_d2n *)
@@ -92,6 +97,11 @@ volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
     /* message not ready */
     if ((msg->dummy.own_type & COSIM_ETH_PROTO_D2N_OWN_MASK) !=
             COSIM_ETH_PROTO_D2N_OWN_NET)
+        return NULL;
+
+    /* if in sync mode, wait till message is ready */
+    nsif->d2n_timestamp = msg->dummy.timestamp;
+    if (nsif->sync && nsif->d2n_timestamp > timestamp)
         return NULL;
 
     nsif->d2n_pos = (nsif->d2n_pos + 1) % nsif->d2n_enum;
@@ -106,7 +116,8 @@ void netsim_d2n_done(struct netsim_interface *nsif,
 }
 
 volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
-        struct netsim_interface *nsif)
+        struct netsim_interface *nsif, uint64_t timestamp,
+        uint64_t latency)
 {
     volatile union cosim_eth_proto_n2d *msg =
         (volatile union cosim_eth_proto_n2d *)
@@ -118,6 +129,30 @@ volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
         return NULL;
     }
 
+    msg->dummy.timestamp = timestamp + latency;
+    nsif->n2d_timestamp = timestamp;
+
     nsif->n2d_pos = (nsif->n2d_pos + 1) % nsif->n2d_enum;
     return msg;
+}
+
+int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
+        uint64_t latency, uint64_t sync_delay)
+{
+    volatile union cosim_eth_proto_n2d *msg;
+    volatile struct cosim_eth_proto_n2d_sync *sync;
+
+    if (nsif->n2d_timestamp != 0 &&
+            timestamp - nsif->n2d_timestamp < sync_delay)
+        return 0;
+
+    msg = netsim_n2d_alloc(nsif, timestamp, latency);
+    if (msg == NULL)
+        return -1;
+
+    sync = &msg->sync;
+    // WMB();
+    sync->own_type = COSIM_ETH_PROTO_N2D_MSG_SYNC | COSIM_ETH_PROTO_N2D_OWN_DEV;
+
+    return 0;
 }

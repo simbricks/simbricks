@@ -34,9 +34,13 @@
 
 #include <netsim.h>
 
-static void move_pkt(struct netsim_interface *from, struct netsim_interface *to)
+#define SYNC_PERIOD (500 * 1000ULL) // 100ns
+#define ETH_LATENCY (1 * 1000 * 1000ULL) // 1us
+
+static void move_pkt(uint64_t cur_ts, struct netsim_interface *from,
+        struct netsim_interface *to)
 {
-    volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(from);
+    volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(from, cur_ts);
     volatile union cosim_eth_proto_n2d *msg_to;
     volatile struct cosim_eth_proto_d2n_send *tx;
     volatile struct cosim_eth_proto_n2d_recv *rx;
@@ -49,7 +53,7 @@ static void move_pkt(struct netsim_interface *from, struct netsim_interface *to)
     if (type == COSIM_ETH_PROTO_D2N_MSG_SEND) {
         tx = &msg_from->send;
 
-        msg_to = netsim_n2d_alloc(to);
+        msg_to = netsim_n2d_alloc(to, cur_ts, ETH_LATENCY);
         if (msg_to != NULL) {
             rx = &msg_to->recv;
             rx->len = tx->len;
@@ -73,25 +77,47 @@ static void move_pkt(struct netsim_interface *from, struct netsim_interface *to)
 int main(int argc, char *argv[])
 {
     struct netsim_interface nsif_a, nsif_b;
-    int sync;
+    uint64_t cur_ts = 0, ts_a, ts_b;
+    int sync_a, sync_b;
 
     if (argc != 3) {
         fprintf(stderr, "Usage: net_tap SOCKET-A SOCKET-B\n");
         return EXIT_FAILURE;
     }
 
-    sync = 0;
-    if (netsim_init(&nsif_a, argv[1], &sync) != 0) {
+    sync_a = sync_b = 1;
+    if (netsim_init(&nsif_a, argv[1], &sync_a) != 0) {
         return -1;
     }
-    if (netsim_init(&nsif_b, argv[2], &sync) != 0) {
+    if (netsim_init(&nsif_b, argv[2], &sync_b) != 0) {
         return -1;
     }
 
     printf("start polling\n");
     while (1) {
-        move_pkt(&nsif_a, &nsif_b);
-        move_pkt(&nsif_b, &nsif_a);
+        if (netsim_n2d_sync(&nsif_a, cur_ts, ETH_LATENCY, SYNC_PERIOD) != 0) {
+            fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
+            abort();
+        }
+        if (netsim_n2d_sync(&nsif_b, cur_ts, ETH_LATENCY, SYNC_PERIOD) != 0) {
+            fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
+            abort();
+        }
+
+        do {
+            move_pkt(cur_ts, &nsif_a, &nsif_b);
+            move_pkt(cur_ts, &nsif_b, &nsif_a);
+            ts_a = netsim_n2d_timestamp(&nsif_a);
+            ts_b = netsim_n2d_timestamp(&nsif_b);
+        } while ((sync_a && ts_a <= cur_ts) ||
+                (sync_b && ts_b <= cur_ts));
+
+        if (sync_a && sync_b)
+            cur_ts = (ts_a <= ts_b ? ts_a : ts_b);
+        else if (sync_a)
+            cur_ts = ts_a;
+        else if (sync_b)
+            cur_ts = ts_b;
     }
     return 0;
 }

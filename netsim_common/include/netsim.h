@@ -33,11 +33,15 @@ struct netsim_interface {
     size_t d2n_pos;
     size_t d2n_elen;
     size_t d2n_enum;
+    uint64_t d2n_timestamp;
 
     uint8_t *n2d_queue;
     size_t n2d_pos;
     size_t n2d_elen;
     size_t n2d_enum;
+    uint64_t n2d_timestamp;
+
+    int sync;
 };
 
 int netsim_init(struct netsim_interface *nsif,
@@ -45,11 +49,18 @@ int netsim_init(struct netsim_interface *nsif,
 void netsim_cleanup(struct netsim_interface *nsif);
 
 volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
-        struct netsim_interface *nsif);
+        struct netsim_interface *nsif, uint64_t timestamp);
 void netsim_d2n_done(struct netsim_interface *nsif,
         volatile union cosim_eth_proto_d2n *msg);
 
 volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
-        struct netsim_interface *nsif);
+        struct netsim_interface *nsif, uint64_t timestamp,
+        uint64_t latency);
+int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
+        uint64_t latency, uint64_t sync_delay);
+static inline uint64_t netsim_n2d_timestamp(struct netsim_interface *nsif)
+{
+    return nsif->n2d_timestamp;
+}
 
 #endif /* ndef COSIM_NETSIM_H_ */
