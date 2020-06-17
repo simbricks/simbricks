@@ -44,7 +44,8 @@ corundum_verilator: obj_dir/Vinterface
 #	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 lightclean:
-	rm -f obj_dir/Vinterface corundum_verilator obj_dir/mem.o obj_dir/dma.o
+	rm -f obj_dir/Vinterface corundum_verilator \
+	    obj_dir/corundum_verilator.o obj_dir/mem.o obj_dir/dma.o
 clean:
 	rm -rf obj_dir corundum_verilator *.o
 
