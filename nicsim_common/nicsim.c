@@ -261,8 +261,8 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp)
     volatile union cosim_eth_proto_d2n *d2n;
 
     /* sync PCI if necessary */
-    if (params->sync_pci &&
-            timestamp - pci_last_tx_time >= params->sync_delay)
+    if (params->sync_pci && (pci_last_tx_time == 0 ||
+            timestamp - pci_last_tx_time >= params->sync_delay))
     {
         d2h = nicsim_d2h_alloc(params, timestamp);
         if (d2h == NULL) {
@@ -274,8 +274,8 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp)
     }
 
     /* sync Ethernet if necessary */
-    if (params->sync_eth &&
-            timestamp - eth_last_tx_time >= params->sync_delay)
+    if (params->sync_eth && (eth_last_tx_time == 0 ||
+            timestamp - eth_last_tx_time >= params->sync_delay))
     {
         d2n = nicsim_d2n_alloc(params, timestamp);
         if (d2n == NULL) {
