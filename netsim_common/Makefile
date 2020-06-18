@@ -1,5 +1,5 @@
 CPPFLAGS += -I include/ -I../proto/
-CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3
+CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
 
 all: libnetsim_common.a
 
