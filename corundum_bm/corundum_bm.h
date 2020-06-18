@@ -1,6 +1,7 @@
 #pragma once
 
 #include <list>
+#include <vector>
 #include <stdint.h>
 
 typedef uint32_t reg_t;
@@ -180,6 +181,7 @@ public:
 protected:
     bool empty();
     bool full();
+    bool updatePtr(ptr_t ptr, bool head);
 
     addr_t _dmaAddr;
     size_t _sizeLog;
@@ -192,6 +194,7 @@ protected:
     ptr_t _currTail;
     bool active;
     bool armed;
+    std::vector<bool> cplDma;
 };
 
 class EventRing : public DescRing {

@@ -94,6 +94,7 @@ DescRing::setSizeLog(size_t size_log)
     this->_sizeLog = size_log & 0xFF;
     this->_size = 1 << this->_sizeLog;
     this->_sizeMask = this->_size - 1;
+    this->cplDma.resize(this->_size, false);
 }
 
 void
@@ -130,6 +131,33 @@ DescRing::full()
     return (this->_currHead - this->_tailPtr >= this->_size);
 }
 
+
+bool
+DescRing::updatePtr(ptr_t ptr, bool head)
+{
+    ptr_t curr_ptr = head ? this->_headPtr : this->_tailPtr;
+    if (ptr != curr_ptr) {
+        // out of order completion
+        this->cplDma[ptr & this->_sizeMask] = true;
+        return false;
+    }
+    /* Safe to update the pointer. Also check if any DMA is completed
+     * out-of-order in front of us.
+     */
+    curr_ptr = ptr & this->_sizeMask;
+
+    do {
+        if (head) {
+            this->_headPtr++;
+        } else {
+            this->_tailPtr++;
+        }
+        this->cplDma[curr_ptr] = false;
+        curr_ptr = (curr_ptr + 1) & this->_sizeMask;
+    } while (this->cplDma.at(curr_ptr));
+    return true;
+}
+
 EventRing::EventRing()
 {
 }
@@ -144,10 +172,9 @@ EventRing::dmaDone(DMAOp *op)
     assert(op->write);
     switch (op->type) {
     case DMA_TYPE_EVENT:
-        // TODO: assume in order transmission
-        assert(this->_headPtr == op->tag);
-        this->_headPtr++;
-        msi_issue(0);
+        if (updatePtr((ptr_t)op->tag, true)) {
+            msi_issue(0);
+        }
         delete op;
         break;
     default:
@@ -200,12 +227,11 @@ CplRing::dmaDone(DMAOp *op)
     switch (op->type) {
     case DMA_TYPE_TX_CPL:
     case DMA_TYPE_RX_CPL: {
-        // TODO: assume in order transmission
-        assert(this->_headPtr == op->tag);
-        this->_headPtr++;
-        unsigned type = op->type == DMA_TYPE_TX_CPL ? EVENT_TYPE_TX_CPL :
-            EVENT_TYPE_RX_CPL;
-        this->eventRing->issueEvent(type, 0);
+        if (updatePtr((ptr_t)op->tag, true)) {
+            unsigned type = op->type == DMA_TYPE_TX_CPL ? EVENT_TYPE_TX_CPL :
+                EVENT_TYPE_RX_CPL;
+            this->eventRing->issueEvent(type, 0);
+        }
         delete op;
         break;
     }
@@ -290,9 +316,7 @@ TxRing::dmaDone(DMAOp *op)
     case DMA_TYPE_MEM:
         assert(!op->write);
         eth_send(op->data, op->len);
-        // TODO: assume in order transmission
-        assert(this->_tailPtr == op->tag);
-        this->_tailPtr++;
+        updatePtr((ptr_t)op->tag, false);
         this->txCplRing->complete(op->tag, op->len, true);
         delete op;
         break;
@@ -329,9 +353,7 @@ RxRing::dmaDone(DMAOp *op)
     }
     case DMA_TYPE_MEM:
         assert(op->write);
-        // TODO: assume in order transmission
-        assert(this->_tailPtr == op->tag);
-        this->_tailPtr++;
+        updatePtr((ptr_t)op->tag, false);
         this->rxCplRing->complete(op->tag, op->len, false);
         delete op;
         break;
