@@ -146,6 +146,29 @@ run_ns3_bridge() {
     return $pid
 }
 
+# Args:
+#   - Instance name
+#   - Left Port names
+#   - Right Port names
+#   - Other args
+run_ns3_dumbbell() {
+    ports=""
+    for p in $2; do
+        epath="`readlink -f $OUTDIR/eth.$p`"
+        ports="$ports --CosimPortLeft=$epath"
+    done
+    for p in $3; do
+        epath="`readlink -f $OUTDIR/eth.$p`"
+        ports="$ports --CosimPortRight=$epath"
+    done
+
+    $NS3_BASE/cosim-run.sh cosim-dumbbell-example \
+        $ports $4 &>$OUTDIR/ns3_bridge.$1.log &
+    pid=$!
+    ALL_PIDS="$ALL_PIDS $pid"
+    return $pid
+}
+
 cleanup() {
     echo Cleaning up
     for p in $ALL_PIDS ; do

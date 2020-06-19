@@ -13,6 +13,7 @@ EXPERIMENTS := \
     gem5-kvm-corundum-bm-pair \
     gem5-timing-corundum-verilator-pair \
     qemu-ns3-bridge-pair \
+    qemu-ns3-dumbbell-pair \
 
 BUILDDIR := build
 OUTDIR := out
