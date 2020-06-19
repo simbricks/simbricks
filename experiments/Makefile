@@ -12,9 +12,9 @@ BUILDDIR := build
 OUTDIR := out
 
 GUESTS_TARS := $(addprefix $(BUILDDIR)/,$(addsuffix .tar, $(GUESTS)))
-EXPERIMENTS_OUTPUTS := $(addprefix $(OUTDIR)/,$(EXPERIMENTS))
+EXPERIMENTS_READY := $(addprefix $(OUTDIR)/,$(addsuffix /ready,$(EXPERIMENTS)))
 
-all: $(GUESTS_TARS) $(EXPERIMENTS_OUTPUTS)
+all: $(GUESTS_TARS) $(EXPERIMENTS_READY)
 
 clean:
 	rm -rf $(BUILDDIR) $(OUTDIR)
@@ -22,10 +22,9 @@ clean:
 #######################################
 # Running experiments
 
-run: $(EXPERIMENTS)
-
-$(OUTDIR)/%: experiments/%.sh $(GUESTS_TARS)
+$(OUTDIR)/%/ready: experiments/%.sh $(GUESTS_TARS)
 	bash $<
+	touch $@
 
 #######################################
 # Guest Tars
