@@ -88,6 +88,16 @@
       "source": "scripts/guestinit.sh",
       "destination": "/home/ubuntu/guestinit.sh",
       "direction": "upload"
+    },
+    {
+      "type": "file",
+      "source": "m5",
+      "destination": "/tmp/m5",
+      "direction": "upload"
+    },
+    {
+      "type": "shell",
+      "inline": ["sudo mv /tmp/m5 /sbin/m5"]
     }
   ],
   "variables": {
