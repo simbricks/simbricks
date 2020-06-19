@@ -17,3 +17,6 @@ images/output-ubuntu1804
 images/packer
 images/packer_cache
 images/kernel/linux-*/
+experiments/build
+experiments/out
+experiments/local-config.sh
