@@ -7,19 +7,26 @@ fi
 
 source local-config.sh
 
-if [ -z "$EHSIM_BASE" ] ; then
+if [ ! -d "$EHSIM_BASE" ] ; then
     echo "\$EHSIM_BASE should be set to the absolute path of the root"\
         "of this repo (local-config.sh)"
     exit 1
 fi
-if [ -z "$QEMU_CMD" ] ; then
+if [ ! -f "$QEMU_CMD" ] ; then
     echo "\$QEMU_CMD should be set to the absolute path to a QEMU instance"\
         "with cosim support (local-config.sh)"
     exit 1
 fi
+if [ ! -d "$GEM5_BASE" ] ; then
+    echo "\$GEM5_BASE should be set to the absolute path to a built gem5 repo"\
+        "(local-config.sh)"
+    exit 1
+fi
 
-QEMU_BASE_IMAGE=$EHSIM_BASE/images/output-ubuntu1804/ubuntu1804
+QEMU_IMAGE=$EHSIM_BASE/images/output-ubuntu1804/ubuntu1804
 QEMU_KERNEL=$EHSIM_BASE/images/bzImage
+GEM5_IMAGE=$EHSIM_BASE/images/output-ubuntu1804/ubuntu1804.raw
+GEM5_KERNEL=$EHSIM_BASE/images/vmlinux
 
 # Args:
 #   - experiment name
@@ -39,7 +46,7 @@ run_qemu() {
     pcisock="$OUTDIR/pci.$2"
     rm -f $img_a $img_b
     echo Creating disk for qemu $1
-    qemu-img create -f qcow2 -o backing_file=$QEMU_BASE_IMAGE $img_a
+    qemu-img create -f qcow2 -o backing_file=$QEMU_IMAGE $img_a
     cp $3 $img_b
     echo Starting qemu $1
     $QEMU_CMD -machine q35 -cpu host \
@@ -51,6 +58,31 @@ run_qemu() {
         -nic none \
         -chardev socket,path=$pcisock,id=cosimcd \
         -device cosim-pci,chardev=cosimcd &>$OUTDIR/qemu.$1.log &
+    pid=$!
+    ALL_PIDS="$ALL_PIDS $pid"
+    return $pid
+}
+
+# Args:
+#   - Instance name
+#   - Cosim instance
+#   - secondary hard drive
+#   - cpu type
+#   - checkpoint dir
+#   - extra flags
+run_gem5() {
+    echo Starting gem5 $1
+    pcisock="$OUTDIR/pci.$2"
+    shm="$OUTDIR/shm.$2"
+    cpdir="$OUTDIR/checkpoints.$5"
+    mkdir -p $cpdir
+    $GEM5_BASE/build/X86/gem5.opt \
+        --outdir=$OUTDIR/gem5.out.$1 \
+        $GEM5_BASE/configs/cosim/cosim.py \
+        --kernel=$GEM5_KERNEL --disk-image=$GEM5_IMAGE --disk-image=$3 \
+        --cpu-type=$4 --mem-size=4GB --cosim-pci=$pcisock --cosim-shm=$shm \
+        --checkpoint-dir="$cpdir" $6 \
+        &>$OUTDIR/gem5.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
     return $pid
@@ -96,7 +128,12 @@ run_wire() {
 cleanup() {
     echo Cleaning up
     for p in $ALL_PIDS ; do
+        kill $p &>/dev/null
+    done
+    sleep 1
+    for p in $ALL_PIDS ; do
         kill -KILL $p &>/dev/null
     done
+
     rm -f $OUTDIR/{qemu.hd.*,shm.*,pci.*,eth.*}
 }

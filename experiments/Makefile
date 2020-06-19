@@ -3,10 +3,15 @@ MQNICMOD := $(abspath ../images/mqnic/mqnic.ko)
 GUESTS := \
     qemu-pair-client \
     qemu-pair-server \
+    gem5-pair-client \
+    gem5-pair-server-cp \
+    gem5-pair-client-cp \
 
 EXPERIMENTS := \
     qemu-corundum-bm-pair \
     qemu-corundum-verilator-pair \
+    gem5-kvm-corundum-bm-pair \
+    gem5-timing-corundum-verilator-pair \
 
 BUILDDIR := build
 OUTDIR := out
