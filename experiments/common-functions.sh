@@ -22,6 +22,11 @@ if [ ! -d "$GEM5_BASE" ] ; then
         "(local-config.sh)"
     exit 1
 fi
+if [ ! -d "$NS3_BASE" ] ; then
+    echo "\$NS3_BASE should be set to the absolute path to a built ns3 repo"\
+        "(local-config.sh)"
+    exit 1
+fi
 
 QEMU_IMAGE=$EHSIM_BASE/images/output-ubuntu1804/ubuntu1804
 QEMU_KERNEL=$EHSIM_BASE/images/bzImage
@@ -120,6 +125,22 @@ run_wire() {
     echo Starting wire $1
     $EHSIM_BASE/net_wire/net_wire \
         $OUTDIR/eth.$2 $OUTDIR/eth.$3 &>$OUTDIR/wire.$1.log &
+    pid=$!
+    ALL_PIDS="$ALL_PIDS $pid"
+    return $pid
+}
+
+# Args:
+#   - Instance name
+#   - Port names
+run_ns3_bridge() {
+    ports=""
+    for p in $2; do
+        epath="`readlink -f $OUTDIR/eth.$p`"
+        ports="$ports --CosimPort=$epath"
+    done
+    $NS3_BASE/cosim-run.sh cosim-bridge-example \
+        $ports &>$OUTDIR/ns3_bridge.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
     return $pid
