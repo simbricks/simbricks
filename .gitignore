@@ -20,3 +20,6 @@ images/kernel/linux-*/
 experiments/build
 experiments/out
 experiments/local-config.sh
+gem5/
+qemu/
+ns-3/
