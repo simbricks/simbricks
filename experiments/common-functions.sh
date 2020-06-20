@@ -163,7 +163,7 @@ run_ns3_dumbbell() {
     done
 
     $NS3_BASE/cosim-run.sh cosim-dumbbell-example \
-        $ports $4 &>$OUTDIR/ns3_bridge.$1.log &
+        $ports $4 &>$OUTDIR/ns3_dumbbell.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
     return $pid
