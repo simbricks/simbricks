@@ -1,11 +1,14 @@
 #!/bin/bash
 
-if [ ! -f local-config.sh ] ; then
-    echo "local-config.sh does not exist"
-    exit 1
+EHSIM_BASE="$(readlink -f $(dirname ${BASH_SOURCE[0]})/..)"
+QEMU_CMD="$EHSIM_BASE/qemu/x86_64-softmmu/qemu-system-x86_64"
+GEM5_BASE="$EHSIM_BASE/gem5"
+NS3_BASE="$EHSIM_BASE/ns-3"
+
+if [ -f local-config.sh ] ; then
+    source local-config.sh
 fi
 
-source local-config.sh
 
 if [ ! -d "$EHSIM_BASE" ] ; then
     echo "\$EHSIM_BASE should be set to the absolute path of the root"\
