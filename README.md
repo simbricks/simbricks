@@ -10,6 +10,10 @@ Code structure:
  - `net_tap/`: Linux tap interface connector for Ethernet channel
  - `net_wire/`: Ethernet wire, connects to Ethernet channels together:w
 
+# Building
+ - External dependencies for qemu: `libglib2.0-dev libpixman-1-dev`
+ - External dependencies for gem5: `scons`
+
 ## Running Qemu
 1. Clone from here: `github.com:FreakyPenguin/qemu-cosim.git`
 2. Build with `./configure --target-list=x86_64-softmmu --disable-werror --extra-cflags="-I$PATH_TO_THIS_REPO/proto" --enable-cosim-pci`
@@ -30,8 +34,9 @@ x86_64-softmmu/qemu-system-x86_64 \
 ## Running Gem5
 1. Clone from here: `git@github.com:nicklijl/gem5.git`
 2. Build with: `scons build/X86/gem5.opt -jX` (with `X` set to # cores)
-3. run dummy nic: `rm -rf /tmp/cosim-pci; ./dummy_nic`
-4. To run for example:
+3. `echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid`
+4. run dummy nic: `rm -rf /tmp/cosim-pci; ./dummy_nic`
+5. To run for example:
 ```
 ./build/X86/gem5.opt \
     configs/cosim/cosim.py \
