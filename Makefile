@@ -15,6 +15,15 @@ clean:
 	$(MAKE) -C nicsim_common/ clean
 	$(MAKE) -C netsim_common/ clean
 
+help:
+	@echo "Targets:"
+	@echo "  all: builds all the tools directly in this repo"
+	@echo "  clean: cleans all the tool folders in this repo"
+	@echo "  build-images: prepare prereqs for VMs (images directory)"
+	@echo "  external: clone and build our tools in external repos "
+	@echo "            (qemu, gem5, ns-3)"
+	@echo "  run-experiments: run all experiments (experiments directory,"
+	@echo "                   implies all, build-images, external)"
 
 ####################################
 # Tools in this repo
