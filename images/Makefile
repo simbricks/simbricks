@@ -30,9 +30,14 @@ packer:
 ################################################
 # Kernel
 
-vmlinux bzImage &: kernel/linux-$(KERNEL_VERSION)
+kernel/linux-$(KERNEL_VERSION)/vmlinux: kernel/linux-$(KERNEL_VERSION)
 	$(MAKE) -C kernel/linux-$(KERNEL_VERSION)
+
+vmlinux: kernel/linux-$(KERNEL_VERSION)/vmlinux
 	cp kernel/linux-$(KERNEL_VERSION)/vmlinux vmlinux
+
+# this dependency is a bit stupid, but not sure how to better do this
+bzImage: kernel/linux-$(KERNEL_VERSION)/vmlinux
 	cp kernel/linux-$(KERNEL_VERSION)/arch/x86_64/boot/bzImage bzImage
 
 kernel/linux-$(KERNEL_VERSION):
