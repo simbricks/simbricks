@@ -87,6 +87,12 @@ run_gem5() {
     $GEM5_BASE/build/X86/gem5.opt \
         --outdir=$OUTDIR/gem5.out.$1 \
         $GEM5_BASE/configs/cosim/cosim.py \
+        --caches --l2cache \
+        --l1d_size=32kB \
+        --l1i_size=32kB \
+        --l2_size=2MB \
+        --l3_size=8MB \
+        --cacheline_size=64 \
         --kernel=$GEM5_KERNEL --disk-image=$GEM5_IMAGE --disk-image=$3 \
         --cpu-type=$4 --mem-size=4GB --cosim-pci=$pcisock --cosim-shm=$shm \
         --checkpoint-dir="$cpdir" $6 \
