@@ -13,7 +13,7 @@ sleep 5
 run_qemu r0 r0 build/qemu-nopaxos-replica-0.tar
 run_qemu r1 r1 build/qemu-nopaxos-replica-1.tar
 run_qemu r2 r2 build/qemu-nopaxos-replica-2.tar
-#run_qemu c0 c0 build/qemu-nopaxos-client.tar
+run_qemu c0 c0 build/qemu-nopaxos-client.tar
 client_pid=$!
 wait $client_pid
 cleanup
