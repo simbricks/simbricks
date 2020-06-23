@@ -178,6 +178,29 @@ run_ns3_dumbbell() {
     return $pid
 }
 
+# Args:
+#   - Instance name
+#   - Client Port names
+#   - Server Port names
+#   - Other args
+run_ns3_sequencer() {
+    ports=""
+    for p in $2; do
+        epath="`readlink -f $OUTDIR/eth.$p`"
+        ports="$ports --ClientPort=$epath"
+    done
+    for p in $3; do
+        epath="`readlink -f $OUTDIR/eth.$p`"
+        ports="$ports --ServerPort=$epath"
+    done
+
+    $NS3_BASE/cosim-run.sh sequencer sequencer-single-switch-example \
+        $ports $4 &>$OUTDIR/ns3_sequencer.$1.log &
+    pid=$!
+    ALL_PIDS="$ALL_PIDS $pid"
+    return $pid
+}
+
 cleanup() {
     echo Cleaning up
     for p in $ALL_PIDS ; do

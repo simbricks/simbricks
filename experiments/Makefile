@@ -6,6 +6,10 @@ GUESTS := \
     gem5-pair-client \
     gem5-pair-server-cp \
     gem5-pair-client-cp \
+	qemu-nopaxos-replica-0 \
+	qemu-nopaxos-replica-1 \
+	qemu-nopaxos-replica-2 \
+	qemu-nopaxos-client \
 
 EXPERIMENTS := \
     qemu-corundum-bm-pair \
