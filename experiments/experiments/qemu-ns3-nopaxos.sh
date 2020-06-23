@@ -9,7 +9,6 @@ run_corundum_bm r1
 run_corundum_bm r2
 sleep 0.5
 run_ns3_sequencer nopaxos "c0" "r0 r1 r2"
-sleep 5
 run_qemu r0 r0 build/qemu-nopaxos-replica-0.tar
 run_qemu r1 r1 build/qemu-nopaxos-replica-1.tar
 run_qemu r2 r2 build/qemu-nopaxos-replica-2.tar
