@@ -14,6 +14,16 @@ ntp
 nfs-common
 iperf
 netcat
+make
+git
+pkg-config
+libevent-dev
+libunwind-dev
+autoconf
+automake
+libtool
+g++
+libssl-dev
 "
 
 if [[ $INSTALL_DEV_PACKAGES  =~ true || $INSTALL_DEV_PACKAGES =~ 1 ||

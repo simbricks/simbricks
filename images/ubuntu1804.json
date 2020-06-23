@@ -79,6 +79,7 @@
         "scripts/sshd.sh",
         "scripts/update.sh",
         "scripts/packages.sh",
+        "scripts/install.sh",
         "scripts/cleanup.sh"
       ],
       "type": "shell"
@@ -88,6 +89,16 @@
       "source": "scripts/guestinit.sh",
       "destination": "/home/ubuntu/guestinit.sh",
       "direction": "upload"
+    },
+    {
+      "type": "file",
+      "source": "nopaxos.config",
+      "destination": "/tmp/nopaxos.config",
+      "direction": "upload"
+    },
+    {
+      "type": "shell",
+      "inline": ["sudo mv /tmp/nopaxos.config /root/nopaxos.config"]
     },
     {
       "type": "file",
