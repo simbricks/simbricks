@@ -2,7 +2,7 @@
 
 source common-functions.sh
 
-init_out qemu-corundum-verilator-pair
+init_out qemu-corundum-verilator-pair $1
 run_corundum_verilator a
 run_corundum_verilator b
 sleep 0.5

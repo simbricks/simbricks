@@ -2,7 +2,7 @@
 
 source common-functions.sh
 
-init_out qemu-ns3-bridge-pair
+init_out qemu-ns3-bridge-pair $1
 run_corundum_bm a
 run_corundum_bm b
 sleep 0.5

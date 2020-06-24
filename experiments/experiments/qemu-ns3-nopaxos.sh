@@ -2,7 +2,7 @@
 
 source common-functions.sh
 
-init_out qemu-ns3-nopaxos
+init_out qemu-ns3-nopaxos $1
 run_corundum_bm c0
 run_corundum_bm r0
 run_corundum_bm r1

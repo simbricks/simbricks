@@ -39,7 +39,7 @@ GEM5_KERNEL=$EHSIM_BASE/images/vmlinux
 # Args:
 #   - experiment name
 init_out() {
-  export OUTDIR=./out/$1
+  export OUTDIR=./out/$1/$2
   rm -rf $OUTDIR
   mkdir -p $OUTDIR
 }

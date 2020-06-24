@@ -2,7 +2,7 @@
 
 source common-functions.sh
 
-init_out gem5-kvm-ns3-dumbbell-pair
+init_out gem5-kvm-ns3-dumbbell-pair $1
 run_corundum_bm a
 run_corundum_bm b
 sleep 0.5

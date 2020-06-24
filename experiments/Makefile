@@ -20,6 +20,8 @@ EXPERIMENTS := \
     qemu-ns3-dumbbell-pair \
     gem5-kvm-ns3-dumbbell-pair \
 
+REPLICATION ?= 1
+
 BUILDDIR := build
 OUTDIR := out
 
@@ -34,12 +36,23 @@ clean:
 #######################################
 # Running experiments
 
-$(OUTDIR)/%/ready: experiments/%.sh $(GUESTS_TARS)
-	bash $<
+define run_experiment_repl
+$(OUTDIR)/%/$(1)/ready: experiments/%.sh $(GUESTS_TARS)
+	bash $$< $(1)
+	touch $$@
+endef
+
+REPLIDS := $(shell seq $(REPLICATION))
+
+$(foreach i,$(REPLIDS), $(eval $(call run_experiment_repl,$(i))))
+
+$(OUTDIR)/%/ready: experiments/%.sh $(addprefix $(OUTDIR)/%/,$(addsuffix /ready,$(REPLIDS)))
 	touch $@
 
 #######################################
 # Guest Tars
+
+guest-tars: $(GUESTS_TARS)
 
 define build_guest
 $(1)_OBJS := $(wildcard guests/$(1)/*)

@@ -2,7 +2,7 @@
 
 source common-functions.sh
 
-init_out gem5-timing-corundum-verilator-pair
+init_out gem5-timing-corundum-verilator-pair $1
 
 # first run to checkpoint with fast CPU
 run_corundum_verilator a
