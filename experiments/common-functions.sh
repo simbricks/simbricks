@@ -42,6 +42,7 @@ init_out() {
   export OUTDIR=./out/$1/$2
   rm -rf $OUTDIR
   mkdir -p $OUTDIR
+  date > $OUTDIR/starttime
 }
 
 # Args:
@@ -212,4 +213,5 @@ cleanup() {
     done
 
     rm -f $OUTDIR/{qemu.hd.*,shm.*,pci.*,eth.*}
+    date >>$OUTDIR/endtime
 }
