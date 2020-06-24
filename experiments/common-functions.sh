@@ -148,7 +148,7 @@ run_ns3_bridge() {
         epath="`readlink -f $OUTDIR/eth.$p`"
         ports="$ports --CosimPort=$epath"
     done
-    $NS3_BASE/cosim-run.sh cosim-bridge-example \
+    $NS3_BASE/cosim-run.sh cosim cosim-bridge-example \
         $ports &>$OUTDIR/ns3_bridge.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
@@ -171,7 +171,7 @@ run_ns3_dumbbell() {
         ports="$ports --CosimPortRight=$epath"
     done
 
-    $NS3_BASE/cosim-run.sh cosim-dumbbell-example \
+    $NS3_BASE/cosim-run.sh cosim cosim-dumbbell-example \
         $ports $4 &>$OUTDIR/ns3_dumbbell.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
