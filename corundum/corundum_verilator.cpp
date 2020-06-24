@@ -27,7 +27,7 @@ extern "C" {
 struct DMAOp;
 
 static volatile int exiting = 0;
-static uint64_t main_time = 0;
+uint64_t main_time = 0;
 static struct nicsim_params nsparams;
 #ifdef TRACE_ENABLED
 static VerilatedVcdC* trace;
@@ -226,7 +226,7 @@ class MMIOInterface {
                     rCur->value = top.s_axil_rdata;
                     coord.mmio_comp_enqueue(rCur);
 #ifdef MMIO_DEBUG
-                    std::cout << "MMIO: completed AXI read op=" << rCur << " val=" <<
+                    std::cout << main_time << " MMIO: completed AXI read op=" << rCur << " val=" <<
                         rCur->value << std::endl;
 #endif
                     rCur = 0;
@@ -250,7 +250,7 @@ class MMIOInterface {
                     top.s_axil_bready = 0;
                     // TODO: check top.s_axil_bresp
 #ifdef MMIO_DEBUG
-                    std::cout << "MMIO: completed AXI write op=" << wCur <<
+                    std::cout << main_time << " MMIO: completed AXI write op=" << wCur <<
                         std::endl;
 #endif
                     coord.mmio_comp_enqueue(wCur);
@@ -293,7 +293,7 @@ class MMIOInterface {
         {
             MMIOOp *op = new MMIOOp;
 #ifdef MMIO_DEBUG
-            std::cout << "MMIO: read id=" << id << " addr=" << std::hex << addr
+            std::cout << main_time << " MMIO: read id=" << id << " addr=" << std::hex << addr
                 << " len=" << len << " op=" << op << std::endl;
 #endif
             op->id = id;
@@ -308,7 +308,7 @@ class MMIOInterface {
         {
             MMIOOp *op = new MMIOOp;
 #ifdef MMIO_DEBUG
-            std::cout << "MMIO: write id=" << id << " addr=" << std::hex << addr
+            std::cout << main_time << " MMIO: write id=" << id << " addr=" << std::hex << addr
                 << " len=" << len << " val=" << val << " op=" << op << std::endl;
 #endif
             op->id = id;
@@ -617,7 +617,7 @@ class EthernetTx {
                 COSIM_ETH_PROTO_D2N_OWN_NET;
 
 #ifdef ETH_DEBUG
-            std::cerr << "EthernetTx: packet len=" << std::hex << packet_len << " ";
+            std::cerr << main_time << " EthernetTx: packet len=" << std::hex << packet_len << " ";
             for (size_t i = 0; i < packet_len; i++) {
                 std::cerr << (unsigned) packet_buf[i] << " ";
             }
@@ -678,8 +678,8 @@ class EthernetRx {
             fifo_lens[fifo_pos_wr] = len;
 
 #ifdef ETH_DEBUG
-            std::cout << "rx into " << fifo_pos_wr << std::endl;
-            std::cerr << "EthernetRx: packet len=" << std::hex << len << " ";
+            std::cout << main_time << " rx into " << fifo_pos_wr << std::endl;
+            std::cerr << main_time << " EthernetRx: packet len=" << std::hex << len << " ";
             for (size_t i = 0; i < len; i++) {
                 std::cerr << (unsigned) fifo_bufs[fifo_pos_wr][i] << " ";
             }
@@ -699,7 +699,7 @@ class EthernetRx {
                 } else if (packet_off == fifo_lens[fifo_pos_rd]) {
                     // done with packet
 #ifdef ETH_DEBUG
-                    std::cerr << "EthernetRx: finished packet" << std::endl;
+                    std::cerr << main_time << " EthernetRx: finished packet" << std::endl;
 #endif
                     top.rx_axis_tvalid = 0;
                     top.rx_axis_tlast = 0;
@@ -710,7 +710,7 @@ class EthernetRx {
                 } else {
                     // put out more packet data
 #ifdef ETH_DEBUG
-                    std::cerr << "EthernetRx: push flit " << packet_off << std::endl;
+                    std::cerr << main_time << " EthernetRx: push flit " << packet_off << std::endl;
                     if (packet_off == 0)
                         std::cout << "rx from " << fifo_pos_rd << std::endl;
 #endif
@@ -851,7 +851,7 @@ void pci_msi_issue(uint8_t vec)
     volatile struct cosim_pcie_proto_d2h_interrupt *intr;
 
 #ifdef MSI_DEBUG
-    std::cerr << "MSI interrupt vec=" << (int) vec << std::endl;
+    std::cerr << main_time << " MSI interrupt vec=" << (int) vec << std::endl;
 #endif
 
     intr = &msg->interrupt;
@@ -870,7 +870,7 @@ static void msi_step(Vinterface &top, PCICoordinator &coord)
         return;
 
 #ifdef MSI_DEBUG
-    std::cerr << "msi_step: MSI interrupt raw vec=" << (int) top.msi_irq << std::endl;
+    std::cerr << main_time << " msi_step: MSI interrupt raw vec=" << (int) top.msi_irq << std::endl;
 #endif
     for (size_t i = 0; i < 32; i++) {
         if (!((1ULL << i) & top.msi_irq))

@@ -21,7 +21,7 @@ void DMAReader::step()
         pending.insert(op);
 
 #ifdef DMA_DEBUG
-        std::cout << "dma[" << label << "] op " << std::hex << op->dma_addr << " -> " <<
+        std::cout << main_time << " dma[" << label << "] op " << std::hex << op->dma_addr << " -> " <<
             op->ram_sel << ":" << op->ram_addr <<
             "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;
 #endif
@@ -71,7 +71,7 @@ void DMAWriter::step()
         pending.insert(op);
 
 #ifdef DMA_DEBUG
-        std::cout << "dma write [" << label << "] op " << std::hex << op->dma_addr << " -> " <<
+        std::cout << main_time << " dma write [" << label << "] op " << std::hex << op->dma_addr << " -> " <<
             op->ram_sel << ":" << op->ram_addr <<
             "   len=" << op->len << "   tag=" << (int) op->tag << std::endl;
 #endif
@@ -86,7 +86,7 @@ void DMAWriter::step()
         completed.pop_front();
 
 #ifdef DMA_DEBUG
-        std::cout << "dma write [" << label << "] status complete " << op->dma_addr << std::endl;
+        std::cout << main_time << " dma write [" << label << "] status complete " << op->dma_addr << std::endl;
 #endif
 
         p.dma_status_valid = 1;
@@ -100,7 +100,7 @@ void DMAWriter::step()
 void DMAWriter::pci_op_complete(DMAOp *op)
 {
 #ifdef DMA_DEBUG
-    std::cout << "dma write [" << label << "] pci complete " << op->dma_addr << std::endl;
+    std::cout << main_time << " dma write [" << label << "] pci complete " << op->dma_addr << std::endl;
 #endif
     completed.push_back(op);
 }
@@ -108,7 +108,7 @@ void DMAWriter::pci_op_complete(DMAOp *op)
 void DMAWriter::mem_op_complete(DMAOp *op)
 {
 #ifdef DMA_DEBUG
-    std::cout << "dma write [" << label << "] mem complete " << op->dma_addr << ": ";
+    std::cout << main_time << " dma write [" << label << "] mem complete " << op->dma_addr << ": ";
     for (size_t i = 0; i < op->len; i++)
         std::cout << (unsigned) op->data[i] << " ";
     std::cout << std::endl;
