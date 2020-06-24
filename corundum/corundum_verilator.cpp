@@ -1005,18 +1005,24 @@ int main(int argc, char *argv[])
             top->s_axis_data_dma_write_desc_status_tag,
             top->s_axis_data_dma_write_desc_status_valid);
 
-    PCICoordinator pci_coord;
-    MMIOInterface mmio(*top, pci_coord);
+    //PCICoordinator pci_coord;
+    PCICoordinator pci_coord_mmio;
+    PCICoordinator pci_coord_msi;
+    PCICoordinator pci_coord_rc;
+    PCICoordinator pci_coord_wc;
+    PCICoordinator pci_coord_rd;
+    PCICoordinator pci_coord_wd;
+    MMIOInterface mmio(*top, pci_coord_mmio);
 
     MemWriter mem_control_writer(p_mem_write_ctrl_dma);
     MemReader mem_control_reader(p_mem_read_ctrl_dma);
     MemWriter mem_data_writer(p_mem_write_data_dma);
     MemReader mem_data_reader(p_mem_read_data_dma);
 
-    DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer, pci_coord);
-    DMAWriter dma_write_ctrl("write ctrl", p_dma_write_ctrl, mem_control_reader, pci_coord);
-    DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer, pci_coord);
-    DMAWriter dma_write_data("write data", p_dma_write_data, mem_data_reader, pci_coord);
+    DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer, pci_coord_rc);
+    DMAWriter dma_write_ctrl("write ctrl", p_dma_write_ctrl, mem_control_reader, pci_coord_wc);
+    DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer, pci_coord_rd);
+    DMAWriter dma_write_data("write data", p_dma_write_data, mem_data_reader, pci_coord_wd);
 
     EthernetTx tx(*top);
     EthernetRx rx(*top);
@@ -1063,7 +1069,7 @@ int main(int argc, char *argv[])
         tx.step();
         rx.step();
 
-        msi_step(*top, pci_coord);
+        msi_step(*top, pci_coord_msi);
 
         /* raising edge */
         top->clk = !top->clk;
