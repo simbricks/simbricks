@@ -1,7 +1,7 @@
 #!/bin/bash
 
 average() {
-    awk '{s+=$1}END{print (NR?s/NR:"NaN")}'
+    awk '{s+=$1}END{printf ("%f", NR?s/NR:"NaN")}'
 }
 
 min() {
