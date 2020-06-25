@@ -15,6 +15,15 @@ GUESTS := \
 	gem5-nopaxos-replica-1-cp \
 	gem5-nopaxos-replica-2-cp \
 	gem5-nopaxos-client-cp \
+	qemu-vr-replica-0 \
+	qemu-vr-replica-1 \
+	qemu-vr-replica-2 \
+	qemu-vr-client \
+	gem5-vr-replica-0-cp \
+	gem5-vr-replica-1-cp \
+	gem5-vr-replica-2-cp \
+	gem5-vr-client-cp \
+
 
 EXPERIMENTS := \
     qemu-corundum-bm-pair \
