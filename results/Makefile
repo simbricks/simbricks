@@ -4,7 +4,7 @@ clean:
 	rm -rf build
 
 build/results.tex: build/loc_corundum_bm build/loc_corundum_verilator \
-    build/nopaxos_eval
+    build/nopaxos_eval build/vr_eval
 	@echo '%' This is generated with make in the results directory \
 	    of the ehsim repo >$@
 	cat $^ >>$@
@@ -21,3 +21,7 @@ build/loc_corundum_verilator: loccount_corundum_verilator.sh common-functions.sh
 build/nopaxos_eval: nopaxos_eval.sh common-functions.sh
 	@mkdir -p $(dir $@)
 	bash nopaxos_eval.sh >$@
+
+build/vr_eval: vr_eval.sh common-functions.sh
+	@mkdir -p $(dir $@)
+	bash vr_eval.sh >$@
