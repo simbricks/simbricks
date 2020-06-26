@@ -2,10 +2,26 @@ MQNICMOD := $(abspath ../images/mqnic/mqnic.ko)
 
 GUESTS := \
     qemu-pair-client \
+    qemu-pair-client-8-1 \
+    qemu-pair-client-8-2 \
+    qemu-pair-client-8-3 \
+    qemu-pair-client-8-4 \
+    qemu-pair-client-8-5 \
+    qemu-pair-client-8-6 \
+    qemu-pair-client-8-7 \
+    qemu-pair-client-8-8 \
     qemu-pair-server \
     gem5-pair-client \
     gem5-pair-server-cp \
     gem5-pair-client-cp \
+    gem5-pair-client-8-1 \
+    gem5-pair-client-8-2 \
+    gem5-pair-client-8-3 \
+    gem5-pair-client-8-4 \
+    gem5-pair-client-8-5 \
+    gem5-pair-client-8-6 \
+    gem5-pair-client-8-7 \
+    gem5-pair-client-8-8 \
 	qemu-nopaxos-replica-0 \
 	qemu-nopaxos-replica-1 \
 	qemu-nopaxos-replica-2 \
@@ -33,6 +49,11 @@ EXPERIMENTS := \
     qemu-ns3-bridge-pair \
     qemu-ns3-dumbbell-pair \
     gem5-kvm-ns3-dumbbell-pair \
+    gem5-kvm-corundum-verilator-pair \
+    gem5-timing-corundum-verilator-pair-udp \
+    gem5-timing-corundum-verilator-pair-largewin \
+    gem5-timing-corundum-verilator-pair-16f \
+
 
 REPLICATION ?= 1
 
