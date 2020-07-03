@@ -31,3 +31,49 @@ nopaxos_avglatencies() {
         grep "Average latency is" $f | sed 's/.*latency is \([0-9]*\) ns.*/\1/'
     done
 }
+
+
+iperf_tputs() {
+    for d in ../experiments/out/$1/*/
+    do
+        [ ! -d $d ] && continue
+
+        tputs="0"
+        for f in $d/qemu.*.log $d/gem5.*.log
+        do
+            [ ! -f $f ] && continue
+            [[ "`basename $f`" = *.a.log ]] && continue
+
+            tp="`grep -e '^\[SUM\]' $f | sed \
+                -e 's:.*Bytes\s*\([0-9\.]*\)\s*Kbits/sec:\1:' \
+                -e 's:.*Bytes\s*\([0-9\.]*\)\s*Mbits/sec:\1 * 1000:' \
+                -e 's:.*Bytes\s*\([0-9\.]*\)\s*Gbits/sec:\1 * 1000000:' | \
+                sed -e s///`"
+            [ "$tp" = "" ] && continue
+            tputs="$tputs + `echo \"scale=2; $tp\" | bc`"
+        done
+        echo "scale=2; $tputs" | bc
+    done
+}
+
+iperf_server_tputs() {
+    for d in ../experiments/out/$1/*/
+    do
+        [ ! -d $d ] && continue
+
+        tputs="0"
+        for f in $d/qemu.a.log $d/gem5.a.log
+        do
+            [ ! -f $f ] && continue
+
+            tp="`grep 'bits/sec' $f | sed \
+                -e 's:.*Bytes\s*\([0-9\.]*\)\s*Kbits/sec.*:\1:' \
+                -e 's:.*Bytes\s*\([0-9\.]*\)\s*Mbits/sec.*:\1 * 1000:' \
+                -e 's:.*Bytes\s*\([0-9\.]*\)\s*Gbits/sec.*:\1 * 1000000:' | \
+                sed -e s///`"
+            [ "$tp" = "" ] && continue
+            tputs="$tputs + `echo \"scale=2; $tp\" | bc`"
+        done
+        echo "scale=2; $tputs" | bc
+    done
+}
