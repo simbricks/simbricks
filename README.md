@@ -14,7 +14,27 @@ Code structure:
  - External dependencies for qemu: `libglib2.0-dev libpixman-1-dev`
  - External dependencies for gem5: `scons`
 
+Then build everything with:
+```
+make -j`nproc` all external build-images
+```
+
+# Running
+
+We use the scripts in the `experiments/` directory. `make` in that directory
+should run all the experiments for the paper. This will take a while (>>1h).
+While simulations can be run in parallel, some of them use a lot of core, and we
+currently don't have jobserver integration, so blindly running make with a high
+`-j` parameter here is a bad idea. You can run individual experiment (see
+`experiments/*` for their names) with `make out/$NAME/1/ready`, which will
+result in log files in `out/$NAME/1/`. Start with one of the qemu simulations.
+
 ## Running Qemu
+
+*These instructions apply only if you want to build and run qemu separately and
+are not necessary if built with `make external` and run with our experiments
+scripts.*
+
 1. Clone from here: `github.com:FreakyPenguin/qemu-cosim.git`
 2. Build with `./configure --target-list=x86_64-softmmu --disable-werror --extra-cflags="-I$PATH_TO_THIS_REPO/proto" --enable-cosim-pci`
 3. run dummy nic: `rm -rf /tmp/cosim-pci; ./dummy_nic`
@@ -32,6 +52,11 @@ x86_64-softmmu/qemu-system-x86_64 \
     * `for write: echo a | dd of=/sys/bus/pci/devices/0000\:00\:03.0/resource2 bs=1 seek=64 count=1`
 
 ## Running Gem5
+
+*These instructions apply only if you want to build and run gem5 separately and
+are not necessary if built with `make external` and run with our experiments
+scripts.*
+
 1. Clone from here: `git@github.com:nicklijl/gem5.git`
 2. Build with: `scons build/X86/gem5.opt -jX` (with `X` set to # cores)
 3. `echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid`
