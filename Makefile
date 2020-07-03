@@ -56,7 +56,7 @@ netsim_common/libnetsim_common.a:
 external: gem5/ready qemu/ready ns-3/ready
 
 gem5:
-	git clone git@github.com:nicklijl/gem5.git gem5
+	git clone git@github.com:FreakyPenguin/gem5-cosim.git gem5
 
 gem5/ready: gem5
 	+cd gem5 && scons build/X86/gem5.opt -j`nproc`
