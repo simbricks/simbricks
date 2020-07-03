@@ -22,6 +22,15 @@ GUESTS := \
     gem5-pair-client-8-6 \
     gem5-pair-client-8-7 \
     gem5-pair-client-8-8 \
+    gem5-pair-server-udp \
+    gem5-pair-client-udp-0m \
+    gem5-pair-client-udp-10m \
+    gem5-pair-client-udp-30m \
+    gem5-pair-client-udp-50m \
+    gem5-pair-client-udp-80m \
+    gem5-pair-client-udp-100m \
+    gem5-pair-client-udp-120m \
+    gem5-pair-client-udp-150m \
 	qemu-nopaxos-replica-0 \
 	qemu-nopaxos-replica-1 \
 	qemu-nopaxos-replica-2 \
@@ -40,8 +49,33 @@ GUESTS := \
 	gem5-vr-replica-2-cp \
 	gem5-vr-client-cp \
 
-
+# experiments we want for the paper
 EXPERIMENTS := \
+    qemu-ns3-nopaxos \
+    qemu-ns3-nopaxos-verilator \
+    gem5-timing-corundum-verilator-ns3-nopaxos-nocp \
+    gem5-timing-corundum-bm-ns3-nopaxos-nocp \
+    qemu-ns3-vr \
+    qemu-ns3-vr-verilator \
+    gem5-timing-corundum-verilator-ns3-vr-nocp \
+    gem5-timing-corundum-bm-ns3-vr-nocp \
+    qemu-corundum-bm-switched-1 \
+    qemu-corundum-bm-switched-8 \
+    qemu-corundum-verilator-switched-1 \
+    qemu-corundum-verilator-switched-8 \
+    gem5-timing-corundum-verilator-switched-1-nocp \
+    gem5-timing-corundum-verilator-switched-8-nocp \
+    gem5-timing-corundum-verilator-pair-udp-0m \
+    gem5-timing-corundum-verilator-pair-udp-10m \
+    gem5-timing-corundum-verilator-pair-udp-30m \
+    gem5-timing-corundum-verilator-pair-udp-50m \
+    gem5-timing-corundum-verilator-pair-udp-80m \
+    gem5-timing-corundum-verilator-pair-udp-100m \
+    gem5-timing-corundum-verilator-pair-udp-150m \
+
+# all experiments in repo
+ALL_EXPERIMENTS := \
+    $(EXPERIMENTS) \
     qemu-corundum-bm-pair \
     qemu-corundum-verilator-pair \
     gem5-kvm-corundum-bm-pair \
@@ -63,13 +97,15 @@ OUTDIR := out
 GUESTS_TARS := $(addprefix $(BUILDDIR)/,$(addsuffix .tar, $(GUESTS)))
 EXPERIMENTS_READY := $(addprefix $(OUTDIR)/,$(addsuffix /ready,$(EXPERIMENTS)))
 
-all: $(GUESTS_TARS) $(EXPERIMENTS_READY)
+all: guest-tars experiments
 
 clean:
 	rm -rf $(BUILDDIR) $(OUTDIR)
 
 #######################################
 # Running experiments
+
+experiments: $(EXPERIMENTS_READY)
 
 define run_experiment_repl
 $(OUTDIR)/%/$(1)/ready: experiments/%.sh $(GUESTS_TARS)
