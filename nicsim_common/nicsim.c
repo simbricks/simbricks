@@ -39,10 +39,10 @@
 #define H2D_ENUM 1024
 
 #define D2N_ELEN (2048 + 64)
-#define D2N_ENUM 1024
+#define D2N_ENUM 8192
 
 #define N2D_ELEN (2048 + 64)
-#define N2D_ENUM 1024
+#define N2D_ENUM 8192
 
 
 static uint8_t *d2h_queue;
@@ -184,7 +184,7 @@ int nicsim_init(struct nicsim_params *params,
     void *shmptr;
 
     /* ready in memory queues */
-    if ((shm_fd = shm_create(params->shm_path, 32 * 1024 * 1024, &shmptr))
+    if ((shm_fd = shm_create(params->shm_path, 64 * 1024 * 1024, &shmptr))
             < 0)
     {
 
