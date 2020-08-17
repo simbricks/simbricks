@@ -14,6 +14,7 @@ clean:
 	$(MAKE) -C net_wire/ clean
 	$(MAKE) -C nicsim_common/ clean
 	$(MAKE) -C netsim_common/ clean
+	$(MAKE) -C libnicbm/ clean
 
 help:
 	@echo "Targets:"
@@ -31,7 +32,7 @@ help:
 corundum/corundum_verilator: nicsim_common/libnicsim_common.a
 	$(MAKE) -C corundum/ all
 
-corundum_bm/corundum_bm: nicsim_common/libnicsim_common.a
+corundum_bm/corundum_bm: nicsim_common/libnicsim_common.a libnicbm/libnicbm.a
 	$(MAKE) -C corundum_bm/ all
 
 dummy_nic/dummy_nic: nicsim_common/libnicsim_common.a
@@ -49,6 +50,8 @@ nicsim_common/libnicsim_common.a:
 netsim_common/libnetsim_common.a:
 	$(MAKE) -C netsim_common/
 
+libnicbm/libnicbm.a:
+	$(MAKE) -C libnicbm
 
 ####################################
 # External dependencies
