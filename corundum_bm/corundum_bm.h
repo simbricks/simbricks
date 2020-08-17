@@ -3,6 +3,10 @@
 #include <list>
 #include <vector>
 #include <stdint.h>
+extern "C" {
+#include <cosim_pcie_proto.h>
+}
+#include <nicbm.h>
 
 typedef uint32_t reg_t;
 typedef uint64_t addr_t;
@@ -147,15 +151,16 @@ struct RxData {
 #define DMA_TYPE_RX_CPL 3
 #define DMA_TYPE_EVENT  4
 
-struct DMAOp {
+struct DMAOp : public nicbm::DMAOp {
+    DMAOp() {
+        data = databuf;
+    }
+
     uint8_t type;
-    addr_t dma_addr;
-    size_t len;
     DescRing *ring;
     RxData *rx_data;
     uint64_t tag;
-    bool write;
-    uint8_t data[MAX_DMA_LEN];
+    uint8_t databuf[MAX_DMA_LEN];
 };
 
 class DescRing {
@@ -288,14 +293,16 @@ private:
     bool _queueEnable;
 };
 
-class Corundum {
+class Corundum : public nicbm::SimpleDevice<reg_t> {
 public:
     Corundum();
     ~Corundum();
 
-    reg_t readReg(addr_t addr);
-    void writeReg(addr_t addr, reg_t val);
-    void rx(uint8_t port, RxData *rx_data);
+    virtual void setup_intro(struct cosim_pcie_proto_dev_intro &di);
+    virtual reg_t reg_read(uint8_t bar, addr_t addr);
+    virtual void reg_write(uint8_t bar, addr_t addr, reg_t val);
+    virtual void dma_complete(nicbm::DMAOp &op);
+    virtual void eth_rx(uint8_t port, const void *data, size_t len);
 
 private:
     EventRing eventRing;
