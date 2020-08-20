@@ -69,7 +69,7 @@ qemu:
 	git clone git@github.com:FreakyPenguin/qemu-cosim.git qemu
 
 qemu/ready: qemu
-	cd qemu && ./configure \
+	+cd qemu && ./configure \
 	    --target-list=x86_64-softmmu \
 	    --disable-werror \
 	    --extra-cflags="-I$(REPO_BASE)/proto" \
