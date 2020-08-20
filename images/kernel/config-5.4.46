@@ -1288,6 +1288,7 @@ CONFIG_NLMON=y
 # end of Distributed Switch Architecture drivers
 
 CONFIG_ETHERNET=y
+CONFIG_MDIO=y
 CONFIG_NET_VENDOR_3COM=y
 # CONFIG_VORTEX is not set
 # CONFIG_TYPHOON is not set
@@ -1327,9 +1328,9 @@ CONFIG_E1000E_HWTS=y
 # CONFIG_IGB is not set
 # CONFIG_IGBVF is not set
 # CONFIG_IXGB is not set
-# CONFIG_IXGBE is not set
+CONFIG_IXGBE=y
 # CONFIG_IXGBEVF is not set
-# CONFIG_I40E is not set
+CONFIG_I40E=y
 # CONFIG_I40EVF is not set
 # CONFIG_ICE is not set
 # CONFIG_FM10K is not set
@@ -1375,8 +1376,53 @@ CONFIG_E1000E_HWTS=y
 # CONFIG_FDDI is not set
 # CONFIG_HIPPI is not set
 # CONFIG_NET_SB1000 is not set
-# CONFIG_MDIO_DEVICE is not set
-# CONFIG_PHYLIB is not set
+CONFIG_MDIO_DEVICE=y
+CONFIG_MDIO_BUS=y
+# CONFIG_MDIO_BCM_UNIMAC is not set
+# CONFIG_MDIO_BITBANG is not set
+# CONFIG_MDIO_MSCC_MIIM is not set
+# CONFIG_MDIO_THUNDER is not set
+CONFIG_PHYLIB=y
+
+#
+# MII PHY device drivers
+#
+# CONFIG_ADIN_PHY is not set
+# CONFIG_AMD_PHY is not set
+# CONFIG_AQUANTIA_PHY is not set
+# CONFIG_AX88796B_PHY is not set
+# CONFIG_AT803X_PHY is not set
+# CONFIG_BCM7XXX_PHY is not set
+# CONFIG_BCM87XX_PHY is not set
+# CONFIG_BROADCOM_PHY is not set
+# CONFIG_CICADA_PHY is not set
+# CONFIG_CORTINA_PHY is not set
+# CONFIG_DAVICOM_PHY is not set
+# CONFIG_DP83822_PHY is not set
+# CONFIG_DP83TC811_PHY is not set
+# CONFIG_DP83848_PHY is not set
+# CONFIG_DP83867_PHY is not set
+# CONFIG_FIXED_PHY is not set
+# CONFIG_ICPLUS_PHY is not set
+# CONFIG_INTEL_XWAY_PHY is not set
+# CONFIG_LSI_ET1011C_PHY is not set
+# CONFIG_LXT_PHY is not set
+# CONFIG_MARVELL_PHY is not set
+# CONFIG_MARVELL_10G_PHY is not set
+# CONFIG_MICREL_PHY is not set
+# CONFIG_MICROCHIP_PHY is not set
+# CONFIG_MICROCHIP_T1_PHY is not set
+# CONFIG_MICROSEMI_PHY is not set
+# CONFIG_NATIONAL_PHY is not set
+# CONFIG_QSEMI_PHY is not set
+# CONFIG_REALTEK_PHY is not set
+# CONFIG_RENESAS_PHY is not set
+# CONFIG_ROCKCHIP_PHY is not set
+# CONFIG_SMSC_PHY is not set
+# CONFIG_STE10XP is not set
+# CONFIG_TERANETICS_PHY is not set
+# CONFIG_VITESSE_PHY is not set
+# CONFIG_XILINX_GMII2RGMII is not set
 # CONFIG_PPP is not set
 # CONFIG_SLIP is not set
 
