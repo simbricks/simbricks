@@ -130,6 +130,18 @@ run_corundum_bm() {
 
 # Args:
 #   - Instance name
+run_i40e_bm() {
+    echo Starting i40e $1
+    $EHSIM_BASE/i40e_bm/i40e_bm \
+        $OUTDIR/pci.$1 $OUTDIR/eth.$1 $OUTDIR/shm.$1 \
+        &>$OUTDIR/i40e_bm.$1.log &
+    pid=$!
+    ALL_PIDS="$ALL_PIDS $pid"
+    return $pid
+}
+
+# Args:
+#   - Instance name
 #   - sim instance 1
 #   - sim instance 2
 run_wire() {
