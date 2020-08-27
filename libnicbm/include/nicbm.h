@@ -8,14 +8,21 @@ extern "C" {
 
 static const size_t MAX_DMA_LEN = 2048;
 
-struct DMAOp {
-    bool write;
-    uint64_t dma_addr;
-    size_t len;
-    void *data;
+class DMAOp {
+    public:
+        virtual ~DMAOp() { }
+        bool write;
+        uint64_t dma_addr;
+        size_t len;
+        void *data;
 };
 
-
+/**
+ * The Runner drives the main simulation loop. It's initialized with a reference
+ * to a device it should manage, and then once `runMain` is called, it will
+ * start interacting with the PCI and Ethernet queue and forwarding calls to the
+ * device as needed.
+ * */
 class Runner {
     public:
         class Device {
@@ -73,7 +80,7 @@ class Runner {
     public:
         Runner(Device &dev_);
 
-        /** */
+        /** Run the simulation */
         int runMain(int argc, char *argv[]);
 
         /* these three are for `Runner::Device`. */
@@ -82,7 +89,9 @@ class Runner {
         void eth_send(const void *data, size_t len);
 };
 
-/* Very simple device that just has one register size */
+/**
+ * Very simple device that just has one register size.
+ */
 template <class TReg = uint32_t>
 class SimpleDevice : public Runner::Device {
     public:
