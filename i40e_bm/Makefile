@@ -1,0 +1,14 @@
+CPPFLAGS += -I../nicsim_common/include -I../proto
+CPPFLAGS += -I../libnicbm/include/
+CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -g
+LDFLGAS = -g
+
+OBJS := i40e_bm.o i40e_queues.o
+
+all: i40e_bm
+
+i40e_bm: $(OBJS) ../libnicbm/libnicbm.a ../nicsim_common/libnicsim_common.a
+i40e_bm: CC=$(CXX)
+
+clean:
+	rm -f *.o i40e_bm
