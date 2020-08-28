@@ -255,6 +255,11 @@ void Runner::poll_n2d()
     nicif_n2d_next();
 }
 
+uint64_t Runner::time_ps() const
+{
+    return main_time;
+}
+
 Runner::Runner(Device &dev_)
     : dev(dev_)
 {

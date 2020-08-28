@@ -87,6 +87,8 @@ class Runner {
         void issue_dma(DMAOp &op);
         void msi_issue(uint8_t vec);
         void eth_send(const void *data, size_t len);
+
+        uint64_t time_ps() const;
 };
 
 /**
