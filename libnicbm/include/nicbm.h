@@ -63,6 +63,7 @@ class Runner {
 
     protected:
         Device &dev;
+        uint64_t mac_addr;
         struct nicsim_params nsparams;
 
         volatile union cosim_pcie_proto_d2h *d2h_alloc(void);
@@ -89,6 +90,7 @@ class Runner {
         void eth_send(const void *data, size_t len);
 
         uint64_t time_ps() const;
+        uint64_t get_mac_addr() const;
 };
 
 /**

@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <cassert>
+#include <ctime>
+#include <iostream>
 
 #include <nicbm.h>
 
@@ -260,9 +262,22 @@ uint64_t Runner::time_ps() const
     return main_time;
 }
 
+uint64_t Runner::get_mac_addr() const
+{
+    return mac_addr;
+}
+
 Runner::Runner(Device &dev_)
     : dev(dev_)
 {
+    //mac_addr = lrand48() & ~(3ULL << 46);
+    srand48(time(NULL) ^ getpid());
+    mac_addr = lrand48();
+    mac_addr <<= 16;
+    mac_addr ^= lrand48();
+    mac_addr &= ~(3ULL << 40);
+
+    std::cerr << std::hex << mac_addr << std::endl;
 }
 
 int Runner::runMain(int argc, char *argv[])
