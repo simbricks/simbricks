@@ -8,7 +8,7 @@
 
 #include <nicbm.h>
 
-//#define DEBUG_NICBM 1
+#define DEBUG_NICBM 1
 
 #define SYNC_PERIOD (500 * 1000ULL) // 500ns
 #define PCI_LATENCY (500 * 1000ULL) // 500ns

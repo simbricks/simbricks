@@ -62,7 +62,7 @@ run_qemu() {
         -drive file=$img_a,if=ide,index=0 \
         -drive file=$img_b,if=ide,index=1,driver=raw \
         -kernel $QEMU_KERNEL \
-        -append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 init=/home/ubuntu/guestinit.sh rw" \
+        -append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 init=/home/ubuntu/guestinit.sh i40e.debug=0x8fffffff rw" \
         -serial mon:stdio -m $((4 * 1024)) -smp 1 -display none -enable-kvm \
         -nic none \
         -chardev socket,path=$pcisock,id=cosimcd \

@@ -8,6 +8,8 @@ extern "C" {
 }
 #include <nicbm.h>
 
+struct i40e_aq_desc;
+
 namespace i40e {
 
 class i40e_bm;
@@ -40,6 +42,17 @@ class queue_base {
                 virtual void done();
         };
 
+        class dma_data_wb : public dma_base {
+            protected:
+                queue_base &queue;
+                dma_wb &desc_dma;
+            public:
+                uint32_t index;
+                dma_data_wb(queue_base &queue_, size_t len, dma_wb &desc_dma_);
+                virtual ~dma_data_wb();
+                virtual void done();
+        };
+
         uint64_t base;
         uint32_t len;
         uint32_t fetch_head;
@@ -51,6 +64,8 @@ class queue_base {
 
         void trigger_fetch();
         void desc_writeback(const void *desc, uint32_t idx);
+        void desc_writeback_indirect(const void *desc, uint32_t idx,
+                uint64_t data_addr, const void *data, size_t data_len);
 
         /** called when a descriptor is fetched */
         virtual void desc_fetched(void *desc, uint32_t idx) = 0;
@@ -66,6 +81,17 @@ class queue_admin_tx : public queue_base {
     protected:
         i40e_bm &dev;
 
+        // prepare completion descriptor (fills flags, and return value)
+        void desc_compl_prepare(struct i40e_aq_desc *d, uint16_t retval,
+                uint16_t extra_flags);
+
+        // complete direct response
+        void desc_complete(struct i40e_aq_desc *d, uint32_t idx,
+                uint16_t retval, uint16_t extra_flags = 0);
+        // complete indirect response
+        void desc_complete_indir(struct i40e_aq_desc *d, uint32_t idx,
+                uint16_t retval, const void *data, size_t len,
+                uint16_t extra_flags = 0);
         virtual void desc_fetched(void *desc, uint32_t idx);
 
         uint64_t &reg_base;

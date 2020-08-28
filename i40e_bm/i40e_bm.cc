@@ -428,6 +428,12 @@ uint16_t shadow_ram::read(uint16_t addr)
         case I40E_SR_BOOT_CONFIG_PTR:
              return 0;
 
+        case I40E_SR_NVM_CONTROL_WORD:
+             return (1 << I40E_SR_CONTROL_WORD_1_SHIFT);
+
+        case I40E_SR_SW_CHECKSUM_WORD:
+             return 0xbaba;
+
         default:
              std::cerr << "TODO shadow memory read addr=" << std::hex << addr
                  << std::endl;
