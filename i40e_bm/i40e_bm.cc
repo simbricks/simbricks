@@ -172,6 +172,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = regs.glgen_rstctl;
                 break;
 
+            case I40E_GLVFGEN_TIMER:
+                val = runner->time_ps() / 1000000;
+                break;
+
             case I40E_PFINT_LNKLST0:
                 val = regs.pfint_lnklst0;
                 break;
@@ -214,6 +218,30 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = regs.gllan_rctl_0;
                 break;
 
+
+            case I40E_GLHMC_LANTXOBJSZ:
+                val = 7; // 128 B
+                break;
+
+            case I40E_GLHMC_LANQMAX:
+                val = NUM_QUEUES;
+                break;
+            case I40E_GLHMC_LANRXOBJSZ:
+                val = 5; // 32 B
+                break;
+
+            case I40E_GLHMC_FCOEMAX:
+                val = 0;
+                break;
+            case I40E_GLHMC_FCOEDDPOBJSZ:
+                val = 0;
+                break;
+            case I40E_GLHMC_FCOEFMAX:
+                val = 0;
+                break;
+            case I40E_GLHMC_FCOEFOBJSZ:
+                val = 0;
+                break;
 
             case I40E_PF_ATQBAL:
                 val = regs.pf_atqba;
