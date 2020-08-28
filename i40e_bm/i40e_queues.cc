@@ -253,6 +253,43 @@ void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
             d->datalen = sizeof(caps);
             desc_complete(d, idx, I40E_AQ_RC_ENOMEM);
         }
+    } else if (d->opcode == i40e_aqc_opc_lldp_stop) {
+        std::cerr << "    lldp stop" << std::endl;
+        desc_complete(d, idx, 0);
+    } else if (d->opcode == i40e_aqc_opc_mac_address_read) {
+        std::cerr << "    read mac" << std::endl;
+        struct i40e_aqc_mac_address_read *ar =
+            reinterpret_cast<struct i40e_aqc_mac_address_read *>(
+                    d->params.raw);
+
+        struct i40e_aqc_mac_address_read_data ard;
+        uint64_t mac = runner->get_mac_addr();
+        std::cerr << "      mac = " << mac << std::endl;
+        memcpy(ard.pf_lan_mac, &mac, 6);
+        memcpy(ard.port_mac, &mac, 6);
+
+        ar->command_flags = I40E_AQC_LAN_ADDR_VALID | I40E_AQC_PORT_ADDR_VALID;
+        desc_complete_indir(d, idx, 0, &ard, sizeof(ard));
+    } else if (d->opcode == i40e_aqc_opc_get_link_status) {
+        std::cerr << "    link status" << std::endl;
+        struct i40e_aqc_get_link_status *gls =
+            reinterpret_cast<struct i40e_aqc_get_link_status *>(
+                    d->params.raw);
+
+        gls->command_flags &= I40E_AQ_LSE_IS_ENABLED; // should actually return
+                                                      // status of link status
+                                                      // notification
+        gls->phy_type = I40E_PHY_TYPE_40GBASE_CR4_CU;
+        gls->link_speed = I40E_LINK_SPEED_40GB;
+        gls->link_info = I40E_AQ_LINK_UP_FUNCTION | I40E_AQ_LINK_UP_PORT |
+            I40E_AQ_MEDIA_AVAILABLE | I40E_AQ_SIGNAL_DETECT;
+        gls->an_info = I40E_AQ_AN_COMPLETED | I40E_AQ_LP_AN_ABILITY; // might need qualified module
+        gls->ext_info = 0;
+        gls->loopback = I40E_AQ_LINK_POWER_CLASS_4 << I40E_AQ_PWR_CLASS_SHIFT_LB;
+        gls->max_frame_size = dev.MAX_MTU;
+        gls->config = I40E_AQ_CONFIG_CRC_ENA;
+
+        desc_complete(d, idx, 0);
     } else {
         std::cerr << "    uknown opcode=" << d->opcode << std::endl;
         desc_complete(d, idx, I40E_AQ_RC_ESRCH);
