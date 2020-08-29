@@ -275,7 +275,7 @@ Runner::Runner(Device &dev_)
     mac_addr = lrand48();
     mac_addr <<= 16;
     mac_addr ^= lrand48();
-    mac_addr &= ~(3ULL << 40);
+    mac_addr &= ~3ULL;
 
     std::cerr << std::hex << mac_addr << std::endl;
 }
