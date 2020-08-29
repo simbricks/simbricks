@@ -290,6 +290,96 @@ void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
         gls->config = I40E_AQ_CONFIG_CRC_ENA;
 
         desc_complete(d, idx, 0);
+    } else if (d->opcode == i40e_aqc_opc_get_switch_config) {
+        std::cerr << "    get switch config" << std::endl;
+        struct i40e_aqc_switch_seid *sw = reinterpret_cast<
+            struct i40e_aqc_switch_seid *>(d->params.raw);
+        struct i40e_aqc_get_switch_config_header_resp hr;
+        struct i40e_aqc_switch_config_element_resp els[] = {
+            // MAC
+            { I40E_AQ_SW_ELEM_TYPE_MAC, I40E_AQ_SW_ELEM_REV_1, 1, 0, 0, {},
+                I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
+            // VSI
+            { I40E_AQ_SW_ELEM_TYPE_VSI, I40E_AQ_SW_ELEM_REV_1, 2, 1, 3, {},
+                I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
+            // PF
+            { I40E_AQ_SW_ELEM_TYPE_PF, I40E_AQ_SW_ELEM_REV_1, 3, 2, 0, {},
+                I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
+        };
+
+        // find start idx
+        size_t cnt = sizeof(els) / sizeof(els[0]);
+        size_t first = 0;
+        for (first = 0; first < cnt && els[first].seid < sw->seid; first++);
+
+        // figure out how many fit in the buffer
+        size_t max = (d->datalen - sizeof(hr)) / sizeof(els[0]);
+        size_t report = cnt - first;
+        if (report > max) {
+            report = max;
+            sw->seid = els[first + report].seid;
+        } else {
+            sw->seid = 0;
+        }
+
+        // prepare header
+        memset(&hr, 0, sizeof(hr));
+        hr.num_reported = report;
+        hr.num_total = cnt;
+
+        // create temporary contiguous buffer
+        size_t buflen = sizeof(hr) + sizeof(els[0]) * report;
+        uint8_t buf[buflen];
+        memcpy(buf, &hr, sizeof(hr));
+        memcpy(buf + sizeof(hr), els + first, sizeof(els[0]) * report);
+
+        desc_complete_indir(d, idx, 0, buf, buflen);
+    } else if (d->opcode == i40e_aqc_opc_set_switch_config) {
+        std::cerr << "    set switch config" << std::endl;
+        /* TODO: lots of interesting things here like l2 filtering etc. that are
+         * relevant.
+        struct i40e_aqc_set_switch_config *sc =
+            reinterpret_cast<struct i40e_aqc_set_switch_config *>(
+                    d->params.raw);
+        */
+        desc_complete(d, idx, 0);
+    } else if (d->opcode == i40e_aqc_opc_get_vsi_parameters) {
+        std::cerr << "    get vsi parameters" << std::endl;
+        struct i40e_aqc_add_get_update_vsi *v =
+            reinterpret_cast<struct i40e_aqc_add_get_update_vsi *>(
+                    d->params.raw);
+
+        struct i40e_aqc_vsi_properties_data pd;
+        memset(&pd, 0, sizeof(pd));
+        pd.valid_sections |= I40E_AQ_VSI_PROP_SWITCH_VALID |
+            I40E_AQ_VSI_PROP_QUEUE_MAP_VALID |
+            I40E_AQ_VSI_PROP_QUEUE_OPT_VALID |
+            I40E_AQ_VSI_PROP_SCHED_VALID;
+        desc_complete_indir(d, idx, 0, &pd, sizeof(pd));
+    } else if (d->opcode == i40e_aqc_opc_update_vsi_parameters) {
+        std::cerr << "    update vsi parameters" << std::endl;
+        /* TODO */
+        desc_complete(d, idx, 0);
+    /*} else if (d->opcode == i40e_aqc_opc_remove_macvlan) { std::cerr << "    remove macvlan" << std::endl;*/
+    } else if (d->opcode == i40e_aqc_opc_set_dcb_parameters) {
+        std::cerr << "    set dcb parameters" << std::endl;
+        /* TODO */
+        desc_complete(d, idx, 0);
+    } else if (d->opcode == i40e_aqc_opc_configure_vsi_bw_limit) {
+        std::cerr << "    configure vsi bw limit" << std::endl;
+        desc_complete(d, idx, 0);
+    } else if (d->opcode == i40e_aqc_opc_query_vsi_bw_config) {
+        struct i40e_aqc_query_vsi_bw_config_resp bwc;
+        memset(&bwc, 0, sizeof(bwc));
+        for (size_t i = 0; i < 8; i++)
+            bwc.qs_handles[i] = 0xffff;
+        desc_complete_indir(d, idx, 0, &bwc, sizeof(bwc));
+    } else if (d->opcode == i40e_aqc_opc_query_vsi_ets_sla_config) {
+        struct i40e_aqc_query_vsi_ets_sla_config_resp sla;
+        memset(&sla, 0, sizeof(sla));
+        for (size_t i = 0; i < 8; i++)
+            sla.share_credits[i] = 127;
+        desc_complete_indir(d, idx, 0, &sla, sizeof(sla));
     } else {
         std::cerr << "    uknown opcode=" << d->opcode << std::endl;
         desc_complete(d, idx, I40E_AQ_RC_ESRCH);
