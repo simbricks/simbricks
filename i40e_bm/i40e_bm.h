@@ -92,6 +92,11 @@ class queue_admin_tx : public queue_base {
         void desc_complete_indir(struct i40e_aq_desc *d, uint32_t idx,
                 uint16_t retval, const void *data, size_t len,
                 uint16_t extra_flags = 0);
+
+        // run command
+        virtual void cmd_run(void *desc, uint32_t idx, void *data);
+
+        // called by base class when a descriptor has been fetched
         virtual void desc_fetched(void *desc, uint32_t idx);
 
         uint64_t &reg_base;

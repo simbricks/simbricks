@@ -54,7 +54,7 @@ void queue_admin_tx::desc_complete_indir(struct i40e_aq_desc *d, uint32_t idx,
 
 }
 
-void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
+void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
 {
     struct i40e_aq_desc *d = reinterpret_cast<struct i40e_aq_desc *>(desc);
 
@@ -251,6 +251,11 @@ void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
         std::cerr << "    uknown opcode=" << d->opcode << std::endl;
         desc_complete(d, idx, I40E_AQ_RC_ESRCH);
     }
+}
+
+void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
+{
+    cmd_run(desc, idx, nullptr);
 }
 
 void queue_admin_tx::reg_updated()
