@@ -241,7 +241,8 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = 0;
                 break;
             case I40E_GLHMC_FCOEFMAX:
-                val = 0;
+                // needed to make linux driver happy
+                val = 0x1000 << I40E_GLHMC_FCOEFMAX_PMFCOEFMAX_SHIFT;
                 break;
             case I40E_GLHMC_FCOEFOBJSZ:
                 val = 0;
