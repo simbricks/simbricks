@@ -227,7 +227,6 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         std::cerr << "    update vsi parameters" << std::endl;
         /* TODO */
         desc_complete(d, idx, 0);
-    /*} else if (d->opcode == i40e_aqc_opc_remove_macvlan) { std::cerr << "    remove macvlan" << std::endl;*/
     } else if (d->opcode == i40e_aqc_opc_set_dcb_parameters) {
         std::cerr << "    set dcb parameters" << std::endl;
         /* TODO */
@@ -236,17 +235,30 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         std::cerr << "    configure vsi bw limit" << std::endl;
         desc_complete(d, idx, 0);
     } else if (d->opcode == i40e_aqc_opc_query_vsi_bw_config) {
+        std::cerr << "    query vsi bw config" << std::endl;
         struct i40e_aqc_query_vsi_bw_config_resp bwc;
         memset(&bwc, 0, sizeof(bwc));
         for (size_t i = 0; i < 8; i++)
             bwc.qs_handles[i] = 0xffff;
         desc_complete_indir(d, idx, 0, &bwc, sizeof(bwc));
     } else if (d->opcode == i40e_aqc_opc_query_vsi_ets_sla_config) {
+        std::cerr << "    query vsi ets sla config" << std::endl;
         struct i40e_aqc_query_vsi_ets_sla_config_resp sla;
         memset(&sla, 0, sizeof(sla));
         for (size_t i = 0; i < 8; i++)
             sla.share_credits[i] = 127;
         desc_complete_indir(d, idx, 0, &sla, sizeof(sla));
+    } else if (d->opcode == i40e_aqc_opc_remove_macvlan) {
+        std::cerr << "    remove macvlan" << std::endl;
+        struct i40e_aqc_macvlan *m = reinterpret_cast<
+            struct i40e_aqc_macvlan *>(d->params.raw);
+        struct i40e_aqc_remove_macvlan_element_data *rve =
+            reinterpret_cast<struct i40e_aqc_remove_macvlan_element_data *>(
+                    data);
+        for (uint16_t i = 0; i < m->num_addresses; i++)
+            rve[i].error_code = I40E_AQC_REMOVE_MACVLAN_SUCCESS;
+
+        desc_complete_indir(d, idx, 0, data, d->datalen);
     } else {
         std::cerr << "    uknown opcode=" << d->opcode << std::endl;
         desc_complete(d, idx, I40E_AQ_RC_ESRCH);
