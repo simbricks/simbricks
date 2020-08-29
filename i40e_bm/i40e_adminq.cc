@@ -255,7 +255,21 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
 
 void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
 {
-    cmd_run(desc, idx, nullptr);
+    struct i40e_aq_desc *d = reinterpret_cast<struct i40e_aq_desc *>(desc);
+    if ((d->flags & I40E_AQ_FLAG_RD)) {
+        uint64_t addr = d->params.external.addr_low |
+            (((uint64_t) d->params.external.addr_high) << 32);
+        std::cerr << "  desc with buffer opc=" << d->opcode << " addr=" << addr
+            << std::endl;
+        data_fetch(desc, idx, addr, d->datalen);
+    } else {
+        cmd_run(desc, idx, nullptr);
+    }
+}
+
+void queue_admin_tx::data_fetched(void *desc, uint32_t idx, void *data)
+{
+    cmd_run(desc, idx, data);
 }
 
 void queue_admin_tx::reg_updated()

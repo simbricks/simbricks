@@ -36,6 +36,20 @@ void queue_base::trigger_fetch()
     fetch_head = (fetch_head + 1) % len;
 }
 
+void queue_base::data_fetch(const void *desc, uint32_t idx, uint64_t addr,
+        size_t len)
+{
+    dma_data_fetch *dma = new dma_data_fetch(*this, len, desc, desc_len);
+    dma->write = false;
+    dma->dma_addr = addr;
+    dma->index = idx;
+
+    std::cerr << "fetching data idx=" << idx << " addr=" << addr << " len=" <<
+        len << std::endl;
+    std::cerr << "dma = " << dma << std::endl;
+    runner->issue_dma(*dma);
+}
+
 void queue_base::reg_updated()
 {
     if (!enabled)
@@ -100,6 +114,29 @@ void queue_base::dma_fetch::done()
     delete this;
 }
 
+queue_base::dma_data_fetch::dma_data_fetch(queue_base &queue_, size_t len_,
+        const void *desc_, size_t desc_len)
+    :queue(queue_)
+{
+    uint8_t *buf = new uint8_t[desc_len + len_];
+
+    desc = buf;
+    memcpy(desc, desc_, desc_len);
+
+    data = buf + desc_len;
+    len = len_;
+}
+
+queue_base::dma_data_fetch::~dma_data_fetch()
+{
+    delete[] ((uint8_t *) desc);
+}
+
+void queue_base::dma_data_fetch::done()
+{
+    queue.data_fetched(desc, index, data);
+    delete this;
+}
 
 queue_base::dma_wb::dma_wb(queue_base &queue_, size_t len_)
     : queue(queue_)

@@ -32,6 +32,18 @@ class queue_base {
                 virtual void done();
         };
 
+        class dma_data_fetch : public dma_base {
+            protected:
+                queue_base &queue;
+            public:
+                uint32_t index;
+                void *desc;
+                dma_data_fetch(queue_base &queue_, size_t len, const void *desc,
+                        size_t desc_len);
+                virtual ~dma_data_fetch();
+                virtual void done();
+        };
+
         class dma_wb : public dma_base {
             protected:
                 queue_base &queue;
@@ -63,12 +75,15 @@ class queue_base {
         size_t desc_len;
 
         void trigger_fetch();
+        void data_fetch(const void *desc, uint32_t idx, uint64_t addr, size_t len);
         void desc_writeback(const void *desc, uint32_t idx);
         void desc_writeback_indirect(const void *desc, uint32_t idx,
                 uint64_t data_addr, const void *data, size_t data_len);
 
-        /** called when a descriptor is fetched */
+        // called when a descriptor is fetched
         virtual void desc_fetched(void *desc, uint32_t idx) = 0;
+        // called when data is fetched
+        virtual void data_fetched(void *desc, uint32_t idx, void *data) = 0;
         virtual void desc_written_back(uint32_t idx);
 
     public:
@@ -98,6 +113,8 @@ class queue_admin_tx : public queue_base {
 
         // called by base class when a descriptor has been fetched
         virtual void desc_fetched(void *desc, uint32_t idx);
+        // called by basee class when data for a descriptor has been fetched
+        virtual void data_fetched(void *desc, uint32_t idx, void *data);
 
         uint64_t &reg_base;
         uint32_t &reg_len;
