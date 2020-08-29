@@ -153,6 +153,8 @@ protected:
         uint32_t pf_arqlen;
         uint32_t pf_arqh;
         uint32_t pf_arqt;
+
+        uint32_t glqf_hkey[13];
     };
 
 public:

@@ -138,7 +138,11 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
     } else if (addr >= I40E_QRX_ENA(0) &&
             addr <= I40E_QRX_ENA(NUM_QUEUES - 1))
     {
-        val = regs.qrx_ena[(addr - I40E_QRX_ENA(0)) / 4] = val;
+        val = regs.qrx_ena[(addr - I40E_QRX_ENA(0)) / 4];
+    } else if (addr >= I40E_GLQF_HKEY(0) &&
+            addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
+    {
+        val = regs.glqf_hkey[(addr - I40E_GLQF_HKEY(0)) / 4];
     } else {
 
         switch (addr) {
@@ -319,6 +323,10 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
             addr <= I40E_QRX_ENA(NUM_QUEUES - 1))
     {
         regs.qrx_ena[(addr - I40E_QRX_ENA(0)) / 4] = val;
+    } else if (addr >= I40E_GLQF_HKEY(0) &&
+            addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
+    {
+        regs.glqf_hkey[(addr - I40E_GLQF_HKEY(0)) / 4] = val;
     } else {
         switch (addr) {
             case I40E_PFGEN_CTRL:
