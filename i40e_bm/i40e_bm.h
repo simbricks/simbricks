@@ -124,6 +124,26 @@ class queue_admin_tx : public queue_base {
         void reg_updated();
 };
 
+// host memory cache
+class host_mem_cache {
+    protected:
+        static const uint16_t MAX_SEGMENTS = 0x1000;
+
+        struct segment {
+            uint64_t pdir_addr;
+            uint16_t pgcount;
+            bool valid;
+            bool direct;
+        };
+
+        i40e_bm &dev;
+        segment segs[MAX_SEGMENTS];
+    public:
+        host_mem_cache(i40e_bm &dev);
+        void reg_updated(uint64_t addr);
+};
+
+
 class shadow_ram {
     protected:
         i40e_bm &dev;
@@ -166,6 +186,13 @@ protected:
         uint32_t qint_rqctl[NUM_QUEUES];
         uint32_t qrx_ena[NUM_QUEUES];
 
+        uint32_t pfhmc_sdcmd;
+        uint32_t pfhmc_sddatalow;
+        uint32_t pfhmc_sddatahigh;
+        uint32_t pfhmc_pdinv;
+        uint32_t pfhmc_errorinfo;
+        uint32_t pfhmc_errordata;
+
         uint64_t pf_atqba;
         uint32_t pf_atqlen;
         uint32_t pf_atqh;
@@ -195,6 +222,7 @@ public:
 protected:
     i40e_regs regs;
     queue_admin_tx pf_atq;
+    host_mem_cache hmc;
     shadow_ram shram;
 
     /** Read from the I/O bar */

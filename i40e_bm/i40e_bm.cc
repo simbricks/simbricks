@@ -13,7 +13,7 @@ namespace i40e {
 
 i40e_bm::i40e_bm()
     : pf_atq(*this, regs.pf_atqba, regs.pf_atqlen, regs.pf_atqh, regs.pf_atqt),
-    shram(*this)
+    hmc(*this), shram(*this)
 {
     memset(&regs, 0, sizeof(regs));
 }
@@ -248,6 +248,25 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = 0;
                 break;
 
+            case I40E_PFHMC_SDCMD:
+                val = regs.pfhmc_sdcmd;
+                break;
+            case I40E_PFHMC_SDDATALOW:
+                val = regs.pfhmc_sddatalow;
+                break;
+            case I40E_PFHMC_SDDATAHIGH:
+                val = regs.pfhmc_sddatahigh;
+                break;
+            case I40E_PFHMC_PDINV:
+                val = regs.pfhmc_pdinv;
+                break;
+            case I40E_PFHMC_ERRORINFO:
+                val = regs.pfhmc_errorinfo;
+                break;
+            case I40E_PFHMC_ERRORDATA:
+                val = regs.pfhmc_errordata;
+                break;
+
             case I40E_PF_ATQBAL:
                 val = regs.pf_atqba;
                 break;
@@ -363,6 +382,23 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
 
             case I40E_PFINT_ICR0_ENA:
                 regs.pfint_icr0_ena = val;
+                break;
+
+            case I40E_PFHMC_SDCMD:
+                regs.pfhmc_sdcmd = val;
+                hmc.reg_updated(addr);
+                break;
+            case I40E_PFHMC_SDDATALOW:
+                regs.pfhmc_sddatalow = val;
+                hmc.reg_updated(addr);
+                break;
+            case I40E_PFHMC_SDDATAHIGH:
+                regs.pfhmc_sddatahigh = val;
+                hmc.reg_updated(addr);
+                break;
+            case I40E_PFHMC_PDINV:
+                regs.pfhmc_pdinv = val;
+                hmc.reg_updated(addr);
                 break;
 
             case I40E_PF_ATQBAL:
