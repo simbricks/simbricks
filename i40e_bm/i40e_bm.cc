@@ -13,7 +13,7 @@ namespace i40e {
 
 i40e_bm::i40e_bm()
     : pf_atq(*this, regs.pf_atqba, regs.pf_atqlen, regs.pf_atqh, regs.pf_atqt),
-    hmc(*this), shram(*this)
+    hmc(*this), shram(*this), lanmgr(*this, NUM_QUEUES)
 {
     memset(&regs, 0, sizeof(regs));
 }
@@ -342,11 +342,15 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
     } else if (addr >= I40E_QTX_ENA(0) &&
             addr <= I40E_QTX_ENA(NUM_QUEUES - 1))
     {
-        regs.qtx_ena[(addr - I40E_QTX_ENA(0)) / 4] = val;
+        size_t idx = (addr - I40E_QTX_ENA(0)) / 4;
+        regs.qtx_ena[idx] = val;
+        lanmgr.qena_updated(idx, false);
     } else if (addr >= I40E_QTX_TAIL(0) &&
             addr <= I40E_QTX_TAIL(NUM_QUEUES - 1))
     {
-        regs.qtx_tail[(addr - I40E_QTX_TAIL(0)) / 4] = val;
+        size_t idx = (addr - I40E_QTX_TAIL(0)) / 4;
+        regs.qtx_tail[idx] = val;
+        lanmgr.tail_updated(idx, false);
     } else if (addr >= I40E_QINT_RQCTL(0) &&
             addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1))
     {
@@ -354,11 +358,15 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
     } else if (addr >= I40E_QRX_ENA(0) &&
             addr <= I40E_QRX_ENA(NUM_QUEUES - 1))
     {
-        regs.qrx_ena[(addr - I40E_QRX_ENA(0)) / 4] = val;
+        size_t idx = (addr - I40E_QRX_ENA(0)) / 4;
+        regs.qrx_ena[idx] = val;
+        lanmgr.qena_updated(idx, true);
     } else if (addr >= I40E_QRX_TAIL(0) &&
             addr <= I40E_QRX_TAIL(NUM_QUEUES - 1))
     {
-        regs.qrx_tail[(addr - I40E_QRX_TAIL(0)) / 4] = val;
+        size_t idx = (addr - I40E_QRX_TAIL(0)) / 4;
+        regs.qrx_tail[idx] = val;
+        lanmgr.tail_updated(idx, true);
     } else if (addr >= I40E_GLQF_HKEY(0) &&
             addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
     {

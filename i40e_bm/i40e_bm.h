@@ -152,6 +152,16 @@ class host_mem_cache {
         void issue_mem_op(mem_op &op);
 };
 
+// rx tx management
+class lan {
+    protected:
+        i40e_bm &dev;
+        const size_t num_qs;
+    public:
+        lan(i40e_bm &dev, size_t num_qs);
+        void qena_updated(uint16_t idx, bool rx);
+        void tail_updated(uint16_t idx, bool rx);
+};
 
 class shadow_ram {
     protected:
@@ -166,8 +176,9 @@ class shadow_ram {
 
 class i40e_bm : public nicbm::Runner::Device {
 protected:
-    friend class shadow_ram;
     friend class queue_admin_tx;
+    friend class host_mem_cache;
+    friend class shadow_ram;
 
     static const unsigned BAR_REGS = 0;
     static const unsigned BAR_IO = 2;
@@ -235,6 +246,7 @@ protected:
     queue_admin_tx pf_atq;
     host_mem_cache hmc;
     shadow_ram shram;
+    lan lanmgr;
 
     /** Read from the I/O bar */
     virtual uint32_t reg_io_read(uint64_t addr);
