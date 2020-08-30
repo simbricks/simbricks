@@ -130,7 +130,7 @@ class host_mem_cache {
         static const uint16_t MAX_SEGMENTS = 0x1000;
 
         struct segment {
-            uint64_t pdir_addr;
+            uint64_t addr;
             uint16_t pgcount;
             bool valid;
             bool direct;
@@ -138,9 +138,18 @@ class host_mem_cache {
 
         i40e_bm &dev;
         segment segs[MAX_SEGMENTS];
+
     public:
+        class mem_op : public dma_base {
+            public:
+                bool failed;
+        };
+
         host_mem_cache(i40e_bm &dev);
         void reg_updated(uint64_t addr);
+
+        // issue a hmc memory operation (address is in the context
+        void issue_mem_op(mem_op &op);
 };
 
 
