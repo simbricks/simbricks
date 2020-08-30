@@ -192,8 +192,10 @@ protected:
 
         uint32_t qint_tqctl[NUM_QUEUES];
         uint32_t qtx_ena[NUM_QUEUES];
+        uint32_t qtx_tail[NUM_QUEUES];
         uint32_t qint_rqctl[NUM_QUEUES];
         uint32_t qrx_ena[NUM_QUEUES];
+        uint32_t qrx_tail[NUM_QUEUES];
 
         uint32_t pfhmc_sdcmd;
         uint32_t pfhmc_sddatalow;

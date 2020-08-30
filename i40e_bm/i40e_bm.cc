@@ -131,6 +131,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             addr <= I40E_QTX_ENA(NUM_QUEUES - 1))
     {
         val = regs.qtx_ena[(addr - I40E_QTX_ENA(0)) / 4];
+    } else if (addr >= I40E_QTX_TAIL(0) &&
+            addr <= I40E_QTX_TAIL(NUM_QUEUES - 1))
+    {
+        val = regs.qtx_tail[(addr - I40E_QTX_TAIL(0)) / 4];
     } else if (addr >= I40E_QINT_RQCTL(0) &&
             addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1))
     {
@@ -139,6 +143,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             addr <= I40E_QRX_ENA(NUM_QUEUES - 1))
     {
         val = regs.qrx_ena[(addr - I40E_QRX_ENA(0)) / 4];
+    } else if (addr >= I40E_QRX_TAIL(0) &&
+            addr <= I40E_QRX_TAIL(NUM_QUEUES - 1))
+    {
+        val = regs.qrx_tail[(addr - I40E_QRX_TAIL(0)) / 4];
     } else if (addr >= I40E_GLQF_HKEY(0) &&
             addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
     {
@@ -335,6 +343,10 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
             addr <= I40E_QTX_ENA(NUM_QUEUES - 1))
     {
         regs.qtx_ena[(addr - I40E_QTX_ENA(0)) / 4] = val;
+    } else if (addr >= I40E_QTX_TAIL(0) &&
+            addr <= I40E_QTX_TAIL(NUM_QUEUES - 1))
+    {
+        regs.qtx_tail[(addr - I40E_QTX_TAIL(0)) / 4] = val;
     } else if (addr >= I40E_QINT_RQCTL(0) &&
             addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1))
     {
@@ -343,6 +355,10 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
             addr <= I40E_QRX_ENA(NUM_QUEUES - 1))
     {
         regs.qrx_ena[(addr - I40E_QRX_ENA(0)) / 4] = val;
+    } else if (addr >= I40E_QRX_TAIL(0) &&
+            addr <= I40E_QRX_TAIL(NUM_QUEUES - 1))
+    {
+        regs.qrx_tail[(addr - I40E_QRX_TAIL(0)) / 4] = val;
     } else if (addr >= I40E_GLQF_HKEY(0) &&
             addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
     {
