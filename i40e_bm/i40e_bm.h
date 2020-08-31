@@ -208,6 +208,11 @@ protected:
         uint32_t qrx_ena[NUM_QUEUES];
         uint32_t qrx_tail[NUM_QUEUES];
 
+        uint32_t glhmc_lantxbase[16];
+        uint32_t glhmc_lantxcnt[16];
+        uint32_t glhmc_lanrxbase[16];
+        uint32_t glhmc_lanrxcnt[16];
+
         uint32_t pfhmc_sdcmd;
         uint32_t pfhmc_sddatalow;
         uint32_t pfhmc_sddatahigh;

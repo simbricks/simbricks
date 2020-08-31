@@ -147,6 +147,22 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             addr <= I40E_QRX_TAIL(NUM_QUEUES - 1))
     {
         val = regs.qrx_tail[(addr - I40E_QRX_TAIL(0)) / 4];
+    } else if (addr >= I40E_GLHMC_LANTXBASE(0) &&
+            addr <= I40E_GLHMC_LANTXBASE(I40E_GLHMC_LANTXBASE_MAX_INDEX))
+    {
+        val = regs.glhmc_lantxbase[(addr - I40E_GLHMC_LANTXBASE(0)) / 4];
+    } else if (addr >= I40E_GLHMC_LANTXCNT(0) &&
+            addr <= I40E_GLHMC_LANTXCNT(I40E_GLHMC_LANTXCNT_MAX_INDEX))
+    {
+        val = regs.glhmc_lantxcnt[(addr - I40E_GLHMC_LANTXCNT(0)) / 4];
+    } else if (addr >= I40E_GLHMC_LANRXBASE(0) &&
+            addr <= I40E_GLHMC_LANRXBASE(I40E_GLHMC_LANRXBASE_MAX_INDEX))
+    {
+        val = regs.glhmc_lanrxbase[(addr - I40E_GLHMC_LANRXBASE(0)) / 4];
+    } else if (addr >= I40E_GLHMC_LANRXCNT(0) &&
+            addr <= I40E_GLHMC_LANRXCNT(I40E_GLHMC_LANRXCNT_MAX_INDEX))
+    {
+        val = regs.glhmc_lanrxcnt[(addr - I40E_GLHMC_LANRXCNT(0)) / 4];
     } else if (addr >= I40E_GLQF_HKEY(0) &&
             addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
     {
@@ -367,6 +383,22 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
         size_t idx = (addr - I40E_QRX_TAIL(0)) / 4;
         regs.qrx_tail[idx] = val;
         lanmgr.tail_updated(idx, true);
+    } else if (addr >= I40E_GLHMC_LANTXBASE(0) &&
+            addr <= I40E_GLHMC_LANTXBASE(I40E_GLHMC_LANTXBASE_MAX_INDEX))
+    {
+        regs.glhmc_lantxbase[(addr - I40E_GLHMC_LANTXBASE(0)) / 4] = val;
+    } else if (addr >= I40E_GLHMC_LANTXCNT(0) &&
+            addr <= I40E_GLHMC_LANTXCNT(I40E_GLHMC_LANTXCNT_MAX_INDEX))
+    {
+        regs.glhmc_lantxcnt[(addr - I40E_GLHMC_LANTXCNT(0)) / 4] = val;
+    } else if (addr >= I40E_GLHMC_LANRXBASE(0) &&
+            addr <= I40E_GLHMC_LANRXBASE(I40E_GLHMC_LANRXBASE_MAX_INDEX))
+    {
+        regs.glhmc_lanrxbase[(addr - I40E_GLHMC_LANRXBASE(0)) / 4] = val;
+    } else if (addr >= I40E_GLHMC_LANRXCNT(0) &&
+            addr <= I40E_GLHMC_LANRXCNT(I40E_GLHMC_LANRXCNT_MAX_INDEX))
+    {
+        regs.glhmc_lanrxcnt[(addr - I40E_GLHMC_LANRXCNT(0)) / 4] = val;
     } else if (addr >= I40E_GLQF_HKEY(0) &&
             addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
     {
