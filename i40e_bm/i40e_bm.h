@@ -13,6 +13,7 @@ struct i40e_aq_desc;
 namespace i40e {
 
 class i40e_bm;
+class lan;
 
 class dma_base : public nicbm::DMAOp {
     public:
@@ -152,11 +153,81 @@ class host_mem_cache {
         void issue_mem_op(mem_op &op);
 };
 
+class lan_queue_base : public queue_base {
+    protected:
+        class qctx_fetch : public host_mem_cache::mem_op {
+            public:
+                lan_queue_base &lq;
+
+                qctx_fetch(lan_queue_base &lq_);
+                virtual void done();
+        };
+
+
+        lan &lanmgr;
+
+        // called by base class when a descriptor has been fetched
+        virtual void desc_fetched(void *desc, uint32_t idx);
+        // called by basee class when data for a descriptor has been fetched
+        virtual void data_fetched(void *desc, uint32_t idx, void *data);
+
+        void ctx_fetched();
+        void ctx_written_back();
+
+        virtual void initialize() = 0;
+
+    public:
+        bool enabling;
+        size_t idx;
+        uint32_t &reg_ena;
+        uint32_t &fpm_basereg;
+        size_t ctx_size;
+        void *ctx;
+
+        uint32_t reg_dummy_head;
+
+        lan_queue_base(lan &lanmgr_, uint32_t &reg_tail, size_t idx_,
+                uint32_t &reg_ena_, uint32_t &fpm_basereg, uint16_t ctx_size);
+        void enable();
+        void disable();
+};
+
+class lan_queue_tx : public lan_queue_base {
+    protected:
+        bool hwb;
+        uint64_t hwb_addr;
+
+        virtual void initialize();
+    public:
+        lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,
+                uint32_t &reg_ena, uint32_t &fpm_basereg);
+};
+
+class lan_queue_rx : public lan_queue_base {
+    protected:
+        uint16_t dbuff_size;
+        uint16_t hbuff_size;
+        uint16_t rxmax;
+        bool crc_strip;
+
+        virtual void initialize();
+    public:
+        lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,
+                uint32_t &reg_ena, uint32_t &fpm_basereg);
+};
+
 // rx tx management
 class lan {
     protected:
+        friend class lan_queue_base;
+        friend class lan_queue_tx;
+        friend class lan_queue_rx;
+
         i40e_bm &dev;
         const size_t num_qs;
+        lan_queue_rx **rxqs;
+        lan_queue_tx **txqs;
+
     public:
         lan(i40e_bm &dev, size_t num_qs);
         void qena_updated(uint16_t idx, bool rx);
@@ -178,6 +249,8 @@ class i40e_bm : public nicbm::Runner::Device {
 protected:
     friend class queue_admin_tx;
     friend class host_mem_cache;
+    friend class lan;
+    friend class lan_queue_base;
     friend class shadow_ram;
 
     static const unsigned BAR_REGS = 0;
