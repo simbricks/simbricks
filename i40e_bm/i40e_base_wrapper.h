@@ -8,10 +8,12 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint16_t __le16;
 typedef uint32_t __le32;
+typedef uint64_t __le64;
 
 #include "base/i40e_devids.h"
 #include "base/i40e_register.h"
 #include "base/i40e_adminq_cmd.h"
+#include "base/i40e_rxtxq.h"
 
 /* from i40e_types.h */
 
