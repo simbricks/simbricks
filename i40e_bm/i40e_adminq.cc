@@ -267,6 +267,9 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
 
 void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
 {
+    if (!enabled)
+        return;
+
     struct i40e_aq_desc *d = reinterpret_cast<struct i40e_aq_desc *>(desc);
     if ((d->flags & I40E_AQ_FLAG_RD)) {
         uint64_t addr = d->params.external.addr_low |
@@ -281,6 +284,9 @@ void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
 
 void queue_admin_tx::data_fetched(void *desc, uint32_t idx, void *data)
 {
+    if (!enabled)
+        return;
+
     cmd_run(desc, idx, data);
 }
 

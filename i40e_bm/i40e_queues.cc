@@ -19,7 +19,7 @@ queue_base::queue_base(uint32_t &reg_head_, uint32_t &reg_tail_)
 
 void queue_base::trigger_fetch()
 {
-    if (fetch_head == reg_tail)
+    if (!enabled || fetch_head == reg_tail)
         return;
 
 
@@ -58,6 +58,11 @@ void queue_base::reg_updated()
     trigger_fetch();
 }
 
+bool queue_base::is_enabled()
+{
+    return enabled;
+}
+
 void queue_base::desc_writeback(const void *desc, uint32_t idx)
 {
     dma_wb *dma = new dma_wb(*this, desc_len);
@@ -92,6 +97,9 @@ void queue_base::desc_writeback_indirect(const void *desc, uint32_t idx,
 
 void queue_base::desc_written_back(uint32_t idx)
 {
+    if (!enabled)
+        return;
+
     std::cerr << "descriptor " << idx << " written back" << std::endl;
     reg_head = (idx + 1) % len;
 }

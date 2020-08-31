@@ -89,7 +89,7 @@ class queue_base {
     public:
         queue_base(uint32_t &reg_head_, uint32_t &reg_tail_);
         void reg_updated();
-
+        bool is_enabled();
 };
 
 class queue_admin_tx : public queue_base {
