@@ -45,6 +45,7 @@ void i40e_bm::dma_complete(nicbm::DMAOp &op)
 
 void i40e_bm::eth_rx(uint8_t port, const void *data, size_t len)
 {
+    std::cerr << "i40e: received packet len=" << len << std::endl;
 }
 
 void i40e_bm::reg_read(uint8_t bar, uint64_t addr, void *dest, size_t len)

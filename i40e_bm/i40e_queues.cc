@@ -95,13 +95,24 @@ void queue_base::desc_writeback_indirect(const void *desc, uint32_t idx,
     runner->issue_dma(*data_dma);
 }
 
+void queue_base::desc_done(uint32_t idx)
+{
+    reg_head = (idx + 1) % len;
+    trigger_fetch();
+}
+
+void queue_base::interrupt()
+{
+}
+
 void queue_base::desc_written_back(uint32_t idx)
 {
     if (!enabled)
         return;
 
     std::cerr << "descriptor " << idx << " written back" << std::endl;
-    reg_head = (idx + 1) % len;
+    desc_done(idx);
+    interrupt();
 }
 
 queue_base::dma_fetch::dma_fetch(queue_base &queue_, size_t len_)
@@ -161,7 +172,6 @@ queue_base::dma_wb::~dma_wb()
 void queue_base::dma_wb::done()
 {
     queue.desc_written_back(index);
-    queue.trigger_fetch();
     delete this;
 }
 

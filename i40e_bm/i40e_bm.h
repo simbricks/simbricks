@@ -86,6 +86,9 @@ class queue_base {
         // called when data is fetched
         virtual void data_fetched(void *desc, uint32_t idx, void *data) = 0;
         virtual void desc_written_back(uint32_t idx);
+        void desc_done(uint32_t idx);
+        // dummy function, needs to be overriden if interrupts are required
+        virtual void interrupt();
 
     public:
         queue_base(uint32_t &reg_head_, uint32_t &reg_tail_);
@@ -166,14 +169,10 @@ class lan_queue_base : public queue_base {
 
         lan &lanmgr;
 
-        // called by base class when a descriptor has been fetched
-        virtual void desc_fetched(void *desc, uint32_t idx);
-        // called by basee class when data for a descriptor has been fetched
-        virtual void data_fetched(void *desc, uint32_t idx, void *data);
-
         void ctx_fetched();
         void ctx_written_back();
 
+        virtual void interrupt();
         virtual void initialize() = 0;
 
     public:
@@ -181,26 +180,45 @@ class lan_queue_base : public queue_base {
         size_t idx;
         uint32_t &reg_ena;
         uint32_t &fpm_basereg;
+        uint32_t &reg_intqctl;
         size_t ctx_size;
         void *ctx;
 
         uint32_t reg_dummy_head;
 
         lan_queue_base(lan &lanmgr_, uint32_t &reg_tail, size_t idx_,
-                uint32_t &reg_ena_, uint32_t &fpm_basereg, uint16_t ctx_size);
+                uint32_t &reg_ena_, uint32_t &fpm_basereg, uint32_t &reg_intqctl,
+                uint16_t ctx_size);
         void enable();
         void disable();
 };
 
 class lan_queue_tx : public lan_queue_base {
     protected:
+        class dma_hwb : public dma_base {
+            protected:
+                lan_queue_tx &queue;
+            public:
+                uint32_t head;
+                uint32_t next_head;
+                dma_hwb(lan_queue_tx &queue_, uint32_t head_, uint32_t qlen);
+                virtual ~dma_hwb();
+                virtual void done();
+        };
+
         bool hwb;
         uint64_t hwb_addr;
 
         virtual void initialize();
+
+        virtual void desc_fetched(void *desc, uint32_t idx);
+        virtual void data_fetched(void *desc, uint32_t idx, void *data);
+        void desc_writeback(const void *desc, uint32_t idx);
+
     public:
         lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,
-                uint32_t &reg_ena, uint32_t &fpm_basereg);
+                uint32_t &reg_ena, uint32_t &fpm_basereg,
+                uint32_t &reg_intqctl);
 };
 
 class lan_queue_rx : public lan_queue_base {
@@ -211,9 +229,14 @@ class lan_queue_rx : public lan_queue_base {
         bool crc_strip;
 
         virtual void initialize();
+
+        virtual void desc_fetched(void *desc, uint32_t idx);
+        virtual void data_fetched(void *desc, uint32_t idx, void *data);
+
     public:
         lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,
-                uint32_t &reg_ena, uint32_t &fpm_basereg);
+                uint32_t &reg_ena, uint32_t &fpm_basereg,
+                uint32_t &reg_intqctl);
 };
 
 // rx tx management
@@ -251,6 +274,8 @@ protected:
     friend class host_mem_cache;
     friend class lan;
     friend class lan_queue_base;
+    friend class lan_queue_rx;
+    friend class lan_queue_tx;
     friend class shadow_ram;
 
     static const unsigned BAR_REGS = 0;
