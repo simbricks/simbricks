@@ -52,6 +52,14 @@ void lan::tail_updated(uint16_t idx, bool rx)
         q.reg_updated();
 }
 
+void lan::packet_received(const void *data, size_t len)
+{
+    std::cerr << "lan: packet received len=" << len << std::endl;
+
+    // TODO: steering
+    rxqs[0]->packet_received(data, len);
+}
+
 lan_queue_base::lan_queue_base(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
         uint32_t &reg_ena_, uint32_t &fpm_basereg_, uint32_t &reg_intqctl_,
         uint16_t ctx_size_)
@@ -144,7 +152,8 @@ void lan_queue_base::qctx_fetch::done()
 lan_queue_rx::lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
         uint32_t &reg_ena_, uint32_t &reg_fpmbase_, uint32_t &reg_intqctl_)
     : lan_queue_base(lanmgr_, reg_tail_, idx_, reg_ena_, reg_fpmbase_,
-            reg_intqctl_, 32)
+            reg_intqctl_, 32), dcache_first_idx(0), dcache_first_pos(0),
+        dcache_first_cnt(0)
 {
 }
 
@@ -190,16 +199,56 @@ void lan_queue_rx::initialize()
         " crcstrip=" << crc_strip << " rxmax=" << rxmax << std::endl;
 }
 
+uint32_t lan_queue_rx::max_fetch_capacity()
+{
+    return DCACHE_SIZE - dcache_first_cnt;
+}
+
 void lan_queue_rx::desc_fetched(void *desc_ptr, uint32_t didx)
 {
     std::cerr << "rxq: desc fetched" << std::endl;
+    union i40e_32byte_rx_desc *desc =
+        reinterpret_cast<union i40e_32byte_rx_desc *> (desc_ptr);
 
-    //union i40e_32byte_rx_desc *desc = desc_ptr;
+    assert(dcache_first_cnt < DCACHE_SIZE);
+    std::cerr << "    idx=" << dcache_first_idx << " cnt=" << dcache_first_cnt <<
+        " didx=" << didx << std::endl;
+    assert((dcache_first_idx + dcache_first_cnt) % len == didx);
+
+    uint16_t dci = (dcache_first_pos + dcache_first_cnt) % DCACHE_SIZE;
+    dcache[dci].buf = desc->read.pkt_addr;
+    dcache[dci].hbuf = desc->read.hdr_addr;
+
+    dcache_first_cnt++;
 }
 
 void lan_queue_rx::data_fetched(void *desc, uint32_t didx, void *data)
 {
     std::cerr << "rxq: data fetched" << std::endl;
+}
+
+void lan_queue_rx::packet_received(const void *data, size_t pktlen)
+{
+    if (dcache_first_cnt == 0) {
+        std::cerr << "rqx: empty, dropping packet" << std::endl;
+        return;
+    }
+
+    std::cerr << "rxq: packet received" << std::endl;
+    union i40e_32byte_rx_desc rxd;
+    memset(&rxd, 0, sizeof(rxd));
+    rxd.wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_DD_SHIFT);
+    rxd.wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_EOF_SHIFT);
+    // TODO: only if checksums are correct
+    rxd.wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_L3L4P_SHIFT);
+    rxd.wb.qword1.status_error_len |= (pktlen << I40E_RXD_QW1_LENGTH_PBUF_SHIFT);
+
+    desc_writeback_indirect(&rxd, dcache_first_idx,
+            dcache[dcache_first_pos].buf, data, pktlen);
+
+    dcache_first_pos = (dcache_first_pos + 1) % DCACHE_SIZE;
+    dcache_first_idx = (dcache_first_idx + 1) % len;
+    dcache_first_cnt--;
 }
 
 lan_queue_tx::lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
@@ -270,10 +319,28 @@ void lan_queue_tx::data_fetched(void *desc_buf, uint32_t didx, void *data)
     std::cerr << "txq: data fetched" << std::endl;
     struct i40e_tx_desc *desc = reinterpret_cast<struct i40e_tx_desc *>(desc_buf);
     uint64_t d1 = desc->cmd_type_offset_bsz;
-    uint16_t len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
+    uint16_t pkt_len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
         I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
 
-    runner->eth_send(data, len);
+    uint16_t cmd = (d1 & I40E_TXD_QW1_CMD_MASK) >> I40E_TXD_QW1_CMD_SHIFT;
+    uint16_t iipt = cmd & (I40E_TX_DESC_CMD_IIPT_MASK);
+    uint16_t l4t = (cmd & I40E_TX_DESC_CMD_L4T_EOFT_MASK);
+
+    uint32_t off = (d1 & I40E_TXD_QW1_OFFSET_MASK) >> I40E_TXD_QW1_OFFSET_SHIFT;
+    uint16_t maclen = ((off & I40E_TXD_QW1_MACLEN_MASK) >>
+        I40E_TX_DESC_LENGTH_MACLEN_SHIFT) * 2;
+    uint16_t iplen = ((off & I40E_TXD_QW1_IPLEN_MASK) >>
+        I40E_TX_DESC_LENGTH_IPLEN_SHIFT) * 4;
+    /*uint16_t l4len = (off & I40E_TXD_QW1_L4LEN_MASK) >>
+        I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;*/
+
+    if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_TCP) {
+        uint16_t tcp_off = maclen + iplen;
+        xsum_tcp((uint8_t *) data + tcp_off, pkt_len - tcp_off);
+    }
+    std::cerr << "    iipt=" << iipt << " l4t=" << l4t << " maclen=" << maclen << " iplen=" << iplen<< std::endl;
+
+    runner->eth_send(data, pkt_len);
 
     desc->buffer_addr = 0;
     desc->cmd_type_offset_bsz = I40E_TX_DESC_DTYPE_DESC_DONE << I40E_TXD_QW1_DTYPE_SHIFT;

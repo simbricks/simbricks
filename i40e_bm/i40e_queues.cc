@@ -22,6 +22,8 @@ void queue_base::trigger_fetch()
     if (!enabled || fetch_head == reg_tail)
         return;
 
+    if (max_fetch_capacity() == 0)
+        return;
 
     dma_fetch *dma = new dma_fetch(*this, desc_len);
     dma->write = false;
@@ -93,6 +95,11 @@ void queue_base::desc_writeback_indirect(const void *desc, uint32_t idx,
     memcpy(data_dma->data, data, data_len);
 
     runner->issue_dma(*data_dma);
+}
+
+uint32_t queue_base::max_fetch_capacity()
+{
+    return UINT32_MAX;
 }
 
 void queue_base::desc_done(uint32_t idx)

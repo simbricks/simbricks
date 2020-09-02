@@ -81,6 +81,9 @@ class queue_base {
         void desc_writeback_indirect(const void *desc, uint32_t idx,
                 uint64_t data_addr, const void *data, size_t data_len);
 
+        // returns how many descriptors the queue can fetch max during the next
+        // fetch: default UINT32_MAX, but can be overriden by child classes
+        virtual uint32_t max_fetch_capacity();
         // called when a descriptor is fetched
         virtual void desc_fetched(void *desc, uint32_t idx) = 0;
         // called when data is fetched
@@ -223,13 +226,25 @@ class lan_queue_tx : public lan_queue_base {
 
 class lan_queue_rx : public lan_queue_base {
     protected:
+        struct desc_cache {
+            uint64_t buf;
+            uint64_t hbuf;
+        };
+
         uint16_t dbuff_size;
         uint16_t hbuff_size;
         uint16_t rxmax;
         bool crc_strip;
 
+        static const uint16_t DCACHE_SIZE = 128;
+        struct desc_cache dcache[DCACHE_SIZE];
+        uint32_t dcache_first_idx;
+        uint16_t dcache_first_pos;
+        uint16_t dcache_first_cnt;
+
         virtual void initialize();
 
+        virtual uint32_t max_fetch_capacity();
         virtual void desc_fetched(void *desc, uint32_t idx);
         virtual void data_fetched(void *desc, uint32_t idx, void *data);
 
@@ -237,6 +252,7 @@ class lan_queue_rx : public lan_queue_base {
         lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,
                 uint32_t &reg_ena, uint32_t &fpm_basereg,
                 uint32_t &reg_intqctl);
+        void packet_received(const void *data, size_t len);
 };
 
 // rx tx management
@@ -255,6 +271,7 @@ class lan {
         lan(i40e_bm &dev, size_t num_qs);
         void qena_updated(uint16_t idx, bool rx);
         void tail_updated(uint16_t idx, bool rx);
+        void packet_received(const void *data, size_t len);
 };
 
 class shadow_ram {
@@ -364,5 +381,8 @@ protected:
 
     void reset();
 };
+
+// places the tcp checksum in the packet (assuming ipv4)
+void xsum_tcp(void *tcphdr, size_t l4len);
 
 } // namespace corundum
