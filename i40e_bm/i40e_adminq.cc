@@ -212,9 +212,9 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         desc_complete(d, idx, 0);
     } else if (d->opcode == i40e_aqc_opc_get_vsi_parameters) {
         std::cerr << "    get vsi parameters" << std::endl;
-        struct i40e_aqc_add_get_update_vsi *v =
+        /*struct i40e_aqc_add_get_update_vsi *v =
             reinterpret_cast<struct i40e_aqc_add_get_update_vsi *>(
-                    d->params.raw);
+                    d->params.raw);*/
 
         struct i40e_aqc_vsi_properties_data pd;
         memset(&pd, 0, sizeof(pd));
