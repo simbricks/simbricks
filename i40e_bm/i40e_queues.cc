@@ -13,7 +13,7 @@ extern nicbm::Runner *runner;
 
 queue_base::queue_base(uint32_t &reg_head_, uint32_t &reg_tail_)
     : base(0), len(0), fetch_head(0), reg_head(reg_head_), reg_tail(reg_tail_),
-    enabled(false), desc_len(0)
+    enabled(false), desc_len(0), pending_fetches(0)
 {
 }
 
@@ -22,13 +22,15 @@ void queue_base::trigger_fetch()
     if (!enabled || fetch_head == reg_tail)
         return;
 
-    if (max_fetch_capacity() == 0)
+    if (max_fetch_capacity() < pending_fetches + 1)
         return;
 
     dma_fetch *dma = new dma_fetch(*this, desc_len);
     dma->write = false;
     dma->dma_addr = base + fetch_head * desc_len;
     dma->index = fetch_head;
+
+    pending_fetches++;
 
     std::cerr << "fetching " << (reg_tail - fetch_head) % len <<
         " descriptors from " << dma->dma_addr << std::endl;
@@ -136,6 +138,7 @@ queue_base::dma_fetch::~dma_fetch()
 
 void queue_base::dma_fetch::done()
 {
+    queue.pending_fetches--;
     queue.desc_fetched(data, index);
     delete this;
 }

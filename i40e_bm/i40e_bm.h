@@ -74,6 +74,7 @@ class queue_base {
 
         bool enabled;
         size_t desc_len;
+        uint32_t pending_fetches;
 
         void trigger_fetch();
         void data_fetch(const void *desc, uint32_t idx, uint64_t addr, size_t len);
