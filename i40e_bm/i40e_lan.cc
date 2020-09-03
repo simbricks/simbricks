@@ -295,23 +295,29 @@ void lan_queue_tx::desc_fetched(void *desc_buf, uint32_t didx)
     uint64_t d1 = desc->cmd_type_offset_bsz;
 
     uint8_t dtype = (d1 & I40E_TXD_QW1_DTYPE_MASK) >> I40E_TXD_QW1_DTYPE_SHIFT;
-    if (dtype != I40E_TX_DESC_DTYPE_DATA) {
-        // TODO
-        std::cerr << "txq: only support data descriptors" << std::endl;
+    if (dtype == I40E_TX_DESC_DTYPE_DATA) {
+        uint16_t len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
+            I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
+
+        std::cerr << "  bufaddr=" << desc->buffer_addr << " len=" << len << std::endl;
+
+        data_fetch(desc_buf, didx, desc->buffer_addr, len);
+    } else if (dtype == I40E_TX_DESC_DTYPE_CONTEXT) {
+        struct i40e_tx_context_desc *ctxd =
+            reinterpret_cast<struct i40e_tx_context_desc *> (desc_buf);
+        std::cerr << "  context descriptor: tp=" << ctxd->tunneling_params <<
+            " l2t=" << ctxd->l2tag2 << " tctm=" << ctxd->type_cmd_tso_mss << std::endl;
+        abort();
+
+        desc->buffer_addr = 0;
+        desc->cmd_type_offset_bsz = I40E_TX_DESC_DTYPE_DESC_DONE <<
+            I40E_TXD_QW1_DTYPE_SHIFT;
+
+        desc_writeback(desc_buf, didx);
+    } else {
+        std::cerr << "txq: only support context & data descriptors" << std::endl;
         abort();
     }
-
-    uint16_t cmd = (d1 & I40E_TXD_QW1_CMD_MASK) >> I40E_TXD_QW1_CMD_SHIFT;
-    if (!(cmd & I40E_TX_DESC_CMD_EOP)) {
-        std::cerr << "txq: TODO multi descriptor packet" << std::endl;
-        abort();
-    }
-    uint16_t len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
-        I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
-
-    std::cerr << "  bufaddr=" << desc->buffer_addr << " len=" << len << std::endl;
-
-    data_fetch(desc_buf, didx, desc->buffer_addr, len);
 }
 
 void lan_queue_tx::data_fetched(void *desc_buf, uint32_t didx, void *data)
@@ -323,6 +329,7 @@ void lan_queue_tx::data_fetched(void *desc_buf, uint32_t didx, void *data)
         I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
 
     uint16_t cmd = (d1 & I40E_TXD_QW1_CMD_MASK) >> I40E_TXD_QW1_CMD_SHIFT;
+    bool eop = (cmd & I40E_TX_DESC_CMD_EOP);
     uint16_t iipt = cmd & (I40E_TX_DESC_CMD_IIPT_MASK);
     uint16_t l4t = (cmd & I40E_TX_DESC_CMD_L4T_EOFT_MASK);
 
@@ -334,6 +341,26 @@ void lan_queue_tx::data_fetched(void *desc_buf, uint32_t didx, void *data)
     /*uint16_t l4len = (off & I40E_TXD_QW1_L4LEN_MASK) >>
         I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;*/
 
+    // part of a multi-descriptor packet
+    if (!eop || pktbuf_len != 0) {
+        if (pktbuf_len + pkt_len > MTU) {
+            std::cerr << "multi desc packet longer than MTU pbl=" << pktbuf_len
+                << " len=" << pkt_len << std::endl;
+            abort();
+        }
+
+        memcpy(pktbuf + pktbuf_len, data, pkt_len);
+        pktbuf_len += pkt_len;
+
+        if (!eop) {
+            // not done yet
+            goto writeback;
+        }
+
+        data = pktbuf;
+        pkt_len = pktbuf_len;
+    }
+
     if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_TCP) {
         uint16_t tcp_off = maclen + iplen;
         xsum_tcp((uint8_t *) data + tcp_off, pkt_len - tcp_off);
@@ -341,7 +368,9 @@ void lan_queue_tx::data_fetched(void *desc_buf, uint32_t didx, void *data)
     std::cerr << "    iipt=" << iipt << " l4t=" << l4t << " maclen=" << maclen << " iplen=" << iplen<< std::endl;
 
     runner->eth_send(data, pkt_len);
+    pktbuf_len = 0;
 
+writeback:
     desc->buffer_addr = 0;
     desc->cmd_type_offset_bsz = I40E_TX_DESC_DTYPE_DESC_DONE << I40E_TXD_QW1_DTYPE_SHIFT;
     desc_writeback(desc_buf, didx);

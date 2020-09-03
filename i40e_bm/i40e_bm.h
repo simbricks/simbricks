@@ -209,6 +209,10 @@ class lan_queue_tx : public lan_queue_base {
                 virtual void done();
         };
 
+        static const uint16_t MTU = 2048;
+        uint8_t pktbuf[MTU];
+        uint16_t pktbuf_len;
+
         bool hwb;
         uint64_t hwb_addr;
 
