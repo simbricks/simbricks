@@ -1,6 +1,6 @@
 CPPFLAGS += -I../nicsim_common/include -I../proto
 CPPFLAGS += -I../libnicbm/include/
-CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -g
+CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -g
 LDFLGAS = -g
 
 OBJS := i40e_bm.o i40e_queues.o i40e_adminq.o i40e_hmc.o i40e_lan.o xsums.o
