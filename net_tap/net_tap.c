@@ -129,8 +129,8 @@ int main(int argc, char *argv[])
 {
     int sync;
 
-    if (argc != 2) {
-        fprintf(stderr, "Usage: net_tap TAP_DEVICE_NAME\n");
+    if (argc != 3) {
+        fprintf(stderr, "Usage: net_tap TAP_DEVICE_NAME SOCKET\n");
         return EXIT_FAILURE;
     }
 
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
     }
 
     sync = 0;
-    if (netsim_init(&nsif, "/tmp/cosim-eth", &sync) != 0) {
+    if (netsim_init(&nsif, argv[2], &sync) != 0) {
         close(tap_fd);
         return -1;
     }
