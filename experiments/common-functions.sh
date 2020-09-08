@@ -31,9 +31,9 @@ if [ ! -d "$NS3_BASE" ] ; then
     exit 1
 fi
 
-QEMU_IMAGE=$EHSIM_BASE/images/output-ubuntu1804/ubuntu1804
+QEMU_IMAGE=$EHSIM_BASE/images/output-ubuntu1804-base/ubuntu1804-base
 QEMU_KERNEL=$EHSIM_BASE/images/bzImage
-GEM5_IMAGE=$EHSIM_BASE/images/output-ubuntu1804/ubuntu1804.raw
+GEM5_IMAGE=$EHSIM_BASE/images/output-ubuntu1804-base/ubuntu1804-base.raw
 GEM5_KERNEL=$EHSIM_BASE/images/vmlinux
 
 # Args:
@@ -49,21 +49,28 @@ init_out() {
 #   - Instance name
 #   - Cosim instance
 #   - secondary hard drive
+#   - [optional primary image name: default ubuntu1804-base]
 run_qemu() {
     img_a="$OUTDIR/qemu.hd.a.$1"
     img_b="$OUTDIR/qemu.hd.b.$1"
     pcisock="$OUTDIR/pci.$2"
     rm -f $img_a $img_b
     echo Creating disk for qemu $1
-    qemu-img create -f qcow2 -o backing_file=$QEMU_IMAGE $img_a
+    if [ -z "$4" ]; then
+        qemu-img create -f qcow2 -o backing_file=$QEMU_IMAGE $img_a
+    else
+        qemu-img create -f qcow2 -o backing_file="$EHSIM_BASE/images/output-$4/$4" $img_a
+    fi
     cp $3 $img_b
     echo Starting qemu $1
+    #i40e.debug=0x8fffffff
+    #hugepages=1024
     $QEMU_CMD -machine q35 -cpu host \
         -drive file=$img_a,if=ide,index=0 \
         -drive file=$img_b,if=ide,index=1,driver=raw \
         -kernel $QEMU_KERNEL \
-        -append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 init=/home/ubuntu/guestinit.sh i40e.debug=0x8fffffff rw" \
-        -serial mon:stdio -m $((4 * 1024)) -smp 1 -display none -enable-kvm \
+        -append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 init=/home/ubuntu/guestinit.sh rw" \
+        -serial mon:stdio -m $((16 * 1024)) -smp 1 -display none -enable-kvm \
         -nic none \
         -chardev socket,path=$pcisock,id=cosimcd \
         -device cosim-pci,chardev=cosimcd &>$OUTDIR/qemu.$1.log &
@@ -79,12 +86,20 @@ run_qemu() {
 #   - cpu type
 #   - checkpoint dir
 #   - extra flags
+#   - [optional primary image name: default ubuntu1804-base]
 run_gem5() {
     echo Starting gem5 $1
     pcisock="$OUTDIR/pci.$2"
     shm="$OUTDIR/shm.$2"
     cpdir="$OUTDIR/../checkpoint/checkpoints.$5"
     mkdir -p $cpdir
+
+    if [ -z "$7" ]; then
+        img="$GEM5_IMAGE"
+    else
+        img="$EHSIM_BASE/images/output-$7/$7.raw"
+    fi
+
     $GEM5_BASE/build/X86/gem5.opt \
         --outdir=$OUTDIR/gem5.out.$1 \
         $GEM5_BASE/configs/cosim/cosim.py \

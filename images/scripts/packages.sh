@@ -24,6 +24,7 @@ automake
 libtool
 g++
 libssl-dev
+ethtool
 "
 
 if [[ $INSTALL_DEV_PACKAGES  =~ true || $INSTALL_DEV_PACKAGES =~ 1 ||
