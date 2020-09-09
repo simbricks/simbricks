@@ -29,6 +29,14 @@ currently don't have jobserver integration, so blindly running make with a high
 `experiments/*` for their names) with `make out/$NAME/1/ready`, which will
 result in log files in `out/$NAME/1/`. Start with one of the qemu simulations.
 
+To run the experiments multiple times which restore from the common check point,
+the script should be added to EXP_CP in experiments/makefile. There should be a 
+pair script has "-mck" as suffix to that experiment script to make the check point.
+(eg. gem5-timing-corundum-verilator-pair-cp.sh AND gem5-timing-corundum-verilator-pair-cp-mck.sh)
+
+The script doesn't need to restore from the common check point, should be added to 
+EXP_NCP in experiments/makefile
+
 ## Running Qemu
 
 *These instructions apply only if you want to build and run qemu separately and
