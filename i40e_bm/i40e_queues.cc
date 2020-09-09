@@ -54,6 +54,12 @@ void queue_base::data_fetch(const void *desc, uint32_t idx, uint64_t addr,
     runner->issue_dma(*dma);
 }
 
+void queue_base::reset()
+{
+    enabled = false;
+    fetch_head = 0;
+}
+
 void queue_base::reg_updated()
 {
     if (!enabled)

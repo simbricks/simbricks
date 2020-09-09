@@ -27,6 +27,14 @@ lan::lan(i40e_bm &dev_, size_t num_qs_)
     }
 }
 
+void lan::reset()
+{
+    for (size_t i = 0; i < num_qs; i++) {
+        rxqs[i]->reset();
+        txqs[i]->reset();
+    }
+}
+
 void lan::qena_updated(uint16_t idx, bool rx)
 {
     std::cerr << "lan: qena updated idx=" << idx << " rx=" << rx << std::endl;
@@ -68,6 +76,12 @@ lan_queue_base::lan_queue_base(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
     reg_intqctl(reg_intqctl_), ctx_size(ctx_size_)
 {
     ctx = new uint8_t[ctx_size_];
+}
+
+void lan_queue_base::reset()
+{
+    enabling = false;
+    queue_base::reset();
 }
 
 void lan_queue_base::enable()
@@ -155,6 +169,14 @@ lan_queue_rx::lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
             reg_intqctl_, 32), dcache_first_idx(0), dcache_first_pos(0),
         dcache_first_cnt(0)
 {
+}
+
+void lan_queue_rx::reset()
+{
+    dcache_first_idx = 0;
+    dcache_first_pos = 0;
+    dcache_first_cnt = 0;
+    queue_base::reset();
 }
 
 void lan_queue_rx::initialize()

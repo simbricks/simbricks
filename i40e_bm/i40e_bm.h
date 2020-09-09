@@ -96,6 +96,7 @@ class queue_base {
 
     public:
         queue_base(uint32_t &reg_head_, uint32_t &reg_tail_);
+        virtual void reset();
         void reg_updated();
         bool is_enabled();
 };
@@ -154,6 +155,7 @@ class host_mem_cache {
         };
 
         host_mem_cache(i40e_bm &dev);
+        void reset();
         void reg_updated(uint64_t addr);
 
         // issue a hmc memory operation (address is in the context
@@ -193,6 +195,7 @@ class lan_queue_base : public queue_base {
         lan_queue_base(lan &lanmgr_, uint32_t &reg_tail, size_t idx_,
                 uint32_t &reg_ena_, uint32_t &fpm_basereg, uint32_t &reg_intqctl,
                 uint16_t ctx_size);
+        virtual void reset();
         void enable();
         void disable();
 };
@@ -257,6 +260,7 @@ class lan_queue_rx : public lan_queue_base {
         lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,
                 uint32_t &reg_ena, uint32_t &fpm_basereg,
                 uint32_t &reg_intqctl);
+        virtual void reset();
         void packet_received(const void *data, size_t len);
 };
 
@@ -274,6 +278,7 @@ class lan {
 
     public:
         lan(i40e_bm &dev, size_t num_qs);
+        void reset();
         void qena_updated(uint16_t idx, bool rx);
         void tail_updated(uint16_t idx, bool rx);
         void packet_received(const void *data, size_t len);
@@ -384,7 +389,7 @@ protected:
     /** 32-bit write to the memory bar (should be the default) */
     virtual void reg_mem_write32(uint64_t addr, uint32_t val);
 
-    void reset();
+    void reset(bool indicate_done);
 };
 
 // places the tcp checksum in the packet (assuming ipv4)

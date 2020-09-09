@@ -14,6 +14,11 @@ extern nicbm::Runner *runner;
 host_mem_cache::host_mem_cache(i40e_bm &dev_)
     : dev(dev_)
 {
+    reset();
+}
+
+void host_mem_cache::reset()
+{
     for (size_t i = 0; i < MAX_SEGMENTS; i++) {
         segs[i].addr = 0;
         segs[i].pgcount = 0;

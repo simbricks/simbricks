@@ -15,7 +15,7 @@ i40e_bm::i40e_bm()
     : pf_atq(*this, regs.pf_atqba, regs.pf_atqlen, regs.pf_atqh, regs.pf_atqt),
     hmc(*this), shram(*this), lanmgr(*this, NUM_QUEUES)
 {
-    memset(&regs, 0, sizeof(regs));
+    reset(false);
 }
 
 i40e_bm::~i40e_bm()
@@ -416,7 +416,7 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
             case I40E_PFGEN_CTRL:
                 if ((val & I40E_PFGEN_CTRL_PFSWR_MASK) ==
                         I40E_PFGEN_CTRL_PFSWR_MASK)
-                    reset();
+                    reset(true);
                 break;
 
             case I40E_GL_FWSTS:
@@ -515,11 +515,17 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
     }
 }
 
-void i40e_bm::reset()
+void i40e_bm::reset(bool indicate_done)
 {
     std::cout << "reset triggered" << std::endl;
 
-    regs.glnvm_srctl = I40E_GLNVM_SRCTL_DONE_MASK;
+    pf_atq.reset();
+    hmc.reset();
+    lanmgr.reset();
+
+    memset(&regs, 0, sizeof(regs));
+    if (indicate_done)
+        regs.glnvm_srctl = I40E_GLNVM_SRCTL_DONE_MASK;
 }
 
 shadow_ram::shadow_ram(i40e_bm &dev_)
