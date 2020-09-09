@@ -31,9 +31,9 @@ if [ ! -d "$NS3_BASE" ] ; then
     exit 1
 fi
 
-QEMU_IMAGE=$EHSIM_BASE/images/output-ubuntu1804-base/ubuntu1804-base
+QEMU_IMAGE=$EHSIM_BASE/images/output-base/base
 QEMU_KERNEL=$EHSIM_BASE/images/bzImage
-GEM5_IMAGE=$EHSIM_BASE/images/output-ubuntu1804-base/ubuntu1804-base.raw
+GEM5_IMAGE=$EHSIM_BASE/images/output-base/base.raw
 GEM5_KERNEL=$EHSIM_BASE/images/vmlinux
 
 # Args:
