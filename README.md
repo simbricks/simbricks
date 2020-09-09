@@ -2,13 +2,18 @@
 
 Code structure:
  - `proto/`: protocol definitions for PCIe and Ethernet channels
- - `nicsim_common/`: helper library for NIC simulations
- - `dummy_nic/`: dummy device illustrating PIO with cosim-pci interface
- - `corundum/`: verilator-based cycle accurate Corundum model
- - `corundum_bm/`: C++ behavioral model for Corundum
- - `netsim_common/`: helper library for network simulations
- - `net_tap/`: Linux tap interface connector for Ethernet channel
- - `net_wire/`: Ethernet wire, connects to Ethernet channels together:w
+ - NIC Simulators:
+    + `dummy_nic/`: dummy device illustrating PIO with cosim-pci interface
+    + `corundum/`: verilator-based cycle accurate Corundum model
+    + `corundum_bm/`: C++ behavioral model for Corundum
+    + `i40e_bm/`: Intel XL710 behavioral model
+ - Network Simulators:
+    + `net_tap/`: Linux tap interface connector for Ethernet channel
+    + `net_wire/`: Ethernet wire, connects to Ethernet channels together:w
+ - Helper Libraries:
+    + `nicsim_common/`: helper library for NIC simulations
+    + `netsim_common/`: helper library for network simulations
+    + `libnicbm/`: helper library for behavioral nic models
 
 # Building
  - External dependencies for qemu: `libglib2.0-dev libpixman-1-dev`
