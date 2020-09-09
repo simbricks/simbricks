@@ -216,3 +216,5 @@ cleanup() {
     rm -f $OUTDIR/{qemu.hd.*,shm.*,pci.*,eth.*}
     date >>$OUTDIR/endtime
 }
+
+trap "cleanup" SIGINT
