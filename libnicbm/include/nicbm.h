@@ -65,6 +65,7 @@ class Runner {
         Device &dev;
         uint64_t mac_addr;
         struct nicsim_params nsparams;
+        struct cosim_pcie_proto_dev_intro dintro;
 
         volatile union cosim_pcie_proto_d2h *d2h_alloc(void);
         volatile union cosim_eth_proto_d2n *d2n_alloc(void);

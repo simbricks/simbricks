@@ -66,6 +66,12 @@ void Runner::issue_dma(DMAOp &op)
 
     if (op.write) {
         volatile struct cosim_pcie_proto_d2h_write *write = &msg->write;
+        if (dintro.d2h_elen < sizeof(*write) + op.len) {
+            fprintf(stderr, "issue_dma: write too big (%zu), can only fit up "
+                    "to (%zu)\n", op.len, dintro.d2h_elen - sizeof(*write));
+            abort();
+        }
+
         write->req_id = (uintptr_t) &op;
         write->offset = op.dma_addr;
         write->len = op.len;
@@ -75,6 +81,14 @@ void Runner::issue_dma(DMAOp &op)
             COSIM_PCIE_PROTO_D2H_OWN_HOST;
     } else {
         volatile struct cosim_pcie_proto_d2h_read *read = &msg->read;
+        if (dintro.h2d_elen < sizeof(struct cosim_pcie_proto_h2d_readcomp) +
+                op.len) {
+            fprintf(stderr, "issue_dma: write too big (%zu), can only fit up "
+                    "to (%zu)\n", op.len, dintro.h2d_elen -
+                    sizeof(struct cosim_pcie_proto_h2d_readcomp));
+            abort();
+        }
+
         read->req_id = (uintptr_t) &op;
         read->offset = op.dma_addr;
         read->len = op.len;
@@ -296,9 +310,8 @@ int Runner::runMain(int argc, char *argv[])
     signal(SIGINT, sigint_handler);
     signal(SIGUSR1, sigusr1_handler);
 
-    struct cosim_pcie_proto_dev_intro di;
-    memset(&di, 0, sizeof(di));
-    dev.setup_intro(di);
+    memset(&dintro, 0, sizeof(dintro));
+    dev.setup_intro(dintro);
 
     nsparams.sync_pci = 1;
     nsparams.sync_eth = 1;
@@ -308,7 +321,7 @@ int Runner::runMain(int argc, char *argv[])
     nsparams.pci_latency = PCI_LATENCY;
     nsparams.eth_latency = ETH_LATENCY;
     nsparams.sync_delay = SYNC_PERIOD;
-    if (nicsim_init(&nsparams, &di)) {
+    if (nicsim_init(&nsparams, &dintro)) {
         return EXIT_FAILURE;
     }
     fprintf(stderr, "sync_pci=%d sync_eth=%d\n", nsparams.sync_pci,
