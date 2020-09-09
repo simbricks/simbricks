@@ -106,6 +106,8 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
             { I40E_AQ_CAP_ID_RXQ, 1, 0, dev.NUM_QUEUES, 0, 0, {} },
             { I40E_AQ_CAP_ID_TXQ, 1, 0, dev.NUM_QUEUES, 0, 0, {} },
             { I40E_AQ_CAP_ID_MSIX, 1, 0, dev.NUM_PFINTS, 0, 0, {} },
+            { I40E_AQ_CAP_ID_VSI, 1, 0, dev.NUM_VSIS, 0, 0, {} },
+            { I40E_AQ_CAP_ID_DCB, 1, 0, 1, 1, 1, {} },
         };
         size_t num_caps = sizeof(caps) / sizeof(caps[0]);
 
@@ -162,17 +164,30 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         struct i40e_aqc_switch_seid *sw = reinterpret_cast<
             struct i40e_aqc_switch_seid *>(d->params.raw);
         struct i40e_aqc_get_switch_config_header_resp hr;
+        /* Not sure why dpdk doesn't like this?
         struct i40e_aqc_switch_config_element_resp els[] = {
-            // MAC
-            { I40E_AQ_SW_ELEM_TYPE_MAC, I40E_AQ_SW_ELEM_REV_1, 1, 0, 0, {},
+            // EMC
+            { I40E_AQ_SW_ELEM_TYPE_EMP, I40E_AQ_SW_ELEM_REV_1, 1, 513, 0, {},
                 I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
-            // VSI
-            { I40E_AQ_SW_ELEM_TYPE_VSI, I40E_AQ_SW_ELEM_REV_1, 2, 1, 3, {},
+            // MAC
+            { I40E_AQ_SW_ELEM_TYPE_MAC, I40E_AQ_SW_ELEM_REV_1, 2, 0, 0, {},
                 I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
             // PF
-            { I40E_AQ_SW_ELEM_TYPE_PF, I40E_AQ_SW_ELEM_REV_1, 3, 2, 0, {},
+            { I40E_AQ_SW_ELEM_TYPE_PF, I40E_AQ_SW_ELEM_REV_1, 16, 512, 0, {},
+                I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
+            // VSI PF
+            { I40E_AQ_SW_ELEM_TYPE_VSI, I40E_AQ_SW_ELEM_REV_1, 512, 2, 16, {},
+                I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
+            // VSI PF
+            { I40E_AQ_SW_ELEM_TYPE_VSI, I40E_AQ_SW_ELEM_REV_1, 513, 2, 1, {},
+                I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
+        };*/
+        struct i40e_aqc_switch_config_element_resp els[] = {
+            // VSI PF
+            { I40E_AQ_SW_ELEM_TYPE_VSI, I40E_AQ_SW_ELEM_REV_1, 512, 2, 16, {},
                 I40E_AQ_CONN_TYPE_REGULAR, 0, 0},
         };
+
 
         // find start idx
         size_t cnt = sizeof(els) / sizeof(els[0]);

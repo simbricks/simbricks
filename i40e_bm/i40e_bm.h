@@ -310,6 +310,7 @@ protected:
 
     static const uint32_t NUM_QUEUES = 1536;
     static const uint32_t NUM_PFINTS = 512;
+    static const uint32_t NUM_VSIS = 384;
     static const uint16_t MAX_MTU = 2048;
 
     struct i40e_regs {
