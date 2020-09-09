@@ -1,7 +1,8 @@
 PACKER_VERSION := 1.6.0
 KERNEL_VERSION := 5.4.46
 
-BASE_IMAGE := output-ubuntu1804-base/ubuntu1804-base
+UBUNTU_IMAGE := output-ubuntu1804/ubuntu1804
+BASE_IMAGE := output-base/base
 NOPAXOS_IMAGE := output-nopaxos/nopaxos
 MTCP_IMAGE := output-mtcp/mtcp
 IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MTCP_IMAGE)
@@ -10,9 +11,10 @@ RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 all: $(IMAGES) $(RAW_IMAGES) vmlinux bzImage mqnic/mqnic.ko
 
 clean:
-	rm -rf packer packer_cache output-ubuntu1804 vmlinux bzImage \
+	rm -rf packer packer_cache vmlinux bzImage \
 	    mqnic/mqnic.ko mqnic/*.o mqnic/.*.cmd mqnic/mqnic.mod.c \
 	    mqnic/Module.symvers mqnic/modules.order \
+	    output-ubuntu1804 output-base output-mtcp output-nopaxos \
 	    kernel/linux-$(KERNEL_VERSION)/ kheaders.tar.bz2
 
 ################################################
@@ -21,9 +23,14 @@ clean:
 %.raw: %
 	qemu-img convert -f qcow2 -O raw $< $@
 
-$(BASE_IMAGE): $(wildcard scripts/*) packer ubuntu1804-base.json bzImage kheaders.tar.bz2
-	rm -rf output-ubuntu1804-base
-	./packer build ubuntu1804-base.json
+$(UBUNTU_IMAGE): $(wildcard scripts/*) packer ubuntu1804.json
+	rm -rf output-ubuntu1804
+	./packer build ubuntu1804.json
+	touch $@
+
+$(BASE_IMAGE): $(wildcard scripts/*) packer base.json $(UBUNTU_IMAGE) bzImage kheaders.tar.bz2
+	rm -rf output-base
+	./packer build base.json
 	touch $@
 
 $(NOPAXOS_IMAGE): $(wildcard scripts/*) packer nopaxos.json $(BASE_IMAGE) scripts/install-nopaxos.sh
@@ -89,6 +96,7 @@ kernel/linux-$(KERNEL_VERSION)/.config: kernel/config-$(KERNEL_VERSION)
 	wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$(KERNEL_VERSION).tar.xz
 	tar xf linux-$(KERNEL_VERSION).tar.xz
 	rm -f linux-$(KERNEL_VERSION).tar.xz
+	rm -rf kernel/linux-$(KERNEL_VERSION)
 	mv linux-$(KERNEL_VERSION) kernel/
 	cd kernel/linux-$(KERNEL_VERSION) && patch -p1 < ../linux-$(KERNEL_VERSION)-timers-gem5.patch
 	cp kernel/config-$(KERNEL_VERSION) kernel/linux-$(KERNEL_VERSION)/.config

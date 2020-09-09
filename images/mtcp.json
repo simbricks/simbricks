@@ -2,7 +2,7 @@
   "_comment": "Build with `packer build ubuntu.json`",
   "builders": [
     {
-      "iso_urls": [ "output-ubuntu1804-base/ubuntu1804-base" ],
+      "iso_urls": [ "output-base/base" ],
       "iso_checksum": "none",
       "disk_image": "true",
       "use_backing_file": "true",

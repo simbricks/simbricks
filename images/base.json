@@ -2,12 +2,12 @@
   "_comment": "Build with `packer build ubuntu.json`",
   "builders": [
     {
-      "iso_urls": [ "output-base/base" ],
+      "iso_urls": [ "output-ubuntu1804/ubuntu1804" ],
       "iso_checksum": "none",
       "disk_image": "true",
       "use_backing_file": "true",
       "headless": "{{ user `headless` }}",
-      "disable_vnc": "true",
+      "disable_vnc": "false",
       "output_directory": "output-{{ user `vm_name` }}",
       "qemuargs": [
         [
@@ -29,6 +29,10 @@
         [
           "-smp",
           "cpus={{ user `cpus`}}"
+        ],
+        [
+            "-serial",
+            "mon:stdio"
         ]
       ],
       "shutdown_command": "echo '{{ user `ssh_password` }}'|sudo -S shutdown -P now",
@@ -41,21 +45,47 @@
   ],
   "provisioners": [
     {
-      "execute_command": "echo '{{ user `ssh_password` }}' | {{.Vars}} sudo -E -S bash '{{.Path}}'",
-      "scripts": [
-        "scripts/install-nopaxos.sh"
-      ],
-      "type": "shell"
+      "type": "file",
+      "source": "scripts/guestinit.sh",
+      "destination": "/home/ubuntu/guestinit.sh",
+      "direction": "upload"
     },
     {
       "type": "file",
-      "source": "nopaxos.config",
-      "destination": "/tmp/nopaxos.config",
+      "source": "bzImage",
+      "destination": "/tmp/bzImage",
+      "direction": "upload"
+    },
+    {
+      "type": "file",
+      "source": "kernel/config-5.4.46",
+      "destination": "/tmp/config-5.4.46",
+      "direction": "upload"
+    },
+    {
+      "type": "file",
+      "source": "kheaders.tar.bz2",
+      "destination": "/tmp/kheaders.tar.bz2",
       "direction": "upload"
     },
     {
       "type": "shell",
-      "inline": ["sudo mv /tmp/nopaxos.config /root/nopaxos.config"]
+      "inline": [
+          "sudo mv /tmp/bzImage /boot/vmlinuz-5.4.46",
+          "sudo mv /tmp/config-5.4.46 /boot/config-5.4.46",
+          "sudo update-grub",
+          "cd / && sudo tar xf /tmp/kheaders.tar.bz2"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "m5",
+      "destination": "/tmp/m5",
+      "direction": "upload"
+    },
+    {
+      "type": "shell",
+      "inline": ["sudo mv /tmp/m5 /sbin/m5"]
     }
   ],
   "variables": {
@@ -72,7 +102,7 @@
     "ssh_username": "ubuntu",
     "vagrantfile_template": "",
     "version": "0.1.0",
-    "vm_name": "nopaxos"
+    "vm_name": "base"
   }
 }
 

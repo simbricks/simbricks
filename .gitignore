@@ -15,9 +15,7 @@ images/mqnic/modules.order
 images/mqnic/mqnic.mod*
 images/vmlinux
 images/bzImage
-images/output-ubuntu1804-base
-images/output-nopaxos
-images/output-mtcp
+images/output-*
 images/packer
 images/packer_cache
 images/kheaders.tar.bz2
