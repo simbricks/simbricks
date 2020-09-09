@@ -277,11 +277,6 @@ void lan_queue_tx::initialize()
     hwb = !!(*hwb_qlen_p & (1 << 0));
     hwb_addr = *hwb_addr_p;
 
-    if (!hwb) {
-        std::cerr << "    currently only hwb is supported" << std::endl;
-        abort();
-    }
-
     std::cerr << "  head=" << reg_dummy_head << " base=" << base <<
         " len=" << len << " hwb=" << hwb << " hwb_addr=" << hwb_addr <<
         std::endl;
