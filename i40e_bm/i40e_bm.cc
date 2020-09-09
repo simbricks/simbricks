@@ -344,6 +344,14 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = regs.pf_arqt;
                 break;
 
+            case I40E_PRTMAC_LINKSTA:
+                val = I40E_REG_LINK_UP | I40E_REG_SPEED_25_40GB;
+                break;
+
+            case I40E_PRTMAC_MACC:
+                val = 0;
+                break;
+
             default:
                 std::cerr << "unhandled mem read addr=" << std::hex << addr
                     << std::endl;
