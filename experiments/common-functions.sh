@@ -66,8 +66,8 @@ run_qemu() {
     #i40e.debug=0x8fffffff
     #hugepages=1024
     $QEMU_CMD -machine q35 -cpu host \
-        -drive file=$img_a,if=ide,index=0 \
-        -drive file=$img_b,if=ide,index=1,driver=raw \
+        -drive file=$img_a,if=ide,index=0,media=disk \
+        -drive file=$img_b,if=ide,index=1,media=disk,driver=raw \
         -kernel $QEMU_KERNEL \
         -append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 init=/home/ubuntu/guestinit.sh rw" \
         -serial mon:stdio -m $((16 * 1024)) -smp 1 -display none -enable-kvm \
