@@ -73,6 +73,16 @@ EXPERIMENTS := \
     gem5-timing-corundum-verilator-pair-udp-100m \
     gem5-timing-corundum-verilator-pair-udp-150m \
 
+#experiments using check points
+EXP_CP := \
+    gem5-timing-corundum-verilator-pair-cp \
+
+#experiments not using check points
+EXP_NCP := \
+    qemu-corundum-bm-pair \
+    qemu-corundum-bm-switched-1 \
+
+
 # all experiments in repo
 ALL_EXPERIMENTS := \
     $(EXPERIMENTS) \
@@ -96,6 +106,8 @@ OUTDIR := out
 
 GUESTS_TARS := $(addprefix $(BUILDDIR)/,$(addsuffix .tar, $(GUESTS)))
 EXPERIMENTS_READY := $(addprefix $(OUTDIR)/,$(addsuffix /ready,$(EXPERIMENTS)))
+EXP_CP_READY := $(addprefix $(OUTDIR)/,$(addsuffix /ready,$(EXP_CP)))
+EXP_NCP_READY := $(addprefix $(OUTDIR)/,$(addsuffix /ready,$(EXP_NCP)))
 
 all: guest-tars experiments
 
@@ -105,20 +117,43 @@ clean:
 #######################################
 # Running experiments
 
+REPLIDS := $(shell seq $(REPLICATION))
+experiments-ncp: $(EXP_NCP_READY)
+experiments-cp: $(EXP_CP_READY)
 experiments: $(EXPERIMENTS_READY)
 
-define run_experiment_repl
-$(OUTDIR)/%/$(1)/ready: experiments/%.sh $(GUESTS_TARS)
-	bash $$< $(1)
+define run_ex_ncp_repl
+$(OUTDIR)/$(1)/$(2)/ready: experiments/$(addsuffix .sh,$(1)) $(GUESTS_TARS)
+	bash $$< $(2)
+	touch $$@
+
+endef
+
+define run_ex_ncp
+$(foreach i,$(REPLIDS),$(eval $(call run_ex_ncp_repl,$(1),$(i))))
+$(OUTDIR)/$(1)/ready: experiments/$(addsuffix .sh,$(1)) $(addprefix $(OUTDIR)/$(1)/,$(addsuffix /ready,$(REPLIDS)))
 	touch $$@
 endef
 
-REPLIDS := $(shell seq $(REPLICATION))
+define run_ex_cp_repl
+$(OUTDIR)/$(1)/$(2)/ready: experiments/$(addsuffix .sh,$(1)) $(OUTDIR)/$(1)/checkpoint/ready $(GUESTS_TARS)
+	bash $$< $(2)
+	touch $$@
+endef
 
-$(foreach i,$(REPLIDS), $(eval $(call run_experiment_repl,$(i))))
+define run_ex_cp
+$(foreach i,$(REPLIDS),$(eval $(call run_ex_cp_repl,$(1),$(i))))
 
-$(OUTDIR)/%/ready: experiments/%.sh $(addprefix $(OUTDIR)/%/,$(addsuffix /ready,$(REPLIDS)))
-	touch $@
+$(OUTDIR)/$(1)/checkpoint/ready: experiments/$(addsuffix -mck.sh,$(1)) $(GUESTS_TARS)
+	bash $$<
+	touch $$@
+
+$(OUTDIR)/$(1)/ready: experiments/$(addsuffix .sh,$(1)) $(addprefix $(OUTDIR)/$(1)/,$(addsuffix /ready,$(REPLIDS)))
+	touch $$@
+
+endef
+$(foreach sc, $(EXP_CP),$(eval $(call run_ex_cp,$(sc))))
+$(foreach sc, $(EXP_NCP),$(eval $(call run_ex_ncp,$(sc))))
 
 #######################################
 # Guest Tars
