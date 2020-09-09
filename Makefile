@@ -3,12 +3,14 @@ REPO_BASE= $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 all: \
 	corundum/corundum_verilator \
 	corundum_bm/corundum_bm \
+	i40e_bm/i40e_bm \
 	net_tap/net_tap \
 	net_wire/net_wire
 
 clean:
 	$(MAKE) -C corundum/ clean
 	$(MAKE) -C corundum_bm/ clean
+	$(MAKE) -C i40e_bm/ clean
 	$(MAKE) -C dummy_nic/ clean
 	$(MAKE) -C net_tap/ clean
 	$(MAKE) -C net_wire/ clean
@@ -34,6 +36,9 @@ corundum/corundum_verilator: nicsim_common/libnicsim_common.a
 
 corundum_bm/corundum_bm: nicsim_common/libnicsim_common.a libnicbm/libnicbm.a
 	$(MAKE) -C corundum_bm/ all
+
+i40e_bm/i40e_bm: nicsim_common/libnicsim_common.a libnicbm/libnicbm.a
+	$(MAKE) -C i40e_bm/ all
 
 dummy_nic/dummy_nic: nicsim_common/libnicsim_common.a
 	$(MAKE) -C dummy_nic all
