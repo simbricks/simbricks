@@ -51,41 +51,54 @@ void i40e_bm::eth_rx(uint8_t port, const void *data, size_t len)
 
 void i40e_bm::reg_read(uint8_t bar, uint64_t addr, void *dest, size_t len)
 {
-    uint32_t val32 = 0;
+    uint32_t *dest_p = reinterpret_cast <uint32_t *> (dest);
 
-    if (len != 4) {
-        std::cerr << "currently we only support 4B reads (got " << len << ")"
+    if (len == 4) {
+        dest_p[0] = reg_read32(bar, addr);
+    } else if (len == 8) {
+        dest_p[0] = reg_read32(bar, addr);
+        dest_p[1] = reg_read32(bar, addr + 4);
+    } else {
+        std::cerr << "currently we only support 4/8B reads (got " << len << ")"
             << std::endl;
         abort();
     }
+}
 
+uint32_t i40e_bm::reg_read32(uint8_t bar, uint64_t addr)
+{
     if (bar == BAR_REGS) {
-        val32 = reg_mem_read32(addr);
+        return reg_mem_read32(addr);
     } else if (bar == BAR_IO) {
-        val32 = reg_io_read(addr);
+        return reg_io_read(addr);
     } else {
         std::cerr << "invalid BAR " << (int) bar << std::endl;
         abort();
     }
-
-    *(uint32_t *) dest = val32;
 }
 
 void i40e_bm::reg_write(uint8_t bar, uint64_t addr, const void *src, size_t len)
 {
-    uint32_t val32 = 0;
+    const uint32_t *src_p = reinterpret_cast<const uint32_t *> (src);
 
-    if (len != 4) {
-        std::cerr << "currently we only support 4B writes (got " << len << ")"
+    if (len == 4) {
+        reg_write32(bar, addr, src_p[0]);
+    } else if (len == 8) {
+        reg_write32(bar, addr, src_p[0]);
+        reg_write32(bar, addr + 4, src_p[1]);
+    } else {
+        std::cerr << "currently we only support 4/8B writes (got " << len << ")"
             << std::endl;
         abort();
     }
-    val32 = *(const uint32_t *) src;
+}
 
+void i40e_bm::reg_write32(uint8_t bar, uint64_t addr, uint32_t val)
+{
     if (bar == BAR_REGS) {
-        reg_mem_write32(addr, val32);
+        reg_mem_write32(addr, val);
     } else if (bar == BAR_IO) {
-        reg_io_write(addr, val32);
+        reg_io_write(addr, val);
     } else {
         std::cerr << "invalid BAR " << (int) bar << std::endl;
         abort();

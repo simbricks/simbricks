@@ -368,8 +368,10 @@ public:
 
     virtual void setup_intro(struct cosim_pcie_proto_dev_intro &di);
     virtual void reg_read(uint8_t bar, uint64_t addr, void *dest, size_t len);
+    virtual uint32_t reg_read32(uint8_t bar, uint64_t addr);
     virtual void reg_write(uint8_t bar, uint64_t addr, const void *src,
             size_t len);
+    virtual void reg_write32(uint8_t bar, uint64_t addr, uint32_t val);
     virtual void dma_complete(nicbm::DMAOp &op);
     virtual void eth_rx(uint8_t port, const void *data, size_t len);
 
