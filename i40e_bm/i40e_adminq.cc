@@ -37,9 +37,10 @@ void queue_admin_tx::desc_complete(struct i40e_aq_desc *d, uint32_t idx,
 }
 
 void queue_admin_tx::desc_complete_indir(struct i40e_aq_desc *d, uint32_t idx,
-        uint16_t retval, const void *data, size_t len, uint16_t extra_flags)
+        uint16_t retval, const void *data, size_t len, uint16_t extra_flags,
+        bool ignore_datalen)
 {
-    if (len > d->datalen) {
+    if (!ignore_datalen && len > d->datalen) {
         std::cerr << "queue_admin_tx::desc_complete_indir: data too long ("
             << len << ") got buffer for (" << d->datalen << ")" << std::endl;
         abort();
@@ -139,6 +140,21 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
 
         ar->command_flags = I40E_AQC_LAN_ADDR_VALID | I40E_AQC_PORT_ADDR_VALID;
         desc_complete_indir(d, idx, 0, &ard, sizeof(ard));
+    } else if (d->opcode == i40e_aqc_opc_get_phy_abilities) {
+        std::cerr << "    get phy abilities" << std::endl;
+        struct i40e_aq_get_phy_abilities_resp par;
+        memset(&par, 0, sizeof(par));
+
+        par.phy_type = (1ULL << I40E_PHY_TYPE_40GBASE_CR4_CU);
+        par.link_speed = I40E_LINK_SPEED_40GB;
+        par.abilities = I40E_AQ_PHY_LINK_ENABLED |
+            I40E_AQ_PHY_AN_ENABLED;
+        par.eee_capability = 0;
+
+        d->params.external.param0 = 0;
+        d->params.external.param1 = 0;
+
+        desc_complete_indir(d, idx, 0, &par, sizeof(par), 0, true);
     } else if (d->opcode == i40e_aqc_opc_get_link_status) {
         std::cerr << "    link status" << std::endl;
         struct i40e_aqc_get_link_status *gls =
