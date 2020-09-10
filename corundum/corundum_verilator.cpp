@@ -19,10 +19,10 @@ extern "C" {
 #include "dma.h"
 #include "mem.h"
 
-#define CLOCK_PERIOD (100 * 1000ULL) // 100ns -> 10MHz
-#define SYNC_PERIOD (500 * 1000ULL) // 100ns
-#define PCI_LATENCY (1 * 1000 * 1000ULL) // 1us
-#define ETH_LATENCY (1 * 1000 * 1000ULL) // 1us
+#define CLOCK_PERIOD (4 * 1000ULL) // 4ns -> 2500MHz
+#define SYNC_PERIOD (500 * 1000ULL) // 500ns
+#define PCI_LATENCY (500 * 1000ULL) // 500ns
+#define ETH_LATENCY (500 * 1000ULL) // 500ns
 
 struct DMAOp;
 

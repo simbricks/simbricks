@@ -34,8 +34,8 @@
 
 #include <netsim.h>
 
-#define SYNC_PERIOD (500 * 1000ULL) // 100ns
-#define ETH_LATENCY (1 * 1000 * 1000ULL) // 1us
+#define SYNC_PERIOD (500 * 1000ULL) // 500ns
+#define ETH_LATENCY (500 * 1000ULL) // 500ns
 
 static void move_pkt(uint64_t cur_ts, struct netsim_interface *from,
         struct netsim_interface *to)
