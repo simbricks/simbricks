@@ -276,9 +276,15 @@ void lan_queue_rx::packet_received(const void *data, size_t pktlen)
 lan_queue_tx::lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
         uint32_t &reg_ena_, uint32_t &reg_fpmbase_, uint32_t &reg_intqctl)
     : lan_queue_base(lanmgr_, reg_tail_, idx_, reg_ena_, reg_fpmbase_,
-            reg_intqctl, 128)
+            reg_intqctl, 128), pktbuf_len(0)
 {
     desc_len = 16;
+}
+
+void lan_queue_tx::reset()
+{
+    pktbuf_len = 0;
+    queue_base::reset();
 }
 
 void lan_queue_tx::initialize()

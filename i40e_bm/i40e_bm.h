@@ -230,6 +230,7 @@ class lan_queue_tx : public lan_queue_base {
         lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,
                 uint32_t &reg_ena, uint32_t &fpm_basereg,
                 uint32_t &reg_intqctl);
+        virtual void reset();
 };
 
 class lan_queue_rx : public lan_queue_base {
