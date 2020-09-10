@@ -256,7 +256,7 @@ void lan_queue_rx::packet_received(const void *data, size_t pktlen)
         return;
     }
 
-    std::cerr << "rxq: packet received" << std::endl;
+    std::cerr << "rxq: packet received didx=" << dcache_first_idx << " cnt=" << dcache_first_cnt << std::endl;
     union i40e_32byte_rx_desc rxd;
     memset(&rxd, 0, sizeof(rxd));
     rxd.wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_DD_SHIFT);
@@ -312,10 +312,11 @@ void lan_queue_tx::initialize()
 
 void lan_queue_tx::desc_fetched(void *desc_buf, uint32_t didx)
 {
-    std::cerr << "txq: desc fetched" << std::endl;
 
     struct i40e_tx_desc *desc = reinterpret_cast<struct i40e_tx_desc *>(desc_buf);
     uint64_t d1 = desc->cmd_type_offset_bsz;
+
+    std::cerr << "txq: desc fetched didx=" << didx << " d1=" << d1 << std::endl;
 
     uint8_t dtype = (d1 & I40E_TXD_QW1_DTYPE_MASK) >> I40E_TXD_QW1_DTYPE_SHIFT;
     if (dtype == I40E_TX_DESC_DTYPE_DATA) {
@@ -345,9 +346,9 @@ void lan_queue_tx::desc_fetched(void *desc_buf, uint32_t didx)
 
 void lan_queue_tx::data_fetched(void *desc_buf, uint32_t didx, void *data)
 {
-    std::cerr << "txq: data fetched" << std::endl;
     struct i40e_tx_desc *desc = reinterpret_cast<struct i40e_tx_desc *>(desc_buf);
     uint64_t d1 = desc->cmd_type_offset_bsz;
+    std::cerr << "txq: data fetched didx=" << didx << " d1=" << d1 << std::endl;
     uint16_t pkt_len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
         I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
 
@@ -363,6 +364,8 @@ void lan_queue_tx::data_fetched(void *desc_buf, uint32_t didx, void *data)
         I40E_TX_DESC_LENGTH_IPLEN_SHIFT) * 4;
     /*uint16_t l4len = (off & I40E_TXD_QW1_L4LEN_MASK) >>
         I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;*/
+
+    std::cerr << "    eop=" << eop << " len=" << pkt_len << " pktbuf_len=" << pktbuf_len << std::endl;
 
     // part of a multi-descriptor packet
     if (!eop || pktbuf_len != 0) {

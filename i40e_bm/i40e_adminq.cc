@@ -224,6 +224,7 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         memset(&hr, 0, sizeof(hr));
         hr.num_reported = report;
         hr.num_total = cnt;
+        std::cerr << "    report=" << report << " cnt=" << cnt << "  seid=" << sw->seid << std::endl;
 
         // create temporary contiguous buffer
         size_t buflen = sizeof(hr) + sizeof(els[0]) * report;

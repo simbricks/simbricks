@@ -32,8 +32,8 @@ void queue_base::trigger_fetch()
 
     pending_fetches++;
 
-    std::cerr << "fetching " << (reg_tail - fetch_head) % len <<
-        " descriptors from " << dma->dma_addr << std::endl;
+    std::cerr << "fetching: avail=" << (reg_tail - fetch_head) % len <<
+        " fhead=" << fetch_head << " from " << dma->dma_addr << std::endl;
 
     std::cerr << "dma = " << dma << std::endl;
     runner->issue_dma(*dma);
@@ -112,6 +112,7 @@ uint32_t queue_base::max_fetch_capacity()
 
 void queue_base::desc_done(uint32_t idx)
 {
+    assert(reg_head == idx);
     reg_head = (idx + 1) % len;
     trigger_fetch();
 }
