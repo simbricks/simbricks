@@ -53,6 +53,8 @@ GUESTS := \
     gem5-pair-client-largewin-cp \
     gem5-pair-server-udp-cp \
     gem5-pair-client-udp-cp \
+    qemu-mtcp-server \
+    qemu-mtcp-client \
 
 # experiments we want for the paper
 EXPERIMENTS := \
