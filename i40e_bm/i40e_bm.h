@@ -7,6 +7,12 @@ extern "C" {
 }
 #include <nicbm.h>
 
+//#define DEBUG_DEV
+//#define DEBUG_ADMINQ
+//#define DEBUG_LAN
+//#define DEBUG_HMC
+//#define DEBUG_QUEUES
+
 struct i40e_aq_desc;
 struct i40e_tx_desc;
 
@@ -127,6 +133,7 @@ class queue_base {
                 virtual void done();
         };
 
+        std::string qname;
         desc_ctx *desc_ctxs[MAX_ACTIVE_DESCS];
         uint32_t active_first_pos;
         uint32_t active_first_idx;
@@ -164,7 +171,8 @@ class queue_base {
         // called by dma op when writeback has completed
         void writeback_done(uint32_t first_pos, uint32_t cnt);
     public:
-        queue_base(uint32_t &reg_head_, uint32_t &reg_tail_);
+        queue_base(const std::string &qname_, uint32_t &reg_head_,
+                uint32_t &reg_tail_);
         virtual void reset();
         void reg_updated();
         bool is_enabled();
@@ -266,7 +274,8 @@ class lan_queue_base : public queue_base {
 
         uint32_t reg_dummy_head;
 
-        lan_queue_base(lan &lanmgr_, uint32_t &reg_tail, size_t idx_,
+        lan_queue_base(lan &lanmgr_, const std::string &qtype, uint32_t &reg_tail,
+                size_t idx_,
                 uint32_t &reg_ena_, uint32_t &fpm_basereg, uint32_t &reg_intqctl,
                 uint16_t ctx_size);
         virtual void reset();

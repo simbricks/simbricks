@@ -13,7 +13,7 @@ extern nicbm::Runner *runner;
 
 queue_admin_tx::queue_admin_tx(i40e_bm &dev_, uint64_t &reg_base_,
         uint32_t &reg_len_, uint32_t &reg_head_, uint32_t &reg_tail_)
-    : queue_base(reg_head_, reg_tail_), dev(dev_), reg_base(reg_base_),
+    : queue_base("atx", reg_head_, reg_tail_), dev(dev_), reg_base(reg_base_),
     reg_len(reg_len_)
 {
     desc_len = 32;
@@ -31,10 +31,15 @@ void queue_admin_tx::reg_updated()
     len = (reg_len & I40E_GL_ATQLEN_ATQLEN_MASK) >> I40E_GL_ATQLEN_ATQLEN_SHIFT;
 
     if (!enabled  && (reg_len & I40E_GL_ATQLEN_ATQENABLE_MASK)) {
-        std::cerr << "enable atq base=" << base << " len=" << len << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq: enable base=" << base << " len=" << len <<
+            std::endl;
+#endif
         enabled = true;
     } else if (enabled && !(reg_len & I40E_GL_ATQLEN_ATQENABLE_MASK)) {
-        std::cerr << "disable atq" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq: disable" << std::endl;
+#endif
         enabled = false;
     }
 
@@ -92,8 +97,10 @@ void queue_admin_tx::admin_desc_ctx::prepare()
     if ((d->flags & I40E_AQ_FLAG_RD)) {
         uint64_t addr = d->params.external.addr_low |
             (((uint64_t) d->params.external.addr_high) << 32);
-        std::cerr << "  desc with buffer opc=" << d->opcode << " addr=" << addr
-            << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq: desc with buffer opc=" << d->opcode << " addr=" <<
+            addr << std::endl;
+#endif
         data_fetch(addr, d->datalen);
     } else {
         prepared();
@@ -102,10 +109,14 @@ void queue_admin_tx::admin_desc_ctx::prepare()
 
 void queue_admin_tx::admin_desc_ctx::process()
 {
-    std::cerr << "descriptor " << index << " fetched" << std::endl;
+#ifdef DEBUG_ADMINQ
+    std::cerr << "atq: descriptor " << index << " fetched" << std::endl;
+#endif
 
     if (d->opcode == i40e_aqc_opc_get_version) {
-        std::cerr << "    get version" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  get version" << std::endl;
+#endif
         struct i40e_aqc_get_version *gv =
             reinterpret_cast<struct i40e_aqc_get_version *>(d->params.raw);
         gv->rom_ver = 0;
@@ -117,30 +128,42 @@ void queue_admin_tx::admin_desc_ctx::process()
 
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_request_resource) {
-        std::cerr << "    request resource" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  request resource" << std::endl;
+#endif
         struct i40e_aqc_request_resource *rr =
             reinterpret_cast<struct i40e_aqc_request_resource *>(
                     d->params.raw);
         rr->timeout = 180000;
-        std::cerr << "      res_id=" << rr->resource_id << std::endl;
-        std::cerr << "      res_nu=" << rr->resource_number << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:    res_id=" << rr->resource_id << std::endl;
+        std::cerr << "atq:    res_nu=" << rr->resource_number << std::endl;
+#endif
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_release_resource) {
-        std::cerr << "    release resource" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  release resource" << std::endl;
+#endif
+#ifdef DEBUG_ADMINQ
         struct i40e_aqc_request_resource *rr =
             reinterpret_cast<struct i40e_aqc_request_resource *>(
                     d->params.raw);
-        std::cerr << "      res_id=" << rr->resource_id << std::endl;
-        std::cerr << "      res_nu=" << rr->resource_number << std::endl;
+        std::cerr << "atq:    res_id=" << rr->resource_id << std::endl;
+        std::cerr << "atq:    res_nu=" << rr->resource_number << std::endl;
+#endif
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_clear_pxe_mode)  {
-        std::cerr << "    clear PXE mode" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  clear PXE mode" << std::endl;
+#endif
         dev.regs.gllan_rctl_0 &= ~I40E_GLLAN_RCTL_0_PXE_MODE_MASK;
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_list_func_capabilities ||
             d->opcode == i40e_aqc_opc_list_dev_capabilities)
     {
-        std::cerr << "    get dev/fun caps" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  get dev/fun caps" << std::endl;
+#endif
         struct i40e_aqc_list_capabilites *lc =
             reinterpret_cast<struct i40e_aqc_list_capabilites *>(
                     d->params.raw);
@@ -156,35 +179,47 @@ void queue_admin_tx::admin_desc_ctx::process()
         size_t num_caps = sizeof(caps) / sizeof(caps[0]);
 
         if (sizeof(caps) <= d->datalen) {
-            std::cerr << "      data fits" << std::endl;
+#ifdef DEBUG_ADMINQ
+            std::cerr << "atq:    data fits" << std::endl;
+#endif
             // data fits within the buffer
             lc->count = num_caps;
             desc_complete_indir(0, caps, sizeof(caps));
         } else {
-            std::cerr << "      data doesn't fit" << std::endl;
+#ifdef DEBUG_ADMINQ
+            std::cerr << "atq:    data doesn't fit" << std::endl;
+#endif
             // data does not fit
             d->datalen = sizeof(caps);
             desc_complete(I40E_AQ_RC_ENOMEM);
         }
     } else if (d->opcode == i40e_aqc_opc_lldp_stop) {
-        std::cerr << "    lldp stop" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  lldp stop" << std::endl;
+#endif
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_mac_address_read) {
-        std::cerr << "    read mac" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  read mac" << std::endl;
+#endif
         struct i40e_aqc_mac_address_read *ar =
             reinterpret_cast<struct i40e_aqc_mac_address_read *>(
                     d->params.raw);
 
         struct i40e_aqc_mac_address_read_data ard;
         uint64_t mac = runner->get_mac_addr();
-        std::cerr << "      mac = " << mac << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:    mac = " << mac << std::endl;
+#endif
         memcpy(ard.pf_lan_mac, &mac, 6);
         memcpy(ard.port_mac, &mac, 6);
 
         ar->command_flags = I40E_AQC_LAN_ADDR_VALID | I40E_AQC_PORT_ADDR_VALID;
         desc_complete_indir(0, &ard, sizeof(ard));
     } else if (d->opcode == i40e_aqc_opc_get_phy_abilities) {
-        std::cerr << "    get phy abilities" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  get phy abilities" << std::endl;
+#endif
         struct i40e_aq_get_phy_abilities_resp par;
         memset(&par, 0, sizeof(par));
 
@@ -199,7 +234,9 @@ void queue_admin_tx::admin_desc_ctx::process()
 
         desc_complete_indir(0, &par, sizeof(par), 0, true);
     } else if (d->opcode == i40e_aqc_opc_get_link_status) {
-        std::cerr << "    link status" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  link status" << std::endl;
+#endif
         struct i40e_aqc_get_link_status *gls =
             reinterpret_cast<struct i40e_aqc_get_link_status *>(
                     d->params.raw);
@@ -219,7 +256,9 @@ void queue_admin_tx::admin_desc_ctx::process()
 
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_get_switch_config) {
-        std::cerr << "    get switch config" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  get switch config" << std::endl;
+#endif
         struct i40e_aqc_switch_seid *sw = reinterpret_cast<
             struct i40e_aqc_switch_seid *>(d->params.raw);
         struct i40e_aqc_get_switch_config_header_resp hr;
@@ -267,7 +306,10 @@ void queue_admin_tx::admin_desc_ctx::process()
         memset(&hr, 0, sizeof(hr));
         hr.num_reported = report;
         hr.num_total = cnt;
-        std::cerr << "    report=" << report << " cnt=" << cnt << "  seid=" << sw->seid << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:    report=" << report << " cnt=" << cnt <<
+            "  seid=" << sw->seid << std::endl;
+#endif
 
         // create temporary contiguous buffer
         size_t buflen = sizeof(hr) + sizeof(els[0]) * report;
@@ -277,7 +319,9 @@ void queue_admin_tx::admin_desc_ctx::process()
 
         desc_complete_indir(0, buf, buflen);
     } else if (d->opcode == i40e_aqc_opc_set_switch_config) {
-        std::cerr << "    set switch config" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  set switch config" << std::endl;
+#endif
         /* TODO: lots of interesting things here like l2 filtering etc. that are
          * relevant.
         struct i40e_aqc_set_switch_config *sc =
@@ -286,7 +330,9 @@ void queue_admin_tx::admin_desc_ctx::process()
         */
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_get_vsi_parameters) {
-        std::cerr << "    get vsi parameters" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  get vsi parameters" << std::endl;
+#endif
         /*struct i40e_aqc_add_get_update_vsi *v =
             reinterpret_cast<struct i40e_aqc_add_get_update_vsi *>(
                     d->params.raw);*/
@@ -299,32 +345,44 @@ void queue_admin_tx::admin_desc_ctx::process()
             I40E_AQ_VSI_PROP_SCHED_VALID;
         desc_complete_indir(0, &pd, sizeof(pd));
     } else if (d->opcode == i40e_aqc_opc_update_vsi_parameters) {
-        std::cerr << "    update vsi parameters" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  update vsi parameters" << std::endl;
+#endif
         /* TODO */
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_set_dcb_parameters) {
-        std::cerr << "    set dcb parameters" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  set dcb parameters" << std::endl;
+#endif
         /* TODO */
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_configure_vsi_bw_limit) {
-        std::cerr << "    configure vsi bw limit" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  configure vsi bw limit" << std::endl;
+#endif
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_query_vsi_bw_config) {
-        std::cerr << "    query vsi bw config" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  query vsi bw config" << std::endl;
+#endif
         struct i40e_aqc_query_vsi_bw_config_resp bwc;
         memset(&bwc, 0, sizeof(bwc));
         for (size_t i = 0; i < 8; i++)
             bwc.qs_handles[i] = 0xffff;
         desc_complete_indir(0, &bwc, sizeof(bwc));
     } else if (d->opcode == i40e_aqc_opc_query_vsi_ets_sla_config) {
-        std::cerr << "    query vsi ets sla config" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  query vsi ets sla config" << std::endl;
+#endif
         struct i40e_aqc_query_vsi_ets_sla_config_resp sla;
         memset(&sla, 0, sizeof(sla));
         for (size_t i = 0; i < 8; i++)
             sla.share_credits[i] = 127;
         desc_complete_indir(0, &sla, sizeof(sla));
     } else if (d->opcode == i40e_aqc_opc_remove_macvlan) {
-        std::cerr << "    remove macvlan" << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  remove macvlan" << std::endl;
+#endif
         struct i40e_aqc_macvlan *m = reinterpret_cast<
             struct i40e_aqc_macvlan *>(d->params.raw);
         struct i40e_aqc_remove_macvlan_element_data *rve =
@@ -335,7 +393,9 @@ void queue_admin_tx::admin_desc_ctx::process()
 
         desc_complete_indir(0, data, d->datalen);
     } else {
-        std::cerr << "    uknown opcode=" << d->opcode << std::endl;
+#ifdef DEBUG_ADMINQ
+        std::cerr << "atq:  uknown opcode=" << d->opcode << std::endl;
+#endif
         //desc_complete(I40E_AQ_RC_ESRCH);
         desc_complete(0);
     }

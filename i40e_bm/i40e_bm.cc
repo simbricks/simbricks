@@ -39,13 +39,17 @@ void i40e_bm::setup_intro(struct cosim_pcie_proto_dev_intro &di)
 void i40e_bm::dma_complete(nicbm::DMAOp &op)
 {
     dma_base &dma = dynamic_cast<dma_base &>(op);
+#ifdef DEBUG_DEV
     std::cerr << "dma_complete(" << &op << ")" << std::endl;
+#endif
     dma.done();
 }
 
 void i40e_bm::eth_rx(uint8_t port, const void *data, size_t len)
 {
+#ifdef DEBUG_DEV
     std::cerr << "i40e: received packet len=" << len << std::endl;
+#endif
     lanmgr.packet_received(data, len);
 }
 
@@ -353,8 +357,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 break;
 
             default:
+#ifdef DEBUG_DEV
                 std::cerr << "unhandled mem read addr=" << std::hex << addr
                     << std::endl;
+#endif
                 break;
         }
     }
@@ -529,8 +535,10 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
                 break;
 
             default:
+#ifdef DEBUG_DEV
                 std::cerr << "unhandled mem write addr=" << std::hex << addr
                     << " val=" << val << std::endl;
+#endif
                 break;
         }
     }
@@ -538,7 +546,9 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
 
 void i40e_bm::reset(bool indicate_done)
 {
+#ifdef DEBUG_DEV
     std::cout << "reset triggered" << std::endl;
+#endif
 
     pf_atq.reset();
     hmc.reset();
@@ -567,8 +577,10 @@ void shadow_ram::reg_updated()
         >> I40E_GLNVM_SRCTL_ADDR_SHIFT;
     is_write = (val & I40E_GLNVM_SRCTL_WRITE_MASK);
 
+#ifdef DEBUG_DEV
     std::cerr << "shadow ram op addr=" << std::hex << addr << " w=" << is_write
         << std::endl;
+#endif
 
     if (is_write) {
         write(addr,
@@ -602,8 +614,10 @@ uint16_t shadow_ram::read(uint16_t addr)
              return 0xbaba;
 
         default:
+#ifdef DEBUG_DEV
              std::cerr << "TODO shadow memory read addr=" << std::hex << addr
                  << std::endl;
+#endif
              break;
     }
 
@@ -612,8 +626,10 @@ uint16_t shadow_ram::read(uint16_t addr)
 
 void shadow_ram::write(uint16_t addr, uint16_t val)
 {
+#ifdef DEBUG_DEV
     std::cerr << "TODO shadow memory write addr=" << std::hex << addr <<
         " val=" << val << std::endl;
+#endif
 }
 
 } //namespace i40e

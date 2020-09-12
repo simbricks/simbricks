@@ -37,7 +37,9 @@ void lan::reset()
 
 void lan::qena_updated(uint16_t idx, bool rx)
 {
+#ifdef DEBUG_LAN
     std::cerr << "lan: qena updated idx=" << idx << " rx=" << rx << std::endl;
+#endif
     uint32_t &reg = (rx ? dev.regs.qrx_ena[idx] : dev.regs.qtx_ena[idx]);
     lan_queue_base &q = (rx ? static_cast<lan_queue_base &>(*rxqs[idx]) :
         static_cast<lan_queue_base &>(*txqs[idx]));
@@ -51,7 +53,9 @@ void lan::qena_updated(uint16_t idx, bool rx)
 
 void lan::tail_updated(uint16_t idx, bool rx)
 {
+#ifdef DEBUG_LAN
     std::cerr << "lan: tail updated idx=" << idx << " rx=" << rx << std::endl;
+#endif
 
     lan_queue_base &q = (rx ? static_cast<lan_queue_base &>(*rxqs[idx]) :
         static_cast<lan_queue_base &>(*txqs[idx]));
@@ -62,16 +66,20 @@ void lan::tail_updated(uint16_t idx, bool rx)
 
 void lan::packet_received(const void *data, size_t len)
 {
+#ifdef DEBUG_LAN
     std::cerr << "lan: packet received len=" << len << std::endl;
+#endif
 
     // TODO: steering
     rxqs[0]->packet_received(data, len);
 }
 
-lan_queue_base::lan_queue_base(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
+lan_queue_base::lan_queue_base(lan &lanmgr_, const std::string &qtype,
+        uint32_t &reg_tail_, size_t idx_,
         uint32_t &reg_ena_, uint32_t &fpm_basereg_, uint32_t &reg_intqctl_,
         uint16_t ctx_size_)
-    : queue_base(reg_dummy_head, reg_tail_), lanmgr(lanmgr_), enabling(false),
+    : queue_base(qtype + std::to_string(idx_), reg_dummy_head, reg_tail_),
+    lanmgr(lanmgr_), enabling(false),
     idx(idx_), reg_ena(reg_ena_), fpm_basereg(fpm_basereg_),
     reg_intqctl(reg_intqctl_), ctx_size(ctx_size_)
 {
@@ -89,7 +97,9 @@ void lan_queue_base::enable()
     if (enabling || enabled)
         return;
 
-    std::cerr << "lan enabling queue " << idx << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ": lan enabling queue " << idx << std::endl;
+#endif
     enabling = true;
 
     qctx_fetch *qf = new qctx_fetch(*this);
@@ -105,7 +115,9 @@ void lan_queue_base::enable()
 
 void lan_queue_base::ctx_fetched()
 {
-    std::cerr << "lan ctx fetched " << idx << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ": lan ctx fetched " << idx << std::endl;
+#endif
 
     initialize();
 
@@ -118,7 +130,9 @@ void lan_queue_base::ctx_fetched()
 
 void lan_queue_base::disable()
 {
-    std::cerr << "lan disabling queue " << idx << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ": lan disabling queue " << idx << std::endl;
+#endif
     enabled = false;
     // TODO: write back
     reg_ena &= ~I40E_QRX_ENA_QENA_STAT_MASK;
@@ -127,7 +141,9 @@ void lan_queue_base::disable()
 void lan_queue_base::interrupt()
 {
     uint32_t qctl = reg_intqctl;
-    std::cerr << "lanq: interrupt intctl=" << qctl << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ": interrupt intctl=" << qctl << std::endl;
+#endif
 
     uint16_t msix_idx = (qctl & I40E_QINT_TQCTL_MSIX_INDX_MASK) >>
         I40E_QINT_TQCTL_ITR_INDX_SHIFT;
@@ -136,7 +152,9 @@ void lan_queue_base::interrupt()
     bool cause_ena = !!(qctl & I40E_QINT_TQCTL_CAUSE_ENA_MASK);
 
     if (!cause_ena) {
-        std::cerr << "lanq: interrupt cause disabled" << std::endl;
+#ifdef DEBUG_LAN
+        std::cerr << qname << ": interrupt cause disabled" << std::endl;
+#endif
         return;
     }
 
@@ -146,7 +164,9 @@ void lan_queue_base::interrupt()
     }
 
     // TODO throttling?
-    std::cerr << "   setting int0.qidx=" << msix0_idx << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ":   setting int0.qidx=" << msix0_idx << std::endl;
+#endif
     lanmgr.dev.regs.pfint_icr0 |= I40E_PFINT_ICR0_INTEVENT_MASK |
         (1 << (I40E_PFINT_ICR0_QUEUE_0_SHIFT + msix0_idx));
     runner->msi_issue(0);
@@ -165,7 +185,7 @@ void lan_queue_base::qctx_fetch::done()
 
 lan_queue_rx::lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
         uint32_t &reg_ena_, uint32_t &reg_fpmbase_, uint32_t &reg_intqctl_)
-    : lan_queue_base(lanmgr_, reg_tail_, idx_, reg_ena_, reg_fpmbase_,
+    : lan_queue_base(lanmgr_, "rxq", reg_tail_, idx_, reg_ena_, reg_fpmbase_,
             reg_intqctl_, 32)
 {
     // use larger value for initialization
@@ -181,7 +201,9 @@ void lan_queue_rx::reset()
 
 void lan_queue_rx::initialize()
 {
-    std::cerr << "lan_queue_rx::initialize()" << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ": initialize()" << std::endl;
+#endif
     uint8_t *ctx_p = reinterpret_cast<uint8_t *>(ctx);
 
     uint16_t *head_p = reinterpret_cast<uint16_t *>(ctx_p + 0);
@@ -215,10 +237,12 @@ void lan_queue_rx::initialize()
         abort();
     }
 
-    std::cerr << "  head=" << reg_dummy_head << " base=" << base <<
+#ifdef DEBUG_LAN
+    std::cerr << qname << ":  head=" << reg_dummy_head << " base=" << base <<
         " len=" << len << " dbsz=" << dbuff_size << " hbsz=" << hbuff_size <<
         " dtype=" << (unsigned) dtype << " longdesc=" << longdesc <<
         " crcstrip=" << crc_strip << " rxmax=" << rxmax << std::endl;
+#endif
 }
 
 queue_base::desc_ctx &lan_queue_rx::desc_ctx_create()
@@ -229,14 +253,18 @@ queue_base::desc_ctx &lan_queue_rx::desc_ctx_create()
 void lan_queue_rx::packet_received(const void *data, size_t pktlen)
 {
     if (dcache.empty()) {
-        std::cerr << "rqx: empty, dropping packet" << std::endl;
+#ifdef DEBUG_LAN
+        std::cerr << qname << ": empty, dropping packet" << std::endl;
+#endif
         return;
     }
 
     rx_desc_ctx &ctx = *dcache.front();
 
-    std::cerr << "rxq: packet received didx=" << ctx.index << " cnt=" <<
+#ifdef DEBUG_LAN
+    std::cerr << qname << ": packet received didx=" << ctx.index << " cnt=" <<
         dcache.size() << std::endl;
+#endif
 
     dcache.pop_front();
     ctx.packet_received(data, pktlen);
@@ -276,7 +304,7 @@ void lan_queue_rx::rx_desc_ctx::packet_received(const void *data, size_t pktlen)
 
 lan_queue_tx::lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
         uint32_t &reg_ena_, uint32_t &reg_fpmbase_, uint32_t &reg_intqctl)
-    : lan_queue_base(lanmgr_, reg_tail_, idx_, reg_ena_, reg_fpmbase_,
+    : lan_queue_base(lanmgr_, "txq", reg_tail_, idx_, reg_ena_, reg_fpmbase_,
             reg_intqctl, 128)
 {
     desc_len = 16;
@@ -291,7 +319,9 @@ void lan_queue_tx::reset()
 
 void lan_queue_tx::initialize()
 {
-    std::cerr << "lan_queue_tx::initialize()" << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ": initialize()" << std::endl;
+#endif
     uint8_t *ctx_p = reinterpret_cast<uint8_t *>(ctx);
 
     uint16_t *head_p = reinterpret_cast<uint16_t *>(ctx_p + 0);
@@ -307,9 +337,11 @@ void lan_queue_tx::initialize()
     hwb = !!(*hwb_qlen_p & (1 << 0));
     hwb_addr = *hwb_addr_p;
 
-    std::cerr << "  head=" << reg_dummy_head << " base=" << base <<
+#ifdef DEBUG_LAN
+    std::cerr << qname << ":  head=" << reg_dummy_head << " base=" << base <<
         " len=" << len << " hwb=" << hwb << " hwb_addr=" << hwb_addr <<
         std::endl;
+#endif
 }
 
 queue_base::desc_ctx &lan_queue_tx::desc_ctx_create()
@@ -329,7 +361,9 @@ void lan_queue_tx::do_writeback(uint32_t first_idx, uint32_t first_pos,
                 (first_idx + cnt) % len);
         dma->dma_addr = hwb_addr;
 
-        std::cerr << "hwb=" << *((uint32_t *) dma->data) << std::endl;
+#ifdef DEBUG_LAN
+        std::cerr << qname << ": hwb=" << *((uint32_t *) dma->data) << std::endl;
+#endif
         runner->issue_dma(*dma);
     }
 }
@@ -348,8 +382,10 @@ bool lan_queue_tx::trigger_tx_packet()
         tx_desc_ctx *rd = ready_segments.at(dcnt);
 
         d1 = rd->d->cmd_type_offset_bsz;
-        std::cerr << "txq: data fetched didx=" << rd->index << " d1=" << d1 <<
-            std::endl;
+#ifdef DEBUG_LAN
+        std::cerr << qname << ": data fetched didx=" << rd->index << " d1=" <<
+            d1 << std::endl;
+#endif
 
         uint16_t pkt_len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
             I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
@@ -365,7 +401,10 @@ bool lan_queue_tx::trigger_tx_packet()
         iipt = cmd & (I40E_TX_DESC_CMD_IIPT_MASK);
         l4t = (cmd & I40E_TX_DESC_CMD_L4T_EOFT_MASK);
 
-        std::cerr << "    eop=" << eop << " len=" << pkt_len << std::endl;
+#ifdef DEBUG_LAN
+        std::cerr << qname << ":    eop=" << eop << " len=" << pkt_len <<
+            std::endl;
+#endif
 
         total_len += pkt_len;
     }
@@ -386,7 +425,12 @@ bool lan_queue_tx::trigger_tx_packet()
         uint16_t tcp_off = maclen + iplen;
         xsum_tcp(pktbuf + tcp_off, total_len - tcp_off);
     }
-    std::cerr << "    iipt=" << iipt << " l4t=" << l4t << " maclen=" << maclen << " iplen=" << iplen<< std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ":    iipt=" << iipt << " l4t=" << l4t <<
+        " maclen=" << maclen << " iplen=" << iplen<< std::endl;
+#else
+    (void) iipt;
+#endif
 
     runner->eth_send(pktbuf, total_len);
 
@@ -413,14 +457,20 @@ void lan_queue_tx::tx_desc_ctx::prepare()
 {
     uint64_t d1 = d->cmd_type_offset_bsz;
 
-    std::cerr << "txq: desc fetched didx=" << index << " d1=" << d1 << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << qname << ": desc fetched didx=" << index << " d1=" << d1 <<
+        std::endl;
+#endif
 
     uint8_t dtype = (d1 & I40E_TXD_QW1_DTYPE_MASK) >> I40E_TXD_QW1_DTYPE_SHIFT;
     if (dtype == I40E_TX_DESC_DTYPE_DATA) {
         uint16_t len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
             I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
 
-        std::cerr << "  bufaddr=" << d->buffer_addr << " len=" << len << std::endl;
+#ifdef DEBUG_LAN
+        std::cerr << qname << ":  bufaddr=" << d->buffer_addr << " len=" <<
+            len << std::endl;
+#endif
 
         data_fetch(d->buffer_addr, len);
     } else if (dtype == I40E_TX_DESC_DTYPE_CONTEXT) {
@@ -533,7 +583,9 @@ lan_queue_tx::dma_hwb::~dma_hwb()
 
 void lan_queue_tx::dma_hwb::done()
 {
-    std::cerr << "txq: tx head written back" << std::endl;
+#ifdef DEBUG_LAN
+    std::cerr << queue.qname << ": tx head written back" << std::endl;
+#endif
     queue.writeback_done(pos, cnt);
     delete this;
 }

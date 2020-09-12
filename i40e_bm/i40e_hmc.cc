@@ -39,7 +39,9 @@ void host_mem_cache::reg_updated(uint64_t addr)
         uint32_t hi = dev.regs.pfhmc_sddatahigh;
         if ((cmd & I40E_PFHMC_SDCMD_PMSDWR_MASK)) {
             // write
+#ifdef DEBUG_HMC
             std::cerr << "hmc: writing descriptor " << idx << std::endl;
+#endif
 
             segs[idx].addr = ((lo & I40E_PFHMC_SDDATALOW_PMSDDATALOW_MASK) >>
                 I40E_PFHMC_SDDATALOW_PMSDDATALOW_SHIFT) << 12;
@@ -49,12 +51,16 @@ void host_mem_cache::reg_updated(uint64_t addr)
             segs[idx].valid = !!(lo & I40E_PFHMC_SDDATALOW_PMSDVALID_MASK);
             segs[idx].direct = !!(lo & I40E_PFHMC_SDDATALOW_PMSDTYPE_MASK);
 
+#ifdef DEBUG_HMC
             std::cerr << "    addr=" << segs[idx].addr << " pgcount=" <<
                 segs[idx].pgcount << " valid=" << segs[idx].valid <<
                 " direct=" << segs[idx].direct << std::endl;
+#endif
         } else {
             // read
+#ifdef DEBUG_HMC
             std::cerr << "hmc: reading descriptor " << idx << std::endl;
+#endif
 
             dev.regs.pfhmc_sddatalow = ((segs[idx].addr >> 12) <<
                     I40E_PFHMC_SDDATALOW_PMSDDATALOW_SHIFT) &
@@ -108,7 +114,9 @@ void host_mem_cache::issue_mem_op(mem_op &op)
     op.failed = false;
     op.dma_addr = seg->addr + dir_off;
 
+#ifdef DEBUG_HMC
     std::cerr << "hmc issue_mem_op: hmc_addr=" << addr << " dma_addr=" <<
         op.dma_addr << " len=" << op.len << std::endl;
+#endif
     runner->issue_dma(op);
 }
