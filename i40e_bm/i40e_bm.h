@@ -1,7 +1,6 @@
 #pragma once
 
-#include <list>
-#include <vector>
+#include <deque>
 #include <stdint.h>
 extern "C" {
 #include <cosim_pcie_proto.h>
@@ -9,6 +8,7 @@ extern "C" {
 #include <nicbm.h>
 
 struct i40e_aq_desc;
+struct i40e_tx_desc;
 
 namespace i40e {
 
@@ -21,27 +21,80 @@ class dma_base : public nicbm::DMAOp {
         virtual void done() = 0;
 };
 
+/**
+ * Base-class for descriptor queues (RX/TX, Admin RX/TX).
+ *
+ * Descriptor processing is split up into multiple phases:
+ *
+ *      - fetch: descriptor is read from host memory. This can be done in
+ *        batches, while the batch sizes is limited by the minimum of
+ *        MAX_ACTIVE_DESCS, max_active_capacity(), and max_fetch_capacity().
+ *        Fetch is implemented by this base class.
+ *
+ *      - prepare: to be implemented in the sub class, but typically involves
+ *        fetching buffer contents. Not guaranteed to happen in order. If
+ *        overriden subclass must call desc_prepared() when done.
+ *
+ *      - process: to be implemented in the sub class. Guaranteed to be called
+ *        in order. In case of tx, this actually sends the packet, in rx
+ *        processing finishes when a packet for a descriptor has been received.
+ *        subclass must call desc_processed() when done.
+ *
+ *      - write back: descriptor is written back to host-memory. Write-back
+ *        capacity
+ */
 class queue_base {
     protected:
+        static const uint32_t MAX_ACTIVE_DESCS = 128;
+
+        class desc_ctx {
+            friend class queue_base;
+            public:
+                enum state {
+                    DESC_EMPTY,
+                    DESC_FETCHING,
+                    DESC_PREPARING,
+                    DESC_PREPARED,
+                    DESC_PROCESSING,
+                    DESC_PROCESSED,
+                    DESC_WRITING_BACK,
+                    DESC_WRITTEN_BACK,
+                };
+
+            protected:
+                queue_base &queue;
+            public:
+                enum state state;
+                uint32_t index;
+                void *desc;
+                void *data;
+                size_t data_len;
+                size_t data_capacity;
+
+                void prepared();
+                void processed();
+
+            protected:
+                void data_fetch(uint64_t addr, size_t len);
+                virtual void data_fetched(uint64_t addr, size_t len);
+                void data_write(uint64_t addr, size_t len, const void *buf);
+                virtual void data_written(uint64_t addr, size_t len);
+
+            public:
+                desc_ctx(queue_base &queue_);
+                virtual ~desc_ctx();
+
+                virtual void prepare();
+                virtual void process() = 0;
+        };
+
         class dma_fetch : public dma_base {
             protected:
                 queue_base &queue;
             public:
-                uint32_t index;
+                uint32_t pos;
                 dma_fetch(queue_base &queue_, size_t len);
                 virtual ~dma_fetch();
-                virtual void done();
-        };
-
-        class dma_data_fetch : public dma_base {
-            protected:
-                queue_base &queue;
-            public:
-                uint32_t index;
-                void *desc;
-                dma_data_fetch(queue_base &queue_, size_t len, const void *desc,
-                        size_t desc_len);
-                virtual ~dma_data_fetch();
                 virtual void done();
         };
 
@@ -49,51 +102,67 @@ class queue_base {
             protected:
                 queue_base &queue;
             public:
-                uint32_t index;
+                uint32_t pos;
                 dma_wb(queue_base &queue_, size_t len);
                 virtual ~dma_wb();
                 virtual void done();
         };
 
+        class dma_data_fetch : public dma_base {
+            protected:
+                desc_ctx &ctx;
+
+            public:
+                dma_data_fetch(desc_ctx &ctx_, size_t len, void *buffer);
+                virtual ~dma_data_fetch();
+                virtual void done();
+        };
+
         class dma_data_wb : public dma_base {
             protected:
-                queue_base &queue;
-                dma_wb &desc_dma;
+                desc_ctx &ctx;
             public:
-                uint32_t index;
-                dma_data_wb(queue_base &queue_, size_t len, dma_wb &desc_dma_);
+                dma_data_wb(desc_ctx &ctx_, size_t len);
                 virtual ~dma_data_wb();
                 virtual void done();
         };
 
+        desc_ctx *desc_ctxs[MAX_ACTIVE_DESCS];
+        uint32_t active_first_pos;
+        uint32_t active_first_idx;
+        uint32_t active_cnt;
+
         uint64_t base;
         uint32_t len;
-        uint32_t fetch_head;
         uint32_t &reg_head;
         uint32_t &reg_tail;
 
         bool enabled;
         size_t desc_len;
-        uint32_t pending_fetches;
+
+        void ctxs_init();
 
         void trigger_fetch();
-        void data_fetch(const void *desc, uint32_t idx, uint64_t addr, size_t len);
-        void desc_writeback(const void *desc, uint32_t idx);
-        void desc_writeback_indirect(const void *desc, uint32_t idx,
-                uint64_t data_addr, const void *data, size_t data_len);
+        void trigger_process();
+        void trigger_writeback();
 
         // returns how many descriptors the queue can fetch max during the next
         // fetch: default UINT32_MAX, but can be overriden by child classes
         virtual uint32_t max_fetch_capacity();
-        // called when a descriptor is fetched
-        virtual void desc_fetched(void *desc, uint32_t idx) = 0;
-        // called when data is fetched
-        virtual void data_fetched(void *desc, uint32_t idx, void *data) = 0;
-        virtual void desc_written_back(uint32_t idx);
-        void desc_done(uint32_t idx);
+        virtual uint32_t max_writeback_capacity();
+        virtual uint32_t max_active_capacity();
+
+        virtual desc_ctx &desc_ctx_create() = 0;
+
         // dummy function, needs to be overriden if interrupts are required
         virtual void interrupt();
 
+        // this does the actual write-back. Can be overridden
+        virtual void do_writeback(uint32_t first_idx, uint32_t first_pos,
+                uint32_t cnt);
+
+        // called by dma op when writeback has completed
+        void writeback_done(uint32_t first_pos, uint32_t cnt);
     public:
         queue_base(uint32_t &reg_head_, uint32_t &reg_tail_);
         virtual void reset();
@@ -103,30 +172,35 @@ class queue_base {
 
 class queue_admin_tx : public queue_base {
     protected:
+        class admin_desc_ctx : public desc_ctx {
+            protected:
+                queue_admin_tx &aq;
+                i40e_bm &dev;
+                struct i40e_aq_desc *d;
+
+                virtual void data_written(uint64_t addr, size_t len);
+
+                // prepare completion descriptor (fills flags, and return value)
+                void desc_compl_prepare(uint16_t retval, uint16_t extra_flags);
+                // complete direct response
+                void desc_complete(uint16_t retval, uint16_t extra_flags = 0);
+                // complete indirect response
+                void desc_complete_indir(uint16_t retval, const void *data,
+                        size_t len, uint16_t extra_flags = 0,
+                        bool ignore_datalen=false);
+
+            public:
+                admin_desc_ctx(queue_admin_tx &queue_, i40e_bm &dev);
+
+                virtual void prepare();
+                virtual void process();
+        };
+
         i40e_bm &dev;
-
-        // prepare completion descriptor (fills flags, and return value)
-        void desc_compl_prepare(struct i40e_aq_desc *d, uint16_t retval,
-                uint16_t extra_flags);
-
-        // complete direct response
-        void desc_complete(struct i40e_aq_desc *d, uint32_t idx,
-                uint16_t retval, uint16_t extra_flags = 0);
-        // complete indirect response
-        void desc_complete_indir(struct i40e_aq_desc *d, uint32_t idx,
-                uint16_t retval, const void *data, size_t len,
-                uint16_t extra_flags = 0, bool ignore_datalen=false);
-
-        // run command
-        virtual void cmd_run(void *desc, uint32_t idx, void *data);
-
-        // called by base class when a descriptor has been fetched
-        virtual void desc_fetched(void *desc, uint32_t idx);
-        // called by basee class when data for a descriptor has been fetched
-        virtual void data_fetched(void *desc, uint32_t idx, void *data);
-
         uint64_t &reg_base;
         uint32_t &reg_len;
+
+        virtual desc_ctx &desc_ctx_create();
     public:
         queue_admin_tx(i40e_bm &dev_, uint64_t &reg_base_,
                 uint32_t &reg_len_, uint32_t &reg_head_, uint32_t &reg_tail_);
@@ -202,29 +276,48 @@ class lan_queue_base : public queue_base {
 
 class lan_queue_tx : public lan_queue_base {
     protected:
+        static const uint16_t MTU = 2048;
+
+        class tx_desc_ctx : public desc_ctx {
+            protected:
+                lan_queue_tx &tq;
+
+            public:
+                i40e_tx_desc *d;
+
+                tx_desc_ctx(lan_queue_tx &queue_);
+
+                virtual void prepare();
+                virtual void process();
+        };
+
+
         class dma_hwb : public dma_base {
             protected:
                 lan_queue_tx &queue;
             public:
-                uint32_t head;
+                uint32_t pos;
+                uint32_t cnt;
                 uint32_t next_head;
-                dma_hwb(lan_queue_tx &queue_, uint32_t head_, uint32_t qlen);
+                dma_hwb(lan_queue_tx &queue_, uint32_t pos, uint32_t cnt,
+                        uint32_t next_head);
                 virtual ~dma_hwb();
                 virtual void done();
         };
 
-        static const uint16_t MTU = 2048;
         uint8_t pktbuf[MTU];
-        uint16_t pktbuf_len;
+        std::deque<tx_desc_ctx *> ready_segments;
 
         bool hwb;
         uint64_t hwb_addr;
 
         virtual void initialize();
+        virtual desc_ctx &desc_ctx_create();
 
-        virtual void desc_fetched(void *desc, uint32_t idx);
-        virtual void data_fetched(void *desc, uint32_t idx, void *data);
-        void desc_writeback(const void *desc, uint32_t idx);
+        virtual void do_writeback(uint32_t first_idx, uint32_t first_pos,
+                uint32_t cnt);
+        bool trigger_tx_packet();
+        void trigger_tx();
 
     public:
         lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,
@@ -235,9 +328,15 @@ class lan_queue_tx : public lan_queue_base {
 
 class lan_queue_rx : public lan_queue_base {
     protected:
-        struct desc_cache {
-            uint64_t buf;
-            uint64_t hbuf;
+        class rx_desc_ctx : public desc_ctx {
+            protected:
+                lan_queue_rx &rq;
+                virtual void data_written(uint64_t addr, size_t len);
+
+            public:
+                rx_desc_ctx(lan_queue_rx &queue_);
+                virtual void process();
+                void packet_received(const void *data, size_t len);
         };
 
         uint16_t dbuff_size;
@@ -245,17 +344,10 @@ class lan_queue_rx : public lan_queue_base {
         uint16_t rxmax;
         bool crc_strip;
 
-        static const uint16_t DCACHE_SIZE = 128;
-        struct desc_cache dcache[DCACHE_SIZE];
-        uint32_t dcache_first_idx;
-        uint16_t dcache_first_pos;
-        uint16_t dcache_first_cnt;
+        std::deque<rx_desc_ctx *> dcache;
 
         virtual void initialize();
-
-        virtual uint32_t max_fetch_capacity();
-        virtual void desc_fetched(void *desc, uint32_t idx);
-        virtual void data_fetched(void *desc, uint32_t idx, void *data);
+        virtual desc_ctx &desc_ctx_create();
 
     public:
         lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail, size_t idx,

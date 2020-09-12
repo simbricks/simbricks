@@ -17,9 +17,43 @@ queue_admin_tx::queue_admin_tx(i40e_bm &dev_, uint64_t &reg_base_,
     reg_len(reg_len_)
 {
     desc_len = 32;
+    ctxs_init();
 }
 
-void queue_admin_tx::desc_compl_prepare(struct i40e_aq_desc *d, uint16_t retval,
+queue_base::desc_ctx &queue_admin_tx::desc_ctx_create()
+{
+    return *new admin_desc_ctx(*this, dev);
+}
+
+void queue_admin_tx::reg_updated()
+{
+    base = reg_base;
+    len = (reg_len & I40E_GL_ATQLEN_ATQLEN_MASK) >> I40E_GL_ATQLEN_ATQLEN_SHIFT;
+
+    if (!enabled  && (reg_len & I40E_GL_ATQLEN_ATQENABLE_MASK)) {
+        std::cerr << "enable atq base=" << base << " len=" << len << std::endl;
+        enabled = true;
+    } else if (enabled && !(reg_len & I40E_GL_ATQLEN_ATQENABLE_MASK)) {
+        std::cerr << "disable atq" << std::endl;
+        enabled = false;
+    }
+
+    queue_base::reg_updated();
+}
+
+queue_admin_tx::admin_desc_ctx::admin_desc_ctx(queue_admin_tx &queue_,
+        i40e_bm &dev_)
+    : i40e::queue_base::desc_ctx(queue_), aq(queue_), dev(dev_)
+{
+    d = reinterpret_cast <struct i40e_aq_desc *> (desc);
+}
+
+void queue_admin_tx::admin_desc_ctx::data_written(uint64_t addr, size_t len)
+{
+    processed();
+}
+
+void queue_admin_tx::admin_desc_ctx::desc_compl_prepare(uint16_t retval,
         uint16_t extra_flags)
 {
     d->flags &= ~0x1ff;
@@ -29,16 +63,15 @@ void queue_admin_tx::desc_compl_prepare(struct i40e_aq_desc *d, uint16_t retval,
     d->retval = retval;
 }
 
-void queue_admin_tx::desc_complete(struct i40e_aq_desc *d, uint32_t idx,
-        uint16_t retval, uint16_t extra_flags)
+void queue_admin_tx::admin_desc_ctx::desc_complete(uint16_t retval,
+        uint16_t extra_flags)
 {
-    desc_compl_prepare(d, extra_flags, retval);
-    desc_writeback(d, idx);
+    desc_compl_prepare(retval, extra_flags);
+    processed();
 }
 
-void queue_admin_tx::desc_complete_indir(struct i40e_aq_desc *d, uint32_t idx,
-        uint16_t retval, const void *data, size_t len, uint16_t extra_flags,
-        bool ignore_datalen)
+void queue_admin_tx::admin_desc_ctx::desc_complete_indir(uint16_t retval,
+        const void *data, size_t len, uint16_t extra_flags, bool ignore_datalen)
 {
     if (!ignore_datalen && len > d->datalen) {
         std::cerr << "queue_admin_tx::desc_complete_indir: data too long ("
@@ -47,19 +80,29 @@ void queue_admin_tx::desc_complete_indir(struct i40e_aq_desc *d, uint32_t idx,
     }
     d->datalen = len;
 
-    desc_compl_prepare(d, extra_flags, retval);
+    desc_compl_prepare(retval, extra_flags);
 
     uint64_t addr = d->params.external.addr_low |
         (((uint64_t) d->params.external.addr_high) << 32);
-    desc_writeback_indirect(d, idx, addr, data, len);
-
+    data_write(addr, len, data);
 }
 
-void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
+void queue_admin_tx::admin_desc_ctx::prepare()
 {
-    struct i40e_aq_desc *d = reinterpret_cast<struct i40e_aq_desc *>(desc);
+    if ((d->flags & I40E_AQ_FLAG_RD)) {
+        uint64_t addr = d->params.external.addr_low |
+            (((uint64_t) d->params.external.addr_high) << 32);
+        std::cerr << "  desc with buffer opc=" << d->opcode << " addr=" << addr
+            << std::endl;
+        data_fetch(addr, d->datalen);
+    } else {
+        prepared();
+    }
+}
 
-    std::cerr << "descriptor " << idx << " fetched" << std::endl;
+void queue_admin_tx::admin_desc_ctx::process()
+{
+    std::cerr << "descriptor " << index << " fetched" << std::endl;
 
     if (d->opcode == i40e_aqc_opc_get_version) {
         std::cerr << "    get version" << std::endl;
@@ -72,7 +115,7 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         gv->api_major = I40E_FW_API_VERSION_MAJOR;
         gv->api_minor = I40E_FW_API_VERSION_MINOR_X710;
 
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_request_resource) {
         std::cerr << "    request resource" << std::endl;
         struct i40e_aqc_request_resource *rr =
@@ -81,7 +124,7 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         rr->timeout = 180000;
         std::cerr << "      res_id=" << rr->resource_id << std::endl;
         std::cerr << "      res_nu=" << rr->resource_number << std::endl;
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_release_resource) {
         std::cerr << "    release resource" << std::endl;
         struct i40e_aqc_request_resource *rr =
@@ -89,11 +132,11 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
                     d->params.raw);
         std::cerr << "      res_id=" << rr->resource_id << std::endl;
         std::cerr << "      res_nu=" << rr->resource_number << std::endl;
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_clear_pxe_mode)  {
         std::cerr << "    clear PXE mode" << std::endl;
         dev.regs.gllan_rctl_0 &= ~I40E_GLLAN_RCTL_0_PXE_MODE_MASK;
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_list_func_capabilities ||
             d->opcode == i40e_aqc_opc_list_dev_capabilities)
     {
@@ -116,16 +159,16 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
             std::cerr << "      data fits" << std::endl;
             // data fits within the buffer
             lc->count = num_caps;
-            desc_complete_indir(d, idx, 0, caps, sizeof(caps));
+            desc_complete_indir(0, caps, sizeof(caps));
         } else {
             std::cerr << "      data doesn't fit" << std::endl;
             // data does not fit
             d->datalen = sizeof(caps);
-            desc_complete(d, idx, I40E_AQ_RC_ENOMEM);
+            desc_complete(I40E_AQ_RC_ENOMEM);
         }
     } else if (d->opcode == i40e_aqc_opc_lldp_stop) {
         std::cerr << "    lldp stop" << std::endl;
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_mac_address_read) {
         std::cerr << "    read mac" << std::endl;
         struct i40e_aqc_mac_address_read *ar =
@@ -139,7 +182,7 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         memcpy(ard.port_mac, &mac, 6);
 
         ar->command_flags = I40E_AQC_LAN_ADDR_VALID | I40E_AQC_PORT_ADDR_VALID;
-        desc_complete_indir(d, idx, 0, &ard, sizeof(ard));
+        desc_complete_indir(0, &ard, sizeof(ard));
     } else if (d->opcode == i40e_aqc_opc_get_phy_abilities) {
         std::cerr << "    get phy abilities" << std::endl;
         struct i40e_aq_get_phy_abilities_resp par;
@@ -154,7 +197,7 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         d->params.external.param0 = 0;
         d->params.external.param1 = 0;
 
-        desc_complete_indir(d, idx, 0, &par, sizeof(par), 0, true);
+        desc_complete_indir(0, &par, sizeof(par), 0, true);
     } else if (d->opcode == i40e_aqc_opc_get_link_status) {
         std::cerr << "    link status" << std::endl;
         struct i40e_aqc_get_link_status *gls =
@@ -174,7 +217,7 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         gls->max_frame_size = dev.MAX_MTU;
         gls->config = I40E_AQ_CONFIG_CRC_ENA;
 
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_get_switch_config) {
         std::cerr << "    get switch config" << std::endl;
         struct i40e_aqc_switch_seid *sw = reinterpret_cast<
@@ -232,7 +275,7 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         memcpy(buf, &hr, sizeof(hr));
         memcpy(buf + sizeof(hr), els + first, sizeof(els[0]) * report);
 
-        desc_complete_indir(d, idx, 0, buf, buflen);
+        desc_complete_indir(0, buf, buflen);
     } else if (d->opcode == i40e_aqc_opc_set_switch_config) {
         std::cerr << "    set switch config" << std::endl;
         /* TODO: lots of interesting things here like l2 filtering etc. that are
@@ -241,7 +284,7 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
             reinterpret_cast<struct i40e_aqc_set_switch_config *>(
                     d->params.raw);
         */
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_get_vsi_parameters) {
         std::cerr << "    get vsi parameters" << std::endl;
         /*struct i40e_aqc_add_get_update_vsi *v =
@@ -254,32 +297,32 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
             I40E_AQ_VSI_PROP_QUEUE_MAP_VALID |
             I40E_AQ_VSI_PROP_QUEUE_OPT_VALID |
             I40E_AQ_VSI_PROP_SCHED_VALID;
-        desc_complete_indir(d, idx, 0, &pd, sizeof(pd));
+        desc_complete_indir(0, &pd, sizeof(pd));
     } else if (d->opcode == i40e_aqc_opc_update_vsi_parameters) {
         std::cerr << "    update vsi parameters" << std::endl;
         /* TODO */
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_set_dcb_parameters) {
         std::cerr << "    set dcb parameters" << std::endl;
         /* TODO */
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_configure_vsi_bw_limit) {
         std::cerr << "    configure vsi bw limit" << std::endl;
-        desc_complete(d, idx, 0);
+        desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_query_vsi_bw_config) {
         std::cerr << "    query vsi bw config" << std::endl;
         struct i40e_aqc_query_vsi_bw_config_resp bwc;
         memset(&bwc, 0, sizeof(bwc));
         for (size_t i = 0; i < 8; i++)
             bwc.qs_handles[i] = 0xffff;
-        desc_complete_indir(d, idx, 0, &bwc, sizeof(bwc));
+        desc_complete_indir(0, &bwc, sizeof(bwc));
     } else if (d->opcode == i40e_aqc_opc_query_vsi_ets_sla_config) {
         std::cerr << "    query vsi ets sla config" << std::endl;
         struct i40e_aqc_query_vsi_ets_sla_config_resp sla;
         memset(&sla, 0, sizeof(sla));
         for (size_t i = 0; i < 8; i++)
             sla.share_credits[i] = 127;
-        desc_complete_indir(d, idx, 0, &sla, sizeof(sla));
+        desc_complete_indir(0, &sla, sizeof(sla));
     } else if (d->opcode == i40e_aqc_opc_remove_macvlan) {
         std::cerr << "    remove macvlan" << std::endl;
         struct i40e_aqc_macvlan *m = reinterpret_cast<
@@ -290,50 +333,10 @@ void queue_admin_tx::cmd_run(void *desc, uint32_t idx, void *data)
         for (uint16_t i = 0; i < m->num_addresses; i++)
             rve[i].error_code = I40E_AQC_REMOVE_MACVLAN_SUCCESS;
 
-        desc_complete_indir(d, idx, 0, data, d->datalen);
+        desc_complete_indir(0, data, d->datalen);
     } else {
         std::cerr << "    uknown opcode=" << d->opcode << std::endl;
-        desc_complete(d, idx, I40E_AQ_RC_ESRCH);
+        //desc_complete(I40E_AQ_RC_ESRCH);
+        desc_complete(0);
     }
-}
-
-void queue_admin_tx::desc_fetched(void *desc, uint32_t idx)
-{
-    if (!enabled)
-        return;
-
-    struct i40e_aq_desc *d = reinterpret_cast<struct i40e_aq_desc *>(desc);
-    if ((d->flags & I40E_AQ_FLAG_RD)) {
-        uint64_t addr = d->params.external.addr_low |
-            (((uint64_t) d->params.external.addr_high) << 32);
-        std::cerr << "  desc with buffer opc=" << d->opcode << " addr=" << addr
-            << std::endl;
-        data_fetch(desc, idx, addr, d->datalen);
-    } else {
-        cmd_run(desc, idx, nullptr);
-    }
-}
-
-void queue_admin_tx::data_fetched(void *desc, uint32_t idx, void *data)
-{
-    if (!enabled)
-        return;
-
-    cmd_run(desc, idx, data);
-}
-
-void queue_admin_tx::reg_updated()
-{
-    base = reg_base;
-    len = (reg_len & I40E_GL_ATQLEN_ATQLEN_MASK) >> I40E_GL_ATQLEN_ATQLEN_SHIFT;
-
-    if (!enabled  && (reg_len & I40E_GL_ATQLEN_ATQENABLE_MASK)) {
-        std::cerr << "enable atq base=" << base << " len=" << len << std::endl;
-        enabled = true;
-    } else if (enabled && !(reg_len & I40E_GL_ATQLEN_ATQENABLE_MASK)) {
-        std::cerr << "disable atq" << std::endl;
-        enabled = false;
-    }
-
-    queue_base::reg_updated();
 }

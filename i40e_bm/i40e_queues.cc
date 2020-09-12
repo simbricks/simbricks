@@ -12,52 +12,132 @@ using namespace i40e;
 extern nicbm::Runner *runner;
 
 queue_base::queue_base(uint32_t &reg_head_, uint32_t &reg_tail_)
-    : base(0), len(0), fetch_head(0), reg_head(reg_head_), reg_tail(reg_tail_),
-    enabled(false), desc_len(0), pending_fetches(0)
+    : active_first_pos(0), active_first_idx(0), active_cnt(0),
+    base(0), len(0), reg_head(reg_head_), reg_tail(reg_tail_),
+    enabled(false), desc_len(0)
 {
+    for (size_t i = 0; i < MAX_ACTIVE_DESCS; i++) {
+        desc_ctxs[i] = nullptr;
+    }
+}
+
+void queue_base::ctxs_init()
+{
+    for (size_t i = 0; i < MAX_ACTIVE_DESCS; i++) {
+        desc_ctxs[i] = &desc_ctx_create();
+    }
 }
 
 void queue_base::trigger_fetch()
 {
-    if (!enabled || fetch_head == reg_tail)
+    if (!enabled)
         return;
 
-    if (max_fetch_capacity() < pending_fetches + 1)
+    // calculate how many we can fetch
+    uint32_t next_idx = (active_first_idx + active_cnt) % len;
+    uint32_t desc_avail = (reg_tail - next_idx) % len;
+    uint32_t fetch_cnt = desc_avail;
+    fetch_cnt = std::min(fetch_cnt, MAX_ACTIVE_DESCS - active_cnt);
+    if (max_active_capacity() <= active_cnt)
+        fetch_cnt = std::min(fetch_cnt, max_active_capacity() - active_cnt);
+    fetch_cnt = std::min(fetch_cnt, max_fetch_capacity());
+
+    if (next_idx + fetch_cnt > len)
+        fetch_cnt = len - next_idx;
+
+    std::cerr << "fetching: avail=" << desc_avail <<
+        " cnt=" << fetch_cnt << " idx=" << next_idx << std::endl;
+
+    // abort if nothign to fetch
+    if (fetch_cnt == 0)
         return;
 
-    dma_fetch *dma = new dma_fetch(*this, desc_len);
+    // mark descriptor contexts as fetching
+    uint32_t first_pos = (active_first_pos + active_cnt) % MAX_ACTIVE_DESCS;
+    for (uint32_t i = 0; i < fetch_cnt; i++) {
+        desc_ctx &ctx = *desc_ctxs[(first_pos + i) % MAX_ACTIVE_DESCS];
+        assert(ctx.state == desc_ctx::DESC_EMPTY);
+
+        ctx.state = desc_ctx::DESC_FETCHING;
+        ctx.index = (next_idx + i) % len;
+    }
+    active_cnt += fetch_cnt;
+
+    // prepare & issue dma
+    dma_fetch *dma = new dma_fetch(*this, desc_len * fetch_cnt);
     dma->write = false;
-    dma->dma_addr = base + fetch_head * desc_len;
-    dma->index = fetch_head;
-
-    pending_fetches++;
-
-    std::cerr << "fetching: avail=" << (reg_tail - fetch_head) % len <<
-        " fhead=" << fetch_head << " from " << dma->dma_addr << std::endl;
-
-    std::cerr << "dma = " << dma << std::endl;
+    dma->dma_addr = base + next_idx * desc_len;
+    dma->pos = first_pos;
+    std::cerr << "    dma = " << dma << std::endl;
     runner->issue_dma(*dma);
-    fetch_head = (fetch_head + 1) % len;
 }
 
-void queue_base::data_fetch(const void *desc, uint32_t idx, uint64_t addr,
-        size_t len)
+void queue_base::trigger_process()
 {
-    dma_data_fetch *dma = new dma_data_fetch(*this, len, desc, desc_len);
-    dma->write = false;
-    dma->dma_addr = addr;
-    dma->index = idx;
+    if (!enabled)
+        return;
 
-    std::cerr << "fetching data idx=" << idx << " addr=" << addr << " len=" <<
-        len << std::endl;
-    std::cerr << "dma = " << dma << std::endl;
-    runner->issue_dma(*dma);
+    // first skip over descriptors that are already done processing
+    uint32_t i;
+    for (i = 0; i < active_cnt; i++)
+        if (desc_ctxs[(active_first_pos + i) % MAX_ACTIVE_DESCS]->state
+                <= desc_ctx::DESC_PROCESSING)
+            break;
+
+    // then run all prepared contexts
+    uint32_t j;
+    for (j = 0; i + j < active_cnt; j++) {
+        desc_ctx &ctx = *desc_ctxs[(active_first_pos + i + j)
+            % MAX_ACTIVE_DESCS];
+        if (ctx.state != desc_ctx::DESC_PREPARED)
+            break;
+
+        ctx.state = desc_ctx::DESC_PROCESSING;
+        ctx.process();
+    }
+}
+
+void queue_base::trigger_writeback()
+{
+    if (!enabled)
+        return;
+
+    // from first pos count number of processed descriptors
+    uint32_t avail;
+    for (avail = 0; avail < active_cnt; avail++)
+        if (desc_ctxs[(active_first_pos + avail) % MAX_ACTIVE_DESCS]->state
+                != desc_ctx::DESC_PROCESSED)
+            break;
+
+    uint32_t cnt = std::min(avail, max_writeback_capacity());
+    if (active_first_pos + cnt > len)
+        cnt = len - active_first_pos;
+
+    std::cerr << "writing back: avail=" << avail << " cnt=" << cnt << " idx=" <<
+        active_first_idx << std::endl;
+
+    if (cnt == 0)
+        return;
+
+    // mark these descriptors as writing back
+    for (uint32_t i = 0; i < cnt; i++) {
+        desc_ctx &ctx = *desc_ctxs[(active_first_pos + i) % MAX_ACTIVE_DESCS];
+        ctx.state = desc_ctx::DESC_WRITING_BACK;
+    }
+
+    do_writeback(active_first_idx, active_first_pos, cnt);
 }
 
 void queue_base::reset()
 {
     enabled = false;
-    fetch_head = 0;
+    active_first_pos = 0;
+    active_first_idx = 0;
+    active_cnt = 0;
+
+    for (size_t i = 0; i < MAX_ACTIVE_DESCS; i++) {
+        desc_ctxs[i]->state = desc_ctx::DESC_EMPTY;
+    }
 }
 
 void queue_base::reg_updated()
@@ -73,62 +153,158 @@ bool queue_base::is_enabled()
     return enabled;
 }
 
-void queue_base::desc_writeback(const void *desc, uint32_t idx)
-{
-    dma_wb *dma = new dma_wb(*this, desc_len);
-    dma->write = true;
-    dma->dma_addr = base + idx * desc_len;
-    dma->index = idx;
-    memcpy(dma->data, desc, desc_len);
-
-    runner->issue_dma(*dma);
-}
-
-void queue_base::desc_writeback_indirect(const void *desc, uint32_t idx,
-        uint64_t data_addr, const void *data, size_t data_len)
-{
-    // descriptor dma
-    dma_wb *desc_dma = new dma_wb(*this, desc_len);
-    desc_dma->write = true;
-    desc_dma->dma_addr = base + idx * desc_len;
-    desc_dma->index = idx;
-    memcpy(desc_dma->data, desc, desc_len);
-    // purposefully not issued yet, data dma will issue once ready
-
-    // data dma
-    dma_data_wb *data_dma = new dma_data_wb(*this, data_len, *desc_dma);
-    data_dma->write = true;
-    data_dma->dma_addr = data_addr;
-    data_dma->index = idx;
-    memcpy(data_dma->data, data, data_len);
-
-    runner->issue_dma(*data_dma);
-}
-
 uint32_t queue_base::max_fetch_capacity()
 {
     return UINT32_MAX;
 }
 
-void queue_base::desc_done(uint32_t idx)
+uint32_t queue_base::max_active_capacity()
 {
-    assert(reg_head == idx);
-    reg_head = (idx + 1) % len;
-    trigger_fetch();
+    return UINT32_MAX;
+}
+
+uint32_t queue_base::max_writeback_capacity()
+{
+    return UINT32_MAX;
 }
 
 void queue_base::interrupt()
 {
 }
 
-void queue_base::desc_written_back(uint32_t idx)
+void queue_base::do_writeback(uint32_t first_idx, uint32_t first_pos,
+        uint32_t cnt)
+{
+    dma_wb *dma = new dma_wb(*this, desc_len * cnt);
+    dma->write = true;
+    dma->dma_addr = base + first_idx * desc_len;
+    dma->pos = first_pos;
+
+    uint8_t *buf = reinterpret_cast<uint8_t *> (dma->data);
+    for (uint32_t i = 0; i < cnt; i++) {
+        desc_ctx &ctx = *desc_ctxs[(first_pos + i) % MAX_ACTIVE_DESCS];
+        assert(ctx.state == desc_ctx::DESC_WRITING_BACK);
+        memcpy(buf + i * desc_len, ctx.desc, desc_len);
+    }
+
+    runner->issue_dma(*dma);
+}
+
+void queue_base::writeback_done(uint32_t first_pos, uint32_t cnt)
 {
     if (!enabled)
         return;
 
-    std::cerr << "descriptor " << idx << " written back" << std::endl;
-    desc_done(idx);
+    // first mark descriptors as written back
+    for (uint32_t i = 0; i < cnt; i++) {
+        desc_ctx &ctx = *desc_ctxs[(first_pos + i) % MAX_ACTIVE_DESCS];
+        assert(ctx.state == desc_ctx::DESC_WRITING_BACK);
+        ctx.state = desc_ctx::DESC_WRITTEN_BACK;
+    }
+
+    std::cerr << "written back: afi=" << active_first_idx << " afp=" <<
+        active_first_pos << " acnt=" << active_cnt << " pos=" << first_pos <<
+        " cnt=" << cnt << std::endl;
+
+    // then start at the beginning and check how many are written back and then
+    // free those
+    uint32_t bump_cnt = 0;
+    for (bump_cnt = 0; bump_cnt < active_cnt; bump_cnt++) {
+        desc_ctx &ctx = *desc_ctxs[(active_first_pos + bump_cnt) %
+            MAX_ACTIVE_DESCS];
+        if (ctx.state != desc_ctx::DESC_WRITTEN_BACK)
+            break;
+
+        ctx.state = desc_ctx::DESC_EMPTY;
+    }
+    std::cerr << "    bump_cnt=" << bump_cnt << std::endl;
+
+    active_first_pos = (active_first_pos + bump_cnt) % MAX_ACTIVE_DESCS;
+    active_first_idx = (active_first_idx + bump_cnt) % len;
+    active_cnt -= bump_cnt;
+
+    reg_head = active_first_idx;
     interrupt();
+}
+
+queue_base::desc_ctx::desc_ctx(queue_base &queue_)
+    : queue(queue_), state(DESC_EMPTY), index(0), data(nullptr), data_len(0),
+    data_capacity(0)
+{
+    desc = new uint8_t[queue_.desc_len];
+}
+
+queue_base::desc_ctx::~desc_ctx()
+{
+    delete[] ((uint8_t *) desc);
+    if (data_capacity > 0)
+        delete[] ((uint8_t *) data);
+}
+
+void queue_base::desc_ctx::prepare()
+{
+    prepared();
+}
+
+void queue_base::desc_ctx::prepared()
+{
+    assert(state == DESC_PREPARING);
+    state = DESC_PREPARED;
+    queue.trigger_process();
+}
+
+void queue_base::desc_ctx::processed()
+{
+    assert(state == DESC_PROCESSING);
+    state = DESC_PROCESSED;
+    queue.trigger_writeback();
+}
+
+void queue_base::desc_ctx::data_fetch(uint64_t addr, size_t data_len)
+{
+    if (data_capacity < data_len) {
+        std::cerr << "data_fetch: allocating" << std::endl;
+        if (data_capacity != 0)
+            delete[] ((uint8_t *) data);
+
+        data = new uint8_t[data_len];
+        data_capacity = data_len;
+    }
+
+    dma_data_fetch *dma = new dma_data_fetch(*this, data_len, data);
+    dma->write = false;
+    dma->dma_addr = addr;
+
+    std::cerr << "fetching data idx=" << index << " addr=" << addr << " len=" <<
+        data_len << std::endl;
+    std::cerr << "dma = " << dma << " data=" << data << std::endl;
+    runner->issue_dma(*dma);
+
+}
+
+void queue_base::desc_ctx::data_fetched(uint64_t addr, size_t len)
+{
+    prepared();
+}
+
+void queue_base::desc_ctx::data_write(uint64_t addr, size_t data_len,
+        const void *buf)
+{
+    std::cerr << "data_write(addr=" << addr << " datalen=" << data_len <<
+        ")" << std::endl;
+    dma_data_wb *data_dma = new dma_data_wb(*this, data_len);
+    data_dma->write = true;
+    data_dma->dma_addr = addr;
+    memcpy(data_dma->data, buf, data_len);
+
+    runner->issue_dma(*data_dma);
+}
+
+void queue_base::desc_ctx::data_written(uint64_t addr, size_t len)
+{
+    std::cerr << "data_written(addr=" << addr << " datalen=" << len <<
+        ")" << std::endl;
+    processed();
 }
 
 queue_base::dma_fetch::dma_fetch(queue_base &queue_, size_t len_)
@@ -145,32 +321,32 @@ queue_base::dma_fetch::~dma_fetch()
 
 void queue_base::dma_fetch::done()
 {
-    queue.pending_fetches--;
-    queue.desc_fetched(data, index);
+    uint8_t *buf = reinterpret_cast <uint8_t *> (data);
+    for (uint32_t i = 0; i < len / queue.desc_len; i++) {
+        desc_ctx &ctx = *queue.desc_ctxs[(pos + i) % queue.MAX_ACTIVE_DESCS];
+        memcpy(ctx.desc, buf + queue.desc_len * i, queue.desc_len);
+
+        ctx.state = desc_ctx::DESC_PREPARING;
+        ctx.prepare();
+    }
     delete this;
 }
 
-queue_base::dma_data_fetch::dma_data_fetch(queue_base &queue_, size_t len_,
-        const void *desc_, size_t desc_len)
-    :queue(queue_)
+queue_base::dma_data_fetch::dma_data_fetch(desc_ctx &ctx_, size_t len_,
+        void *buffer)
+    : ctx(ctx_)
 {
-    uint8_t *buf = new uint8_t[desc_len + len_];
-
-    desc = buf;
-    memcpy(desc, desc_, desc_len);
-
-    data = buf + desc_len;
+    data = buffer;
     len = len_;
 }
 
 queue_base::dma_data_fetch::~dma_data_fetch()
 {
-    delete[] ((uint8_t *) desc);
 }
 
 void queue_base::dma_data_fetch::done()
 {
-    queue.data_fetched(desc, index, data);
+    ctx.data_fetched(dma_addr, len);
     delete this;
 }
 
@@ -188,14 +364,13 @@ queue_base::dma_wb::~dma_wb()
 
 void queue_base::dma_wb::done()
 {
-    queue.desc_written_back(index);
+    queue.writeback_done(pos, len / queue.desc_len);
     delete this;
 }
 
 
-queue_base::dma_data_wb::dma_data_wb(queue_base &queue_, size_t len_,
-        dma_wb &desc_dma_)
-    : queue(queue_), desc_dma(desc_dma_)
+queue_base::dma_data_wb::dma_data_wb(desc_ctx &ctx_, size_t len_)
+    : ctx(ctx_)
 {
     data = new char[len_];
     len = len_;
@@ -208,7 +383,6 @@ queue_base::dma_data_wb::~dma_data_wb()
 
 void queue_base::dma_data_wb::done()
 {
-    // now we can issue descriptor dma
-    runner->issue_dma(desc_dma);
+    ctx.data_written(dma_addr, len);
     delete this;
 }

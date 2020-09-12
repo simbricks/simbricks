@@ -166,16 +166,16 @@ void lan_queue_base::qctx_fetch::done()
 lan_queue_rx::lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
         uint32_t &reg_ena_, uint32_t &reg_fpmbase_, uint32_t &reg_intqctl_)
     : lan_queue_base(lanmgr_, reg_tail_, idx_, reg_ena_, reg_fpmbase_,
-            reg_intqctl_, 32), dcache_first_idx(0), dcache_first_pos(0),
-        dcache_first_cnt(0)
+            reg_intqctl_, 32)
 {
+    // use larger value for initialization
+    desc_len = 32;
+    ctxs_init();
 }
 
 void lan_queue_rx::reset()
 {
-    dcache_first_idx = 0;
-    dcache_first_pos = 0;
-    dcache_first_cnt = 0;
+    dcache.clear();
     queue_base::reset();
 }
 
@@ -221,69 +221,71 @@ void lan_queue_rx::initialize()
         " crcstrip=" << crc_strip << " rxmax=" << rxmax << std::endl;
 }
 
-uint32_t lan_queue_rx::max_fetch_capacity()
+queue_base::desc_ctx &lan_queue_rx::desc_ctx_create()
 {
-    return DCACHE_SIZE - dcache_first_cnt;
-}
-
-void lan_queue_rx::desc_fetched(void *desc_ptr, uint32_t didx)
-{
-    std::cerr << "rxq: desc fetched" << std::endl;
-    union i40e_32byte_rx_desc *desc =
-        reinterpret_cast<union i40e_32byte_rx_desc *> (desc_ptr);
-
-    assert(dcache_first_cnt < DCACHE_SIZE);
-    std::cerr << "    idx=" << dcache_first_idx << " cnt=" << dcache_first_cnt <<
-        " didx=" << didx << std::endl;
-    assert((dcache_first_idx + dcache_first_cnt) % len == didx);
-
-    uint16_t dci = (dcache_first_pos + dcache_first_cnt) % DCACHE_SIZE;
-    dcache[dci].buf = desc->read.pkt_addr;
-    dcache[dci].hbuf = desc->read.hdr_addr;
-
-    dcache_first_cnt++;
-}
-
-void lan_queue_rx::data_fetched(void *desc, uint32_t didx, void *data)
-{
-    std::cerr << "rxq: data fetched" << std::endl;
+    return *new rx_desc_ctx(*this);
 }
 
 void lan_queue_rx::packet_received(const void *data, size_t pktlen)
 {
-    if (dcache_first_cnt == 0) {
+    if (dcache.empty()) {
         std::cerr << "rqx: empty, dropping packet" << std::endl;
         return;
     }
 
-    std::cerr << "rxq: packet received didx=" << dcache_first_idx << " cnt=" << dcache_first_cnt << std::endl;
-    union i40e_32byte_rx_desc rxd;
-    memset(&rxd, 0, sizeof(rxd));
-    rxd.wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_DD_SHIFT);
-    rxd.wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_EOF_SHIFT);
+    rx_desc_ctx &ctx = *dcache.front();
+
+    std::cerr << "rxq: packet received didx=" << ctx.index << " cnt=" <<
+        dcache.size() << std::endl;
+
+    dcache.pop_front();
+    ctx.packet_received(data, pktlen);
+}
+
+lan_queue_rx::rx_desc_ctx::rx_desc_ctx(lan_queue_rx &queue_)
+    : desc_ctx(queue_), rq(queue_)
+{
+}
+
+void lan_queue_rx::rx_desc_ctx::data_written(uint64_t addr, size_t len)
+{
+    processed();
+}
+
+void lan_queue_rx::rx_desc_ctx::process()
+{
+    rq.dcache.push_back(this);
+}
+
+void lan_queue_rx::rx_desc_ctx::packet_received(const void *data, size_t pktlen)
+{
+    union i40e_32byte_rx_desc *rxd = reinterpret_cast<
+        union i40e_32byte_rx_desc *> (desc);
+
+    uint64_t addr = rxd->read.pkt_addr;
+
+    memset(rxd, 0, sizeof(*rxd));
+    rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_DD_SHIFT);
+    rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_EOF_SHIFT);
     // TODO: only if checksums are correct
-    rxd.wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_L3L4P_SHIFT);
-    rxd.wb.qword1.status_error_len |= (pktlen << I40E_RXD_QW1_LENGTH_PBUF_SHIFT);
+    rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_L3L4P_SHIFT);
+    rxd->wb.qword1.status_error_len |= (pktlen << I40E_RXD_QW1_LENGTH_PBUF_SHIFT);
 
-    desc_writeback_indirect(&rxd, dcache_first_idx,
-            dcache[dcache_first_pos].buf, data, pktlen);
-
-    dcache_first_pos = (dcache_first_pos + 1) % DCACHE_SIZE;
-    dcache_first_idx = (dcache_first_idx + 1) % len;
-    dcache_first_cnt--;
+    data_write(addr, pktlen, data);
 }
 
 lan_queue_tx::lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
         uint32_t &reg_ena_, uint32_t &reg_fpmbase_, uint32_t &reg_intqctl)
     : lan_queue_base(lanmgr_, reg_tail_, idx_, reg_ena_, reg_fpmbase_,
-            reg_intqctl, 128), pktbuf_len(0)
+            reg_intqctl, 128)
 {
     desc_len = 16;
+    ctxs_init();
 }
 
 void lan_queue_tx::reset()
 {
-    pktbuf_len = 0;
+    ready_segments.clear();
     queue_base::reset();
 }
 
@@ -310,38 +312,147 @@ void lan_queue_tx::initialize()
         std::endl;
 }
 
-void lan_queue_tx::desc_fetched(void *desc_buf, uint32_t didx)
+queue_base::desc_ctx &lan_queue_tx::desc_ctx_create()
 {
+    return *new tx_desc_ctx(*this);
+}
 
-    struct i40e_tx_desc *desc = reinterpret_cast<struct i40e_tx_desc *>(desc_buf);
-    uint64_t d1 = desc->cmd_type_offset_bsz;
+void lan_queue_tx::do_writeback(uint32_t first_idx, uint32_t first_pos,
+        uint32_t cnt)
+{
+    if (!hwb) {
+        // if head index writeback is disabled we need to write descriptor back
+        lan_queue_base::do_writeback(first_idx, first_pos, cnt);
+    } else {
+        // else we just need to write the index back
+        dma_hwb *dma = new dma_hwb(*this, first_pos, cnt,
+                (first_idx + cnt) % len);
+        dma->dma_addr = hwb_addr;
 
-    std::cerr << "txq: desc fetched didx=" << didx << " d1=" << d1 << std::endl;
+        std::cerr << "hwb=" << *((uint32_t *) dma->data) << std::endl;
+        runner->issue_dma(*dma);
+    }
+}
+
+bool lan_queue_tx::trigger_tx_packet()
+{
+    size_t n = ready_segments.size();
+    if (n == 0)
+        return false;
+
+    size_t dcnt;
+    bool eop = false;
+    uint64_t d1;
+    uint16_t iipt, l4t, total_len = 0;
+    for (dcnt = 0; dcnt < n && !eop; dcnt++) {
+        tx_desc_ctx *rd = ready_segments.at(dcnt);
+
+        d1 = rd->d->cmd_type_offset_bsz;
+        std::cerr << "txq: data fetched didx=" << rd->index << " d1=" << d1 <<
+            std::endl;
+
+        uint16_t pkt_len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
+            I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
+        if (total_len + pkt_len > MTU) {
+            std::cerr << "txq: trigger_tx_packet too large" << std::endl;
+            abort();
+        }
+
+        memcpy(pktbuf + total_len, rd->data, pkt_len);
+
+        uint16_t cmd = (d1 & I40E_TXD_QW1_CMD_MASK) >> I40E_TXD_QW1_CMD_SHIFT;
+        eop = (cmd & I40E_TX_DESC_CMD_EOP);
+        iipt = cmd & (I40E_TX_DESC_CMD_IIPT_MASK);
+        l4t = (cmd & I40E_TX_DESC_CMD_L4T_EOFT_MASK);
+
+        std::cerr << "    eop=" << eop << " len=" << pkt_len << std::endl;
+
+        total_len += pkt_len;
+    }
+
+    if (!eop)
+        return false;
+
+    uint32_t off = (d1 & I40E_TXD_QW1_OFFSET_MASK) >> I40E_TXD_QW1_OFFSET_SHIFT;
+    uint16_t maclen = ((off & I40E_TXD_QW1_MACLEN_MASK) >>
+        I40E_TX_DESC_LENGTH_MACLEN_SHIFT) * 2;
+    uint16_t iplen = ((off & I40E_TXD_QW1_IPLEN_MASK) >>
+        I40E_TX_DESC_LENGTH_IPLEN_SHIFT) * 4;
+    /*uint16_t l4len = (off & I40E_TXD_QW1_L4LEN_MASK) >>
+        I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;*/
+
+
+    if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_TCP) {
+        uint16_t tcp_off = maclen + iplen;
+        xsum_tcp(pktbuf + tcp_off, total_len - tcp_off);
+    }
+    std::cerr << "    iipt=" << iipt << " l4t=" << l4t << " maclen=" << maclen << " iplen=" << iplen<< std::endl;
+
+    runner->eth_send(pktbuf, total_len);
+
+    while (dcnt-- > 0) {
+        ready_segments.front()->processed();
+        ready_segments.pop_front();
+    }
+
+    return true;
+}
+
+void lan_queue_tx::trigger_tx()
+{
+    while (trigger_tx_packet());
+}
+
+lan_queue_tx::tx_desc_ctx::tx_desc_ctx(lan_queue_tx &queue_)
+    : desc_ctx(queue_), tq(queue_)
+{
+    d = reinterpret_cast<struct i40e_tx_desc *>(desc);
+}
+
+void lan_queue_tx::tx_desc_ctx::prepare()
+{
+    uint64_t d1 = d->cmd_type_offset_bsz;
+
+    std::cerr << "txq: desc fetched didx=" << index << " d1=" << d1 << std::endl;
 
     uint8_t dtype = (d1 & I40E_TXD_QW1_DTYPE_MASK) >> I40E_TXD_QW1_DTYPE_SHIFT;
     if (dtype == I40E_TX_DESC_DTYPE_DATA) {
         uint16_t len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
             I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
 
-        std::cerr << "  bufaddr=" << desc->buffer_addr << " len=" << len << std::endl;
+        std::cerr << "  bufaddr=" << d->buffer_addr << " len=" << len << std::endl;
 
-        data_fetch(desc_buf, didx, desc->buffer_addr, len);
+        data_fetch(d->buffer_addr, len);
     } else if (dtype == I40E_TX_DESC_DTYPE_CONTEXT) {
         struct i40e_tx_context_desc *ctxd =
-            reinterpret_cast<struct i40e_tx_context_desc *> (desc_buf);
+            reinterpret_cast<struct i40e_tx_context_desc *> (d);
         std::cerr << "  context descriptor: tp=" << ctxd->tunneling_params <<
             " l2t=" << ctxd->l2tag2 << " tctm=" << ctxd->type_cmd_tso_mss << std::endl;
         abort();
 
-        desc->buffer_addr = 0;
+        /*desc->buffer_addr = 0;
         desc->cmd_type_offset_bsz = I40E_TX_DESC_DTYPE_DESC_DONE <<
             I40E_TXD_QW1_DTYPE_SHIFT;
 
-        desc_writeback(desc_buf, didx);
+        desc_writeback(desc_buf, didx);*/
     } else {
         std::cerr << "txq: only support context & data descriptors" << std::endl;
         abort();
     }
+
+}
+
+void lan_queue_tx::tx_desc_ctx::process()
+{
+    tq.ready_segments.push_back(this);
+    tq.trigger_tx();
+}
+
+#if 0
+void lan_queue_tx::desc_fetched(void *desc_buf, uint32_t didx)
+{
+
+    struct i40e_tx_desc *desc = reinterpret_cast<struct i40e_tx_desc *>(desc_buf);
 }
 
 void lan_queue_tx::data_fetched(void *desc_buf, uint32_t didx, void *data)
@@ -404,21 +515,12 @@ writeback:
 
 void lan_queue_tx::desc_writeback(const void *desc, uint32_t didx)
 {
-    if (!hwb) {
-        // if head index writeback is disabled we need to write descriptor back
-        lan_queue_base::desc_writeback(desc, idx);
-    } else {
-        // else we just need to write the index back
-        dma_hwb *dma = new dma_hwb(*this, didx, (didx + 1) % len);
-        dma->dma_addr = hwb_addr;
-
-        std::cerr << "hwb=" << *((uint32_t *) dma->data) << std::endl;
-        runner->issue_dma(*dma);
-    }
 }
+#endif
 
-lan_queue_tx::dma_hwb::dma_hwb(lan_queue_tx &queue_, uint32_t index_, uint32_t next)
-    : queue(queue_), head(index_), next_head(next)
+lan_queue_tx::dma_hwb::dma_hwb(lan_queue_tx &queue_, uint32_t pos_,
+        uint32_t cnt_, uint32_t nh_)
+    : queue(queue_), pos(pos_), cnt(cnt_), next_head(nh_)
 {
     data = &next_head;
     len = 4;
@@ -432,6 +534,6 @@ lan_queue_tx::dma_hwb::~dma_hwb()
 void lan_queue_tx::dma_hwb::done()
 {
     std::cerr << "txq: tx head written back" << std::endl;
-    queue.desc_written_back(head);
+    queue.writeback_done(pos, cnt);
     delete this;
 }
