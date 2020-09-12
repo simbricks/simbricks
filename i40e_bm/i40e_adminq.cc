@@ -66,6 +66,11 @@ void queue_admin_tx::admin_desc_ctx::desc_compl_prepare(uint16_t retval,
     if (retval)
         d->flags |= I40E_AQ_FLAG_ERR;
     d->retval = retval;
+
+#ifdef DEBUG_ADMINQ
+    std::cerr << "atq: desc_compl_prepare index=" << index << " retval=" <<
+        retval << std::endl;
+#endif
 }
 
 void queue_admin_tx::admin_desc_ctx::desc_complete(uint16_t retval,

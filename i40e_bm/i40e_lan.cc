@@ -458,8 +458,8 @@ void lan_queue_tx::tx_desc_ctx::prepare()
     uint64_t d1 = d->cmd_type_offset_bsz;
 
 #ifdef DEBUG_LAN
-    std::cerr << qname << ": desc fetched didx=" << index << " d1=" << d1 <<
-        std::endl;
+    std::cerr << queue.qname << ": desc fetched didx=" << index << " d1=" <<
+        d1 << std::endl;
 #endif
 
     uint8_t dtype = (d1 & I40E_TXD_QW1_DTYPE_MASK) >> I40E_TXD_QW1_DTYPE_SHIFT;
@@ -468,8 +468,8 @@ void lan_queue_tx::tx_desc_ctx::prepare()
             I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
 
 #ifdef DEBUG_LAN
-        std::cerr << qname << ":  bufaddr=" << d->buffer_addr << " len=" <<
-            len << std::endl;
+        std::cerr << queue.qname << ":  bufaddr=" << d->buffer_addr <<
+            " len=" << len << std::endl;
 #endif
 
         data_fetch(d->buffer_addr, len);
