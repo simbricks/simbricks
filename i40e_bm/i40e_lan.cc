@@ -498,6 +498,13 @@ void lan_queue_tx::tx_desc_ctx::process()
     tq.trigger_tx();
 }
 
+void lan_queue_tx::tx_desc_ctx::processed()
+{
+    d->cmd_type_offset_bsz = I40E_TX_DESC_DTYPE_DESC_DONE <<
+        I40E_TXD_QW1_DTYPE_SHIFT;
+    desc_ctx::processed();
+}
+
 lan_queue_tx::dma_hwb::dma_hwb(lan_queue_tx &queue_, uint32_t pos_,
         uint32_t cnt_, uint32_t nh_)
     : queue(queue_), pos(pos_), cnt(cnt_), next_head(nh_)

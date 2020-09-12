@@ -118,8 +118,8 @@ void queue_base::trigger_writeback()
             break;
 
     uint32_t cnt = std::min(avail, max_writeback_capacity());
-    if (active_first_pos + cnt > len)
-        cnt = len - active_first_pos;
+    if (active_first_idx + cnt > len)
+        cnt = len - active_first_idx;
 
 #ifdef DEBUG_QUEUES
     std::cerr << qname << ": writing back avail=" << avail << " cnt=" << cnt <<

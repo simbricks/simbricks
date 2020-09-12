@@ -77,8 +77,8 @@ class queue_base {
                 size_t data_len;
                 size_t data_capacity;
 
-                void prepared();
-                void processed();
+                virtual void prepared();
+                virtual void processed();
 
             protected:
                 void data_fetch(uint64_t addr, size_t len);
@@ -133,7 +133,9 @@ class queue_base {
                 virtual void done();
         };
 
+    public:
         std::string qname;
+    protected:
         desc_ctx *desc_ctxs[MAX_ACTIVE_DESCS];
         uint32_t active_first_pos;
         uint32_t active_first_idx;
@@ -298,6 +300,7 @@ class lan_queue_tx : public lan_queue_base {
 
                 virtual void prepare();
                 virtual void process();
+                virtual void processed();
         };
 
 
