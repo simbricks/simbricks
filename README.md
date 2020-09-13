@@ -17,7 +17,7 @@ Code structure:
 
 # Building
  - External dependencies for qemu: `libglib2.0-dev libpixman-1-dev`
- - External dependencies for gem5: `scons`
+ - External dependencies for gem5: `scons`, `python-dev`
 
 Then build everything with:
 ```
