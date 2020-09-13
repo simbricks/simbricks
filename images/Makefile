@@ -8,6 +8,8 @@ MTCP_IMAGE := output-mtcp/mtcp
 IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MTCP_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
+QEMU_IMG := ../qemu/qemu-img
+
 all: $(IMAGES) $(RAW_IMAGES) vmlinux bzImage mqnic/mqnic.ko
 
 clean:
@@ -21,29 +23,29 @@ clean:
 # Disk image
 
 %.raw: %
-	qemu-img convert -f qcow2 -O raw $< $@
+	$(QEMU_IMG) convert -f qcow2 -O raw $< $@
 
 $(UBUNTU_IMAGE): ubuntu1804.json packer scripts/vagrant.sh scripts/sshd.sh \
     scripts/update.sh scripts/packages.sh scripts/cleanup.sh scripts/preseed.cfg
 	rm -rf output-ubuntu1804
-	./packer build ubuntu1804.json
+	./packer-wrap.sh build ubuntu1804.json
 	touch $@
 
 $(BASE_IMAGE): base.json packer $(UBUNTU_IMAGE) bzImage kheaders.tar.bz2 \
     scripts/guestinit.sh
 	rm -rf output-base
-	./packer build base.json
+	./packer-wrap.sh build base.json
 	touch $@
 
 $(NOPAXOS_IMAGE): nopaxos.json packer $(BASE_IMAGE) scripts/install-nopaxos.sh \
     nopaxos.config
 	rm -rf output-nopaxos
-	./packer build nopaxos.json
+	./packer-wrap.sh build nopaxos.json
 	touch $@
 
 $(MTCP_IMAGE): mtcp.json packer $(BASE_IMAGE) scripts/install-mtcp.sh
 	rm -rf output-mtcp
-	./packer build mtcp.json
+	./packer-wrap.sh build mtcp.json
 	touch $@
 
 packer:
