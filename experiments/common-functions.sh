@@ -2,6 +2,7 @@
 
 EHSIM_BASE="$(readlink -f $(dirname ${BASH_SOURCE[0]})/..)"
 QEMU_CMD="$EHSIM_BASE/qemu/x86_64-softmmu/qemu-system-x86_64"
+QEMU_IMG="$EHSIM_BASE/qemu/qemu-img"
 GEM5_BASE="$EHSIM_BASE/gem5"
 NS3_BASE="$EHSIM_BASE/ns-3"
 
@@ -57,9 +58,9 @@ run_qemu() {
     rm -f $img_a $img_b
     echo Creating disk for qemu $1
     if [ -z "$4" ]; then
-        qemu-img create -f qcow2 -o backing_file=$QEMU_IMAGE $img_a
+        $QEMU_IMG create -f qcow2 -o backing_file=$QEMU_IMAGE $img_a
     else
-        qemu-img create -f qcow2 -o backing_file="$EHSIM_BASE/images/output-$4/$4" $img_a
+        $QEMU_IMG create -f qcow2 -o backing_file="$EHSIM_BASE/images/output-$4/$4" $img_a
     fi
     cp $3 $img_b
     echo Starting qemu $1
