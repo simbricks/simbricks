@@ -26,24 +26,40 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+#include <pcap/pcap.h>
 
 #include <netsim.h>
 
 #define SYNC_PERIOD (500 * 1000ULL) // 500ns
 #define ETH_LATENCY (500 * 1000ULL) // 500ns
 
-static void move_pkt(uint64_t cur_ts, struct netsim_interface *from,
-        struct netsim_interface *to)
+static uint64_t cur_ts;
+static int exiting = 0;
+static pcap_dumper_t *dumpfile = NULL;
+
+static void sigint_handler(int dummy)
+{
+    exiting = 1;
+}
+
+static void sigusr1_handler(int dummy)
+{
+    fprintf(stderr, "main_time = %lu\n", cur_ts);
+}
+
+static void move_pkt(struct netsim_interface *from, struct netsim_interface *to)
 {
     volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(from, cur_ts);
     volatile union cosim_eth_proto_n2d *msg_to;
     volatile struct cosim_eth_proto_d2n_send *tx;
     volatile struct cosim_eth_proto_n2d_recv *rx;
+    struct pcap_pkthdr ph;
     uint8_t type;
 
     if (msg_from == NULL)
@@ -52,6 +68,17 @@ static void move_pkt(uint64_t cur_ts, struct netsim_interface *from,
     type = msg_from->dummy.own_type & COSIM_ETH_PROTO_D2N_MSG_MASK;
     if (type == COSIM_ETH_PROTO_D2N_MSG_SEND) {
         tx = &msg_from->send;
+
+        // log to pcap file if initialized
+        if (dumpfile) {
+            memset(&ph, 0, sizeof(ph));
+            ph.ts.tv_sec = cur_ts / 1000000000000ULL;
+            ph.ts.tv_usec = (cur_ts % 1000000000000ULL) / 1000ULL;
+            ph.caplen = tx->len;
+            ph.len = tx->len;
+            pcap_dump((unsigned char *) dumpfile, &ph,
+                    (unsigned char *) tx->data);
+        }
 
         msg_to = netsim_n2d_alloc(to, cur_ts, ETH_LATENCY);
         if (msg_to != NULL) {
@@ -78,12 +105,28 @@ static void move_pkt(uint64_t cur_ts, struct netsim_interface *from,
 int main(int argc, char *argv[])
 {
     struct netsim_interface nsif_a, nsif_b;
-    uint64_t cur_ts = 0, ts_a, ts_b;
+    uint64_t ts_a, ts_b;
     int sync_a, sync_b;
+    pcap_t *pc = NULL;
 
-    if (argc != 3) {
-        fprintf(stderr, "Usage: net_tap SOCKET-A SOCKET-B\n");
+    if (argc != 3 && argc != 4) {
+        fprintf(stderr, "Usage: net_tap SOCKET-A SOCKET-B [PCAP-FILE]\n");
         return EXIT_FAILURE;
+    }
+
+    signal(SIGINT, sigint_handler);
+    signal(SIGTERM, sigint_handler);
+    signal(SIGUSR1, sigusr1_handler);
+
+    if (argc == 4) {
+        pc = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, 65535,
+                PCAP_TSTAMP_PRECISION_NANO);
+        if (pc == NULL) {
+            perror("pcap_open_dead failed");
+            return EXIT_FAILURE;
+        }
+
+        dumpfile = pcap_dump_open(pc, argv[3]);
     }
 
     sync_a = sync_b = 1;
@@ -95,7 +138,7 @@ int main(int argc, char *argv[])
     }
 
     printf("start polling\n");
-    while (1) {
+    while (!exiting) {
         if (netsim_n2d_sync(&nsif_a, cur_ts, ETH_LATENCY, SYNC_PERIOD) != 0) {
             fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
             abort();
@@ -106,8 +149,8 @@ int main(int argc, char *argv[])
         }
 
         do {
-            move_pkt(cur_ts, &nsif_a, &nsif_b);
-            move_pkt(cur_ts, &nsif_b, &nsif_a);
+            move_pkt(&nsif_a, &nsif_b);
+            move_pkt(&nsif_b, &nsif_a);
             ts_a = netsim_d2n_timestamp(&nsif_a);
             ts_b = netsim_d2n_timestamp(&nsif_b);
         } while ((sync_a && ts_a <= cur_ts) ||
@@ -120,5 +163,7 @@ int main(int argc, char *argv[])
         else if (sync_b)
             cur_ts = ts_b;
     }
+
+    pcap_dump_close(dumpfile);
     return 0;
 }
