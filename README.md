@@ -16,6 +16,7 @@ Code structure:
     + `libnicbm/`: helper library for behavioral nic models
 
 # Building
+ - `unzip`, `libpcap-dev`
  - External dependencies for qemu: `libglib2.0-dev libpixman-1-dev`
  - External dependencies for gem5: `scons`, `python-dev`, `libgoogle-perftools-dev`
 
