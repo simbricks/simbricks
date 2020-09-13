@@ -243,6 +243,9 @@ void queue_base::writeback_done(uint32_t first_pos, uint32_t cnt)
 
     reg_head = active_first_idx;
     interrupt();
+
+    trigger_fetch();
+    trigger_writeback();
 }
 
 queue_base::desc_ctx::desc_ctx(queue_base &queue_)
