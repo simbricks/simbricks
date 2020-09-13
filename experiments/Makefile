@@ -55,6 +55,8 @@ GUESTS := \
     gem5-pair-client-udp-cp \
     qemu-mtcp-server \
     qemu-mtcp-client \
+    gem5-pair-i40e-server \
+    gem5-pair-i40e-client \
 
 # experiments we want for the paper
 EXPERIMENTS := \
@@ -80,14 +82,17 @@ EXPERIMENTS := \
     gem5-timing-corundum-verilator-pair-udp-100m \
     gem5-timing-corundum-verilator-pair-udp-150m \
 
+
 #experiments using check points
 EXP_CP := \
     gem5-timing-corundum-verilator-pair-cp \
+    gem5-i40e-pair \
 
 #experiments not using check points
 EXP_NCP := \
     qemu-corundum-bm-pair \
     qemu-corundum-bm-switched-1 \
+    qemu-i40e-bm-mtcp \
 
 
 # all experiments in repo
