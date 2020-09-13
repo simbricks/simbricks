@@ -48,11 +48,6 @@ GUESTS := \
 	gem5-vr-replica-1-cp \
 	gem5-vr-replica-2-cp \
 	gem5-vr-client-cp \
-    gem5-pair-client-16f-cp \
-    gem5-pair-client-16f \
-    gem5-pair-client-largewin-cp \
-    gem5-pair-server-udp-cp \
-    gem5-pair-client-udp-cp \
     qemu-mtcp-server \
     qemu-mtcp-client \
     gem5-pair-i40e-server \
