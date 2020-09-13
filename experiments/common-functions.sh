@@ -159,10 +159,17 @@ run_i40e_bm() {
 #   - Instance name
 #   - sim instance 1
 #   - sim instance 2
+#   - [optional: pcap filename]
 run_wire() {
     echo Starting wire $1
+    if [ -z "$4" ]; then
+        pcap=
+    else
+        pcap="$OUTDIR/$4.pcap"
+    fi
+
     $EHSIM_BASE/net_wire/net_wire \
-        $OUTDIR/eth.$2 $OUTDIR/eth.$3 &>$OUTDIR/wire.$1.log &
+        $OUTDIR/eth.$2 $OUTDIR/eth.$3 $pcap &>$OUTDIR/wire.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
     return $pid
