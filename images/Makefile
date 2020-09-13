@@ -23,22 +23,25 @@ clean:
 %.raw: %
 	qemu-img convert -f qcow2 -O raw $< $@
 
-$(UBUNTU_IMAGE): $(wildcard scripts/*) packer ubuntu1804.json
+$(UBUNTU_IMAGE): ubuntu1804.json packer scripts/vagrant.sh scripts/sshd.sh \
+    scripts/update.sh scripts/packages.sh scripts/cleanup.sh scripts/preseed.cfg
 	rm -rf output-ubuntu1804
 	./packer build ubuntu1804.json
 	touch $@
 
-$(BASE_IMAGE): $(wildcard scripts/*) packer base.json $(UBUNTU_IMAGE) bzImage kheaders.tar.bz2
+$(BASE_IMAGE): base.json packer $(UBUNTU_IMAGE) bzImage kheaders.tar.bz2 \
+    scripts/guestinit.sh
 	rm -rf output-base
 	./packer build base.json
 	touch $@
 
-$(NOPAXOS_IMAGE): $(wildcard scripts/*) packer nopaxos.json $(BASE_IMAGE) scripts/install-nopaxos.sh
+$(NOPAXOS_IMAGE): nopaxos.json packer $(BASE_IMAGE) scripts/install-nopaxos.sh \
+    nopaxos.config
 	rm -rf output-nopaxos
 	./packer build nopaxos.json
 	touch $@
 
-$(MTCP_IMAGE): $(wildcard scripts/*) packer mtcp.json $(BASE_IMAGE) scripts/install-mtcp.sh
+$(MTCP_IMAGE): mtcp.json packer $(BASE_IMAGE) scripts/install-mtcp.sh
 	rm -rf output-mtcp
 	./packer build mtcp.json
 	touch $@
