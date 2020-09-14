@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <sstream>
 #include <stdint.h>
 extern "C" {
 #include <cosim_pcie_proto.h>
@@ -25,6 +26,27 @@ class dma_base : public nicbm::DMAOp {
     public:
         /** i40e_bm will call this when dma is done */
         virtual void done() = 0;
+};
+
+class logger : public std::ostream {
+    public:
+        static const char endl = '\n';
+
+    protected:
+        std::string label;
+        std::stringstream ss;
+
+    public:
+        logger(const std::string &label_);
+        logger &operator<<(char c);
+        logger &operator<<(int32_t c);
+        logger &operator<<(uint8_t i);
+        logger &operator<<(uint16_t i);
+        logger &operator<<(uint32_t i);
+        logger &operator<<(uint64_t i);
+        logger &operator<<(bool c);
+        logger &operator<<(const char *str);
+        logger &operator<<(void *str);
 };
 
 /**
@@ -135,6 +157,7 @@ class queue_base {
 
     public:
         std::string qname;
+        logger log;
     protected:
         desc_ctx *desc_ctxs[MAX_ACTIVE_DESCS];
         uint32_t active_first_pos;
@@ -377,6 +400,7 @@ class lan {
         friend class lan_queue_rx;
 
         i40e_bm &dev;
+        logger log;
         const size_t num_qs;
         lan_queue_rx **rxqs;
         lan_queue_tx **txqs;
@@ -392,6 +416,7 @@ class lan {
 class shadow_ram {
     protected:
         i40e_bm &dev;
+        logger log;
 
     public:
         shadow_ram(i40e_bm &dev);
@@ -481,6 +506,7 @@ public:
     virtual void eth_rx(uint8_t port, const void *data, size_t len);
 
 protected:
+    logger log;
     i40e_regs regs;
     queue_admin_tx pf_atq;
     host_mem_cache hmc;

@@ -12,7 +12,8 @@ nicbm::Runner *runner;
 namespace i40e {
 
 i40e_bm::i40e_bm()
-    : pf_atq(*this, regs.pf_atqba, regs.pf_atqlen, regs.pf_atqh, regs.pf_atqt),
+    : log("i40e"),
+    pf_atq(*this, regs.pf_atqba, regs.pf_atqlen, regs.pf_atqh, regs.pf_atqt),
     hmc(*this), shram(*this), lanmgr(*this, NUM_QUEUES)
 {
     reset(false);
@@ -40,7 +41,7 @@ void i40e_bm::dma_complete(nicbm::DMAOp &op)
 {
     dma_base &dma = dynamic_cast<dma_base &>(op);
 #ifdef DEBUG_DEV
-    std::cerr << "dma_complete(" << &op << ")" << std::endl;
+    log << "dma_complete(" << &op << ")" << logger::endl;
 #endif
     dma.done();
 }
@@ -48,7 +49,7 @@ void i40e_bm::dma_complete(nicbm::DMAOp &op)
 void i40e_bm::eth_rx(uint8_t port, const void *data, size_t len)
 {
 #ifdef DEBUG_DEV
-    std::cerr << "i40e: received packet len=" << len << std::endl;
+    log << "i40e: received packet len=" << len << logger::endl;
 #endif
     lanmgr.packet_received(data, len);
 }
@@ -63,8 +64,8 @@ void i40e_bm::reg_read(uint8_t bar, uint64_t addr, void *dest, size_t len)
         dest_p[0] = reg_read32(bar, addr);
         dest_p[1] = reg_read32(bar, addr + 4);
     } else {
-        std::cerr << "currently we only support 4/8B reads (got " << len << ")"
-            << std::endl;
+        log << "currently we only support 4/8B reads (got " << len << ")"
+            << logger::endl;
         abort();
     }
 }
@@ -76,7 +77,7 @@ uint32_t i40e_bm::reg_read32(uint8_t bar, uint64_t addr)
     } else if (bar == BAR_IO) {
         return reg_io_read(addr);
     } else {
-        std::cerr << "invalid BAR " << (int) bar << std::endl;
+        log << "invalid BAR " << (int) bar << logger::endl;
         abort();
     }
 }
@@ -91,8 +92,8 @@ void i40e_bm::reg_write(uint8_t bar, uint64_t addr, const void *src, size_t len)
         reg_write32(bar, addr, src_p[0]);
         reg_write32(bar, addr + 4, src_p[1]);
     } else {
-        std::cerr << "currently we only support 4/8B writes (got " << len << ")"
-            << std::endl;
+        log << "currently we only support 4/8B writes (got " << len << ")"
+            << logger::endl;
         abort();
     }
 }
@@ -104,21 +105,21 @@ void i40e_bm::reg_write32(uint8_t bar, uint64_t addr, uint32_t val)
     } else if (bar == BAR_IO) {
         reg_io_write(addr, val);
     } else {
-        std::cerr << "invalid BAR " << (int) bar << std::endl;
+        log << "invalid BAR " << (int) bar << logger::endl;
         abort();
     }
 }
 
 uint32_t i40e_bm::reg_io_read(uint64_t addr)
 {
-    std::cerr << "unhandled io read addr=" << std::hex << addr << std::endl;
+    log << "unhandled io read addr="  << addr << logger::endl;
     return 0;
 }
 
 void i40e_bm::reg_io_write(uint64_t addr, uint32_t val)
 {
-    std::cerr << "unhandled io write addr=" << std::hex << addr << " val="
-        << val << std::endl;
+    log << "unhandled io write addr="  << addr << " val="
+        << val << logger::endl;
 }
 
 uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
@@ -358,8 +359,8 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
 
             default:
 #ifdef DEBUG_DEV
-                std::cerr << "unhandled mem read addr=" << std::hex << addr
-                    << std::endl;
+                log << "unhandled mem read addr="  << addr
+                    << logger::endl;
 #endif
                 break;
         }
@@ -536,8 +537,8 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
 
             default:
 #ifdef DEBUG_DEV
-                std::cerr << "unhandled mem write addr=" << std::hex << addr
-                    << " val=" << val << std::endl;
+                log << "unhandled mem write addr="  << addr
+                    << " val=" << val << logger::endl;
 #endif
                 break;
         }
@@ -547,7 +548,7 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
 void i40e_bm::reset(bool indicate_done)
 {
 #ifdef DEBUG_DEV
-    std::cout << "reset triggered" << std::endl;
+    std::cout << "reset triggered" << logger::endl;
 #endif
 
     pf_atq.reset();
@@ -560,7 +561,7 @@ void i40e_bm::reset(bool indicate_done)
 }
 
 shadow_ram::shadow_ram(i40e_bm &dev_)
-    : dev(dev_)
+    : dev(dev_), log("sram")
 {
 }
 
@@ -578,8 +579,8 @@ void shadow_ram::reg_updated()
     is_write = (val & I40E_GLNVM_SRCTL_WRITE_MASK);
 
 #ifdef DEBUG_DEV
-    std::cerr << "shadow ram op addr=" << std::hex << addr << " w=" << is_write
-        << std::endl;
+    log << "shadow ram op addr="  << addr << " w=" << is_write
+        << logger::endl;
 #endif
 
     if (is_write) {
@@ -615,8 +616,8 @@ uint16_t shadow_ram::read(uint16_t addr)
 
         default:
 #ifdef DEBUG_DEV
-             std::cerr << "TODO shadow memory read addr=" << std::hex << addr
-                 << std::endl;
+             log << "TODO shadow memory read addr="  << addr
+                 << logger::endl;
 #endif
              break;
     }
@@ -627,8 +628,8 @@ uint16_t shadow_ram::read(uint16_t addr)
 void shadow_ram::write(uint16_t addr, uint16_t val)
 {
 #ifdef DEBUG_DEV
-    std::cerr << "TODO shadow memory write addr=" << std::hex << addr <<
-        " val=" << val << std::endl;
+    log << "TODO shadow memory write addr="  << addr <<
+        " val=" << val << logger::endl;
 #endif
 }
 

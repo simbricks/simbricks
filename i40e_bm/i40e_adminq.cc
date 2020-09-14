@@ -32,13 +32,13 @@ void queue_admin_tx::reg_updated()
 
     if (!enabled  && (reg_len & I40E_GL_ATQLEN_ATQENABLE_MASK)) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq: enable base=" << base << " len=" << len <<
-            std::endl;
+        log << " enable base=" << base << " len=" << len <<
+            logger::endl;
 #endif
         enabled = true;
     } else if (enabled && !(reg_len & I40E_GL_ATQLEN_ATQENABLE_MASK)) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq: disable" << std::endl;
+        log << " disable" << logger::endl;
 #endif
         enabled = false;
     }
@@ -68,8 +68,8 @@ void queue_admin_tx::admin_desc_ctx::desc_compl_prepare(uint16_t retval,
     d->retval = retval;
 
 #ifdef DEBUG_ADMINQ
-    std::cerr << "atq: desc_compl_prepare index=" << index << " retval=" <<
-        retval << std::endl;
+    queue.log << " desc_compl_prepare index=" << index << " retval=" <<
+        retval << logger::endl;
 #endif
 }
 
@@ -84,8 +84,8 @@ void queue_admin_tx::admin_desc_ctx::desc_complete_indir(uint16_t retval,
         const void *data, size_t len, uint16_t extra_flags, bool ignore_datalen)
 {
     if (!ignore_datalen && len > d->datalen) {
-        std::cerr << "queue_admin_tx::desc_complete_indir: data too long ("
-            << len << ") got buffer for (" << d->datalen << ")" << std::endl;
+        queue.log << "queue_admin_tx::desc_complete_indir: data too long ("
+            << len << ") got buffer for (" << d->datalen << ")" << logger::endl;
         abort();
     }
     d->datalen = len;
@@ -103,8 +103,8 @@ void queue_admin_tx::admin_desc_ctx::prepare()
         uint64_t addr = d->params.external.addr_low |
             (((uint64_t) d->params.external.addr_high) << 32);
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq: desc with buffer opc=" << d->opcode << " addr=" <<
-            addr << std::endl;
+        queue.log << " desc with buffer opc=" << d->opcode << " addr=" <<
+            addr << logger::endl;
 #endif
         data_fetch(addr, d->datalen);
     } else {
@@ -115,12 +115,12 @@ void queue_admin_tx::admin_desc_ctx::prepare()
 void queue_admin_tx::admin_desc_ctx::process()
 {
 #ifdef DEBUG_ADMINQ
-    std::cerr << "atq: descriptor " << index << " fetched" << std::endl;
+    queue.log << " descriptor " << index << " fetched" << logger::endl;
 #endif
 
     if (d->opcode == i40e_aqc_opc_get_version) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  get version" << std::endl;
+        queue.log << "  get version" << logger::endl;
 #endif
         struct i40e_aqc_get_version *gv =
             reinterpret_cast<struct i40e_aqc_get_version *>(d->params.raw);
@@ -134,32 +134,32 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_request_resource) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  request resource" << std::endl;
+        queue.log << "  request resource" << logger::endl;
 #endif
         struct i40e_aqc_request_resource *rr =
             reinterpret_cast<struct i40e_aqc_request_resource *>(
                     d->params.raw);
         rr->timeout = 180000;
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:    res_id=" << rr->resource_id << std::endl;
-        std::cerr << "atq:    res_nu=" << rr->resource_number << std::endl;
+        queue.log << "    res_id=" << rr->resource_id << logger::endl;
+        queue.log << "    res_nu=" << rr->resource_number << logger::endl;
 #endif
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_release_resource) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  release resource" << std::endl;
+        queue.log << "  release resource" << logger::endl;
 #endif
 #ifdef DEBUG_ADMINQ
         struct i40e_aqc_request_resource *rr =
             reinterpret_cast<struct i40e_aqc_request_resource *>(
                     d->params.raw);
-        std::cerr << "atq:    res_id=" << rr->resource_id << std::endl;
-        std::cerr << "atq:    res_nu=" << rr->resource_number << std::endl;
+        queue.log << "    res_id=" << rr->resource_id << logger::endl;
+        queue.log << "    res_nu=" << rr->resource_number << logger::endl;
 #endif
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_clear_pxe_mode)  {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  clear PXE mode" << std::endl;
+        queue.log << "  clear PXE mode" << logger::endl;
 #endif
         dev.regs.gllan_rctl_0 &= ~I40E_GLLAN_RCTL_0_PXE_MODE_MASK;
         desc_complete(0);
@@ -167,7 +167,7 @@ void queue_admin_tx::admin_desc_ctx::process()
             d->opcode == i40e_aqc_opc_list_dev_capabilities)
     {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  get dev/fun caps" << std::endl;
+        queue.log << "  get dev/fun caps" << logger::endl;
 #endif
         struct i40e_aqc_list_capabilites *lc =
             reinterpret_cast<struct i40e_aqc_list_capabilites *>(
@@ -185,14 +185,14 @@ void queue_admin_tx::admin_desc_ctx::process()
 
         if (sizeof(caps) <= d->datalen) {
 #ifdef DEBUG_ADMINQ
-            std::cerr << "atq:    data fits" << std::endl;
+            queue.log << "    data fits" << logger::endl;
 #endif
             // data fits within the buffer
             lc->count = num_caps;
             desc_complete_indir(0, caps, sizeof(caps));
         } else {
 #ifdef DEBUG_ADMINQ
-            std::cerr << "atq:    data doesn't fit" << std::endl;
+            queue.log << "    data doesn't fit" << logger::endl;
 #endif
             // data does not fit
             d->datalen = sizeof(caps);
@@ -200,12 +200,12 @@ void queue_admin_tx::admin_desc_ctx::process()
         }
     } else if (d->opcode == i40e_aqc_opc_lldp_stop) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  lldp stop" << std::endl;
+        queue.log << "  lldp stop" << logger::endl;
 #endif
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_mac_address_read) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  read mac" << std::endl;
+        queue.log << "  read mac" << logger::endl;
 #endif
         struct i40e_aqc_mac_address_read *ar =
             reinterpret_cast<struct i40e_aqc_mac_address_read *>(
@@ -214,7 +214,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         struct i40e_aqc_mac_address_read_data ard;
         uint64_t mac = runner->get_mac_addr();
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:    mac = " << mac << std::endl;
+        queue.log << "    mac = " << mac << logger::endl;
 #endif
         memcpy(ard.pf_lan_mac, &mac, 6);
         memcpy(ard.port_mac, &mac, 6);
@@ -223,7 +223,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete_indir(0, &ard, sizeof(ard));
     } else if (d->opcode == i40e_aqc_opc_get_phy_abilities) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  get phy abilities" << std::endl;
+        queue.log << "  get phy abilities" << logger::endl;
 #endif
         struct i40e_aq_get_phy_abilities_resp par;
         memset(&par, 0, sizeof(par));
@@ -240,7 +240,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete_indir(0, &par, sizeof(par), 0, true);
     } else if (d->opcode == i40e_aqc_opc_get_link_status) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  link status" << std::endl;
+        queue.log << "  link status" << logger::endl;
 #endif
         struct i40e_aqc_get_link_status *gls =
             reinterpret_cast<struct i40e_aqc_get_link_status *>(
@@ -262,7 +262,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_get_switch_config) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  get switch config" << std::endl;
+        queue.log << "  get switch config" << logger::endl;
 #endif
         struct i40e_aqc_switch_seid *sw = reinterpret_cast<
             struct i40e_aqc_switch_seid *>(d->params.raw);
@@ -312,8 +312,8 @@ void queue_admin_tx::admin_desc_ctx::process()
         hr.num_reported = report;
         hr.num_total = cnt;
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:    report=" << report << " cnt=" << cnt <<
-            "  seid=" << sw->seid << std::endl;
+        queue.log << "    report=" << report << " cnt=" << cnt <<
+            "  seid=" << sw->seid << logger::endl;
 #endif
 
         // create temporary contiguous buffer
@@ -325,7 +325,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete_indir(0, buf, buflen);
     } else if (d->opcode == i40e_aqc_opc_set_switch_config) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  set switch config" << std::endl;
+        queue.log << "  set switch config" << logger::endl;
 #endif
         /* TODO: lots of interesting things here like l2 filtering etc. that are
          * relevant.
@@ -336,7 +336,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_get_vsi_parameters) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  get vsi parameters" << std::endl;
+        queue.log << "  get vsi parameters" << logger::endl;
 #endif
         /*struct i40e_aqc_add_get_update_vsi *v =
             reinterpret_cast<struct i40e_aqc_add_get_update_vsi *>(
@@ -351,24 +351,24 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete_indir(0, &pd, sizeof(pd));
     } else if (d->opcode == i40e_aqc_opc_update_vsi_parameters) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  update vsi parameters" << std::endl;
+        queue.log << "  update vsi parameters" << logger::endl;
 #endif
         /* TODO */
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_set_dcb_parameters) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  set dcb parameters" << std::endl;
+        queue.log << "  set dcb parameters" << logger::endl;
 #endif
         /* TODO */
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_configure_vsi_bw_limit) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  configure vsi bw limit" << std::endl;
+        queue.log << "  configure vsi bw limit" << logger::endl;
 #endif
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_query_vsi_bw_config) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  query vsi bw config" << std::endl;
+        queue.log << "  query vsi bw config" << logger::endl;
 #endif
         struct i40e_aqc_query_vsi_bw_config_resp bwc;
         memset(&bwc, 0, sizeof(bwc));
@@ -377,7 +377,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete_indir(0, &bwc, sizeof(bwc));
     } else if (d->opcode == i40e_aqc_opc_query_vsi_ets_sla_config) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  query vsi ets sla config" << std::endl;
+        queue.log << "  query vsi ets sla config" << logger::endl;
 #endif
         struct i40e_aqc_query_vsi_ets_sla_config_resp sla;
         memset(&sla, 0, sizeof(sla));
@@ -386,7 +386,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete_indir(0, &sla, sizeof(sla));
     } else if (d->opcode == i40e_aqc_opc_remove_macvlan) {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  remove macvlan" << std::endl;
+        queue.log << "  remove macvlan" << logger::endl;
 #endif
         struct i40e_aqc_macvlan *m = reinterpret_cast<
             struct i40e_aqc_macvlan *>(d->params.raw);
@@ -399,7 +399,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         desc_complete_indir(0, data, d->datalen);
     } else {
 #ifdef DEBUG_ADMINQ
-        std::cerr << "atq:  uknown opcode=" << d->opcode << std::endl;
+        queue.log << "  uknown opcode=" << d->opcode << logger::endl;
 #endif
         //desc_complete(I40E_AQ_RC_ESRCH);
         desc_complete(0);
