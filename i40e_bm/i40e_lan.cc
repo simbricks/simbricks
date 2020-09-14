@@ -524,5 +524,6 @@ void lan_queue_tx::dma_hwb::done()
     queue.log << " tx head written back" << logger::endl;
 #endif
     queue.writeback_done(pos, cnt);
+    queue.trigger();
     delete this;
 }

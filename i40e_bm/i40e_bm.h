@@ -177,6 +177,7 @@ class queue_base {
         void trigger_fetch();
         void trigger_process();
         void trigger_writeback();
+        void trigger();
 
         // returns how many descriptors the queue can fetch max during the next
         // fetch: default UINT32_MAX, but can be overriden by child classes

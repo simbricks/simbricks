@@ -138,6 +138,13 @@ void queue_base::trigger_writeback()
     do_writeback(active_first_idx, active_first_pos, cnt);
 }
 
+void queue_base::trigger()
+{
+  trigger_fetch();
+  trigger_process();
+  trigger_writeback();
+}
+
 void queue_base::reset()
 {
 #ifdef DEBUG_QUEUES
@@ -159,7 +166,7 @@ void queue_base::reg_updated()
     if (!enabled)
         return;
 
-    trigger_fetch();
+    trigger();
 }
 
 bool queue_base::is_enabled()
@@ -243,9 +250,6 @@ void queue_base::writeback_done(uint32_t first_pos, uint32_t cnt)
 
     reg_head = active_first_idx;
     interrupt();
-
-    trigger_fetch();
-    trigger_writeback();
 }
 
 queue_base::desc_ctx::desc_ctx(queue_base &queue_)
@@ -274,7 +278,6 @@ void queue_base::desc_ctx::prepared()
 #endif
     assert(state == DESC_PREPARING);
     state = DESC_PREPARED;
-    queue.trigger_process();
 }
 
 void queue_base::desc_ctx::processed()
@@ -284,7 +287,6 @@ void queue_base::desc_ctx::processed()
 #endif
     assert(state == DESC_PROCESSING);
     state = DESC_PROCESSED;
-    queue.trigger_writeback();
 }
 
 void queue_base::desc_ctx::data_fetch(uint64_t addr, size_t data_len)
@@ -367,6 +369,7 @@ void queue_base::dma_fetch::done()
         ctx.state = desc_ctx::DESC_PREPARING;
         ctx.prepare();
     }
+    queue.trigger();
     delete this;
 }
 
@@ -385,6 +388,7 @@ queue_base::dma_data_fetch::~dma_data_fetch()
 void queue_base::dma_data_fetch::done()
 {
     ctx.data_fetched(dma_addr, len);
+    ctx.queue.trigger();
     delete this;
 }
 
@@ -403,6 +407,7 @@ queue_base::dma_wb::~dma_wb()
 void queue_base::dma_wb::done()
 {
     queue.writeback_done(pos, len / queue.desc_len);
+    queue.trigger();
     delete this;
 }
 
@@ -422,5 +427,6 @@ queue_base::dma_data_wb::~dma_data_wb()
 void queue_base::dma_data_wb::done()
 {
     ctx.data_written(dma_addr, len);
+    ctx.queue.trigger();
     delete this;
 }
