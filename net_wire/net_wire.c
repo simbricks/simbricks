@@ -164,6 +164,7 @@ int main(int argc, char *argv[])
             cur_ts = ts_b;
     }
 
-    pcap_dump_close(dumpfile);
+    if (dumpfile)
+        pcap_dump_close(dumpfile);
     return 0;
 }
