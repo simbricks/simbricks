@@ -20,4 +20,4 @@ ip addr add 192.168.64.2/24 dev dpdk0
 
 cd /root/tasbench/micro_rpc
 ./testclient_mtcp 192.168.64.1 1234 1 /tmp/guest/mtcp.conf 1024 1 128 2 0 8
-poweroff
+poweroff -f

@@ -40,4 +40,4 @@ cd /root/tasbench/micro_rpc
 #make echoserver_mtcp MTCP_BASE="/root/mtcp" TAS_CODE="/root/tas"
 #rm -rf /var/run/dpdk /dev/hugepages/*
 ./echoserver_mtcp 1234 1 /tmp/guest/mtcp.conf 1024 1024
-poweroff
+poweroff -f
