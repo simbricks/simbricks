@@ -253,4 +253,10 @@ cleanup() {
     date >>$OUTDIR/endtime
 }
 
-trap "cleanup" SIGINT
+sighandler() {
+    echo "Caught Interrupt, aborting...."
+    cleanup
+    exit 1
+}
+
+trap "sighandler" SIGINT
