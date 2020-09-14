@@ -113,6 +113,7 @@ run_gem5() {
         --cpu-clock=3GHz \
         --kernel=$GEM5_KERNEL --disk-image=$img --disk-image=$3 \
         --cpu-type=$4 --mem-size=4GB --cosim-pci=$pcisock --cosim-shm=$shm \
+        --ddio-enabled --ddio-way-part=8 --mem-type=DDR4_2400_16x4 \
         --checkpoint-dir="$cpdir" $6 \
         &>$OUTDIR/gem5.$1.log &
     pid=$!
