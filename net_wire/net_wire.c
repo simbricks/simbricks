@@ -153,8 +153,9 @@ int main(int argc, char *argv[])
             move_pkt(&nsif_b, &nsif_a);
             ts_a = netsim_d2n_timestamp(&nsif_a);
             ts_b = netsim_d2n_timestamp(&nsif_b);
-        } while ((sync_a && ts_a <= cur_ts) ||
-                (sync_b && ts_b <= cur_ts));
+        } while (!exiting &&
+            ((sync_a && ts_a <= cur_ts) ||
+                (sync_b && ts_b <= cur_ts)));
 
         if (sync_a && sync_b)
             cur_ts = (ts_a <= ts_b ? ts_a : ts_b);
