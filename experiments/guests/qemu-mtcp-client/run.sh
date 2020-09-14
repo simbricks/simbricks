@@ -19,5 +19,7 @@ ip link set dev dpdk0 up
 ip addr add 192.168.64.2/24 dev dpdk0
 
 cd /root/tasbench/micro_rpc
-./testclient_mtcp 192.168.64.1 1234 1 /tmp/guest/mtcp.conf 1024 1 128 2 0 8
+./testclient_mtcp 192.168.64.1 1234 1 /tmp/guest/mtcp.conf 1024 1 128 2 0 8 &
+sleep 25
+
 poweroff -f
