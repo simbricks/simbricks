@@ -16,6 +16,7 @@ logger &logger::operator<<(char c)
     if (c == endl) {
         std::cerr << runner->time_ps() << " " << label << ": " << ss.str() <<
             std::endl;
+        ss.clear();
     } else {
         ss << c;
     }
