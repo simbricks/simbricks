@@ -332,6 +332,7 @@ Runner::Runner(Device &dev_)
 int Runner::runMain(int argc, char *argv[])
 {
     uint64_t next_ts;
+    uint64_t max_step = 10000;
 
     if (argc != 4 && argc != 5) {
         fprintf(stderr, "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
@@ -376,8 +377,10 @@ int Runner::runMain(int argc, char *argv[])
 
             if (is_sync) {
                 next_ts = netsim_next_timestamp(&nsparams);
+                if (next_ts > main_time + max_step)
+                    next_ts = main_time + max_step;
             } else {
-                next_ts = main_time + 100000;
+                next_ts = main_time + max_step;
             }
 
             uint64_t ev_ts;
