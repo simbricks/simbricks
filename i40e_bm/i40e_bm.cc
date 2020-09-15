@@ -245,6 +245,16 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = regs.pfint_dyn_ctl0;
                 break;
 
+            case I40E_PFINT_ITR0(0):
+                val = regs.pfint_itr0[0];
+                break;
+            case I40E_PFINT_ITR0(1):
+                val = regs.pfint_itr0[1];
+                break;
+            case I40E_PFINT_ITR0(2):
+                val = regs.pfint_itr0[2];
+                break;
+
             case I40E_GLPCI_CNF2:
                 val = ((NUM_PFINTS - 2) << I40E_GLPCI_CNF2_MSI_X_PF_N_SHIFT) |
                     (2 << I40E_GLPCI_CNF2_MSI_X_VF_N_SHIFT); /* that is ugly,
@@ -487,6 +497,15 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
                 break;
             case I40E_PFINT_DYN_CTL0:
                 regs.pfint_dyn_ctl0 = val;
+                break;
+            case I40E_PFINT_ITR0(0):
+                regs.pfint_itr0[0] = val;
+                break;
+            case I40E_PFINT_ITR0(1):
+                regs.pfint_itr0[1] = val;
+                break;
+            case I40E_PFINT_ITR0(2):
+                regs.pfint_itr0[2] = val;
                 break;
 
             case I40E_PFHMC_SDCMD:
