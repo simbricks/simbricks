@@ -219,6 +219,9 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             case I40E_GLGEN_RSTCTL:
                 val = regs.glgen_rstctl;
                 break;
+            case I40E_GLGEN_STAT:
+                val = regs.glgen_stat;
+                break;
 
             case I40E_GLVFGEN_TIMER:
                 val = runner->time_ps() / 1000000;
@@ -236,6 +239,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = regs.pfint_icr0;
                 // read clears
                 regs.pfint_icr0 = 0;
+                break;
+
+            case I40E_PFINT_DYN_CTL0:
+                val = regs.pfint_dyn_ctl0;
                 break;
 
             case I40E_GLPCI_CNF2:
@@ -477,6 +484,9 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
                 break;
             case I40E_PFINT_ICR0:
                 regs.pfint_icr0 = val;
+                break;
+            case I40E_PFINT_DYN_CTL0:
+                regs.pfint_dyn_ctl0 = val;
                 break;
 
             case I40E_PFHMC_SDCMD:

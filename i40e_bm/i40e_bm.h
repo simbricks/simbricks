@@ -446,11 +446,13 @@ protected:
 
     struct i40e_regs {
         uint32_t glgen_rstctl;
+        uint32_t glgen_stat;
         uint32_t gllan_rctl_0;
         uint32_t pfint_lnklst0;
         uint32_t pfint_icr0_ena;
         uint32_t pfint_icr0;
 
+        uint32_t pfint_dyn_ctl0;
         uint32_t pfint_dyn_ctln[NUM_PFINTS - 1];
         uint32_t pfint_lnklstn[NUM_PFINTS - 1];
         uint32_t pfint_raten[NUM_PFINTS - 1];

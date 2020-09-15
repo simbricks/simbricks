@@ -141,26 +141,28 @@ void lan_queue_base::disable()
 void lan_queue_base::interrupt()
 {
     uint32_t qctl = reg_intqctl;
+    uint32_t gctl = lanmgr.dev.regs.pfint_dyn_ctl0;
 #ifdef DEBUG_LAN
-    log << " interrupt intctl=" << qctl << logger::endl;
+    log << " interrupt qctl=" << qctl << " gctl=" << gctl << logger::endl;
 #endif
 
     uint16_t msix_idx = (qctl & I40E_QINT_TQCTL_MSIX_INDX_MASK) >>
         I40E_QINT_TQCTL_ITR_INDX_SHIFT;
     uint8_t msix0_idx = (qctl & I40E_QINT_TQCTL_MSIX0_INDX_MASK) >>
         I40E_QINT_TQCTL_MSIX0_INDX_SHIFT;
-    bool cause_ena = !!(qctl & I40E_QINT_TQCTL_CAUSE_ENA_MASK);
 
+    if (msix_idx != 0) {
+        log << "TODO: only int 0 is supported" << logger::endl;
+        abort();
+    }
+
+    bool cause_ena = !!(qctl & I40E_QINT_TQCTL_CAUSE_ENA_MASK) &&
+      !!(gctl & I40E_PFINT_DYN_CTL0_INTENA_MASK);
     if (!cause_ena) {
 #ifdef DEBUG_LAN
         log << " interrupt cause disabled" << logger::endl;
 #endif
         return;
-    }
-
-    if (msix_idx != 0) {
-        log << "TODO: only int 0 is supported" << logger::endl;
-        abort();
     }
 
     // TODO throttling?
