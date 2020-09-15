@@ -28,6 +28,15 @@ class dma_base : public nicbm::DMAOp {
         virtual void done() = 0;
 };
 
+class int_ev : public nicbm::TimedEvent {
+    public:
+        uint16_t vector;
+        bool armed;
+
+        int_ev();
+};
+
+
 class logger : public std::ostream {
     public:
         static const char endl = '\n';
@@ -496,8 +505,6 @@ protected:
     };
 
 public:
-    nicbm::Runner *runner;
-
     i40e_bm();
     ~i40e_bm();
 
@@ -509,6 +516,9 @@ public:
     virtual void reg_write32(uint8_t bar, uint64_t addr, uint32_t val);
     virtual void dma_complete(nicbm::DMAOp &op);
     virtual void eth_rx(uint8_t port, const void *data, size_t len);
+    virtual void timed_event(nicbm::TimedEvent &ev);
+
+    void signal_interrupt(uint16_t vector, uint8_t itr);
 
 protected:
     logger log;
@@ -517,6 +527,8 @@ protected:
     host_mem_cache hmc;
     shadow_ram shram;
     lan lanmgr;
+
+    int_ev intevs[NUM_PFINTS];
 
     /** Read from the I/O bar */
     virtual uint32_t reg_io_read(uint64_t addr);

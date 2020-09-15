@@ -171,7 +171,11 @@ void lan_queue_base::interrupt()
 #endif
     lanmgr.dev.regs.pfint_icr0 |= I40E_PFINT_ICR0_INTEVENT_MASK |
         (1 << (I40E_PFINT_ICR0_QUEUE_0_SHIFT + msix0_idx));
-    runner->msi_issue(0);
+
+    uint8_t itr = (qctl & I40E_QINT_TQCTL_ITR_INDX_MASK) >>
+        I40E_QINT_TQCTL_ITR_INDX_SHIFT;
+    lanmgr.dev.signal_interrupt(0, itr);
+
 }
 
 lan_queue_base::qctx_fetch::qctx_fetch(lan_queue_base &lq_)
