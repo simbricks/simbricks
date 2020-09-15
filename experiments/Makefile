@@ -52,6 +52,8 @@ GUESTS := \
     qemu-mtcp-client \
     gem5-pair-i40e-server \
     gem5-pair-i40e-client \
+    qemu-i40e-rpc-server \
+    qemu-i40e-rpc-client \
     qemu-tas-server \
     qemu-tas-client \
 
@@ -91,6 +93,7 @@ EXP_NCP := \
     qemu-corundum-bm-pair \
     qemu-corundum-bm-switched-1 \
     qemu-i40e-bm-mtcp \
+    qemu-i40e-bm-rpc \
     qemu-i40e-bm-tas \
 
 
