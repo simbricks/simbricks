@@ -5,7 +5,8 @@ UBUNTU_IMAGE := output-ubuntu1804/ubuntu1804
 BASE_IMAGE := output-base/base
 NOPAXOS_IMAGE := output-nopaxos/nopaxos
 MTCP_IMAGE := output-mtcp/mtcp
-IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MTCP_IMAGE)
+TAS_IMAGE := output-tas/tas
+IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MTCP_IMAGE) $(TAS_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
 QEMU_IMG := ../qemu/qemu-img
@@ -17,6 +18,7 @@ clean:
 	    mqnic/mqnic.ko mqnic/*.o mqnic/.*.cmd mqnic/mqnic.mod.c \
 	    mqnic/Module.symvers mqnic/modules.order \
 	    output-ubuntu1804 output-base output-mtcp output-nopaxos \
+	    output-tas \
 	    kernel/linux-$(KERNEL_VERSION)/ kheaders.tar.bz2
 
 ################################################
@@ -46,6 +48,11 @@ $(NOPAXOS_IMAGE): nopaxos.json packer $(BASE_IMAGE) scripts/install-nopaxos.sh \
 $(MTCP_IMAGE): mtcp.json packer $(BASE_IMAGE) scripts/install-mtcp.sh
 	rm -rf output-mtcp
 	./packer-wrap.sh build mtcp.json
+	touch $@
+
+$(TAS_IMAGE): tas.json packer $(BASE_IMAGE) scripts/install-tas.sh
+	rm -rf output-tas
+	./packer-wrap.sh build tas.json
 	touch $@
 
 packer:
