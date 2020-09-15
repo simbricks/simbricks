@@ -88,6 +88,7 @@ EXP_NCP := \
     qemu-corundum-bm-pair \
     qemu-corundum-bm-switched-1 \
     qemu-i40e-bm-mtcp \
+    qemu-ns3-nopaxos \
 
 
 # all experiments in repo

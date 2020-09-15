@@ -231,6 +231,10 @@ run_ns3_sequencer() {
         epath="`readlink -f $OUTDIR/eth.$p`"
         ports="$ports --ServerPort=$epath"
     done
+    for p in $4; do
+        epath="`readlink -f $OUTDIR/eth.$p`"
+        ports="$ports --EndhostSequencerPort=$epath"
+    done
 
     $NS3_BASE/cosim-run.sh sequencer sequencer-single-switch-example \
         $ports $4 &>$OUTDIR/ns3_sequencer.$1.log &
