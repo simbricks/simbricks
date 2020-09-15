@@ -51,6 +51,7 @@ init_out() {
 #   - Cosim instance
 #   - secondary hard drive
 #   - [optional primary image name: default ubuntu1804-base]
+#   - [optional: additinoal qemu arguments]
 run_qemu() {
     img_a="$OUTDIR/qemu.hd.a.$1"
     img_b="$OUTDIR/qemu.hd.b.$1"
@@ -74,7 +75,8 @@ run_qemu() {
         -serial mon:stdio -m $((16 * 1024)) -smp 1 -display none -enable-kvm \
         -nic none \
         -chardev socket,path=$pcisock,id=cosimcd \
-        -device cosim-pci,chardev=cosimcd &>$OUTDIR/qemu.$1.log &
+        -device cosim-pci,chardev=cosimcd \
+        $5 &>$OUTDIR/qemu.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
     return $pid
