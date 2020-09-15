@@ -1,3 +1,5 @@
+#include <set>
+
 namespace nicbm {
 
 #include <cassert>
@@ -16,6 +18,13 @@ class DMAOp {
         size_t len;
         void *data;
 };
+
+class TimedEvent {
+    public:
+        virtual ~TimedEvent() { }
+        uint64_t time;
+};
+
 
 /**
  * The Runner drives the main simulation loop. It's initialized with a reference
@@ -59,10 +68,23 @@ class Runner {
                  */
                 virtual void eth_rx(uint8_t port, const void *data, size_t len)
                     = 0;
+
+                /**
+                 * A timed event is due.
+                 */
+                virtual void timed_event(TimedEvent &ev);
         };
 
     protected:
+        struct event_cmp {
+            bool operator() (TimedEvent *a, TimedEvent *b)
+            {
+                return a->time < b->time;
+            }
+        };
+
         Device &dev;
+        std::set<TimedEvent *, event_cmp> events;
         uint64_t mac_addr;
         struct nicsim_params nsparams;
         struct cosim_pcie_proto_dev_intro dintro;
@@ -79,6 +101,8 @@ class Runner {
         void eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv);
         void poll_n2d();
 
+        bool event_next(uint64_t &retval);
+        void event_trigger();
     public:
         Runner(Device &dev_);
 
@@ -89,6 +113,9 @@ class Runner {
         void issue_dma(DMAOp &op);
         void msi_issue(uint8_t vec);
         void eth_send(const void *data, size_t len);
+
+        void event_schedule(TimedEvent &evt);
+        void event_cancel(TimedEvent &evt);
 
         uint64_t time_ps() const;
         uint64_t get_mac_addr() const;

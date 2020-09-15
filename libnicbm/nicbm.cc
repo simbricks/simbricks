@@ -113,6 +113,16 @@ void Runner::msi_issue(uint8_t vec)
         COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
 
+void Runner::event_schedule(TimedEvent &evt)
+{
+    events.insert(&evt);
+}
+
+void Runner::event_cancel(TimedEvent &evt)
+{
+    events.erase(&evt);
+}
+
 void Runner::h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
 {
     volatile union cosim_pcie_proto_d2h *msg;
@@ -281,8 +291,33 @@ uint64_t Runner::get_mac_addr() const
     return mac_addr;
 }
 
+bool Runner::event_next(uint64_t &retval)
+{
+    if (events.empty())
+        return false;
+
+    retval = (*events.begin())->time;
+    return true;
+}
+
+void Runner::event_trigger()
+{
+    auto it = events.begin();
+    if (it == events.end())
+        return;
+
+    TimedEvent *ev = *it;
+
+    // event is in the future
+    if (ev->time > main_time)
+        return;
+
+    events.erase(it);
+    dev.timed_event(*ev);
+}
+
 Runner::Runner(Device &dev_)
-    : dev(dev_)
+    : dev(dev_), events(event_cmp())
 {
     //mac_addr = lrand48() & ~(3ULL << 46);
     srand48(time(NULL) ^ getpid());
@@ -327,6 +362,8 @@ int Runner::runMain(int argc, char *argv[])
     fprintf(stderr, "sync_pci=%d sync_eth=%d\n", nsparams.sync_pci,
         nsparams.sync_eth);
 
+    bool is_sync = nsparams.sync_pci || nsparams.sync_eth;
+
     while (!exiting) {
         while (nicsim_sync(&nsparams, main_time)) {
             fprintf(stderr, "warn: nicsim_sync failed (t=%lu)\n", main_time);
@@ -335,13 +372,27 @@ int Runner::runMain(int argc, char *argv[])
         do {
             poll_h2d();
             poll_n2d();
-            next_ts = netsim_next_timestamp(&nsparams);
-        } while ((nsparams.sync_pci || nsparams.sync_eth) &&
-            next_ts <= main_time && !exiting);
+            event_trigger();
+
+            if (is_sync) {
+                next_ts = netsim_next_timestamp(&nsparams);
+            } else {
+                next_ts = main_time + 100000;
+            }
+
+            uint64_t ev_ts;
+            if (event_next(ev_ts) && ev_ts < next_ts)
+                next_ts = ev_ts;
+
+        } while (next_ts <= main_time && !exiting);
         main_time = next_ts;
     }
 
     fprintf(stderr, "exit main_time: %lu\n", main_time);
     nicsim_cleanup();
     return 0;
+}
+
+void Runner::Device::timed_event(TimedEvent &te)
+{
 }
