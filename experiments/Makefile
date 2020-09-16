@@ -52,8 +52,10 @@ GUESTS := \
     qemu-mtcp-client \
     gem5-pair-i40e-server \
     gem5-pair-i40e-client \
+    gem5-pair-i40e-client-2 \
     qemu-pair-i40e-server \
     qemu-pair-i40e-client \
+    qemu-pair-i40e-client-2 \
     qemu-i40e-rpc-server \
     qemu-i40e-rpc-client \
     qemu-tas-server \
@@ -89,6 +91,7 @@ EXP_CP := \
     gem5-timing-corundum-verilator-pair-cp \
     gem5-i40e-pair \
     gem5-i40e-mtcp \
+    gem5-i40e-cc \
 
 #experiments not using check points
 EXP_NCP := \
@@ -98,6 +101,7 @@ EXP_NCP := \
     qemu-i40e-bm-rpc \
     qemu-i40e-bm-pair \
     qemu-i40e-bm-tas \
+    qemu-i40e-bm-cc \
 
 
 # all experiments in repo

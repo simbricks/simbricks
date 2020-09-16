@@ -17,7 +17,7 @@ ethtool -G eth0 rx 4096 tx 4096
 ethtool -K eth0 tso off
 ip link set eth0 txqueuelen 13888
 ip link set dev eth0 mtu 9000 up
-ip addr add 192.168.64.2/24 dev eth0
+ip addr add 192.168.64.3/24 dev eth0
 sleep 0.2
 iperf -l 32M -w 32M -c 192.168.64.1 -i 1 -P 4
 m5 exit
