@@ -258,22 +258,33 @@ queue_base::desc_ctx &lan_queue_rx::desc_ctx_create()
 
 void lan_queue_rx::packet_received(const void *data, size_t pktlen)
 {
-    if (dcache.empty()) {
+    size_t num_descs = (pktlen + dbuff_size - 1) / dbuff_size;
+
+    if (dcache.size() < num_descs) {
 #ifdef DEBUG_LAN
-        log << " empty, dropping packet" << logger::endl;
+        log << " not enough rx descs (" << num_descs << ", dropping packet" <<
+            logger::endl;
 #endif
         return;
     }
 
-    rx_desc_ctx &ctx = *dcache.front();
+    for (size_t i = 0; i < num_descs; i++) {
+        rx_desc_ctx &ctx = *dcache.front();
 
 #ifdef DEBUG_LAN
-    log << " packet received didx=" << ctx.index << " cnt=" <<
-        dcache.size() << logger::endl;
+        log << " packet part=" << i <<  " received didx=" << ctx.index <<
+            " cnt=" << dcache.size() << logger::endl;
 #endif
+        dcache.pop_front();
 
-    dcache.pop_front();
-    ctx.packet_received(data, pktlen);
+        const uint8_t *buf = (const uint8_t *) data + (dbuff_size * i);
+        if (i == num_descs - 1) {
+            // last packet
+            ctx.packet_received(buf, pktlen - dbuff_size * i, true);
+        } else {
+            ctx.packet_received(buf, dbuff_size, false);
+        }
+    }
 }
 
 lan_queue_rx::rx_desc_ctx::rx_desc_ctx(lan_queue_rx &queue_)
@@ -291,7 +302,8 @@ void lan_queue_rx::rx_desc_ctx::process()
     rq.dcache.push_back(this);
 }
 
-void lan_queue_rx::rx_desc_ctx::packet_received(const void *data, size_t pktlen)
+void lan_queue_rx::rx_desc_ctx::packet_received(const void *data,
+        size_t pktlen, bool last)
 {
     union i40e_32byte_rx_desc *rxd = reinterpret_cast<
         union i40e_32byte_rx_desc *> (desc);
@@ -300,11 +312,13 @@ void lan_queue_rx::rx_desc_ctx::packet_received(const void *data, size_t pktlen)
 
     memset(rxd, 0, sizeof(*rxd));
     rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_DD_SHIFT);
-    rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_EOF_SHIFT);
-    // TODO: only if checksums are correct
-    rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_L3L4P_SHIFT);
     rxd->wb.qword1.status_error_len |= (pktlen << I40E_RXD_QW1_LENGTH_PBUF_SHIFT);
 
+    if (last) {
+        rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_EOF_SHIFT);
+        // TODO: only if checksums are correct
+        rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_L3L4P_SHIFT);
+    }
     data_write(addr, pktlen, data);
 }
 

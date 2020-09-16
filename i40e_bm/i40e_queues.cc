@@ -290,7 +290,7 @@ void queue_base::desc_ctx::processed()
     state = DESC_PROCESSED;
 }
 
-#define MAX_DMA_SIZE ((size_t) 0x1000)
+#define MAX_DMA_SIZE ((size_t) 9024)
 
 void queue_base::desc_ctx::data_fetch(uint64_t addr, size_t data_len)
 {

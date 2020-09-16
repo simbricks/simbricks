@@ -324,7 +324,7 @@ class lan_queue_base : public queue_base {
 
 class lan_queue_tx : public lan_queue_base {
     protected:
-        static const uint16_t MTU = 2048;
+        static const uint16_t MTU = 9024;
 
         class tx_desc_ctx : public desc_ctx {
             protected:
@@ -387,7 +387,7 @@ class lan_queue_rx : public lan_queue_base {
             public:
                 rx_desc_ctx(lan_queue_rx &queue_);
                 virtual void process();
-                void packet_received(const void *data, size_t len);
+                void packet_received(const void *data, size_t len, bool last);
         };
 
         uint16_t dbuff_size;
