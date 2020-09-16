@@ -260,6 +260,9 @@ void lan_queue_rx::packet_received(const void *data, size_t pktlen)
 {
     size_t num_descs = (pktlen + dbuff_size - 1) / dbuff_size;
 
+    if (!enabled)
+        return;
+
     if (dcache.size() < num_descs) {
 #ifdef DEBUG_LAN
         log << " not enough rx descs (" << num_descs << ", dropping packet" <<
