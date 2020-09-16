@@ -319,6 +319,8 @@ lan_queue_tx::lan_queue_tx(lan &lanmgr_, uint32_t &reg_tail_, size_t idx_,
 
 void lan_queue_tx::reset()
 {
+    tso_off = 0;
+    tso_len = 0;
     ready_segments.clear();
     queue_base::reset();
 }
@@ -377,73 +379,200 @@ void lan_queue_tx::do_writeback(uint32_t first_idx, uint32_t first_pos,
 bool lan_queue_tx::trigger_tx_packet()
 {
     size_t n = ready_segments.size();
+    size_t d_skip = 0, dcnt;
+    bool eop = false;
+    uint64_t d1;
+    uint32_t iipt, l4t, pkt_len, total_len = 0, data_limit;
+    bool tso = false;
+    uint32_t tso_mss = 0, tso_paylen = 0;
+    uint16_t maclen = 0, iplen = 0, l4len = 0;
+
+    // abort if no queued up descriptors
     if (n == 0)
         return false;
 
-    size_t dcnt;
-    bool eop = false;
-    uint64_t d1;
-    uint16_t iipt, l4t, total_len = 0;
-    for (dcnt = 0; dcnt < n && !eop; dcnt++) {
-        tx_desc_ctx *rd = ready_segments.at(dcnt);
+#ifdef DEBUG_LAN
+    log << "trigger_tx_packet(n=" << n << ", firstidx=" <<
+        ready_segments.at(0)->index << ")" << logger::endl;
+    log << "  tso_off=" << tso_off << " tso_len=" << tso_len << logger::endl;
+#endif
 
+
+    // check if we have a context descriptor first
+    tx_desc_ctx *rd = ready_segments.at(0);
+    uint8_t dtype = (rd->d->cmd_type_offset_bsz & I40E_TXD_QW1_DTYPE_MASK) >>
+        I40E_TXD_QW1_DTYPE_SHIFT;
+    if (dtype == I40E_TX_DESC_DTYPE_CONTEXT) {
+        struct i40e_tx_context_desc *ctxd =
+            reinterpret_cast<struct i40e_tx_context_desc *> (rd->d);
+        d1 = ctxd->type_cmd_tso_mss;
+
+        uint16_t cmd = ((d1 & I40E_TXD_CTX_QW1_CMD_MASK) >>
+                I40E_TXD_CTX_QW1_CMD_SHIFT);
+        tso = !!(cmd & I40E_TX_CTX_DESC_TSO);
+        tso_mss = (d1 & I40E_TXD_CTX_QW1_MSS_MASK) >>
+            I40E_TXD_CTX_QW1_MSS_SHIFT;
+
+#ifdef DEBUG_LAN
+        log << "  tso=" << tso << " mss=" << tso_mss << logger::endl;
+#endif
+
+        d_skip = 1;
+    }
+
+    // find EOP descriptor
+    for (dcnt = d_skip; dcnt < n && !eop; dcnt++) {
+        tx_desc_ctx *rd = ready_segments.at(dcnt);
         d1 = rd->d->cmd_type_offset_bsz;
+
 #ifdef DEBUG_LAN
         log << " data fetched didx=" << rd->index << " d1=" <<
             d1 << logger::endl;
 #endif
 
-        uint16_t pkt_len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
-            I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
-        if (total_len + pkt_len > MTU) {
-            log << "txq: trigger_tx_packet too large" << logger::endl;
+        dtype = (d1 & I40E_TXD_QW1_DTYPE_MASK) >> I40E_TXD_QW1_DTYPE_SHIFT;
+        if (dtype != I40E_TX_DESC_DTYPE_DATA) {
+            log << "trigger tx desc is not a data descriptor idx=" << rd->index
+                << " d1=" << d1 << logger::endl;
             abort();
         }
-
-        memcpy(pktbuf + total_len, rd->data, pkt_len);
 
         uint16_t cmd = (d1 & I40E_TXD_QW1_CMD_MASK) >> I40E_TXD_QW1_CMD_SHIFT;
         eop = (cmd & I40E_TX_DESC_CMD_EOP);
         iipt = cmd & (I40E_TX_DESC_CMD_IIPT_MASK);
         l4t = (cmd & I40E_TX_DESC_CMD_L4T_EOFT_MASK);
 
-#ifdef DEBUG_LAN
-        log << "    eop=" << eop << " len=" << pkt_len <<
-            logger::endl;
-#endif
+        if (eop) {
+            uint32_t off = (d1 & I40E_TXD_QW1_OFFSET_MASK) >> I40E_TXD_QW1_OFFSET_SHIFT;
+            maclen = ((off & I40E_TXD_QW1_MACLEN_MASK) >>
+                I40E_TX_DESC_LENGTH_MACLEN_SHIFT) * 2;
+            iplen = ((off & I40E_TXD_QW1_IPLEN_MASK) >>
+                I40E_TX_DESC_LENGTH_IPLEN_SHIFT) * 4;
+            l4len = ((off & I40E_TXD_QW1_L4LEN_MASK) >>
+                I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT) * 4;
+        }
 
+        pkt_len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
+            I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
         total_len += pkt_len;
+
+#ifdef DEBUG_LAN
+        log << "    eop=" << eop << " len=" << pkt_len << logger::endl;
+#endif
     }
 
+    // Unit not completely fetched yet
     if (!eop)
         return false;
 
-    uint32_t off = (d1 & I40E_TXD_QW1_OFFSET_MASK) >> I40E_TXD_QW1_OFFSET_SHIFT;
-    uint16_t maclen = ((off & I40E_TXD_QW1_MACLEN_MASK) >>
-        I40E_TX_DESC_LENGTH_MACLEN_SHIFT) * 2;
-    uint16_t iplen = ((off & I40E_TXD_QW1_IPLEN_MASK) >>
-        I40E_TX_DESC_LENGTH_IPLEN_SHIFT) * 4;
-    /*uint16_t l4len = (off & I40E_TXD_QW1_L4LEN_MASK) >>
-        I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;*/
+    if (tso) {
+        if (tso_off == 0)
+            data_limit = maclen + iplen + l4len + tso_mss;
+        else
+            data_limit = tso_off + tso_mss;
 
-
-    if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_TCP) {
-        uint16_t tcp_off = maclen + iplen;
-        xsum_tcp(pktbuf + tcp_off, total_len - tcp_off);
+        if (data_limit > total_len) {
+            data_limit = total_len;
+        }
+    } else {
+        if (total_len > MTU) {
+            log << "    packet is longer (" << total_len << ") than MTU (" <<
+                MTU << ")" << logger::endl;
+            abort();
+        }
+        data_limit = total_len;
     }
+
 #ifdef DEBUG_LAN
     log << "    iipt=" << iipt << " l4t=" << l4t <<
-        " maclen=" << maclen << " iplen=" << iplen<< logger::endl;
+        " maclen=" << maclen << " iplen=" << iplen << " l4len=" << l4len <<
+        " total_len=" << total_len << " data_limit=" << data_limit <<
+        logger::endl;
+
 #else
     (void) iipt;
 #endif
 
-    runner->eth_send(pktbuf, total_len);
 
+    // copy data for this segment
+    uint32_t off = 0;
+    for (dcnt = d_skip; dcnt < n && off < data_limit; dcnt++) {
+        tx_desc_ctx *rd = ready_segments.at(dcnt);
+        d1 = rd->d->cmd_type_offset_bsz;
+        uint16_t pkt_len = (d1 & I40E_TXD_QW1_TX_BUF_SZ_MASK) >>
+            I40E_TXD_QW1_TX_BUF_SZ_SHIFT;
+
+        if (off <= tso_off && off + pkt_len > tso_off) {
+            uint32_t start = tso_off;
+            uint32_t end = off + pkt_len;
+            if (end > data_limit)
+                end = data_limit;
+
+#ifdef DEBUG_LAN
+        log << "    copying data from off=" << off << " idx=" << rd->index <<
+            " start=" << start << " end=" << end << " tso_len=" << tso_len <<
+            logger::endl;
+#endif
+
+            memcpy(pktbuf + tso_len, (uint8_t *) rd->data + (start - off),
+                    end - start);
+            tso_off = end;
+            tso_len += end - start;
+        }
+
+        off += pkt_len;
+    }
+
+    assert(tso_len <= MTU);
+
+    if (!tso) {
+#ifdef DEBUG_LAN
+        log << "    normal non-tso packet" << logger::endl;
+#endif
+
+        if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_TCP) {
+            uint16_t tcp_off = maclen + iplen;
+            xsum_tcp(pktbuf + tcp_off, tso_len - tcp_off);
+        }
+
+        runner->eth_send(pktbuf, tso_len);
+    } else {
+#ifdef DEBUG_LAN
+        log << "    tso packet off=" << tso_off << " len=" << tso_len <<
+            logger::endl;
+#endif
+
+        // TSO gets hairier
+        uint16_t hdrlen = maclen + iplen + l4len;
+
+        // calculate payload size
+        tso_paylen = tso_len - hdrlen;
+        if (tso_paylen > tso_mss)
+            tso_paylen = tso_mss;
+
+        xsum_tcpip_tso(pktbuf + maclen, iplen, l4len, tso_paylen);
+
+        runner->eth_send(pktbuf, tso_len);
+
+        tso_postupdate_header(pktbuf + maclen, iplen, l4len, tso_paylen);
+
+        // not done yet with this TSO unit
+        if (tso && tso_off < total_len) {
+            tso_len = hdrlen;
+            return true;
+        }
+    }
+
+#ifdef DEBUG_LAN
+        log << "    unit done" << logger::endl;
+#endif
     while (dcnt-- > 0) {
         ready_segments.front()->processed();
         ready_segments.pop_front();
     }
+
+    tso_len = 0;
+    tso_off = 0;
 
     return true;
 }
@@ -480,17 +609,14 @@ void lan_queue_tx::tx_desc_ctx::prepare()
 
         data_fetch(d->buffer_addr, len);
     } else if (dtype == I40E_TX_DESC_DTYPE_CONTEXT) {
+#ifdef DEBUG_LAN
         struct i40e_tx_context_desc *ctxd =
             reinterpret_cast<struct i40e_tx_context_desc *> (d);
         queue.log << "  context descriptor: tp=" << ctxd->tunneling_params <<
             " l2t=" << ctxd->l2tag2 << " tctm=" << ctxd->type_cmd_tso_mss << logger::endl;
-        abort();
+#endif
 
-        /*desc->buffer_addr = 0;
-        desc->cmd_type_offset_bsz = I40E_TX_DESC_DTYPE_DESC_DONE <<
-            I40E_TXD_QW1_DTYPE_SHIFT;
-
-        desc_writeback(desc_buf, didx);*/
+        prepared();
     } else {
         queue.log << "txq: only support context & data descriptors" << logger::endl;
         abort();

@@ -355,6 +355,8 @@ class lan_queue_tx : public lan_queue_base {
         };
 
         uint8_t pktbuf[MTU];
+        uint32_t tso_off;
+        uint32_t tso_len;
         std::deque<tx_desc_ctx *> ready_segments;
 
         bool hwb;
@@ -549,5 +551,13 @@ protected:
 
 // places the tcp checksum in the packet (assuming ipv4)
 void xsum_tcp(void *tcphdr, size_t l4len);
+
+// calculates the full ipv4 & tcp checksum without assuming any pseudo header
+// xsums
+void xsum_tcpip_tso(void *iphdr, uint8_t iplen, uint8_t l4len,
+        uint16_t paylen);
+
+void tso_postupdate_header(void *iphdr, uint8_t iplen, uint8_t l4len,
+        uint16_t paylen);
 
 } // namespace corundum
