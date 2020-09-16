@@ -12,7 +12,7 @@
 
 //#define DEBUG_NICBM 1
 
-#define SYNC_PERIOD (500 * 1000ULL) // 500ns
+#define SYNC_PERIOD (100 * 1000ULL) // 100ns
 #define PCI_LATENCY (500 * 1000ULL) // 500ns
 #define ETH_LATENCY (500 * 1000ULL) // 500ns
 
