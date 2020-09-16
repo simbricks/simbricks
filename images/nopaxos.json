@@ -56,7 +56,7 @@
     {
       "type": "file",
       "source": "sequencer.config",
-      "destination": "/tmp/nopaxos.config",
+      "destination": "/tmp/sequencer.config",
       "direction": "upload"
     },
     {
