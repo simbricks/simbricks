@@ -150,6 +150,8 @@ class queue_base {
                 desc_ctx &ctx;
 
             public:
+                size_t total_len;
+                size_t part_offset;
                 dma_data_fetch(desc_ctx &ctx_, size_t len, void *buffer);
                 virtual ~dma_data_fetch();
                 virtual void done();
@@ -159,6 +161,8 @@ class queue_base {
             protected:
                 desc_ctx &ctx;
             public:
+                size_t total_len;
+                size_t part_offset;
                 dma_data_wb(desc_ctx &ctx_, size_t len);
                 virtual ~dma_data_wb();
                 virtual void done();

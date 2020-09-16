@@ -2,6 +2,7 @@
 #include <string.h>
 #include <cassert>
 #include <iostream>
+#include <algorithm>
 
 #include "i40e_bm.h"
 
@@ -289,6 +290,8 @@ void queue_base::desc_ctx::processed()
     state = DESC_PROCESSED;
 }
 
+#define MAX_DMA_SIZE ((size_t) 0x1000)
+
 void queue_base::desc_ctx::data_fetch(uint64_t addr, size_t data_len)
 {
     if (data_capacity < data_len) {
@@ -302,7 +305,10 @@ void queue_base::desc_ctx::data_fetch(uint64_t addr, size_t data_len)
         data_capacity = data_len;
     }
 
-    dma_data_fetch *dma = new dma_data_fetch(*this, data_len, data);
+    dma_data_fetch *dma = new dma_data_fetch(*this, std::min(data_len,
+                MAX_DMA_SIZE), data);
+    dma->part_offset = 0;
+    dma->total_len = data_len;
     dma->write = false;
     dma->dma_addr = addr;
 
@@ -387,7 +393,19 @@ queue_base::dma_data_fetch::~dma_data_fetch()
 
 void queue_base::dma_data_fetch::done()
 {
-    ctx.data_fetched(dma_addr, len);
+    part_offset += len;
+    dma_addr += len;
+    data = (uint8_t *) data + len;
+
+    if (part_offset < total_len) {
+#ifdef DEBUG_QUEUES
+        ctx.queue.log << "  dma_fetch: next part of multi part dma" << logger::endl;
+#endif
+        len = std::min(total_len - part_offset, MAX_DMA_SIZE);
+        runner->issue_dma(*this);
+        return;
+    }
+    ctx.data_fetched(dma_addr - part_offset, total_len);
     ctx.queue.trigger();
     delete this;
 }
