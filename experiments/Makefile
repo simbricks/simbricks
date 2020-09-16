@@ -35,6 +35,7 @@ GUESTS := \
 	qemu-nopaxos-replica-1 \
 	qemu-nopaxos-replica-2 \
 	qemu-nopaxos-client \
+	qemu-nopaxos-endhost-sequencer \
 	gem5-nopaxos-client \
 	gem5-nopaxos-replica-0-cp \
 	gem5-nopaxos-replica-1-cp \
