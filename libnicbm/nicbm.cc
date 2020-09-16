@@ -15,6 +15,7 @@
 #define SYNC_PERIOD (100 * 1000ULL) // 100ns
 #define PCI_LATENCY (500 * 1000ULL) // 500ns
 #define ETH_LATENCY (500 * 1000ULL) // 500ns
+#define DMA_MAX_PENDING 64
 
 
 using namespace nicbm;
@@ -58,10 +59,40 @@ volatile union cosim_eth_proto_d2n *Runner::d2n_alloc(void)
 
 void Runner::issue_dma(DMAOp &op)
 {
-    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
+    if (dma_pending < DMA_MAX_PENDING) {
+        // can directly issue
 #ifdef DEBUG_NICBM
-    printf("nicbm: issue dma op %p addr %lx len %zu\n", &op, op.dma_addr,
-            op.len);
+        printf("nicbm: issuing dma op %p addr %lx len %zu pending %zu\n", &op,
+                op.dma_addr, op.len, dma_pending);
+#endif
+        dma_do(op);
+    } else {
+#ifdef DEBUG_NICBM
+        printf("nicbm: enqueuing dma op %p addr %lx len %zu pending %zu\n", &op,
+                op.dma_addr, op.len, dma_pending);
+#endif
+        dma_queue.push_back(&op);
+    }
+}
+
+void Runner::dma_trigger()
+{
+    if (dma_queue.empty() || dma_pending == DMA_MAX_PENDING)
+        return;
+
+    DMAOp *op = dma_queue.front();
+    dma_queue.pop_front();
+
+    dma_do(*op);
+}
+
+void Runner::dma_do(DMAOp &op)
+{
+    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
+    dma_pending++;
+#ifdef DEBUG_NICBM
+    printf("nicbm: executing dma op %p addr %lx len %zu pending %zu\n", &op,
+            op.dma_addr, op.len, dma_pending);
 #endif
 
     if (op.write) {
@@ -179,6 +210,9 @@ void Runner::h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc)
 
     memcpy(op->data, (void *)rc->data, op->len);
     dev.dma_complete(*op);
+
+    dma_pending--;
+    dma_trigger();
 }
 
 void Runner::h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
@@ -191,6 +225,9 @@ void Runner::h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
 #endif
 
     dev.dma_complete(*op);
+
+    dma_pending--;
+    dma_trigger();
 }
 
 void Runner::eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv)
@@ -320,6 +357,7 @@ Runner::Runner(Device &dev_)
     : dev(dev_), events(event_cmp())
 {
     //mac_addr = lrand48() & ~(3ULL << 46);
+    dma_pending = 0;
     srand48(time(NULL) ^ getpid());
     mac_addr = lrand48();
     mac_addr <<= 16;

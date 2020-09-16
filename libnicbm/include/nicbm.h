@@ -1,4 +1,5 @@
 #include <set>
+#include <deque>
 
 namespace nicbm {
 
@@ -85,6 +86,8 @@ class Runner {
 
         Device &dev;
         std::set<TimedEvent *, event_cmp> events;
+        std::deque<DMAOp *> dma_queue;
+        size_t dma_pending;
         uint64_t mac_addr;
         struct nicsim_params nsparams;
         struct cosim_pcie_proto_dev_intro dintro;
@@ -103,6 +106,9 @@ class Runner {
 
         bool event_next(uint64_t &retval);
         void event_trigger();
+
+        void dma_do(DMAOp &op);
+        void dma_trigger();
     public:
         Runner(Device &dev_);
 
