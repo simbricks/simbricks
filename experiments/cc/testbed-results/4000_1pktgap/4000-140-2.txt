@@ -1,0 +1,37 @@
+------------------------------------------------------------
+Client connecting to 10.9.9.11, TCP port 5001
+TCP window size:  416 KByte (WARNING: requested  400 KByte)
+------------------------------------------------------------
+[  3] local 10.9.9.13 port 60078 connected with 10.9.9.11 port 5001
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0- 1.0 sec   335 MBytes  2.81 Gbits/sec
+[  3]  1.0- 2.0 sec   380 MBytes  3.19 Gbits/sec
+[  3]  2.0- 3.0 sec   440 MBytes  3.69 Gbits/sec
+[  3]  3.0- 4.0 sec   271 MBytes  2.27 Gbits/sec
+[  3]  4.0- 5.0 sec   529 MBytes  4.44 Gbits/sec
+[  3]  5.0- 6.0 sec   427 MBytes  3.58 Gbits/sec
+[  3]  6.0- 7.0 sec   679 MBytes  5.69 Gbits/sec
+[  3]  7.0- 8.0 sec   390 MBytes  3.27 Gbits/sec
+[  3]  8.0- 9.0 sec   379 MBytes  3.18 Gbits/sec
+[  3]  9.0-10.0 sec   392 MBytes  3.29 Gbits/sec
+[  3] 10.0-11.0 sec   494 MBytes  4.14 Gbits/sec
+[  3] 11.0-12.0 sec   653 MBytes  5.48 Gbits/sec
+[  3] 12.0-13.0 sec   536 MBytes  4.50 Gbits/sec
+[  3] 13.0-14.0 sec   400 MBytes  3.36 Gbits/sec
+[  3] 14.0-15.0 sec   302 MBytes  2.53 Gbits/sec
+[  3] 15.0-16.0 sec   402 MBytes  3.37 Gbits/sec
+[  3] 16.0-17.0 sec   410 MBytes  3.44 Gbits/sec
+[  3] 17.0-18.0 sec   440 MBytes  3.69 Gbits/sec
+[  3] 18.0-19.0 sec   401 MBytes  3.37 Gbits/sec
+[  3] 19.0-20.0 sec   393 MBytes  3.30 Gbits/sec
+[  3] 20.0-21.0 sec   484 MBytes  4.06 Gbits/sec
+[  3] 21.0-22.0 sec   525 MBytes  4.40 Gbits/sec
+[  3] 22.0-23.0 sec   528 MBytes  4.43 Gbits/sec
+[  3] 23.0-24.0 sec   474 MBytes  3.98 Gbits/sec
+[  3] 24.0-25.0 sec   298 MBytes  2.50 Gbits/sec
+[  3] 25.0-26.0 sec   386 MBytes  3.24 Gbits/sec
+[  3] 26.0-27.0 sec   225 MBytes  1.89 Gbits/sec
+[  3] 27.0-28.0 sec   466 MBytes  3.91 Gbits/sec
+[  3] 28.0-29.0 sec   317 MBytes  2.66 Gbits/sec
+[  3] 29.0-30.0 sec   180 MBytes  1.51 Gbits/sec
+[  3]  0.0-30.0 sec  12.2 GBytes  3.50 Gbits/sec
