@@ -1,4 +1,5 @@
 MQNICMOD := $(abspath ../images/mqnic/mqnic.ko)
+EXP_RUNNER ?= bash
 
 GUESTS := \
     qemu-pair-client \
@@ -145,7 +146,7 @@ experiments: $(EXPERIMENTS_READY)
 
 define run_ex_ncp_repl
 $(OUTDIR)/$(1)/$(2)/ready: experiments/$(addsuffix .sh,$(1)) $(GUESTS_TARS)
-	bash $$< $(2)
+	$(EXP_RUNNER) $$< $(2)
 	touch $$@
 
 endef
@@ -158,7 +159,7 @@ endef
 
 define run_ex_cp_repl
 $(OUTDIR)/$(1)/$(2)/ready: experiments/$(addsuffix .sh,$(1)) $(OUTDIR)/$(1)/checkpoint/ready $(GUESTS_TARS)
-	bash $$< $(2)
+	$(EXP_RUNNER) $$< $(2)
 	touch $$@
 endef
 
@@ -166,7 +167,7 @@ define run_ex_cp
 $(foreach i,$(REPLIDS),$(eval $(call run_ex_cp_repl,$(1),$(i))))
 
 $(OUTDIR)/$(1)/checkpoint/ready: experiments/$(addsuffix -mck.sh,$(1)) $(GUESTS_TARS)
-	bash $$<
+	$(EXP_RUNNER) $$<
 	touch $$@
 
 $(OUTDIR)/$(1)/ready: experiments/$(addsuffix .sh,$(1)) $(addprefix $(OUTDIR)/$(1)/,$(addsuffix /ready,$(REPLIDS)))
