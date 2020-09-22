@@ -147,6 +147,10 @@ experiments: $(EXPERIMENTS_READY)
 define run_ex_ncp_repl
 $(OUTDIR)/$(1)/$(2)/ready: experiments/$(addsuffix .sh,$(1)) $(GUESTS_TARS)
 	$(EXP_RUNNER) $$< $(2)
+	@# hacks for our NFS :/
+	@ls $(OUTDIR) >/dev/null
+	@ls $(OUTDIR)/$(1) >/dev/null
+	@ls $(OUTDIR)/$(1)/$(2) >/dev/null
 	touch $$@
 
 endef
@@ -160,6 +164,10 @@ endef
 define run_ex_cp_repl
 $(OUTDIR)/$(1)/$(2)/ready: experiments/$(addsuffix .sh,$(1)) $(OUTDIR)/$(1)/checkpoint/ready $(GUESTS_TARS)
 	$(EXP_RUNNER) $$< $(2)
+	@# hacks for our NFS :/
+	@ls $(OUTDIR) >/dev/null
+	@ls $(OUTDIR)/$(1) >/dev/null
+	@ls $(OUTDIR)/$(1)/$(2) >/dev/null
 	touch $$@
 endef
 
@@ -168,6 +176,10 @@ $(foreach i,$(REPLIDS),$(eval $(call run_ex_cp_repl,$(1),$(i))))
 
 $(OUTDIR)/$(1)/checkpoint/ready: experiments/$(addsuffix -mck.sh,$(1)) $(GUESTS_TARS)
 	$(EXP_RUNNER) $$<
+	@# hacks for our NFS :/
+	@ls $(OUTDIR) >/dev/null
+	@ls $(OUTDIR)/$(1) >/dev/null
+	@ls $(OUTDIR)/$(1)/$(2) >/dev/null
 	touch $$@
 
 $(OUTDIR)/$(1)/ready: experiments/$(addsuffix .sh,$(1)) $(addprefix $(OUTDIR)/$(1)/,$(addsuffix /ready,$(REPLIDS)))
