@@ -12,9 +12,10 @@
 
 //#define DEBUG_NICBM 1
 
-#define SYNC_PERIOD (500 * 1000ULL) // 500ns
+#define SYNC_PERIOD (100 * 1000ULL) // 100ns
 #define PCI_LATENCY (500 * 1000ULL) // 500ns
 #define ETH_LATENCY (500 * 1000ULL) // 500ns
+#define DMA_MAX_PENDING 64
 
 
 using namespace nicbm;
@@ -58,10 +59,40 @@ volatile union cosim_eth_proto_d2n *Runner::d2n_alloc(void)
 
 void Runner::issue_dma(DMAOp &op)
 {
-    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
+    if (dma_pending < DMA_MAX_PENDING) {
+        // can directly issue
 #ifdef DEBUG_NICBM
-    printf("nicbm: issue dma op %p addr %lx len %zu\n", &op, op.dma_addr,
-            op.len);
+        printf("nicbm: issuing dma op %p addr %lx len %zu pending %zu\n", &op,
+                op.dma_addr, op.len, dma_pending);
+#endif
+        dma_do(op);
+    } else {
+#ifdef DEBUG_NICBM
+        printf("nicbm: enqueuing dma op %p addr %lx len %zu pending %zu\n", &op,
+                op.dma_addr, op.len, dma_pending);
+#endif
+        dma_queue.push_back(&op);
+    }
+}
+
+void Runner::dma_trigger()
+{
+    if (dma_queue.empty() || dma_pending == DMA_MAX_PENDING)
+        return;
+
+    DMAOp *op = dma_queue.front();
+    dma_queue.pop_front();
+
+    dma_do(*op);
+}
+
+void Runner::dma_do(DMAOp &op)
+{
+    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
+    dma_pending++;
+#ifdef DEBUG_NICBM
+    printf("nicbm: executing dma op %p addr %lx len %zu pending %zu\n", &op,
+            op.dma_addr, op.len, dma_pending);
 #endif
 
     if (op.write) {
@@ -111,6 +142,16 @@ void Runner::msi_issue(uint8_t vec)
     // WMB();
     intr->own_type = COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT |
         COSIM_PCIE_PROTO_D2H_OWN_HOST;
+}
+
+void Runner::event_schedule(TimedEvent &evt)
+{
+    events.insert(&evt);
+}
+
+void Runner::event_cancel(TimedEvent &evt)
+{
+    events.erase(&evt);
 }
 
 void Runner::h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
@@ -169,6 +210,9 @@ void Runner::h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc)
 
     memcpy(op->data, (void *)rc->data, op->len);
     dev.dma_complete(*op);
+
+    dma_pending--;
+    dma_trigger();
 }
 
 void Runner::h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
@@ -181,6 +225,9 @@ void Runner::h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
 #endif
 
     dev.dma_complete(*op);
+
+    dma_pending--;
+    dma_trigger();
 }
 
 void Runner::eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv)
@@ -281,10 +328,36 @@ uint64_t Runner::get_mac_addr() const
     return mac_addr;
 }
 
+bool Runner::event_next(uint64_t &retval)
+{
+    if (events.empty())
+        return false;
+
+    retval = (*events.begin())->time;
+    return true;
+}
+
+void Runner::event_trigger()
+{
+    auto it = events.begin();
+    if (it == events.end())
+        return;
+
+    TimedEvent *ev = *it;
+
+    // event is in the future
+    if (ev->time > main_time)
+        return;
+
+    events.erase(it);
+    dev.timed_event(*ev);
+}
+
 Runner::Runner(Device &dev_)
-    : dev(dev_)
+    : dev(dev_), events(event_cmp())
 {
     //mac_addr = lrand48() & ~(3ULL << 46);
+    dma_pending = 0;
     srand48(time(NULL) ^ getpid());
     mac_addr = lrand48();
     mac_addr <<= 16;
@@ -297,6 +370,7 @@ Runner::Runner(Device &dev_)
 int Runner::runMain(int argc, char *argv[])
 {
     uint64_t next_ts;
+    uint64_t max_step = 10000;
 
     if (argc != 4 && argc != 5) {
         fprintf(stderr, "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
@@ -327,6 +401,8 @@ int Runner::runMain(int argc, char *argv[])
     fprintf(stderr, "sync_pci=%d sync_eth=%d\n", nsparams.sync_pci,
         nsparams.sync_eth);
 
+    bool is_sync = nsparams.sync_pci || nsparams.sync_eth;
+
     while (!exiting) {
         while (nicsim_sync(&nsparams, main_time)) {
             fprintf(stderr, "warn: nicsim_sync failed (t=%lu)\n", main_time);
@@ -335,13 +411,29 @@ int Runner::runMain(int argc, char *argv[])
         do {
             poll_h2d();
             poll_n2d();
-            next_ts = netsim_next_timestamp(&nsparams);
-        } while ((nsparams.sync_pci || nsparams.sync_eth) &&
-            next_ts <= main_time && !exiting);
+            event_trigger();
+
+            if (is_sync) {
+                next_ts = netsim_next_timestamp(&nsparams);
+                if (next_ts > main_time + max_step)
+                    next_ts = main_time + max_step;
+            } else {
+                next_ts = main_time + max_step;
+            }
+
+            uint64_t ev_ts;
+            if (event_next(ev_ts) && ev_ts < next_ts)
+                next_ts = ev_ts;
+
+        } while (next_ts <= main_time && !exiting);
         main_time = next_ts;
     }
 
     fprintf(stderr, "exit main_time: %lu\n", main_time);
     nicsim_cleanup();
     return 0;
+}
+
+void Runner::Device::timed_event(TimedEvent &te)
+{
 }

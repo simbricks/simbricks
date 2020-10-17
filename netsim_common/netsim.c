@@ -64,7 +64,7 @@ int netsim_init(struct netsim_interface *nsif,
 
     if ((di.flags & COSIM_ETH_PROTO_FLAGS_DI_SYNC) == 0) {
         *sync_eth = 0;
-        nsif->sync = 1;
+        nsif->sync = 0;
     } else {
         nsif->sync = *sync_eth;
     }
@@ -141,6 +141,9 @@ int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
 {
     volatile union cosim_eth_proto_n2d *msg;
     volatile struct cosim_eth_proto_n2d_sync *sync;
+
+    if (!nsif->sync)
+        return 0;
 
     if (nsif->n2d_timestamp != 0 &&
             timestamp - nsif->n2d_timestamp < sync_delay)

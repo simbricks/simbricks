@@ -219,6 +219,9 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             case I40E_GLGEN_RSTCTL:
                 val = regs.glgen_rstctl;
                 break;
+            case I40E_GLGEN_STAT:
+                val = regs.glgen_stat;
+                break;
 
             case I40E_GLVFGEN_TIMER:
                 val = runner->time_ps() / 1000000;
@@ -236,6 +239,20 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = regs.pfint_icr0;
                 // read clears
                 regs.pfint_icr0 = 0;
+                break;
+
+            case I40E_PFINT_DYN_CTL0:
+                val = regs.pfint_dyn_ctl0;
+                break;
+
+            case I40E_PFINT_ITR0(0):
+                val = regs.pfint_itr0[0];
+                break;
+            case I40E_PFINT_ITR0(1):
+                val = regs.pfint_itr0[1];
+                break;
+            case I40E_PFINT_ITR0(2):
+                val = regs.pfint_itr0[2];
                 break;
 
             case I40E_GLPCI_CNF2:
@@ -478,6 +495,18 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
             case I40E_PFINT_ICR0:
                 regs.pfint_icr0 = val;
                 break;
+            case I40E_PFINT_DYN_CTL0:
+                regs.pfint_dyn_ctl0 = val;
+                break;
+            case I40E_PFINT_ITR0(0):
+                regs.pfint_itr0[0] = val;
+                break;
+            case I40E_PFINT_ITR0(1):
+                regs.pfint_itr0[1] = val;
+                break;
+            case I40E_PFINT_ITR0(2):
+                regs.pfint_itr0[2] = val;
+                break;
 
             case I40E_PFHMC_SDCMD:
                 regs.pfhmc_sdcmd = val;
@@ -545,6 +574,64 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
     }
 }
 
+void i40e_bm::timed_event(nicbm::TimedEvent &ev)
+{
+    int_ev &iev = *((int_ev *) &ev);
+#ifdef DEBUG_DEV
+    log << "timed_event: triggering interrupt (" << iev.vector << ")" <<
+        logger::endl;
+#endif
+    iev.armed = false;
+    runner->msi_issue(0);
+}
+
+void i40e_bm::signal_interrupt(uint16_t vector, uint8_t itr)
+{
+    if (vector != 0) {
+        log << "signal_interrupt() only supports vector 0" << logger::endl;
+        abort();
+    }
+
+    int_ev &iev = intevs[vector];
+
+    uint64_t mindelay;
+    if (itr <= 2) {
+        // itr 0-2
+        mindelay = regs.pfint_itr0[itr];
+        mindelay *= 2000000ULL;
+    } else if (itr == 3) {
+        // noitr
+        mindelay = 0;
+    } else {
+        log << "signal_interrupt() invalid itr (" << itr << ")" << logger::endl;
+        abort();
+    }
+
+    uint64_t curtime = runner->time_ps();
+    uint64_t newtime = curtime + mindelay;
+    if (iev.armed && iev.time <= newtime) {
+        // already armed and this is not scheduled sooner
+#ifdef DEBUG_DEV
+        log << "signal_interrupt: vector " << vector << " already scheduled" <<
+            logger::endl;
+#endif
+        return;
+    } else if (iev.armed) {
+        // need to reschedule
+        runner->event_cancel(iev);
+    }
+
+    iev.armed = true;
+    iev.time = newtime;
+
+#ifdef DEBUG_DEV
+    log << "signal_interrupt: scheduled vector " << vector << " for time=" <<
+        newtime << " (itr " << itr << ")" << logger::endl;
+#endif
+
+    runner->event_schedule(iev);
+}
+
 void i40e_bm::reset(bool indicate_done)
 {
 #ifdef DEBUG_DEV
@@ -558,6 +645,15 @@ void i40e_bm::reset(bool indicate_done)
     memset(&regs, 0, sizeof(regs));
     if (indicate_done)
         regs.glnvm_srctl = I40E_GLNVM_SRCTL_DONE_MASK;
+
+    for (uint16_t i = 0; i < NUM_PFINTS; i++) {
+        intevs[i].vector = i;
+        if (intevs[i].armed) {
+            runner->event_cancel(intevs[i]);
+            intevs[i].armed = false;
+        }
+        intevs[i].time = 0;
+    }
 }
 
 shadow_ram::shadow_ram(i40e_bm &dev_)
@@ -631,6 +727,12 @@ void shadow_ram::write(uint16_t addr, uint16_t val)
     log << "TODO shadow memory write addr="  << addr <<
         " val=" << val << logger::endl;
 #endif
+}
+
+int_ev::int_ev()
+{
+    armed = false;
+    time = 0;
 }
 
 } //namespace i40e

@@ -1,4 +1,5 @@
 MQNICMOD := $(abspath ../images/mqnic/mqnic.ko)
+EXP_RUNNER ?= bash
 
 GUESTS := \
     qemu-pair-client \
@@ -53,6 +54,14 @@ GUESTS := \
     qemu-mtcp-client \
     gem5-pair-i40e-server \
     gem5-pair-i40e-client \
+    gem5-pair-i40e-client-2 \
+    qemu-pair-i40e-server \
+    qemu-pair-i40e-client \
+    qemu-pair-i40e-client-2 \
+    qemu-i40e-rpc-server \
+    qemu-i40e-rpc-client \
+    qemu-tas-server \
+    qemu-tas-client \
 
 # experiments we want for the paper
 EXPERIMENTS := \
@@ -83,14 +92,19 @@ EXPERIMENTS := \
 EXP_CP := \
     gem5-timing-corundum-verilator-pair-cp \
     gem5-i40e-pair \
+    gem5-i40e-mtcp \
+    gem5-i40e-cc \
 
 #experiments not using check points
 EXP_NCP := \
     qemu-corundum-bm-pair \
     qemu-corundum-bm-switched-1 \
     qemu-i40e-bm-mtcp \
+    qemu-i40e-bm-rpc \
+    qemu-i40e-bm-pair \
+    qemu-i40e-bm-tas \
+    qemu-i40e-bm-cc \
     qemu-ns3-nopaxos \
-
 
 # all experiments in repo
 ALL_EXPERIMENTS := \
@@ -133,7 +147,11 @@ experiments: $(EXPERIMENTS_READY)
 
 define run_ex_ncp_repl
 $(OUTDIR)/$(1)/$(2)/ready: experiments/$(addsuffix .sh,$(1)) $(GUESTS_TARS)
-	bash $$< $(2)
+	$(EXP_RUNNER) $$< $(2)
+	@# hacks for our NFS :/
+	@ls $(OUTDIR) >/dev/null
+	@ls $(OUTDIR)/$(1) >/dev/null
+	@ls $(OUTDIR)/$(1)/$(2) >/dev/null
 	touch $$@
 
 endef
@@ -146,7 +164,11 @@ endef
 
 define run_ex_cp_repl
 $(OUTDIR)/$(1)/$(2)/ready: experiments/$(addsuffix .sh,$(1)) $(OUTDIR)/$(1)/checkpoint/ready $(GUESTS_TARS)
-	bash $$< $(2)
+	$(EXP_RUNNER) $$< $(2)
+	@# hacks for our NFS :/
+	@ls $(OUTDIR) >/dev/null
+	@ls $(OUTDIR)/$(1) >/dev/null
+	@ls $(OUTDIR)/$(1)/$(2) >/dev/null
 	touch $$@
 endef
 
@@ -154,7 +176,11 @@ define run_ex_cp
 $(foreach i,$(REPLIDS),$(eval $(call run_ex_cp_repl,$(1),$(i))))
 
 $(OUTDIR)/$(1)/checkpoint/ready: experiments/$(addsuffix -mck.sh,$(1)) $(GUESTS_TARS)
-	bash $$<
+	$(EXP_RUNNER) $$<
+	@# hacks for our NFS :/
+	@ls $(OUTDIR) >/dev/null
+	@ls $(OUTDIR)/$(1) >/dev/null
+	@ls $(OUTDIR)/$(1)/$(2) >/dev/null
 	touch $$@
 
 $(OUTDIR)/$(1)/ready: experiments/$(addsuffix .sh,$(1)) $(addprefix $(OUTDIR)/$(1)/,$(addsuffix /ready,$(REPLIDS)))

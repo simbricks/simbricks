@@ -9,6 +9,7 @@ extern nicbm::Runner *runner;
 logger::logger(const std::string &label_)
     : label(label_)
 {
+    ss << std::hex;
 }
 
 logger &logger::operator<<(char c)
@@ -17,6 +18,7 @@ logger &logger::operator<<(char c)
         std::cerr << runner->time_ps() << " " << label << ": " << ss.str() <<
             std::endl;
         ss.str(std::string());
+        ss << std::hex;
     } else {
         ss << c;
     }

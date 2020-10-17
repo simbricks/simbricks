@@ -28,6 +28,15 @@ class dma_base : public nicbm::DMAOp {
         virtual void done() = 0;
 };
 
+class int_ev : public nicbm::TimedEvent {
+    public:
+        uint16_t vector;
+        bool armed;
+
+        int_ev();
+};
+
+
 class logger : public std::ostream {
     public:
         static const char endl = '\n';
@@ -141,6 +150,8 @@ class queue_base {
                 desc_ctx &ctx;
 
             public:
+                size_t total_len;
+                size_t part_offset;
                 dma_data_fetch(desc_ctx &ctx_, size_t len, void *buffer);
                 virtual ~dma_data_fetch();
                 virtual void done();
@@ -150,6 +161,8 @@ class queue_base {
             protected:
                 desc_ctx &ctx;
             public:
+                size_t total_len;
+                size_t part_offset;
                 dma_data_wb(desc_ctx &ctx_, size_t len);
                 virtual ~dma_data_wb();
                 virtual void done();
@@ -311,7 +324,7 @@ class lan_queue_base : public queue_base {
 
 class lan_queue_tx : public lan_queue_base {
     protected:
-        static const uint16_t MTU = 2048;
+        static const uint16_t MTU = 9024;
 
         class tx_desc_ctx : public desc_ctx {
             protected:
@@ -342,6 +355,8 @@ class lan_queue_tx : public lan_queue_base {
         };
 
         uint8_t pktbuf[MTU];
+        uint32_t tso_off;
+        uint32_t tso_len;
         std::deque<tx_desc_ctx *> ready_segments;
 
         bool hwb;
@@ -372,7 +387,7 @@ class lan_queue_rx : public lan_queue_base {
             public:
                 rx_desc_ctx(lan_queue_rx &queue_);
                 virtual void process();
-                void packet_received(const void *data, size_t len);
+                void packet_received(const void *data, size_t len, bool last);
         };
 
         uint16_t dbuff_size;
@@ -443,14 +458,18 @@ protected:
     static const uint32_t NUM_PFINTS = 512;
     static const uint32_t NUM_VSIS = 384;
     static const uint16_t MAX_MTU = 2048;
+    static const uint8_t NUM_ITR = 3;
 
     struct i40e_regs {
         uint32_t glgen_rstctl;
+        uint32_t glgen_stat;
         uint32_t gllan_rctl_0;
         uint32_t pfint_lnklst0;
         uint32_t pfint_icr0_ena;
         uint32_t pfint_icr0;
+        uint32_t pfint_itr0[NUM_ITR];
 
+        uint32_t pfint_dyn_ctl0;
         uint32_t pfint_dyn_ctln[NUM_PFINTS - 1];
         uint32_t pfint_lnklstn[NUM_PFINTS - 1];
         uint32_t pfint_raten[NUM_PFINTS - 1];
@@ -492,8 +511,6 @@ protected:
     };
 
 public:
-    nicbm::Runner *runner;
-
     i40e_bm();
     ~i40e_bm();
 
@@ -505,6 +522,9 @@ public:
     virtual void reg_write32(uint8_t bar, uint64_t addr, uint32_t val);
     virtual void dma_complete(nicbm::DMAOp &op);
     virtual void eth_rx(uint8_t port, const void *data, size_t len);
+    virtual void timed_event(nicbm::TimedEvent &ev);
+
+    void signal_interrupt(uint16_t vector, uint8_t itr);
 
 protected:
     logger log;
@@ -513,6 +533,8 @@ protected:
     host_mem_cache hmc;
     shadow_ram shram;
     lan lanmgr;
+
+    int_ev intevs[NUM_PFINTS];
 
     /** Read from the I/O bar */
     virtual uint32_t reg_io_read(uint64_t addr);
@@ -529,5 +551,13 @@ protected:
 
 // places the tcp checksum in the packet (assuming ipv4)
 void xsum_tcp(void *tcphdr, size_t l4len);
+
+// calculates the full ipv4 & tcp checksum without assuming any pseudo header
+// xsums
+void xsum_tcpip_tso(void *iphdr, uint8_t iplen, uint8_t l4len,
+        uint16_t paylen);
+
+void tso_postupdate_header(void *iphdr, uint8_t iplen, uint8_t l4len,
+        uint16_t paylen);
 
 } // namespace corundum

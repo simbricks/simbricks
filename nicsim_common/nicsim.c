@@ -32,16 +32,16 @@
 
 #include "internal.h"
 
-#define D2H_ELEN (4096 + 64)
+#define D2H_ELEN (9024 + 64)
 #define D2H_ENUM 1024
 
-#define H2D_ELEN (4096 + 64)
+#define H2D_ELEN (9024 + 64)
 #define H2D_ENUM 1024
 
-#define D2N_ELEN (2048 + 64)
+#define D2N_ELEN (9024 + 64)
 #define D2N_ENUM 8192
 
-#define N2D_ELEN (2048 + 64)
+#define N2D_ELEN (9024 + 64)
 #define N2D_ENUM 8192
 
 
@@ -182,9 +182,14 @@ int nicsim_init(struct nicsim_params *params,
 {
     int pci_lfd = -1, eth_lfd = -1;
     void *shmptr;
+    size_t shm_size;
 
     /* ready in memory queues */
-    if ((shm_fd = shm_create(params->shm_path, 64 * 1024 * 1024, &shmptr))
+    shm_size = (uint64_t) D2H_ELEN * D2H_ENUM +
+        (uint64_t) H2D_ELEN * H2D_ENUM +
+        (uint64_t) D2N_ELEN * D2N_ENUM +
+        (uint64_t) N2D_ELEN * N2D_ENUM;
+    if ((shm_fd = shm_create(params->shm_path, shm_size, &shmptr))
             < 0)
     {
 

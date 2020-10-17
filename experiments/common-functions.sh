@@ -5,6 +5,8 @@ QEMU_CMD="$EHSIM_BASE/qemu/x86_64-softmmu/qemu-system-x86_64"
 QEMU_IMG="$EHSIM_BASE/qemu/qemu-img"
 GEM5_BASE="$EHSIM_BASE/gem5"
 NS3_BASE="$EHSIM_BASE/ns-3"
+OUTDIR_BASE="$EHSIM_BASE/experiments/out"
+WORKDIR_BASE="$OUTDIR_BASE"
 
 if [ -f local-config.sh ] ; then
     source local-config.sh
@@ -40,9 +42,10 @@ GEM5_KERNEL=$EHSIM_BASE/images/vmlinux
 # Args:
 #   - experiment name
 init_out() {
-  export OUTDIR=./out/$1/$2
-  rm -rf $OUTDIR
-  mkdir -p $OUTDIR
+  export OUTDIR=$OUTDIR_BASE/$1/$2
+  export WORKDIR=$WORKDIR_BASE/$1/$2
+  rm -rf $OUTDIR $WORKDIR
+  mkdir -p $OUTDIR $WORKDIR
   date > $OUTDIR/starttime
 }
 
@@ -51,10 +54,11 @@ init_out() {
 #   - Cosim instance
 #   - secondary hard drive
 #   - [optional primary image name: default ubuntu1804-base]
+#   - [optional: additinoal qemu arguments]
 run_qemu() {
-    img_a="$OUTDIR/qemu.hd.a.$1"
-    img_b="$OUTDIR/qemu.hd.b.$1"
-    pcisock="$OUTDIR/pci.$2"
+    img_a="$WORKDIR/qemu.hd.a.$1"
+    img_b="$WORKDIR/qemu.hd.b.$1"
+    pcisock="$WORKDIR/pci.$2"
     rm -f $img_a $img_b
     echo Creating disk for qemu $1
     if [ -z "$4" ]; then
@@ -74,7 +78,8 @@ run_qemu() {
         -serial mon:stdio -m $((16 * 1024)) -smp 1 -display none -enable-kvm \
         -nic none \
         -chardev socket,path=$pcisock,id=cosimcd \
-        -device cosim-pci,chardev=cosimcd &>$OUTDIR/qemu.$1.log &
+        -device cosim-pci,chardev=cosimcd \
+        $5 &>$OUTDIR/qemu.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
     return $pid
@@ -90,9 +95,9 @@ run_qemu() {
 #   - [optional primary image name: default ubuntu1804-base]
 run_gem5() {
     echo Starting gem5 $1
-    pcisock="$OUTDIR/pci.$2"
-    shm="$OUTDIR/shm.$2"
-    cpdir="$OUTDIR/../checkpoint/checkpoints.$5"
+    pcisock="$WORKDIR/pci.$2"
+    shm="$WORKDIR/shm.$2"
+    cpdir="$WORKDIR/../checkpoint/checkpoints.$5"
     mkdir -p $cpdir
 
     if [ -z "$7" ]; then
@@ -126,7 +131,7 @@ run_gem5() {
 run_corundum_verilator() {
     echo Starting corundum_verilator $1
     $EHSIM_BASE/corundum/corundum_verilator \
-        $OUTDIR/pci.$1 $OUTDIR/eth.$1 $OUTDIR/shm.$1 \
+        $WORKDIR/pci.$1 $WORKDIR/eth.$1 $WORKDIR/shm.$1 \
             &>$OUTDIR/corundum_verilator.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
@@ -138,7 +143,7 @@ run_corundum_verilator() {
 run_corundum_bm() {
     echo Starting corundum_bm $1
     $EHSIM_BASE/corundum_bm/corundum_bm \
-        $OUTDIR/pci.$1 $OUTDIR/eth.$1 $OUTDIR/shm.$1 \
+        $WORKDIR/pci.$1 $WORKDIR/eth.$1 $WORKDIR/shm.$1 \
         &>$OUTDIR/corundum_bm.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
@@ -150,7 +155,7 @@ run_corundum_bm() {
 run_i40e_bm() {
     echo Starting i40e $1
     $EHSIM_BASE/i40e_bm/i40e_bm \
-        $OUTDIR/pci.$1 $OUTDIR/eth.$1 $OUTDIR/shm.$1 \
+        $WORKDIR/pci.$1 $WORKDIR/eth.$1 $WORKDIR/shm.$1 \
         &>$OUTDIR/i40e_bm.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
@@ -171,7 +176,7 @@ run_wire() {
     fi
 
     $EHSIM_BASE/net_wire/net_wire \
-        $OUTDIR/eth.$2 $OUTDIR/eth.$3 $pcap &>$OUTDIR/wire.$1.log &
+        $WORKDIR/eth.$2 $WORKDIR/eth.$3 $pcap &>$OUTDIR/wire.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
     return $pid
@@ -183,7 +188,7 @@ run_wire() {
 run_ns3_bridge() {
     ports=""
     for p in $2; do
-        epath="`readlink -f $OUTDIR/eth.$p`"
+        epath="`readlink -f $WORKDIR/eth.$p`"
         ports="$ports --CosimPort=$epath"
     done
     $NS3_BASE/cosim-run.sh cosim cosim-bridge-example \
@@ -201,11 +206,11 @@ run_ns3_bridge() {
 run_ns3_dumbbell() {
     ports=""
     for p in $2; do
-        epath="`readlink -f $OUTDIR/eth.$p`"
+        epath="`readlink -f $WORKDIR/eth.$p`"
         ports="$ports --CosimPortLeft=$epath"
     done
     for p in $3; do
-        epath="`readlink -f $OUTDIR/eth.$p`"
+        epath="`readlink -f $WORKDIR/eth.$p`"
         ports="$ports --CosimPortRight=$epath"
     done
 
@@ -224,11 +229,11 @@ run_ns3_dumbbell() {
 run_ns3_sequencer() {
     ports=""
     for p in $2; do
-        epath="`readlink -f $OUTDIR/eth.$p`"
+        epath="`readlink -f $WORKDIR/eth.$p`"
         ports="$ports --ClientPort=$epath"
     done
     for p in $3; do
-        epath="`readlink -f $OUTDIR/eth.$p`"
+        epath="`readlink -f $WORKDIR/eth.$p`"
         ports="$ports --ServerPort=$epath"
     done
     for p in $4; do
@@ -253,7 +258,11 @@ cleanup() {
         kill -KILL $p &>/dev/null
     done
 
-    rm -f $OUTDIR/{qemu.hd.*,shm.*,pci.*,eth.*}
+    if [ "$OUTDIR" != "$WORKDIR" ]; then
+        rm -rf $WORKDIR
+    else
+        rm -f $WORKDIR/{qemu.hd.*,shm.*,pci.*,eth.*}
+    fi
     date >>$OUTDIR/endtime
 }
 
