@@ -61,6 +61,8 @@ GUESTS := \
     qemu-i40e-rpc-client \
     qemu-tas-server \
     qemu-tas-client \
+    qemu-echo-server \
+    qemu-echo-client \
 
 # experiments we want for the paper
 EXPERIMENTS := \
@@ -96,6 +98,7 @@ EXP_CP := \
 
 #experiments not using check points
 EXP_NCP := \
+    qemu-corundum-bm-echo \
     qemu-corundum-bm-pair \
     qemu-corundum-bm-switched-1 \
     qemu-i40e-bm-mtcp \
