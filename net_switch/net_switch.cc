@@ -1,0 +1,175 @@
+#include <cstdio>
+#include <cstdlib>
+#include <csignal>
+#include <climits>
+#include <cstring>
+#include <unistd.h>
+#include <vector>
+#include <unordered_map>
+
+extern "C" {
+#include <netsim.h>
+};
+
+#define SYNC_PERIOD (500 * 1000ULL) // 500ns
+#define ETH_LATENCY (500 * 1000ULL) // 500ns
+
+/* MAC address type */
+struct MAC {
+    const volatile uint8_t *data;
+
+    MAC(const volatile uint8_t *data)
+        : data(data) {}
+
+    bool operator==(const MAC &other) const {
+        for (int i = 0; i < 6; i++) {
+            if (data[i] != other.data[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+namespace std {
+    template <>
+    struct hash<MAC>
+    {
+        size_t operator()(const MAC &m) const {
+            size_t res = 0;
+            for (int i = 0; i < 6; i++) {
+                res = (res << 4) | (res ^ m.data[i]);
+            }
+            return res;
+        }
+    };
+} // namespace std
+
+/* Global variables */
+static uint64_t cur_ts = 0;
+static int exiting = 0;
+static const volatile uint8_t bcast[6] = {0xFF};
+static const MAC bcast_addr(bcast);
+static std::vector<struct netsim_interface> nsifs;
+static std::unordered_map<MAC, int> mac_table;
+
+static void sigint_handler(int dummy)
+{
+    exiting = 1;
+}
+
+static void forward_pkt(volatile struct cosim_eth_proto_d2n_send *tx, int port)
+{
+    volatile union cosim_eth_proto_n2d *msg_to;
+    msg_to = netsim_n2d_alloc(&nsifs[port], cur_ts, ETH_LATENCY);
+    if (msg_to != NULL) {
+        volatile struct cosim_eth_proto_n2d_recv *rx;
+        rx = &msg_to->recv;
+        rx->len = tx->len;
+        rx->port = 0;
+        memcpy((void *)rx->data, (void *)tx->data, tx->len);
+
+        // WMB();
+        rx->own_type = COSIM_ETH_PROTO_N2D_MSG_RECV |
+            COSIM_ETH_PROTO_N2D_OWN_DEV;
+    } else {
+        fprintf(stderr, "forward_pkt: dropping packet\n");
+    }
+}
+
+static void switch_pkt(struct netsim_interface *nsif, int iport)
+{
+    volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(nsif, cur_ts);
+    if (msg_from == NULL) {
+        return;
+    }
+
+    uint8_t type = msg_from->dummy.own_type & COSIM_ETH_PROTO_D2N_MSG_MASK;
+    if (type == COSIM_ETH_PROTO_D2N_MSG_SEND) {
+        volatile struct cosim_eth_proto_d2n_send *tx;
+        tx = &msg_from->send;
+        // Get MAC addresses
+        MAC dst(tx->data), src(tx->data+6);
+        // MAC learning
+        if (!(src == bcast_addr)) {
+            mac_table[src] = iport;
+        }
+        // L2 forwarding
+        if (mac_table.count(dst) > 0) {
+            int eport = mac_table.at(dst);
+            forward_pkt(tx, eport);
+        } else {
+            // Broadcast
+            for (int eport = 0; eport < nsifs.size(); eport++) {
+                if (eport != iport) {
+                    // Do not forward to ingress port
+                    forward_pkt(tx, eport);
+                }
+            }
+        }
+    } else if (type == COSIM_ETH_PROTO_D2N_MSG_SYNC) {
+    } else {
+        fprintf(stderr, "switch_pkt: unsupported type=%u\n", type);
+        abort();
+    }
+    netsim_d2n_done(nsif, msg_from);
+}
+
+int main(int argc, char *argv[])
+{
+    int c;
+
+    // Parse command line argument
+    while ((c = getopt(argc, argv, "s:")) != -1) {
+        switch (c) {
+        case 's': {
+            struct netsim_interface nsif;
+            int sync = 1;
+            if (netsim_init(&nsif, optarg, &sync) != 0) {
+                return EXIT_FAILURE;
+            }
+            nsifs.push_back(nsif);
+        }
+        default:
+            fprintf(stderr, "unknown option %c\n", c);
+        }
+    }
+
+    if (nsifs.empty()) {
+        fprintf(stderr, "Usage: net_switch -s SOCKET-A [-s SOCKET-B ...]\n");
+        return EXIT_FAILURE;
+    }
+
+    signal(SIGINT, sigint_handler);
+    signal(SIGTERM, sigint_handler);
+
+    printf("start polling\n");
+    while (!exiting) {
+        // Sync all interfaces
+        for (auto &nsif : nsifs) {
+            if (netsim_n2d_sync(&nsif, cur_ts, ETH_LATENCY, SYNC_PERIOD) != 0) {
+                fprintf(stderr, "netsim_n2d_sync failed\n");
+                abort();
+            }
+        }
+        // Switch packets
+        uint64_t min_ts;
+        do {
+            min_ts = ULLONG_MAX;
+            for (int port = 0; port < nsifs.size(); port++) {
+                auto &nsif = nsifs.at(port);
+                switch_pkt(&nsif, port);
+                if (nsif.sync) {
+                    uint64_t ts = netsim_d2n_timestamp(&nsif);
+                    min_ts = ts < min_ts ? ts : min_ts;
+                }
+            }
+        } while (!exiting && (min_ts <= cur_ts));
+
+        // Update cur_ts
+        if (min_ts < ULLONG_MAX) {
+            cur_ts = min_ts;
+        }
+    }
+
+    return 0;
+}
