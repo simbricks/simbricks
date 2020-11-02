@@ -10,6 +10,7 @@ corundum/obj_dir
 corundum/corundum_verilator
 net_wire/net_wire
 net_tap/net_tap
+net_switch/net_switch
 i40e_bm/i40e_bm
 images/kernel/kheaders/
 images/mqnic/Module.symvers
