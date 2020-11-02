@@ -2,6 +2,8 @@
 *.a
 *.ko
 .*.cmd
+*.pyc
+__pycache__/
 _vimrc_local.vim
 dummy_nic/dummy_nic
 corundum/obj_dir
