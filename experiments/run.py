@@ -9,6 +9,36 @@ def mkdir_if_not_exists(path):
     if not os.path.exists(path):
         os.mkdir(path)
 
+class Run(object):
+    def __init__(self, experiment, env, outpath):
+        self.experiment = experiment
+        self.env = env
+        self.outpath = outpath
+        self.output = None
+
+class Runtime(object):
+    def add_run(self, run):
+        pass
+
+    def start(self):
+        pass
+
+class LocalSimpleRuntime(Runtime):
+    def __init__(self):
+        self.runnable = []
+        self.complete = []
+
+    def add_run(self, run):
+        self.runnable.append(run)
+
+    def start(self):
+        for run in self.runnable:
+            run.output = exp.run_exp_local(run.experiment, run.env)
+            self.complete.append(run)
+
+            with open(run.outpath, 'w') as f:
+                f.write(run.output.dumps())
+
 parser = argparse.ArgumentParser()
 parser.add_argument('experiments', metavar='EXP', type=str, nargs='+',
         help='An experiment file to run')
@@ -39,6 +69,8 @@ for path in args.experiments:
 mkdir_if_not_exists(args.workdir)
 mkdir_if_not_exists(args.outdir)
 
+runtime = LocalSimpleRuntime()
+
 for e in experiments:
     workdir_base = '%s/%s' % (args.workdir, e.name)
     mkdir_if_not_exists(workdir_base)
@@ -53,7 +85,6 @@ for e in experiments:
         mkdir_if_not_exists(workdir)
 
         env = exp.ExpEnv(args.repo, workdir)
-        out = exp.run_exp_local(e, env)
+        runtime.add_run(Run(e, env, outpath))
 
-        with open(outpath, 'w') as f:
-            f.write(out.dumps())
+runtime.start()
