@@ -2,6 +2,7 @@ import argparse
 import sys
 import os
 import importlib
+import pickle
 import modes.experiments as exp
 
 def mkdir_if_not_exists(path):
@@ -24,11 +25,16 @@ args = parser.parse_args()
 
 experiments = []
 for path in args.experiments:
-    modname = os.path.splitext(os.path.basename(path))[0]
-    spec = importlib.util.spec_from_file_location(modname, path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    experiments += mod.experiments
+    modname, modext = os.path.splitext(os.path.basename(path))
+
+    if modext == '.py':
+        spec = importlib.util.spec_from_file_location(modname, path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        experiments += mod.experiments
+    else:
+        with open(path, 'rb') as f:
+            experiments.append(pickle.load(f))
 
 mkdir_if_not_exists(args.workdir)
 mkdir_if_not_exists(args.outdir)
