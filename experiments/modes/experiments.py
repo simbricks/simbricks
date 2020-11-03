@@ -169,7 +169,7 @@ class ExpOutput(object):
         self.start_time = time.time()
 
     def set_end(self):
-        self.end = time.time()
+        self.end_time = time.time()
 
     def set_failed(self):
         self.success = False
@@ -189,9 +189,5 @@ class ExpOutput(object):
 
 
 def run_exp_local(exp, env):
-    if os.path.exists(env.workdir):
-        raise Exception('Workdir already exists')
-
-    os.mkdir(env.workdir)
     asyncio.run(exp.prepare(env))
     return asyncio.run(exp.run(env))

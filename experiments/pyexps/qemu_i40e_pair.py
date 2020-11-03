@@ -32,6 +32,5 @@ for i in range (0, 2):
     host_b.add_nic(nic_b)
     e.add_host(host_b)
 
-env = exp.ExpEnv('..', './work')
-out = exp.run_exp_local(e, env)
-print(out.dumps())
+experiments = [e]
+
