@@ -5,7 +5,8 @@ all: \
 	corundum_bm/corundum_bm \
 	i40e_bm/i40e_bm \
 	net_tap/net_tap \
-	net_wire/net_wire
+	net_wire/net_wire \
+	net_switch/net_switch
 
 clean:
 	$(MAKE) -C corundum/ clean
@@ -14,6 +15,7 @@ clean:
 	$(MAKE) -C dummy_nic/ clean
 	$(MAKE) -C net_tap/ clean
 	$(MAKE) -C net_wire/ clean
+	$(MAKE) -C net_switch/ clean
 	$(MAKE) -C nicsim_common/ clean
 	$(MAKE) -C netsim_common/ clean
 	$(MAKE) -C libnicbm/ clean
@@ -48,6 +50,9 @@ net_tap/net_tap: netsim_common/libnetsim_common.a
 
 net_wire/net_wire: netsim_common/libnetsim_common.a
 	$(MAKE) -C net_wire/
+
+net_switch/net_switch: netsim_common/libnetsim_common.a
+	$(MAKE) -C net_switch/
 
 nicsim_common/libnicsim_common.a:
 	$(MAKE) -C nicsim_common/

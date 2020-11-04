@@ -184,6 +184,27 @@ run_wire() {
 
 # Args:
 #   - Instance name
+#   - sim instance 1
+#   - sim instance 2
+#   - [sim instance 3, ...]
+run_switch() {
+    echo Starting switch $1
+
+    args=
+    for iface in ${@:2}
+    do
+        args="$args -s $WORKDIR/eth.$iface"
+    done
+
+    $EHSIM_BASE/net_switch/net_switch \
+        $args &>$OUTDIR/switch.$1.log &
+    pid=$!
+    ALL_PIDS="$ALL_PIDS $pid"
+    return $pid
+}
+
+# Args:
+#   - Instance name
 #   - Port names
 run_ns3_bridge() {
     ports=""
