@@ -62,6 +62,22 @@ elif args.runtime == 'slurm':
 else:
     rt = runtime.LocalSimpleRuntime(verbose=args.verbose)
 
+def add_exp(e, run, prereq, create_cp, restore_cp):
+    outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
+    if os.path.exists(outpath):
+        print('skip %s run %d' % (e.name, run))
+        return None
+
+    workdir = '%s/%s/%d' % (args.workdir, e.name, run)
+
+    env = exp.ExpEnv(args.repo, workdir)
+    env.create_cp = create_cp
+    env.restore_cp = restore_cp
+
+    run = runtime.Run(e, run, env, outpath, prereq)
+    rt.add_run(run)
+    return run
+
 # load experiments
 if not args.pickled:
     # default: load python modules with experiments
@@ -75,16 +91,14 @@ if not args.pickled:
         experiments += mod.experiments
 
     for e in experiments:
+        # if this is an experiment with a checkpoint we might have to create it
+        if e.checkpoint:
+            prereq = add_exp(e, 0, None, True, False)
+        else:
+            prereq = None
+
         for run in range(args.firstrun, args.firstrun + args.runs):
-            outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
-            if os.path.exists(outpath):
-                print('skip %s run %d' % (e.name, run))
-                continue
-
-            workdir = '%s/%s/%d' % (args.workdir, e.name, run)
-
-            env = exp.ExpEnv(args.repo, workdir)
-            rt.add_run(runtime.Run(e, run, env, outpath))
+            add_exp(e, run, prereq, False, e.checkpoint)
 else:
     # otherwise load pickled run object
     for path in args.experiments:

@@ -127,7 +127,7 @@ class LocalParallelRuntime(Runtime):
         runs = self.runs_noprereq + self.runs_prereq
         for run in runs:
             # check if we first have to wait for memory or cores
-            while not self.enough_resources(run) or not self.prereq_ready(run):
+            while not self.enough_resources(run):
                 print('waiting for resources')
                 await self.wait_completion()
 
@@ -205,7 +205,6 @@ class SlurmRuntime(Runtime):
 
             script = self.prep_run(run)
 
-            cmd = 'sbatch ' + script
             stream = os.popen('sbatch %s %s' % (dep_cmd, script))
             output = stream.read()
             result = stream.close()
