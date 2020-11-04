@@ -76,6 +76,6 @@ for e in experiments:
         mkdir_if_not_exists(workdir)
 
         env = exp.ExpEnv(args.repo, workdir)
-        rt.add_run(runtime.Run(e, env, outpath))
+        rt.add_run(runtime.Run(e, run, env, outpath))
 
 rt.start()

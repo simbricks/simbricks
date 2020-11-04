@@ -3,11 +3,15 @@ import asyncio
 import modes.experiments as exp
 
 class Run(object):
-    def __init__(self, experiment, env, outpath):
+    def __init__(self, experiment, index, env, outpath):
         self.experiment = experiment
+        self.index = index
         self.env = env
         self.outpath = outpath
         self.output = None
+
+    def name(self):
+        return self.experiment.name + '[' + str(self.index) + ']'
 
 class Runtime(object):
     def add_run(self, run):
@@ -56,11 +60,11 @@ class LocalParallelRuntime(Runtime):
     async def do_run(self, run):
         ''' actually starts a run '''
         await run.experiment.prepare(run.env, verbose=self.verbose)
-        print('starting run ', run)
+        print('starting run ', run.name())
         run.output = await run.experiment.run(run.env, verbose=self.verbose)
         with open(run.outpath, 'w') as f:
             f.write(run.output.dumps())
-        print('finished run ', run)
+        print('finished run ', run.name())
         return run
 
     async def wait_completion(self):
