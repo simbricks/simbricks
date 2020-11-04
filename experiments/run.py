@@ -62,10 +62,6 @@ for path in args.experiments:
         with open(path, 'rb') as f:
             experiments.append(pickle.load(f))
 
-if args.runtime != 'slurm':
-    mkdir_if_not_exists(args.workdir)
-mkdir_if_not_exists(args.outdir)
-
 if args.runtime == 'parallel':
     rt = runtime.LocalParallelRuntime(cores=args.cores, mem=args.mem,
             verbose=args.verbose)
@@ -74,20 +70,15 @@ elif args.runtime == 'slurm':
 else:
     rt = runtime.LocalSimpleRuntime(verbose=args.verbose)
 
-for e in experiments:
-    workdir_base = '%s/%s' % (args.workdir, e.name)
-    if args.runtime != 'slurm':
-        mkdir_if_not_exists(workdir_base)
 
+for e in experiments:
     for run in range(args.firstrun, args.firstrun + args.runs):
         outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
         if os.path.exists(outpath):
             print('skip %s run %d' % (e.name, run))
             continue
 
-        workdir = '%s/%d' % (workdir_base, run)
-        if args.runtime != 'slurm':
-            mkdir_if_not_exists(workdir)
+        workdir = '%s/%s/%d' % (args.workdir, e.name, run)
 
         env = exp.ExpEnv(args.repo, workdir)
         rt.add_run(runtime.Run(e, run, env, outpath))

@@ -1,5 +1,6 @@
 import tarfile
 import io
+import pathlib
 
 class NodeConfig(object):
     sim = 'qemu'
