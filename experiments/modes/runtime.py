@@ -2,6 +2,7 @@ import asyncio
 import pickle
 import os
 import pathlib
+import re
 
 import modes.experiments as exp
 
@@ -173,6 +174,17 @@ class SlurmRuntime(Runtime):
     def start(self):
         pathlib.Path(self.slurmdir).mkdir(parents=True, exist_ok=True)
 
+        jid_re = re.compile(r'Submitted batch job ([0-9]+)')
+
         for run in self.runnable:
             script = self.prep_run(run)
-            os.system('sbatch ' + script)
+
+            stream = os.popen('sbatch ' + script)
+            output = stream.read()
+            result = stream.close()
+
+            if result is not None:
+                raise Exception('running sbatch failed')
+
+            m = jid_re.search(output)
+            run.job_id = int(m.group(1))
