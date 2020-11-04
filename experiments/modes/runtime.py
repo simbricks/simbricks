@@ -90,7 +90,7 @@ class LocalParallelRuntime(Runtime):
             enough_cores = True
 
         if self.mem is not None:
-            enough_mem = (self.mem - self.cores_used) >= exp.resreq_cores()
+            enough_mem = (self.mem - self.mem_used) >= exp.resreq_mem()
         else:
             enough_mem = True
 
