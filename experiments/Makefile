@@ -97,6 +97,7 @@ EXP_CP := \
 
 #experiments not using check points
 EXP_NCP := \
+    qemu-ns3-nopaxos-endhost-sequencer \
     qemu-corundum-bm-pair \
     qemu-corundum-bm-switched-1 \
     qemu-i40e-bm-mtcp \
