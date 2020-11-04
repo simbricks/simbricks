@@ -16,6 +16,9 @@ parser.add_argument('experiments', metavar='EXP', type=str, nargs='+',
         help='An experiment file to run')
 parser.add_argument('--runs', metavar='N', type=int, default=1,
         help='Number of repetition for each experiment')
+parser.add_argument('--verbose', action='store_const', const=True,
+        default=False,
+        help='Verbose output')
 
 g_env = parser.add_argument_group('Environment')
 g_env.add_argument('--repo', metavar='DIR', type=str,
@@ -54,9 +57,10 @@ mkdir_if_not_exists(args.workdir)
 mkdir_if_not_exists(args.outdir)
 
 if args.runtime == 'parallel':
-    rt = runtime.LocalParallelRuntime(cores=args.cores, mem=args.mem)
+    rt = runtime.LocalParallelRuntime(cores=args.cores, mem=args.mem,
+            verbose=args.verbose)
 else:
-    rt = runtime.LocalSimpleRuntime()
+    rt = runtime.LocalSimpleRuntime(verbose=args.verbose)
 
 for e in experiments:
     workdir_base = '%s/%s' % (args.workdir, e.name)

@@ -16,28 +16,33 @@ class Runtime(object):
     def start(self):
         pass
 
+
 class LocalSimpleRuntime(Runtime):
-    def __init__(self):
+    def __init__(self, verbose=False):
         self.runnable = []
         self.complete = []
+        self.verbose = verbose
 
     def add_run(self, run):
         self.runnable.append(run)
 
     def start(self):
         for run in self.runnable:
-            run.output = exp.run_exp_local(run.experiment, run.env)
+            run.output = exp.run_exp_local(run.experiment, run.env,
+                    verbose=self.verbose)
             self.complete.append(run)
 
             with open(run.outpath, 'w') as f:
                 f.write(run.output.dumps())
 
+
 class LocalParallelRuntime(Runtime):
-    def __init__(self, cores, mem=None):
+    def __init__(self, cores, mem=None, verbose=False):
         self.runnable = []
         self.complete = []
         self.cores = cores
         self.mem = mem
+        self.verbose = verbose
 
     def add_run(self, run):
         if run.experiment.resreq_cores() > self.cores:
@@ -50,14 +55,13 @@ class LocalParallelRuntime(Runtime):
 
     async def do_run(self, run):
         ''' actually starts a run '''
-        await run.experiment.prepare(run.env)
+        await run.experiment.prepare(run.env, verbose=self.verbose)
         print('starting run ', run)
-        run.output = await run.experiment.run(run.env)
+        run.output = await run.experiment.run(run.env, verbose=self.verbose)
         with open(run.outpath, 'w') as f:
             f.write(run.output.dumps())
         print('finished run ', run)
         return run
-        #await self.completions.put(run)
 
     async def wait_completion(self):
         ''' wait for any run to terminate and return '''

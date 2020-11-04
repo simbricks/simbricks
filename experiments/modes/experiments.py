@@ -25,32 +25,36 @@ class Experiment(object):
     def add_network(self, sim):
         self.networks.append(sim)
 
-    async def prepare(self, env):
+    async def prepare(self, env, verbose=False):
         # generate config tars
         for host in self.hosts:
             path = env.cfgtar_path(host)
-            print('preparing config tar:', path)
+            if verbose:
+                print('preparing config tar:', path)
             host.node_config.make_tar(path)
 
         # prepare all simulators in parallel
         sims = []
         for sim in self.hosts + self.nics + self.networks:
             prep_cmds = [pc for pc in sim.prep_cmds(env)]
-            sims.append(exectools.run_cmdlist('prepare_' + self.name, prep_cmds))
+            sims.append(exectools.run_cmdlist('prepare_' + self.name, prep_cmds,
+                verbose=verbose))
         await asyncio.wait(sims)
 
-    async def run(self, env):
+    async def run(self, env, verbose=False):
         running = []
         sockets = []
         out = ExpOutput(self)
         try:
             out.set_start()
 
-            print('%s: starting NICS' % self.name)
+            if verbose:
+                print('%s: starting NICS' % self.name)
             for nic in self.nics:
-                print('start NIC:', nic.run_cmd(env))
+                if verbose:
+                    print('start NIC:', nic.run_cmd(env))
                 sc = exectools.SimpleComponent(nic.full_name(),
-                        shlex.split(nic.run_cmd(env)))
+                        shlex.split(nic.run_cmd(env)), verbose=verbose)
                 await sc.start()
                 running.append((nic, sc))
 
@@ -58,31 +62,38 @@ class Experiment(object):
                 sockets.append(env.nic_eth_path(nic))
                 sockets.append(env.nic_shm_path(nic))
 
-            print('%s: waiting for sockets' % self.name)
+            if verbose:
+                print('%s: waiting for sockets' % self.name)
+
             for s in sockets:
-                await exectools.await_file(s)
+                await exectools.await_file(s, verbose=verbose)
 
             # start networks
             for net in self.networks:
-                print('start Net:', net.run_cmd(env))
+                if verbose:
+                    print('start Net:', net.run_cmd(env))
+
                 sc = exectools.SimpleComponent(net.full_name(),
-                        shlex.split(net.run_cmd(env)))
+                        shlex.split(net.run_cmd(env)), verbose=verbose)
                 await sc.start()
                 running.append((net, sc))
 
             # start hosts
             wait_hosts = []
             for host in self.hosts:
-                print('start Host:', host.run_cmd(env))
+                if verbose:
+                    print('start Host:', host.run_cmd(env))
+
                 sc = exectools.SimpleComponent(host.full_name(),
-                        shlex.split(host.run_cmd(env)))
+                        shlex.split(host.run_cmd(env)), verbose=verbose)
                 await sc.start()
                 running.append((host,sc))
 
                 if host.wait:
                     wait_hosts.append(sc)
 
-            print('%s: waiting for hosts to terminate' % self.name)
+            if verbose:
+                print('%s: waiting for hosts to terminate' % self.name)
             for sc in wait_hosts:
                 await sc.wait()
             # wait for necessary hosts to terminate
@@ -93,7 +104,8 @@ class Experiment(object):
             out.set_end()
 
             # shut things back down
-            print('%s: cleaning up' % self.name)
+            if verbose:
+                print('%s: cleaning up' % self.name)
             scs = []
             for _,sc in running:
                 scs.append(sc.int_term_kill())
@@ -188,6 +200,6 @@ class ExpOutput(object):
 
 
 
-def run_exp_local(exp, env):
-    asyncio.run(exp.prepare(env))
-    return asyncio.run(exp.run(env))
+def run_exp_local(exp, env, verbose=False):
+    asyncio.run(exp.prepare(env, verbose=verbose))
+    return asyncio.run(exp.run(env, verbose=verbose))

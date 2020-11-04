@@ -182,7 +182,8 @@ async def run_cmdlist(label, cmds, verbose=True):
         await cmdC.start()
         await cmdC.wait()
 
-async def await_file(path, delay=0.05):
-    print('await_file(%s)' % path)
+async def await_file(path, delay=0.05, verbose=False):
+    if verbose:
+        print('await_file(%s)' % path)
     while not os.path.exists(path):
         await asyncio.sleep(delay)
