@@ -166,9 +166,10 @@ class SlurmRuntime(Runtime):
         exp_log = '%s/%s-%d.log' % (self.slurmdir, exp.name, run.index)
         exp_script = '%s/%s-%d.sh' % (self.slurmdir, exp.name, run.index)
 
-        # write out pickled experiment
+        # write out pickled run
         with open(exp_path, 'wb') as f:
-            pickle.dump(exp, f)
+            run.prereq = None # we don't want to pull in the prereq too
+            pickle.dump(run, f)
 
         # create slurm batch script
         with open(exp_script, 'w') as f:
@@ -183,11 +184,7 @@ class SlurmRuntime(Runtime):
                 s = int(exp.timeout % 60)
                 f.write('#SBATCH --time=%02d:%02d:%02d\n' % (h, m, s))
 
-            f.write('mkdir -p %s\n' % (self.args.workdir))
-            f.write(('python3 run.py --repo=%s --workdir=%s --outdir=%s '
-                '--firstrun=%d --runs=1 %s\n') % (self.args.repo,
-                    self.args.workdir, self.args.outdir, run.index,
-                    exp_path))
+            f.write('python3 run.py --pickled %s\n' % (exp_path))
             f.write('status=$?\n')
             if self.cleanup:
                 f.write('rm -rf %s\n' % (run.env.workdir))

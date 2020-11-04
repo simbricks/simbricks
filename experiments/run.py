@@ -14,6 +14,9 @@ def mkdir_if_not_exists(path):
 parser = argparse.ArgumentParser()
 parser.add_argument('experiments', metavar='EXP', type=str, nargs='+',
         help='An experiment file to run')
+parser.add_argument('--pickled', action='store_const', const=True,
+        default=False,
+        help='Read exp files as pickled runs instead of exp.py files')
 parser.add_argument('--runs', metavar='N', type=int, default=1,
         help='Number of repetition for each experiment')
 parser.add_argument('--firstrun', metavar='N', type=int, default=1,
@@ -47,21 +50,10 @@ g_slurm.add_argument('--slurm', dest='runtime', action='store_const',
 g_slurm.add_argument('--slurmdir', metavar='DIR',  type=str,
         default='./slurm/', help='Slurm communication directory')
 
+
 args = parser.parse_args()
 
-experiments = []
-for path in args.experiments:
-    modname, modext = os.path.splitext(os.path.basename(path))
-
-    if modext == '.py':
-        spec = importlib.util.spec_from_file_location(modname, path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        experiments += mod.experiments
-    else:
-        with open(path, 'rb') as f:
-            experiments.append(pickle.load(f))
-
+# initialize runtime
 if args.runtime == 'parallel':
     rt = runtime.LocalParallelRuntime(cores=args.cores, mem=args.mem,
             verbose=args.verbose)
@@ -70,17 +62,33 @@ elif args.runtime == 'slurm':
 else:
     rt = runtime.LocalSimpleRuntime(verbose=args.verbose)
 
+# load experiments
+if not args.pickled:
+    # default: load python modules with experiments
+    experiments = []
+    for path in args.experiments:
+        modname, _ = os.path.splitext(os.path.basename(path))
 
-for e in experiments:
-    for run in range(args.firstrun, args.firstrun + args.runs):
-        outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
-        if os.path.exists(outpath):
-            print('skip %s run %d' % (e.name, run))
-            continue
+        spec = importlib.util.spec_from_file_location(modname, path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        experiments += mod.experiments
 
-        workdir = '%s/%s/%d' % (args.workdir, e.name, run)
+    for e in experiments:
+        for run in range(args.firstrun, args.firstrun + args.runs):
+            outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
+            if os.path.exists(outpath):
+                print('skip %s run %d' % (e.name, run))
+                continue
 
-        env = exp.ExpEnv(args.repo, workdir)
-        rt.add_run(runtime.Run(e, run, env, outpath))
+            workdir = '%s/%s/%d' % (args.workdir, e.name, run)
+
+            env = exp.ExpEnv(args.repo, workdir)
+            rt.add_run(runtime.Run(e, run, env, outpath))
+else:
+    # otherwise load pickled run object
+    for path in args.experiments:
+        with open(path, 'rb') as f:
+            rt.add_run(pickle.load(f))
 
 rt.start()
