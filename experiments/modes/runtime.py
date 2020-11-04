@@ -1,4 +1,7 @@
 import asyncio
+import pickle
+import os
+import pathlib
 
 import modes.experiments as exp
 
@@ -11,7 +14,7 @@ class Run(object):
         self.output = None
 
     def name(self):
-        return self.experiment.name + '[' + str(self.index) + ']'
+        return self.experiment.name + '.' + str(self.index)
 
 class Runtime(object):
     def add_run(self, run):
@@ -120,3 +123,56 @@ class LocalParallelRuntime(Runtime):
 
     def start(self):
         asyncio.run(self.do_start())
+
+class SlurmRuntime(Runtime):
+    def __init__(self, slurmdir, args, verbose=False, cleanup=True):
+        self.runnable = []
+        self.slurmdir = slurmdir
+        self.args = args
+        self.verbose = verbose
+        self.cleanup = cleanup
+
+    def add_run(self, run):
+        self.runnable.append(run)
+
+    def prep_run(self, run):
+        exp = run.experiment
+        exp_path = '%s/%s-%d.exp' % (self.slurmdir, exp.name, run.index)
+        exp_log = '%s/%s-%d.log' % (self.slurmdir, exp.name, run.index)
+        exp_script = '%s/%s-%d.sh' % (self.slurmdir, exp.name, run.index)
+
+        # write out pickled experiment
+        with open(exp_path, 'wb') as f:
+            pickle.dump(exp, f)
+
+        # create slurm batch script
+        with open(exp_script, 'w') as f:
+            f.write('#!/bin/sh\n')
+            f.write('#SBATCH -o %s -e %s\n' % (exp_log, exp_log))
+            f.write('#SBATCH -c %d\n' % (exp.resreq_cores(),))
+            f.write('#SBATCH --mem=%dM\n' % (exp.resreq_mem(),))
+            f.write('#SBATCH --job-name="%s"\n' % (run.name(),))
+            if exp.timeout is not None:
+                h = int(exp.timeout / 3600)
+                m = int((exp.timeout % 3600) / 60)
+                s = int(exp.timeout % 60)
+                f.write('#SBATCH --time=%02d:%02d:%02d\n' % (h, m, s))
+
+            f.write('mkdir -p %s\n' % (self.args.workdir))
+            f.write(('python3 run.py --repo=%s --workdir=%s --outdir=%s '
+                '--firstrun=%d --runs=1 %s\n') % (self.args.repo,
+                    self.args.workdir, self.args.outdir, run.index,
+                    exp_path))
+            f.write('status=$?\n')
+            if self.cleanup:
+                f.write('rm -rf %s\n' % (run.env.workdir))
+            f.write('exit $status\n')
+
+        return exp_script
+
+    def start(self):
+        pathlib.Path(self.slurmdir).mkdir(parents=True, exist_ok=True)
+
+        for run in self.runnable:
+            script = self.prep_run(run)
+            os.system('sbatch ' + script)
