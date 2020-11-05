@@ -77,6 +77,8 @@ class Experiment(object):
 
             for s in sockets:
                 await exectools.await_file(s, verbose=verbose)
+            await asyncio.sleep(0.5)
+
 
             # start networks
             for net in self.networks:
