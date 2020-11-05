@@ -18,12 +18,21 @@ class Experiment(object):
         self.networks = []
 
     def add_host(self, sim):
+        for h in self.hosts:
+            if h.name == sim.name:
+                raise Exception('Duplicate host name')
         self.hosts.append(sim)
 
     def add_nic(self, sim):
+        for n in self.nics:
+            if n.name == sim.name:
+                raise Exception('Duplicate nic name')
         self.nics.append(sim)
 
     def add_network(self, sim):
+        for n in self.networks:
+            if n.name == sim.name:
+                raise Exception('Duplicate net name')
         self.networks.append(sim)
 
     async def prepare(self, env, verbose=False):
