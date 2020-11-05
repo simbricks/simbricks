@@ -21,6 +21,8 @@ parser.add_argument('--runs', metavar='N', type=int, default=1,
         help='Number of repetition for each experiment')
 parser.add_argument('--firstrun', metavar='N', type=int, default=1,
         help='ID for first run')
+parser.add_argument('--force', action='store_const', const=True, default=False,
+        help='Run experiments even if output already exists')
 parser.add_argument('--verbose', action='store_const', const=True,
         default=False,
         help='Verbose output')
@@ -66,7 +68,7 @@ else:
 
 def add_exp(e, run, prereq, create_cp, restore_cp):
     outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
-    if os.path.exists(outpath):
+    if os.path.exists(outpath) and not args.force:
         print('skip %s run %d' % (e.name, run))
         return None
 
