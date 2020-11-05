@@ -29,6 +29,9 @@ class HostSim(Simulator):
         nic.name = self.name + '.' + nic.name
         self.nics.append(nic)
 
+    def set_config(self, nc):
+        self.node_config = nc
+
 class NICSim(Simulator):
     network = None
     name = ''
@@ -91,6 +94,10 @@ class Gem5Host(HostSim):
     mem = 16 * 1024 # 16G
     cpu_type_cp = 'X86KvmCPU'
     cpu_type = 'TimingSimpleCPU'
+
+    def set_config(self, nc):
+        nc.sim = 'gem5'
+        super().set_config(nc)
 
     def resreq_cores(self):
         return 1
@@ -175,9 +182,12 @@ def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
 
         host = host_class()
         host.name = '%s.%d' % (name_prefix, i)
-        host.node_config = nc_class()
-        host.node_config.ip = '10.0.0.%d' % (ip_start + i)
-        host.node_config.app = app_class()
+
+        node_config = nc_class()
+        node_config.ip = '10.0.0.%d' % (ip_start + i)
+        node_config.app = app_class()
+        host.set_config(node_config)
+
         host.add_nic(nic)
         e.add_nic(nic)
         e.add_host(host)
