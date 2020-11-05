@@ -23,9 +23,10 @@ class HostSim(Simulator):
         self.nics = []
 
     def full_name(self):
-        return 'host.%s.%d' % (self.name, id(self))
+        return 'host.' + self.name
 
     def add_nic(self, nic):
+        nic.name = self.name + '.' + nic.name
         self.nics.append(nic)
 
 class NICSim(Simulator):
@@ -42,7 +43,7 @@ class NICSim(Simulator):
                     env.nic_shm_path(self))
 
     def full_name(self):
-        return 'nic.%s.%d' % (self.name, id(self))
+        return 'nic.' + self.name
 
 class NetSim(Simulator):
     name = ''
@@ -51,7 +52,7 @@ class NetSim(Simulator):
         self.nics = []
 
     def full_name(self):
-        return 'net.%s.%d' % (self.name, id(self))
+        return 'net.' + self.name
 
 
 class QemuHost(HostSim):

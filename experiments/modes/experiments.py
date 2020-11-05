@@ -163,22 +163,22 @@ class ExpEnv(object):
         self.qemu_kernel_path = self.repodir + '/images/bzImage'
 
     def hdcopy_path(self, sim):
-        return '%s/hdcopy.%s.%d' % (self.workdir, sim.name, id(sim))
+        return '%s/hdcopy.%s' % (self.workdir, sim.name)
 
     def hd_path(self, hd_name):
         return '%s/images/output-%s/%s' % (self.repodir, hd_name, hd_name)
 
     def cfgtar_path(self, sim):
-        return '%s/cfg.%s.%d.tar' % (self.workdir, sim.name, id(sim))
+        return '%s/cfg.%s.tar' % (self.workdir, sim.name)
 
     def nic_pci_path(self, sim):
-        return '%s/nic.pci.%s.%d' % (self.workdir, sim.name, id(sim))
+        return '%s/nic.pci.%s' % (self.workdir, sim.name)
 
     def nic_eth_path(self, sim):
-        return '%s/nic.eth.%s.%d' % (self.workdir, sim.name, id(sim))
+        return '%s/nic.eth.%s' % (self.workdir, sim.name)
 
     def nic_shm_path(self, sim):
-        return '%s/nic.shm.%s.%d' % (self.workdir, sim.name, id(sim))
+        return '%s/nic.shm.%s' % (self.workdir, sim.name)
 
 class ExpOutput(object):
     def __init__(self, exp):
