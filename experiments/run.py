@@ -32,6 +32,8 @@ g_env.add_argument('--workdir', metavar='DIR', type=str,
         default='./out/', help='Work directory base')
 g_env.add_argument('--outdir', metavar='DIR',  type=str,
         default='./out/', help='Output directory base')
+g_env.add_argument('--cpdir', metavar='DIR',  type=str,
+        default='./out/', help='Checkpoint directory base')
 
 g_par = parser.add_argument_group('Parallel Runtime')
 g_par.add_argument('--parallel', dest='runtime', action='store_const',
@@ -69,8 +71,9 @@ def add_exp(e, run, prereq, create_cp, restore_cp):
         return None
 
     workdir = '%s/%s/%d' % (args.workdir, e.name, run)
+    cpdir = '%s/%s/%d' % (args.cpdir, e.name, 0)
 
-    env = exp.ExpEnv(args.repo, workdir)
+    env = exp.ExpEnv(args.repo, workdir, cpdir)
     env.create_cp = create_cp
     env.restore_cp = restore_cp
 

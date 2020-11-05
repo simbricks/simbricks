@@ -155,18 +155,25 @@ class Experiment(object):
         return cores
 
 class ExpEnv(object):
-    def __init__(self, repo_path, workdir):
+    def __init__(self, repo_path, workdir, cpdir):
         self.repodir = os.path.abspath(repo_path)
         self.workdir = os.path.abspath(workdir)
+        self.cpdir = os.path.abspath(cpdir)
         self.qemu_img_path = self.repodir + '/qemu/qemu-img'
         self.qemu_path = self.repodir + '/qemu/x86_64-softmmu/qemu-system-x86_64'
         self.qemu_kernel_path = self.repodir + '/images/bzImage'
+        self.gem5_path = self.repodir + '/gem5/build/X86/gem5.opt'
+        self.gem5_py_path = self.repodir + '/gem5/configs/cosim/cosim.py'
+        self.gem5_kernel_path = self.repodir + '/images/vmlinux'
 
     def hdcopy_path(self, sim):
         return '%s/hdcopy.%s' % (self.workdir, sim.name)
 
     def hd_path(self, hd_name):
         return '%s/images/output-%s/%s' % (self.repodir, hd_name, hd_name)
+
+    def hd_raw_path(self, hd_name):
+        return '%s/images/output-%s/%s.raw' % (self.repodir, hd_name, hd_name)
 
     def cfgtar_path(self, sim):
         return '%s/cfg.%s.tar' % (self.workdir, sim.name)
@@ -179,6 +186,12 @@ class ExpEnv(object):
 
     def nic_shm_path(self, sim):
         return '%s/nic.shm.%s' % (self.workdir, sim.name)
+
+    def gem5_outdir(self, sim):
+        return '%s/gem5-out.%s' % (self.workdir, sim.name)
+
+    def gem5_cpdir(self, sim):
+        return '%s/gem5-cp.%s' % (self.cpdir, sim.name)
 
 class ExpOutput(object):
     def __init__(self, exp):

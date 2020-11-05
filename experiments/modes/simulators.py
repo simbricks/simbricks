@@ -98,13 +98,14 @@ class Gem5Host(HostSim):
     def resreq_mem(self):
         return 4096
 
+    def prep_cmds(self, env):
+        return [f'mkdir -p {env.gem5_cpdir(self)}']
 
     def run_cmd(self, env):
         cpu_type = self.cpu_type
         if env.create_cp:
             cpu_type = self.cpu_type_cp
 
-        self.cp_cpu_type
         cmd = (f'{env.gem5_path} --outdir={env.gem5_outdir(self)} '
             f'{env.gem5_py_path} --caches --l2cache --l3cache '
             '--l1d_size=32kB --l1i_size=32kB --l2_size=2MB --l3_size=32MB '
