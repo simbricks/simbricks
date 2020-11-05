@@ -164,3 +164,24 @@ class SwitchNet(NetSim):
         for n in self.nics:
             cmd += ' -s ' + env.nic_eth_path(n)
         return cmd
+
+
+def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
+        nc_class, app_class, ip_start=1):
+    hosts = []
+    for i in range(0, num):
+        nic = nic_class()
+        nic.set_network(net)
+
+        host = host_class()
+        host.name = '%s.%d' % (name_prefix, i)
+        host.node_config = nc_class()
+        host.node_config.ip = '10.0.0.%d' % (ip_start + i)
+        host.node_config.app = app_class()
+        host.add_nic(nic)
+        e.add_nic(nic)
+        e.add_host(host)
+
+        hosts.append(host)
+
+    return hosts
