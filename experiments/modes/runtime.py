@@ -38,6 +38,7 @@ class LocalSimpleRuntime(Runtime):
     def start(self):
         for run in self.runnable:
             pathlib.Path(run.env.workdir).mkdir(parents=True, exist_ok=True)
+            pathlib.Path(run.env.cpdir).mkdir(parents=True, exist_ok=True)
 
             run.output = exp.run_exp_local(run.experiment, run.env,
                     verbose=self.verbose)
@@ -72,6 +73,7 @@ class LocalParallelRuntime(Runtime):
     async def do_run(self, run):
         ''' actually starts a run '''
         pathlib.Path(run.env.workdir).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(run.env.cpdir).mkdir(parents=True, exist_ok=True)
 
         await run.experiment.prepare(run.env, verbose=self.verbose)
         print('starting run ', run.name())
