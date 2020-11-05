@@ -3,6 +3,7 @@ import sys
 import os
 import importlib
 import pickle
+import fnmatch
 import modes.experiments as exp
 import modes.runtime as runtime
 
@@ -14,6 +15,8 @@ def mkdir_if_not_exists(path):
 parser = argparse.ArgumentParser()
 parser.add_argument('experiments', metavar='EXP', type=str, nargs='+',
         help='An experiment file to run')
+parser.add_argument('--filter', metavar='PATTERN', type=str, nargs='+',
+        help='Pattern to match experiment names against')
 parser.add_argument('--pickled', action='store_const', const=True,
         default=False,
         help='Read exp files as pickled runs instead of exp.py files')
@@ -96,6 +99,16 @@ if not args.pickled:
         experiments += mod.experiments
 
     for e in experiments:
+        # apply filter if any specified
+        if len(args.filter) > 0:
+            match = False
+            for f in args.filter:
+                if fnmatch.fnmatch(e.name, f):
+                    match = True
+                    break
+            if not match:
+                continue
+
         # if this is an experiment with a checkpoint we might have to create it
         if e.checkpoint:
             prereq = add_exp(e, 0, None, True, False)
