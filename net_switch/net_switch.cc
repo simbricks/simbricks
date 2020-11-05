@@ -125,9 +125,11 @@ int main(int argc, char *argv[])
             struct netsim_interface nsif;
             int sync = 1;
             if (netsim_init(&nsif, optarg, &sync) != 0) {
+                fprintf(stderr, "connecting to %s failed\n", optarg);
                 return EXIT_FAILURE;
             }
             nsifs.push_back(nsif);
+            break;
         }
         default:
             fprintf(stderr, "unknown option %c\n", c);
