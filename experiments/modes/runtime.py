@@ -2,6 +2,7 @@ import asyncio
 import pickle
 import os
 import pathlib
+import shutil
 import re
 
 import modes.experiments as exp
@@ -17,6 +18,14 @@ class Run(object):
 
     def name(self):
         return self.experiment.name + '.' + str(self.index)
+
+    def prep_dirs(self):
+        shutil.rmtree(self.env.workdir, ignore_errors=True)
+        if self.env.create_cp:
+            shutil.rmtree(self.env.cpdir, ignore_errors=True)
+
+        pathlib.Path(self.env.workdir).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.env.cpdir).mkdir(parents=True, exist_ok=True)
 
 class Runtime(object):
     def add_run(self, run):
@@ -37,9 +46,7 @@ class LocalSimpleRuntime(Runtime):
 
     def start(self):
         for run in self.runnable:
-            pathlib.Path(run.env.workdir).mkdir(parents=True, exist_ok=True)
-            pathlib.Path(run.env.cpdir).mkdir(parents=True, exist_ok=True)
-
+            run.prep_dirs()
             run.output = exp.run_exp_local(run.experiment, run.env,
                     verbose=self.verbose)
             self.complete.append(run)
@@ -72,8 +79,7 @@ class LocalParallelRuntime(Runtime):
 
     async def do_run(self, run):
         ''' actually starts a run '''
-        pathlib.Path(run.env.workdir).mkdir(parents=True, exist_ok=True)
-        pathlib.Path(run.env.cpdir).mkdir(parents=True, exist_ok=True)
+        run.prep_dirs()
 
         await run.experiment.prepare(run.env, verbose=self.verbose)
         print('starting run ', run.name())
