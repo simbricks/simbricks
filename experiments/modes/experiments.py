@@ -4,6 +4,7 @@ import modes.exectools as exectools
 import shlex
 import time
 import json
+import traceback
 
 class Experiment(object):
     name = None
@@ -99,6 +100,7 @@ class Experiment(object):
             # wait for necessary hosts to terminate
         except:
             out.set_failed()
+            traceback.print_exc()
 
         finally:
             out.set_end()
