@@ -100,7 +100,7 @@ if not args.pickled:
 
     for e in experiments:
         # apply filter if any specified
-        if len(args.filter) > 0:
+        if (args.filter) and (len(args.filter) > 0):
             match = False
             for f in args.filter:
                 if fnmatch.fnmatch(e.name, f):
