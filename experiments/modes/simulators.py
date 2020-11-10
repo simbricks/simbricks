@@ -50,6 +50,7 @@ class NICSim(Simulator):
 
 class NetSim(Simulator):
     name = ''
+    opt = ''
 
     def __init__(self):
         self.nics = []
@@ -173,11 +174,27 @@ class SwitchNet(NetSim):
         return cmd
 
 
+class NS3DumbbellNet(NetSim):
+    def run_cmd(self, env):
+        ports = ''
+        for n in self.nics:
+            if 'server' in n.name:
+                ports += '--CosimPortLeft=' + env.nic_eth_path(n) + ' '
+            else:
+                ports += '--CosimPortRight=' + env.nic_eth_path(n) + ' '
+
+        cmd = env.repodir + '/ns-3' + '/cosim-run.sh cosim cosim-dumbbell-example ' + ports + ' ' + self.opt
+        print(cmd)
+
+        return cmd
+
+
 def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
         nc_class, app_class, ip_start=1):
     hosts = []
     for i in range(0, num):
         nic = nic_class()
+        #nic.name = '%s.%d' % (name_prefix, i)
         nic.set_network(net)
 
         host = host_class()
