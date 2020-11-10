@@ -201,3 +201,14 @@ class IperfUDPClient(AppConfig):
     rate = '150m'
     def run_cmds(self, node):
         return ['iperf -c ' + self.server_ip + ' -u -b ' + self.rate]
+
+class NOPaxosReplica(AppConfig):
+    index = 0
+    def run_cmds(self, node):
+        return ['/root/nopaxos/bench/replica -c /root/nopaxos.config -i ' +
+                str(self.index) + ' -m nopaxos']
+
+class NOPaxosClient(AppConfig):
+    def run_cmds(self, node):
+        return ['/root/nopaxos/bench/client -c /root/nopaxos.config ' +
+                '-m nopaxos -n 2000']
