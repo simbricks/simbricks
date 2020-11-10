@@ -105,7 +105,7 @@ class CorundumLinuxNode(LinuxNode):
         self.drivers.append('/tmp/guest/mqnic.ko')
 
     def config_files(self):
-        m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'r')}
+        m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
         return {**m, **super().config_files()}
 
 
