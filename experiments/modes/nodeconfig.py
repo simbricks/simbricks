@@ -209,6 +209,11 @@ class NOPaxosReplica(AppConfig):
                 str(self.index) + ' -m nopaxos']
 
 class NOPaxosClient(AppConfig):
+    server_ips = []
     def run_cmds(self, node):
-        return ['/root/nopaxos/bench/client -c /root/nopaxos.config ' +
-                '-m nopaxos -n 2000']
+        cmds = []
+        for ip in self.server_ips:
+            cmds.append('ping -c 1 ' + ip)
+        cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
+                '-m nopaxos -n 2000')
+        return cmds
