@@ -18,6 +18,7 @@ class HostSim(Simulator):
     disk_image = 'base'
     name = ''
     wait = False
+    sleep = 0
 
     def __init__(self):
         self.nics = []
@@ -186,6 +187,22 @@ class NS3DumbbellNet(NetSim):
         cmd = env.repodir + '/ns-3' + '/cosim-run.sh cosim cosim-dumbbell-example ' + ports + ' ' + self.opt
         print(cmd)
 
+        return cmd
+
+
+class NS3SequencerNet(NetSim):
+    def run_cmd(self, env):
+        ports = ''
+        for n in self.nics:
+            if 'client' in n.name:
+                ports += '--ClientPort=' + env.nic_eth_path(n) + ' '
+            elif 'replica' in n.name:
+                ports += '--ServerPort=' + env.nic_eth_path(n) + ' '
+            elif 'sequencer' in n.name:
+                ports += '--EndhostSequencerPort=' + env.nic_eth_path(n) + ' '
+            else:
+                raise Exception('Wrong NIC type')
+        cmd = env.repodir + '/ns-3' + '/cosim-run.sh sequencer sequencer-single-switch-example ' + ports + ' ' + self.opt
         return cmd
 
 

@@ -104,6 +104,9 @@ class Experiment(object):
                 if host.wait:
                     wait_hosts.append(sc)
 
+                if host.sleep > 0:
+                    await asyncio.sleep(host.sleep)
+
             if verbose:
                 print('%s: waiting for hosts to terminate' % self.name)
             for sc in wait_hosts:
