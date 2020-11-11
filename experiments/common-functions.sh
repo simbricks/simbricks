@@ -263,7 +263,7 @@ run_ns3_sequencer() {
     done
 
     $NS3_BASE/cosim-run.sh sequencer sequencer-single-switch-example \
-        $ports $4 &>$OUTDIR/ns3_sequencer.$1.log &
+        $ports $5 &>$OUTDIR/ns3_sequencer.$1.log &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
     return $pid
