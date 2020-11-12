@@ -217,3 +217,7 @@ class NOPaxosClient(AppConfig):
         cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
                 '-m nopaxos -n 2000')
         return cmds
+
+class NOPaxosSequencer(AppConfig):
+    def run_cmds(self, node):
+        return ['/root/nopaxos/sequencer/sequencer -c /root/sequencer.config']
