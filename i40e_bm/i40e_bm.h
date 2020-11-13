@@ -405,7 +405,24 @@ class lan_queue_rx : public lan_queue_base {
                 uint32_t &reg_ena, uint32_t &fpm_basereg,
                 uint32_t &reg_intqctl);
         virtual void reset();
-        void packet_received(const void *data, size_t len);
+        void packet_received(const void *data, size_t len, uint32_t hash);
+};
+
+class rss_key_cache {
+    protected:
+        static const size_t key_len = 52;
+        static const size_t cache_len = 288; // big enough for 2x ipv6 (2x128 + 2x16)
+        bool cache_dirty;
+        const uint32_t (&key)[key_len / 4];
+        uint32_t cache[cache_len];
+
+        void build();
+
+    public:
+        rss_key_cache(const uint32_t (&key_)[key_len / 4]);
+        void set_dirty();
+        uint32_t hash_ipv4(uint32_t sip, uint32_t dip, uint16_t sp,
+                uint16_t dp);
 };
 
 // rx tx management
@@ -417,15 +434,19 @@ class lan {
 
         i40e_bm &dev;
         logger log;
+        rss_key_cache rss_kc;
         const size_t num_qs;
         lan_queue_rx **rxqs;
         lan_queue_tx **txqs;
 
+        bool rss_steering(const void *data, size_t len, uint16_t &queue,
+                uint32_t &hash);
     public:
         lan(i40e_bm &dev, size_t num_qs);
         void reset();
         void qena_updated(uint16_t idx, bool rx);
         void tail_updated(uint16_t idx, bool rx);
+        void rss_key_updated();
         void packet_received(const void *data, size_t len);
 };
 
@@ -507,7 +528,10 @@ protected:
         uint32_t pf_arqh;
         uint32_t pf_arqt;
 
+        uint32_t pfqf_ctl_0;
+
         uint32_t glqf_hkey[13];
+        uint32_t pfqf_hlut[128];
     };
 
 public:

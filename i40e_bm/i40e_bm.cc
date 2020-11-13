@@ -187,6 +187,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
     {
         val = regs.glqf_hkey[(addr - I40E_GLQF_HKEY(0)) / 4];
+    } else if (addr >= I40E_PFQF_HLUT(0) &&
+            addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX))
+    {
+        val = regs.pfqf_hlut[(addr - I40E_PFQF_HLUT(0)) / 128];
     } else {
 
         switch (addr) {
@@ -374,6 +378,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = 0;
                 break;
 
+            case I40E_PFQF_CTL_0:
+                val = regs.pfqf_ctl_0;
+                break;
+
             default:
 #ifdef DEBUG_DEV
                 log << "unhandled mem read addr="  << addr
@@ -456,6 +464,11 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
             addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
     {
         regs.glqf_hkey[(addr - I40E_GLQF_HKEY(0)) / 4] = val;
+        lanmgr.rss_key_updated();
+    } else if (addr >= I40E_PFQF_HLUT(0) &&
+            addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX))
+    {
+        regs.pfqf_hlut[(addr - I40E_PFQF_HLUT(0)) / 128] = val;
     } else {
         switch (addr) {
             case I40E_PFGEN_CTRL:
@@ -564,6 +577,10 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
                 regs.pf_arqt = val;
                 break;
 
+            case I40E_PFQF_CTL_0:
+                regs.pfqf_ctl_0 = val;
+                break;
+
             default:
 #ifdef DEBUG_DEV
                 log << "unhandled mem write addr="  << addr
@@ -654,6 +671,21 @@ void i40e_bm::reset(bool indicate_done)
         }
         intevs[i].time = 0;
     }
+
+    // add default hash key
+    regs.glqf_hkey[0] = 0xda565a6d;
+    regs.glqf_hkey[1] = 0xc20e5b25;
+    regs.glqf_hkey[2] = 0x3d256741;
+    regs.glqf_hkey[3] = 0xb08fa343;
+    regs.glqf_hkey[4] = 0xcb2bcad0;
+    regs.glqf_hkey[5] = 0xb4307bae;
+    regs.glqf_hkey[6] = 0xa32dcb77;
+    regs.glqf_hkey[7] = 0x0cf23080;
+    regs.glqf_hkey[8] = 0x3bb7426a;
+    regs.glqf_hkey[9] = 0xfa01acbe;
+    regs.glqf_hkey[10] = 0x0;
+    regs.glqf_hkey[11] = 0x0;
+    regs.glqf_hkey[12] = 0x0;
 }
 
 shadow_ram::shadow_ram(i40e_bm &dev_)
