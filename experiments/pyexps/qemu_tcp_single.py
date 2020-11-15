@@ -26,7 +26,7 @@ for n in kinds_of_net:
     if n == 'dumbbell':
         net_class = sim.NS3DumbbellNet
     if n == 'bridge':
-        net = sim.NS3BridgeNet()
+        net_class = sim.NS3BridgeNet
 
 
     # set nic sim
