@@ -86,7 +86,7 @@ class Experiment(object):
                     print('start Net:', net.run_cmd(env))
 
                 sc = exectools.SimpleComponent(net.full_name(),
-                        shlex.split(net.run_cmd(env)), verbose=verbose)
+                        shlex.split(net.run_cmd(env)), verbose=verbose, canfail=True)
                 await sc.start()
                 running.append((net, sc))
 
