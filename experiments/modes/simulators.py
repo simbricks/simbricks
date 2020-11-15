@@ -189,6 +189,16 @@ class NS3DumbbellNet(NetSim):
 
         return cmd
 
+class NS3BridgeNet(NetSim):
+    def run_cmd(self, env):
+        ports = ''
+        for n in self.nics:
+            ports += '--CosimPort=' + env.nic_eth_path(n) + ' '
+
+        cmd = env.repodir + '/ns-3' + '/cosim-run.sh cosim cosim-bridge-example ' + ports + ' ' + self.opt
+        print(cmd)
+
+        return cmd
 
 class NS3SequencerNet(NetSim):
     def run_cmd(self, env):

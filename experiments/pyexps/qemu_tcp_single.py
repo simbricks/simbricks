@@ -12,7 +12,6 @@ import modes.nodeconfig as node
 
 kinds_of_host = ['qemu']
 kinds_of_nic = ['cv','cb','ib']
-#kinds_of_nic = ['ib']
 kinds_of_net = ['wire', 'switch', 'dumbbell', 'bridge']
 kinds_of_app = ['TCPs']
 
@@ -26,9 +25,8 @@ for n in kinds_of_net:
         net_class = sim.SwitchNet
     if n == 'dumbbell':
         net_class = sim.NS3DumbbellNet
-    #if n == 'bridge':
-        # net = sim.NS3BridgeNet()
-        #continue
+    if n == 'bridge':
+        net = sim.NS3BridgeNet()
 
 
     # set nic sim
@@ -64,21 +62,3 @@ for n in kinds_of_net:
         print(e.name)
         experiments.append(e)
 
-
-"""
-e = exp.Experiment('qemu-i40e-pair')
-net = sim.SwitchNet()
-e.add_network(net)
-
-servers = sim.create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
-        node.I40eLinuxNode, node.IperfTCPServer)
-
-clients = sim.create_basic_hosts(e, 2, 'client', net, sim.I40eNIC, sim.QemuHost,
-        node.I40eLinuxNode, node.IperfTCPClient, ip_start = 2)
-
-for c in clients:
-    c.wait = True
-    c.node_config.app.server_ip = servers[0].node_config.ip
-
-experiments = [e]
-"""
