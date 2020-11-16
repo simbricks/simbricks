@@ -121,7 +121,7 @@ class MtcpNode(NodeConfig):
             'mkdir -p /dev/hugepages',
             'mount -t hugetlbfs nodev /dev/hugepages',
             'mkdir -p /dev/shm',
-            'mount -t tmpfs tmpfs /dev/shm'
+            'mount -t tmpfs tmpfs /dev/shm',
             'echo ' + str(self.num_hugepages) + ' > /sys/devices/system/' + \
                     'node/node0/hugepages/hugepages-2048kB/nr_hugepages',
         ]
@@ -148,13 +148,15 @@ class MtcpNode(NodeConfig):
                 "sndbuf = 8192\n"
                 "tcp_timeout = 10\n"
                 "tcp_timewait = 0\n"
-                "stat_print = dpdk0\n")}
+                "#stat_print = dpdk0\n")}
 
         return {**m, **super().config_files()}
 
 class TASNode(NodeConfig):
     pci_dev = '0000:00:02.0'
     num_hugepages = 4096
+    fp_cores = 1
+    preload = True
 
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
@@ -163,21 +165,24 @@ class TASNode(NodeConfig):
             'mkdir -p /dev/hugepages',
             'mount -t hugetlbfs nodev /dev/hugepages',
             'mkdir -p /dev/shm',
-            'mount -t tmpfs tmpfs /dev/shm'
+            'mount -t tmpfs tmpfs /dev/shm',
             'echo ' + str(self.num_hugepages) + ' > /sys/devices/system/' + \
                     'node/node0/hugepages/hugepages-2048kB/nr_hugepages',
         ]
 
     def prepare_post_cp(self):
-        return super().prepare_post_cp() + [
+        cmds = super().prepare_post_cp() + [
             'insmod /root/dpdk/lib/modules/5.4.46/extra/dpdk/igb_uio.ko',
-            '/root/mtcp/dpdk/usertools/dpdk-devbind.py -b igb_uio ' +
-                self.pci_dev,
-            'insmod /root/mtcp/dpdk-iface-kmod/dpdk_iface.ko',
-            '/root/mtcp/dpdk-iface-kmod/dpdk_iface_main',
-            'ip link set dev dpdk0 up',
-            'ip addr add %s/%d dev dpdk0' % (self.ip, self.prefix)
+            '/root/dpdk/sbin/dpdk-devbind -b igb_uio ' + self.pci_dev,
+            'cd /root/tas',
+            'tas/tas --ip-addr=%s/%d --fp-cores-max=%d --fp-no-ints &' % (
+                self.ip, self.prefix, self.fp_cores),
+            'sleep 1'
         ]
+
+        if self.preload:
+             cmds += ['export LD_PRELOAD=/root/tas/lib/libtas_interpose.so']
+        return cmds
 
 
 class IperfTCPServer(AppConfig):
