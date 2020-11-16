@@ -40,10 +40,11 @@ void lan::reset()
 
 void lan::qena_updated(uint16_t idx, bool rx)
 {
-#ifdef DEBUG_LAN
-    log << " qena updated idx=" << idx << " rx=" << rx << logger::endl;
-#endif
     uint32_t &reg = (rx ? dev.regs.qrx_ena[idx] : dev.regs.qtx_ena[idx]);
+#ifdef DEBUG_LAN
+    log << " qena updated idx=" << idx << " rx=" << rx << " reg=" << reg <<
+        logger::endl;
+#endif
     lan_queue_base &q = (rx ? static_cast<lan_queue_base &>(*rxqs[idx]) :
         static_cast<lan_queue_base &>(*txqs[idx]));
 
@@ -102,6 +103,9 @@ bool lan::rss_steering(const void *data, size_t len, uint16_t &queue,
             128 : 512);
     uint16_t idx = hash % luts;
     queue = (dev.regs.pfqf_hlut[idx / 4] >> (8 * (idx % 4))) & 0x3f;
+#ifdef DEBUG_LAN
+    log << "  q=" << queue << " h=" << hash << " i=" << idx << logger::endl;
+#endif
     return true;
 }
 
