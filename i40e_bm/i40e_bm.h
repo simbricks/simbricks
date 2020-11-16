@@ -530,7 +530,7 @@ protected:
 
         uint32_t pfqf_ctl_0;
 
-        uint32_t glqf_hkey[13];
+        uint32_t pfqf_hkey[13];
         uint32_t pfqf_hlut[128];
     };
 

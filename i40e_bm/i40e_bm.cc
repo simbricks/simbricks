@@ -183,10 +183,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             addr <= I40E_GLHMC_LANRXCNT(I40E_GLHMC_LANRXCNT_MAX_INDEX))
     {
         val = regs.glhmc_lanrxcnt[(addr - I40E_GLHMC_LANRXCNT(0)) / 4];
-    } else if (addr >= I40E_GLQF_HKEY(0) &&
-            addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
+    } else if (addr >= I40E_PFQF_HKEY(0) &&
+            addr <= I40E_PFQF_HKEY(I40E_PFQF_HKEY_MAX_INDEX))
     {
-        val = regs.glqf_hkey[(addr - I40E_GLQF_HKEY(0)) / 4];
+        val = regs.pfqf_hkey[(addr - I40E_PFQF_HKEY(0)) / 128];
     } else if (addr >= I40E_PFQF_HLUT(0) &&
             addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX))
     {
@@ -460,10 +460,10 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
             addr <= I40E_GLHMC_LANRXCNT(I40E_GLHMC_LANRXCNT_MAX_INDEX))
     {
         regs.glhmc_lanrxcnt[(addr - I40E_GLHMC_LANRXCNT(0)) / 4] = val;
-    } else if (addr >= I40E_GLQF_HKEY(0) &&
-            addr <= I40E_GLQF_HKEY(I40E_GLQF_HKEY_MAX_INDEX))
+    } else if (addr >= I40E_PFQF_HKEY(0) &&
+            addr <= I40E_PFQF_HKEY(I40E_PFQF_HKEY_MAX_INDEX))
     {
-        regs.glqf_hkey[(addr - I40E_GLQF_HKEY(0)) / 4] = val;
+        regs.pfqf_hkey[(addr - I40E_PFQF_HKEY(0)) / 128] = val;
         lanmgr.rss_key_updated();
     } else if (addr >= I40E_PFQF_HLUT(0) &&
             addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX))
@@ -673,19 +673,19 @@ void i40e_bm::reset(bool indicate_done)
     }
 
     // add default hash key
-    regs.glqf_hkey[0] = 0xda565a6d;
-    regs.glqf_hkey[1] = 0xc20e5b25;
-    regs.glqf_hkey[2] = 0x3d256741;
-    regs.glqf_hkey[3] = 0xb08fa343;
-    regs.glqf_hkey[4] = 0xcb2bcad0;
-    regs.glqf_hkey[5] = 0xb4307bae;
-    regs.glqf_hkey[6] = 0xa32dcb77;
-    regs.glqf_hkey[7] = 0x0cf23080;
-    regs.glqf_hkey[8] = 0x3bb7426a;
-    regs.glqf_hkey[9] = 0xfa01acbe;
-    regs.glqf_hkey[10] = 0x0;
-    regs.glqf_hkey[11] = 0x0;
-    regs.glqf_hkey[12] = 0x0;
+    regs.pfqf_hkey[0] = 0xda565a6d;
+    regs.pfqf_hkey[1] = 0xc20e5b25;
+    regs.pfqf_hkey[2] = 0x3d256741;
+    regs.pfqf_hkey[3] = 0xb08fa343;
+    regs.pfqf_hkey[4] = 0xcb2bcad0;
+    regs.pfqf_hkey[5] = 0xb4307bae;
+    regs.pfqf_hkey[6] = 0xa32dcb77;
+    regs.pfqf_hkey[7] = 0x0cf23080;
+    regs.pfqf_hkey[8] = 0x3bb7426a;
+    regs.pfqf_hkey[9] = 0xfa01acbe;
+    regs.pfqf_hkey[10] = 0x0;
+    regs.pfqf_hkey[11] = 0x0;
+    regs.pfqf_hkey[12] = 0x0;
 }
 
 shadow_ram::shadow_ram(i40e_bm &dev_)

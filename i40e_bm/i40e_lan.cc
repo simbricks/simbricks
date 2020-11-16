@@ -14,7 +14,7 @@ using namespace i40e;
 extern nicbm::Runner *runner;
 
 lan::lan(i40e_bm &dev_, size_t num_qs_)
-    : dev(dev_), log("lan"), rss_kc(dev_.regs.glqf_hkey), num_qs(num_qs_)
+    : dev(dev_), log("lan"), rss_kc(dev_.regs.pfqf_hkey), num_qs(num_qs_)
 {
     rxqs = new lan_queue_rx *[num_qs];
     txqs = new lan_queue_tx *[num_qs];
