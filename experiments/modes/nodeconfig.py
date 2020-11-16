@@ -49,6 +49,7 @@ class NodeConfig(object):
 
     def prepare_pre_cp(self):
         return [
+            'set -x',
             'export HOME=/root',
             'export LANG=en_US',
             'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:' + \
