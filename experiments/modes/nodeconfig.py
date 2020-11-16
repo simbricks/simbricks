@@ -227,3 +227,39 @@ class NOPaxosClient(AppConfig):
 class NOPaxosSequencer(AppConfig):
     def run_cmds(self, node):
         return ['/root/nopaxos/sequencer/sequencer -c /root/sequencer.config']
+
+
+class RPCServer(AppConfig):
+    port = 1234
+    threads = 1
+    max_flows = 1234
+    max_bytes = 1024
+
+    def run_cmds(self, node):
+        exe = 'echoserver_linux' if not isinstance(node, MtcpNode) else \
+            'echoserver_mtcp'
+        return ['cd /root/tasbench/micro_rpc',
+            './%s %d %d /tmp/guest/mtcp.conf %d %d' % (exe, self.port,
+                self.threads, self.max_flows, self.max_bytes)]
+
+class RPCClient(AppConfig):
+    server_ip = '10.0.0.1'
+    port = 1234
+    threads = 1
+    max_flows = 128
+    max_bytes = 1024
+    max_pending = 1
+    openall_delay = 2
+    max_msgs_conn = 0
+    max_pend_conns = 8
+    time = 25
+
+    def run_cmds(self, node):
+        exe = 'testclient_linux' if not isinstance(node, MtcpNode) else \
+            'testclient_mtcp'
+        return ['cd /root/tasbench/micro_rpc',
+            './%s %s %d %d /tmp/guest/mtcp.conf %d %d %d %d %d %d &' % (exe,
+                self.server_ip, self.port, self.threads, self.max_bytes,
+                self.max_pending, self.max_flows, self.openall_delay,
+                self.max_msgs_conn, self.max_pend_conns),
+            'sleep %d' % (self.time)]
