@@ -502,6 +502,7 @@ protected:
         uint32_t qint_tqctl[NUM_QUEUES];
         uint32_t qtx_ena[NUM_QUEUES];
         uint32_t qtx_tail[NUM_QUEUES];
+        uint32_t qtx_ctl[NUM_QUEUES];
         uint32_t qint_rqctl[NUM_QUEUES];
         uint32_t qrx_ena[NUM_QUEUES];
         uint32_t qrx_tail[NUM_QUEUES];
@@ -532,6 +533,16 @@ protected:
 
         uint32_t pfqf_hkey[13];
         uint32_t pfqf_hlut[128];
+
+        uint32_t prtdcb_fccfg;
+        uint32_t prtdcb_mflcn;
+        uint32_t prt_l2tagsen;
+        uint32_t prtqf_ctl_0;
+
+        uint32_t glrpb_ghw;
+        uint32_t glrpb_glw;
+        uint32_t glrpb_phw;
+        uint32_t glrpb_plw;
     };
 
 public:

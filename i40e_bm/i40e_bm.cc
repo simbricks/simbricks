@@ -155,6 +155,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             addr <= I40E_QTX_TAIL(NUM_QUEUES - 1))
     {
         val = regs.qtx_tail[(addr - I40E_QTX_TAIL(0)) / 4];
+    } else if (addr >= I40E_QTX_CTL(0) &&
+            addr <= I40E_QTX_CTL(NUM_QUEUES - 1))
+    {
+        val = regs.qtx_ctl[(addr - I40E_QTX_CTL(0)) / 4];
     } else if (addr >= I40E_QINT_RQCTL(0) &&
             addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1))
     {
@@ -382,6 +386,32 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = regs.pfqf_ctl_0;
                 break;
 
+            case I40E_PRTDCB_FCCFG:
+                val = regs.prtdcb_fccfg;
+                break;
+            case I40E_PRTDCB_MFLCN:
+                val = regs.prtdcb_mflcn;
+                break;
+            case I40E_PRT_L2TAGSEN:
+                val = regs.prt_l2tagsen;
+                break;
+            case I40E_PRTQF_CTL_0:
+                val = regs.prtqf_ctl_0;
+                break;
+
+            case I40E_GLRPB_GHW:
+                val = regs.glrpb_ghw;
+                break;
+            case I40E_GLRPB_GLW:
+                val = regs.glrpb_glw;
+                break;
+            case I40E_GLRPB_PHW:
+                val = regs.glrpb_phw;
+                break;
+            case I40E_GLRPB_PLW:
+                val = regs.glrpb_plw;
+                break;
+
             default:
 #ifdef DEBUG_DEV
                 log << "unhandled mem read addr="  << addr
@@ -428,6 +458,11 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
         size_t idx = (addr - I40E_QTX_TAIL(0)) / 4;
         regs.qtx_tail[idx] = val;
         lanmgr.tail_updated(idx, false);
+    } else if (addr >= I40E_QTX_CTL(0) &&
+            addr <= I40E_QTX_CTL(NUM_QUEUES - 1))
+    {
+        regs.qtx_ctl[(addr - I40E_QTX_CTL(0)) / 4] = val;
+
     } else if (addr >= I40E_QINT_RQCTL(0) &&
             addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1))
     {
@@ -581,6 +616,31 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
                 regs.pfqf_ctl_0 = val;
                 break;
 
+            case I40E_PRTDCB_FCCFG:
+                regs.prtdcb_fccfg = val;
+                break;
+            case I40E_PRTDCB_MFLCN:
+                regs.prtdcb_mflcn = val;
+                break;
+            case I40E_PRT_L2TAGSEN:
+                regs.prt_l2tagsen = val;
+                break;
+            case I40E_PRTQF_CTL_0:
+                regs.prtqf_ctl_0 = val;
+                break;
+
+            case I40E_GLRPB_GHW:
+                regs.glrpb_ghw = val;
+                break;
+            case I40E_GLRPB_GLW:
+                regs.glrpb_glw = val;
+                break;
+            case I40E_GLRPB_PHW:
+                regs.glrpb_phw = val;
+                break;
+            case I40E_GLRPB_PLW:
+                regs.glrpb_plw = val;
+                break;
             default:
 #ifdef DEBUG_DEV
                 log << "unhandled mem write addr="  << addr
@@ -686,6 +746,10 @@ void i40e_bm::reset(bool indicate_done)
     regs.pfqf_hkey[10] = 0x0;
     regs.pfqf_hkey[11] = 0x0;
     regs.pfqf_hkey[12] = 0x0;
+
+    regs.glrpb_ghw = 0xF2000;
+    regs.glrpb_phw = 0x1246;
+    regs.glrpb_plw = 0x0846;
 }
 
 shadow_ram::shadow_ram(i40e_bm &dev_)
