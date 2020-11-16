@@ -8,6 +8,7 @@ class NodeConfig(object):
     prefix = 24
     cores = 1
     memory = 512
+    disk_image = 'base'
     app = None
 
     def config_str(self):
@@ -112,7 +113,9 @@ class CorundumLinuxNode(LinuxNode):
 
 
 class MtcpNode(NodeConfig):
+    disk_image = 'mtcp'
     pci_dev = '0000:00:02.0'
+    memory = 16 * 1024
     num_hugepages = 4096
 
     def prepare_pre_cp(self):
@@ -154,7 +157,9 @@ class MtcpNode(NodeConfig):
         return {**m, **super().config_files()}
 
 class TASNode(NodeConfig):
+    disk_image = 'tas'
     pci_dev = '0000:00:02.0'
+    memory = 16 * 1024
     num_hugepages = 4096
     fp_cores = 1
     preload = True
