@@ -13,6 +13,7 @@ ESSENTIAL_PACKAGES="
 ntp
 nfs-common
 iperf
+netperf
 netcat
 make
 git
