@@ -164,6 +164,10 @@ void queue_base::reset()
 
 void queue_base::reg_updated()
 {
+#ifdef DEBUG_QUEUES
+    log << "reg_updated: tail=" << reg_tail << " enabled=" << (int) enabled <<
+        logger::endl;
+#endif
     if (!enabled)
         return;
 

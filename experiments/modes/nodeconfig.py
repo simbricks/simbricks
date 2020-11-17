@@ -8,6 +8,7 @@ class NodeConfig(object):
     prefix = 24
     cores = 1
     memory = 512
+    disk_image = 'base'
     app = None
 
     def config_str(self):
@@ -49,6 +50,7 @@ class NodeConfig(object):
 
     def prepare_pre_cp(self):
         return [
+            'set -x',
             'export HOME=/root',
             'export LANG=en_US',
             'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:' + \
@@ -111,7 +113,9 @@ class CorundumLinuxNode(LinuxNode):
 
 
 class MtcpNode(NodeConfig):
+    disk_image = 'mtcp'
     pci_dev = '0000:00:02.0'
+    memory = 16 * 1024
     num_hugepages = 4096
 
     def prepare_pre_cp(self):
@@ -121,7 +125,7 @@ class MtcpNode(NodeConfig):
             'mkdir -p /dev/hugepages',
             'mount -t hugetlbfs nodev /dev/hugepages',
             'mkdir -p /dev/shm',
-            'mount -t tmpfs tmpfs /dev/shm'
+            'mount -t tmpfs tmpfs /dev/shm',
             'echo ' + str(self.num_hugepages) + ' > /sys/devices/system/' + \
                     'node/node0/hugepages/hugepages-2048kB/nr_hugepages',
         ]
@@ -148,13 +152,17 @@ class MtcpNode(NodeConfig):
                 "sndbuf = 8192\n"
                 "tcp_timeout = 10\n"
                 "tcp_timewait = 0\n"
-                "stat_print = dpdk0\n")}
+                "#stat_print = dpdk0\n")}
 
         return {**m, **super().config_files()}
 
 class TASNode(NodeConfig):
+    disk_image = 'tas'
     pci_dev = '0000:00:02.0'
+    memory = 16 * 1024
     num_hugepages = 4096
+    fp_cores = 1
+    preload = True
 
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
@@ -163,21 +171,24 @@ class TASNode(NodeConfig):
             'mkdir -p /dev/hugepages',
             'mount -t hugetlbfs nodev /dev/hugepages',
             'mkdir -p /dev/shm',
-            'mount -t tmpfs tmpfs /dev/shm'
+            'mount -t tmpfs tmpfs /dev/shm',
             'echo ' + str(self.num_hugepages) + ' > /sys/devices/system/' + \
                     'node/node0/hugepages/hugepages-2048kB/nr_hugepages',
         ]
 
     def prepare_post_cp(self):
-        return super().prepare_post_cp() + [
+        cmds = super().prepare_post_cp() + [
             'insmod /root/dpdk/lib/modules/5.4.46/extra/dpdk/igb_uio.ko',
-            '/root/mtcp/dpdk/usertools/dpdk-devbind.py -b igb_uio ' +
-                self.pci_dev,
-            'insmod /root/mtcp/dpdk-iface-kmod/dpdk_iface.ko',
-            '/root/mtcp/dpdk-iface-kmod/dpdk_iface_main',
-            'ip link set dev dpdk0 up',
-            'ip addr add %s/%d dev dpdk0' % (self.ip, self.prefix)
+            '/root/dpdk/sbin/dpdk-devbind -b igb_uio ' + self.pci_dev,
+            'cd /root/tas',
+            'tas/tas --ip-addr=%s/%d --fp-cores-max=%d --fp-no-ints &' % (
+                self.ip, self.prefix, self.fp_cores),
+            'sleep 1'
         ]
+
+        if self.preload:
+             cmds += ['export LD_PRELOAD=/root/tas/lib/libtas_interpose.so']
+        return cmds
 
 
 class IperfTCPServer(AppConfig):
@@ -221,3 +232,39 @@ class NOPaxosClient(AppConfig):
 class NOPaxosSequencer(AppConfig):
     def run_cmds(self, node):
         return ['/root/nopaxos/sequencer/sequencer -c /root/sequencer.config']
+
+
+class RPCServer(AppConfig):
+    port = 1234
+    threads = 1
+    max_flows = 1234
+    max_bytes = 1024
+
+    def run_cmds(self, node):
+        exe = 'echoserver_linux' if not isinstance(node, MtcpNode) else \
+            'echoserver_mtcp'
+        return ['cd /root/tasbench/micro_rpc',
+            './%s %d %d /tmp/guest/mtcp.conf %d %d' % (exe, self.port,
+                self.threads, self.max_flows, self.max_bytes)]
+
+class RPCClient(AppConfig):
+    server_ip = '10.0.0.1'
+    port = 1234
+    threads = 1
+    max_flows = 128
+    max_bytes = 1024
+    max_pending = 1
+    openall_delay = 2
+    max_msgs_conn = 0
+    max_pend_conns = 8
+    time = 25
+
+    def run_cmds(self, node):
+        exe = 'testclient_linux' if not isinstance(node, MtcpNode) else \
+            'testclient_mtcp'
+        return ['cd /root/tasbench/micro_rpc',
+            './%s %s %d %d /tmp/guest/mtcp.conf %d %d %d %d %d %d &' % (exe,
+                self.server_ip, self.port, self.threads, self.max_bytes,
+                self.max_pending, self.max_flows, self.openall_delay,
+                self.max_msgs_conn, self.max_pend_conns),
+            'sleep %d' % (self.time)]

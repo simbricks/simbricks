@@ -2,17 +2,19 @@
 #include <string.h>
 #include <cassert>
 #include <iostream>
+#include <arpa/inet.h>
 
 #include "i40e_bm.h"
 
 #include "i40e_base_wrapper.h"
+#include "headers.h"
 
 using namespace i40e;
 
 extern nicbm::Runner *runner;
 
 lan::lan(i40e_bm &dev_, size_t num_qs_)
-    : dev(dev_), log("lan"), num_qs(num_qs_)
+    : dev(dev_), log("lan"), rss_kc(dev_.regs.pfqf_hkey), num_qs(num_qs_)
 {
     rxqs = new lan_queue_rx *[num_qs];
     txqs = new lan_queue_tx *[num_qs];
@@ -29,6 +31,7 @@ lan::lan(i40e_bm &dev_, size_t num_qs_)
 
 void lan::reset()
 {
+    rss_kc.set_dirty();
     for (size_t i = 0; i < num_qs; i++) {
         rxqs[i]->reset();
         txqs[i]->reset();
@@ -37,10 +40,11 @@ void lan::reset()
 
 void lan::qena_updated(uint16_t idx, bool rx)
 {
-#ifdef DEBUG_LAN
-    log << " qena updated idx=" << idx << " rx=" << rx << logger::endl;
-#endif
     uint32_t &reg = (rx ? dev.regs.qrx_ena[idx] : dev.regs.qtx_ena[idx]);
+#ifdef DEBUG_LAN
+    log << " qena updated idx=" << idx << " rx=" << rx << " reg=" << reg <<
+        logger::endl;
+#endif
     lan_queue_base &q = (rx ? static_cast<lan_queue_base &>(*rxqs[idx]) :
         static_cast<lan_queue_base &>(*txqs[idx]));
 
@@ -64,14 +68,57 @@ void lan::tail_updated(uint16_t idx, bool rx)
         q.reg_updated();
 }
 
+void lan::rss_key_updated()
+{
+    rss_kc.set_dirty();
+}
+
+bool lan::rss_steering(const void *data, size_t len, uint16_t &queue,
+        uint32_t &hash)
+{
+    hash = 0;
+
+    const headers::pkt_tcp *tcp = reinterpret_cast<const headers::pkt_tcp *> (data);
+    const headers::pkt_udp *udp = reinterpret_cast<const headers::pkt_udp *> (data);
+
+    // should actually determine packet type and mask with enabled packet types
+    // TODO: ipv6
+    if (tcp->eth.type == htons(ETH_TYPE_IP) &&
+            tcp->ip.proto == IP_PROTO_TCP)
+    {
+        hash = rss_kc.hash_ipv4(ntohl(tcp->ip.src), ntohl(tcp->ip.dest),
+                ntohs(tcp->tcp.src), ntohs(tcp->tcp.dest));
+    } else if (udp->eth.type == htons(ETH_TYPE_IP) &&
+            udp->ip.proto == IP_PROTO_UDP)
+    {
+        hash = rss_kc.hash_ipv4(ntohl(udp->ip.src), ntohl(udp->ip.dest),
+                ntohs(udp->udp.src), ntohs(udp->udp.dest));
+    } else if (udp->eth.type == htons(ETH_TYPE_IP)) {
+        hash = rss_kc.hash_ipv4(ntohl(udp->ip.src), ntohl(udp->ip.dest), 0, 0);
+    } else {
+        return false;
+    }
+
+    uint16_t luts = (!(dev.regs.pfqf_ctl_0 & I40E_PFQF_CTL_0_HASHLUTSIZE_MASK) ?
+            128 : 512);
+    uint16_t idx = hash % luts;
+    queue = (dev.regs.pfqf_hlut[idx / 4] >> (8 * (idx % 4))) & 0x3f;
+#ifdef DEBUG_LAN
+    log << "  q=" << queue << " h=" << hash << " i=" << idx << logger::endl;
+#endif
+    return true;
+}
+
 void lan::packet_received(const void *data, size_t len)
 {
 #ifdef DEBUG_LAN
     log << " packet received len=" << len << logger::endl;
 #endif
 
-    // TODO: steering
-    rxqs[0]->packet_received(data, len);
+    uint32_t hash = 0;
+    uint16_t queue = 0;
+    rss_steering(data, len, queue, hash);
+    rxqs[queue]->packet_received(data, len, hash);
 }
 
 lan_queue_base::lan_queue_base(lan &lanmgr_, const std::string &qtype,
@@ -256,7 +303,7 @@ queue_base::desc_ctx &lan_queue_rx::desc_ctx_create()
     return *new rx_desc_ctx(*this);
 }
 
-void lan_queue_rx::packet_received(const void *data, size_t pktlen)
+void lan_queue_rx::packet_received(const void *data, size_t pktlen, uint32_t h)
 {
     size_t num_descs = (pktlen + dbuff_size - 1) / dbuff_size;
 

@@ -104,7 +104,7 @@ class Component(object):
         self.proc.terminate()
 
     async def kill(self):
-        self.proc.terminate()
+        self.proc.kill()
 
     async def int_term_kill(self, delay=5):
         await self.interrupt()

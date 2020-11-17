@@ -9,10 +9,10 @@ e.add_network(net)
 class NOPaxosHost(sim.QemuHost):
     disk_image = 'nopaxos'
 
-replicas = sim.create_basic_hosts(e, 3, 'replica', net, sim.CorundumBMNIC, NOPaxosHost,
-        node.CorundumLinuxNode, node.NOPaxosReplica)
-clients = sim.create_basic_hosts(e, 1, 'client', net, sim.CorundumBMNIC, NOPaxosHost,
-        node.CorundumLinuxNode, node.NOPaxosClient, ip_start = 4)
+replicas = sim.create_basic_hosts(e, 3, 'replica', net, sim.CorundumBMNIC,
+        sim.QemuHost, NOPaxosNode, node.NOPaxosReplica)
+clients = sim.create_basic_hosts(e, 1, 'client', net, sim.CorundumBMNIC,
+        sim.QemuHost, node.CorundumLinuxNode, NOPaxosHost, ip_start = 4)
 
 for i in range(len(replicas)):
     replicas[i].node_config.app.index = i

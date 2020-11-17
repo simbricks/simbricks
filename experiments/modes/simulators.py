@@ -15,7 +15,6 @@ class Simulator(object):
 
 class HostSim(Simulator):
     node_config = None
-    disk_image = 'base'
     name = ''
     wait = False
     sleep = 0
@@ -61,8 +60,6 @@ class NetSim(Simulator):
 
 
 class QemuHost(HostSim):
-    mem = 16 * 1024 # 16G
-
     def resreq_cores(self):
         return self.node_config.cores + 1
 
@@ -72,7 +69,7 @@ class QemuHost(HostSim):
     def prep_cmds(self, env):
         to_path = env.hdcopy_path(self)
         return [f'{env.qemu_img_path} create -f qcow2 -o '
-            f'backing_file="{env.hd_path(self.disk_image)}" '
+            f'backing_file="{env.hd_path(self.node_config.disk_image)}" '
             f'{env.hdcopy_path(self)}']
 
     def run_cmd(self, env):
@@ -84,7 +81,7 @@ class QemuHost(HostSim):
                 'driver=raw '
             '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
                 'init=/home/ubuntu/guestinit.sh rw" '
-            f'-m {self.mem} -smp {self.node_config.cores} ')
+            f'-m {self.node_config.memory} -smp {self.node_config.cores} ')
         if len(self.nics) > 0:
             assert len(self.nics) == 1
             cmd += f'-chardev socket,path={env.nic_pci_path(self.nics[0])},'
@@ -93,7 +90,6 @@ class QemuHost(HostSim):
         return cmd
 
 class Gem5Host(HostSim):
-    mem = 16 * 1024 # 16G
     cpu_type_cp = 'X86KvmCPU'
     cpu_type = 'TimingSimpleCPU'
 
@@ -121,9 +117,9 @@ class Gem5Host(HostSim):
             '--cacheline_size=64 --cpu-clock=3GHz '
             f'--checkpoint-dir={env.gem5_cpdir(self)} '
             f'--kernel={env.gem5_kernel_path} '
-            f'--disk-image={env.hd_raw_path(self.disk_image)} '
+            f'--disk-image={env.hd_raw_path(self.node_config.disk_image)} '
             f'--disk-image={env.cfgtar_path(self)} '
-            f'--cpu-type={cpu_type} --mem-size={self.mem}MB '
+            f'--cpu-type={cpu_type} --mem-size={self.node_config.memory}MB '
             '--ddio-enabled --ddio-way-part=8 --mem-type=DDR4_2400_16x4 ')
 
         if env.restore_cp:
