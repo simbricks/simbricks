@@ -213,6 +213,17 @@ class IperfUDPClient(AppConfig):
     def run_cmds(self, node):
         return ['iperf -c ' + self.server_ip + ' -u -b ' + self.rate]
 
+class NetperfServer(AppConfig):
+    def run_cmds(self, node):
+        return ['netserver',
+                'sleep infinity']
+
+class NetperfClient(AppConfig):
+    server_ip = '10.0.0.1'
+    def run_cmds(self, node):
+        return ['netserver',
+                'netperf -H ' + self.server_ip]
+
 class NOPaxosReplica(AppConfig):
     index = 0
     def run_cmds(self, node):
