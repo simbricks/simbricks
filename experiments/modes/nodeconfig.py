@@ -7,7 +7,7 @@ class NodeConfig(object):
     ip = '10.0.0.1'
     prefix = 24
     cores = 1
-    memory = 512
+    memory = 4 * 1024
     disk_image = 'base'
     app = None
 
