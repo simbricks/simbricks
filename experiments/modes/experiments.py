@@ -64,7 +64,7 @@ class Experiment(object):
                 if verbose:
                     print('start NIC:', nic.run_cmd(env))
                 sc = exectools.SimpleComponent(nic.full_name(),
-                        shlex.split(nic.run_cmd(env)), verbose=verbose)
+                        shlex.split(nic.run_cmd(env)), verbose=verbose, canfail=True)
                 await sc.start()
                 running.append((nic, sc))
 
@@ -97,7 +97,7 @@ class Experiment(object):
                     print('start Host:', host.run_cmd(env))
 
                 sc = exectools.SimpleComponent(host.full_name(),
-                        shlex.split(host.run_cmd(env)), verbose=verbose)
+                        shlex.split(host.run_cmd(env)), verbose=verbose, canfail=True)
                 await sc.start()
                 running.append((host,sc))
 
