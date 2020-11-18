@@ -222,7 +222,8 @@ class NetperfClient(AppConfig):
     server_ip = '10.0.0.1'
     def run_cmds(self, node):
         return ['netserver',
-                'netperf -H ' + self.server_ip]
+                'netperf -H ' + self.server_ip,
+                'netperf -H ' + self.server_ip + ' -t TCP_RR -- -o mean_latency,p50_latency,p90_latency,p99_latency']
 
 class NOPaxosReplica(AppConfig):
     index = 0
