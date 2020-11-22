@@ -18,6 +18,7 @@ class HostSim(Simulator):
     name = ''
     wait = False
     sleep = 0
+    cpu_freq = '3GHz'
 
     def __init__(self):
         self.nics = []
@@ -93,6 +94,7 @@ class Gem5Host(HostSim):
     cpu_type_cp = 'X86KvmCPU'
     cpu_type = 'TimingSimpleCPU'
 
+
     def set_config(self, nc):
         nc.sim = 'gem5'
         super().set_config(nc)
@@ -114,7 +116,7 @@ class Gem5Host(HostSim):
         cmd = (f'{env.gem5_path} --outdir={env.gem5_outdir(self)} '
             f'{env.gem5_py_path} --caches --l2cache --l3cache '
             '--l1d_size=32kB --l1i_size=32kB --l2_size=2MB --l3_size=32MB '
-            '--cacheline_size=64 --cpu-clock=3GHz '
+            f'--cacheline_size=64 --cpu-clock={self.cpu_freq} '
             f'--checkpoint-dir={env.gem5_cpdir(self)} '
             f'--kernel={env.gem5_kernel_path} '
             f'--disk-image={env.hd_raw_path(self.node_config.disk_image)} '
@@ -225,6 +227,33 @@ def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
 
         node_config = nc_class()
         node_config.ip = '10.0.0.%d' % (ip_start + i)
+        node_config.app = app_class()
+        host.set_config(node_config)
+
+        host.add_nic(nic)
+        e.add_nic(nic)
+        e.add_host(host)
+
+        hosts.append(host)
+
+    return hosts
+
+
+def create_dctcp_hosts(e, num, name_prefix, net, nic_class, host_class,
+        nc_class, app_class, cpu_freq, mtu, ip_start=1):
+    hosts = []
+    for i in range(0, num):
+        nic = nic_class()
+        #nic.name = '%s.%d' % (name_prefix, i)
+        nic.set_network(net)
+
+        host = host_class()
+        host.name = '%s.%d' % (name_prefix, i)
+        host.freq = cpu_freq
+
+        node_config = nc_class()
+        node_config.mtu = mtu
+        node_config.ip = '192.168.64.%d' % (ip_start + i)
         node_config.app = app_class()
         host.set_config(node_config)
 
