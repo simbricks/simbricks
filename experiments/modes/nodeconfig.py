@@ -10,6 +10,7 @@ class NodeConfig(object):
     memory = 4 * 1024
     disk_image = 'base'
     app = None
+    mtu = 1500
 
     def config_str(self):
         if self.sim == 'qemu':
@@ -191,6 +192,79 @@ class TASNode(NodeConfig):
         return cmds
 
 
+
+class I40eDCTCPNode(NodeConfig):
+    def prepare_pre_cp(self):
+        return super().prepare_pre_cp() + [
+            'mount -t proc proc /proc',
+            'mount -t sysfs sysfs /sys',
+            'sysctl -w net.core.rmem_default=31457280',
+            'sysctl -w net.core.rmem_max=31457280',
+            'sysctl -w net.core.wmem_default=31457280',
+            'sysctl -w net.core.wmem_max = 31457280',
+            'sysctl -w net.core.optmem_max = 25165824',
+            'sysctl -w net.ipv4.tcp_mem = "786432 1048576 26777216"',
+            'sysctl -w net.ipv4.tcp_rmem = "8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_wmem = "8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_congestion_control = dctcp',
+            'sysctl -w net.ipv4.tcp_ecn=1'
+        ]
+
+
+    def prepare_post_cp(self):
+        return super().prepare_post_cp() + [
+            'modprobe i40e',
+            'ethtool -G eth0 rx 4096 tx 4096',
+            'ethtool -K eth0 tso off',
+            'ip link set eth0 txqueuelen 13888',
+            f'ip link set dev eth0 mtu {self.mtu} up',
+            f'ip addr add {self.ip}/24 dev eth0',
+        ]
+
+class CorundumDCTCPNode(NodeConfig):
+    def prepare_pre_cp(self):
+        return super().prepare_pre_cp() + [
+            'mount -t proc proc /proc',
+            'mount -t sysfs sysfs /sys',
+            'sysctl -w net.core.rmem_default=31457280',
+            'sysctl -w net.core.rmem_max=31457280',
+            'sysctl -w net.core.wmem_default=31457280',
+            'sysctl -w net.core.wmem_max = 31457280',
+            'sysctl -w net.core.optmem_max = 25165824',
+            'sysctl -w net.ipv4.tcp_mem = "786432 1048576 26777216"',
+            'sysctl -w net.ipv4.tcp_rmem = "8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_wmem = "8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_congestion_control = dctcp',
+            'sysctl -w net.ipv4.tcp_ecn=1'
+        ]
+
+
+    def prepare_post_cp(self):
+        return super().prepare_post_cp() + [
+            'insmod mqnic.ko',
+            'ip link set dev eth0 up',
+            f'ip addr add {self.ip}/24 dev eth0',
+        ]
+
+class DctcpServer(AppConfig):
+    def run_cmds(self, node):
+        return ['iperf -s -w 1M -Z dctcp']
+
+class DctcpClient(AppConfig):
+    server_ip = '192.168.64.1'
+    is_last = False
+    def run_cmds(self, node):
+        if (self.is_last):
+            return ['sleep 1',
+                    f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
+                    'sleep 2'
+                    ]
+        else:
+            return ['sleep 1',
+                    f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
+                    'sleep 20'
+                    ]
+
 class IperfTCPServer(AppConfig):
     def run_cmds(self, node):
         return ['iperf -s -l 32M -w 32M']
@@ -204,14 +278,16 @@ class IperfTCPClient(AppConfig):
     procs = 1
 
     def run_cmds(self, node):
-        return ['iperf -l 32M -w 32M  -c ' + self.server_ip +  ' -i 1 -P ' +
+        return ['sleep 1',
+                'iperf -l 32M -w 32M  -c ' + self.server_ip + ' -i 1 -P ' +
                 str(self.procs)]
 
 class IperfUDPClient(AppConfig):
     server_ip = '10.0.0.1'
     rate = '150m'
     def run_cmds(self, node):
-        return ['iperf -c ' + self.server_ip + ' -u -b ' + self.rate]
+        return ['sleep 1',
+                'iperf -c ' + self.server_ip + ' -u -b ' + self.rate]
 
 class NetperfServer(AppConfig):
     def run_cmds(self, node):
