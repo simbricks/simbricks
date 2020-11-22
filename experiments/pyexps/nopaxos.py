@@ -2,7 +2,7 @@ import modes.experiments as exp
 import modes.simulators as sim
 import modes.nodeconfig as node
 
-host_configs = ['bm', 'emu']
+host_configs = ['bm', 'cycle']
 seq_configs = ['swseq', 'ehseq']
 experiments = []
 
@@ -16,7 +16,7 @@ for host_config in host_configs:
             host_class = sim.QemuHost
             nic_class = sim.CorundumBMNIC
             nc_class = node.CorundumLinuxNode
-        elif host_config == 'emu':
+        elif host_config == 'cycle':
             host_class = sim.Gem5Host
             nic_class = sim.CorundumVerilatorNIC
             nc_class = node.CorundumLinuxNode
