@@ -22,6 +22,9 @@
 #define COSIM_PCIE_PROTO_BAR_64 (1 << 1)
 /** in bars.flags: this memory bar is prefetchable */
 #define COSIM_PCIE_PROTO_BAR_PF (1 << 2)
+/** in bars.flags: this memory bar is a dummy bar (device doesn't get MMIO
+ * messages for this, but it dose get exposed to software. used for MSI-X). */
+#define COSIM_PCIE_PROTO_BAR_DUMMY (1 << 3)
 
 /**
  * welcome message sent by device to host. This message comes with the shared
