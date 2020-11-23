@@ -569,6 +569,9 @@ static void poll_h2d(MMIOInterface &mmio)
             h2d_writecomp(&msg->writecomp);
             break;
 
+        case COSIM_PCIE_PROTO_H2D_MSG_DEVCTRL:
+            break;
+
         case COSIM_PCIE_PROTO_H2D_MSG_SYNC:
             break;
 
