@@ -17,11 +17,12 @@ types_of_app = ['DCTCPm']
 
 num_pairs = 2
 max_k = 199680
-k_step = 8320
+#k_step = 8320
+k_step = 16640
 link_rate_opt = '--LinkRate=10Gb/s ' # don't forget space at the end
 link_latency_opt = '--LinkLatency=0 '
 cpu_freq = '5GHz' #GHz
-mtu = 9000
+mtu = 4000
 
 ip_start = '192.168.64.1'
 
@@ -38,7 +39,7 @@ for h in types_of_host:
             net = net_class()
             net.opt = link_rate_opt + link_latency_opt + f'--EcnTh={k_val}'
 
-            e = exp.Experiment( h + '-' + c + '-' + 'dumbbell' + '-' + 'DCTCPm' + f'{k_val}')
+            e = exp.Experiment( h + '-' + c + '-' + 'dumbbell' + '-' + 'DCTCPm' + f'{k_val}' + f'-{mtu}')
             e.add_network(net)
             e.checkpoint = True
 

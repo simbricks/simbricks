@@ -249,7 +249,7 @@ def create_dctcp_hosts(e, num, name_prefix, net, nic_class, host_class,
 
         host = host_class()
         host.name = '%s.%d' % (name_prefix, i)
-        host.freq = cpu_freq
+        host.cpu_freq = cpu_freq
 
         node_config = nc_class()
         node_config.mtu = mtu

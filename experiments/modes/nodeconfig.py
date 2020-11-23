@@ -201,12 +201,12 @@ class I40eDCTCPNode(NodeConfig):
             'sysctl -w net.core.rmem_default=31457280',
             'sysctl -w net.core.rmem_max=31457280',
             'sysctl -w net.core.wmem_default=31457280',
-            'sysctl -w net.core.wmem_max = 31457280',
-            'sysctl -w net.core.optmem_max = 25165824',
-            'sysctl -w net.ipv4.tcp_mem = "786432 1048576 26777216"',
-            'sysctl -w net.ipv4.tcp_rmem = "8192 87380 33554432"',
-            'sysctl -w net.ipv4.tcp_wmem = "8192 87380 33554432"',
-            'sysctl -w net.ipv4.tcp_congestion_control = dctcp',
+            'sysctl -w net.core.wmem_max=31457280',
+            'sysctl -w net.core.optmem_max=25165824',
+            'sysctl -w net.ipv4.tcp_mem="786432 1048576 26777216"',
+            'sysctl -w net.ipv4.tcp_rmem="8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_wmem="8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_congestion_control=dctcp',
             'sysctl -w net.ipv4.tcp_ecn=1'
         ]
 
@@ -229,12 +229,12 @@ class CorundumDCTCPNode(NodeConfig):
             'sysctl -w net.core.rmem_default=31457280',
             'sysctl -w net.core.rmem_max=31457280',
             'sysctl -w net.core.wmem_default=31457280',
-            'sysctl -w net.core.wmem_max = 31457280',
-            'sysctl -w net.core.optmem_max = 25165824',
-            'sysctl -w net.ipv4.tcp_mem = "786432 1048576 26777216"',
-            'sysctl -w net.ipv4.tcp_rmem = "8192 87380 33554432"',
-            'sysctl -w net.ipv4.tcp_wmem = "8192 87380 33554432"',
-            'sysctl -w net.ipv4.tcp_congestion_control = dctcp',
+            'sysctl -w net.core.wmem_max=31457280',
+            'sysctl -w net.core.optmem_max=25165824',
+            'sysctl -w net.ipv4.tcp_mem="786432 1048576 26777216"',
+            'sysctl -w net.ipv4.tcp_rmem="8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_wmem="8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_congestion_control=dctcp',
             'sysctl -w net.ipv4.tcp_ecn=1'
         ]
 
