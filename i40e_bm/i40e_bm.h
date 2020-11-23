@@ -474,9 +474,10 @@ protected:
 
     static const unsigned BAR_REGS = 0;
     static const unsigned BAR_IO = 2;
+    static const unsigned BAR_MSIX = 3;
 
     static const uint32_t NUM_QUEUES = 1536;
-    static const uint32_t NUM_PFINTS = 512;
+    static const uint32_t NUM_PFINTS = 128;
     static const uint32_t NUM_VSIS = 384;
     static const uint16_t MAX_MTU = 2048;
     static const uint8_t NUM_ITR = 3;
@@ -489,7 +490,9 @@ protected:
         uint32_t pfint_icr0_ena;
         uint32_t pfint_icr0;
         uint32_t pfint_itr0[NUM_ITR];
+        uint32_t pfint_itrn[NUM_ITR][NUM_PFINTS];
 
+        uint32_t pfint_stat_ctl0;
         uint32_t pfint_dyn_ctl0;
         uint32_t pfint_dyn_ctln[NUM_PFINTS - 1];
         uint32_t pfint_lnklstn[NUM_PFINTS - 1];

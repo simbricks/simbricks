@@ -194,14 +194,9 @@ void lan_queue_base::interrupt()
 #endif
 
     uint16_t msix_idx = (qctl & I40E_QINT_TQCTL_MSIX_INDX_MASK) >>
-        I40E_QINT_TQCTL_ITR_INDX_SHIFT;
+        I40E_QINT_TQCTL_MSIX_INDX_SHIFT;
     uint8_t msix0_idx = (qctl & I40E_QINT_TQCTL_MSIX0_INDX_MASK) >>
         I40E_QINT_TQCTL_MSIX0_INDX_SHIFT;
-
-    if (msix_idx != 0) {
-        log << "TODO: only int 0 is supported" << logger::endl;
-        abort();
-    }
 
     bool cause_ena = !!(qctl & I40E_QINT_TQCTL_CAUSE_ENA_MASK) &&
       !!(gctl & I40E_PFINT_DYN_CTL0_INTENA_MASK);
@@ -212,16 +207,17 @@ void lan_queue_base::interrupt()
         return;
     }
 
-    // TODO throttling?
+    if (msix_idx == 0) {
 #ifdef DEBUG_LAN
-    log << "   setting int0.qidx=" << msix0_idx << logger::endl;
+        log << "   setting int0.qidx=" << msix0_idx << logger::endl;
 #endif
-    lanmgr.dev.regs.pfint_icr0 |= I40E_PFINT_ICR0_INTEVENT_MASK |
-        (1 << (I40E_PFINT_ICR0_QUEUE_0_SHIFT + msix0_idx));
+        lanmgr.dev.regs.pfint_icr0 |= I40E_PFINT_ICR0_INTEVENT_MASK |
+            (1 << (I40E_PFINT_ICR0_QUEUE_0_SHIFT + msix0_idx));
+    }
 
     uint8_t itr = (qctl & I40E_QINT_TQCTL_ITR_INDX_MASK) >>
         I40E_QINT_TQCTL_ITR_INDX_SHIFT;
-    lanmgr.dev.signal_interrupt(0, itr);
+    lanmgr.dev.signal_interrupt(msix_idx, itr);
 
 }
 

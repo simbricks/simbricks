@@ -29,12 +29,24 @@ void i40e_bm::setup_intro(struct cosim_pcie_proto_dev_intro &di)
     di.bars[BAR_REGS].flags = COSIM_PCIE_PROTO_BAR_64;
     di.bars[BAR_IO].len = 32;
     di.bars[BAR_IO].flags = COSIM_PCIE_PROTO_BAR_IO;
+    di.bars[BAR_MSIX].len = 32 * 1024;
+    di.bars[BAR_MSIX].flags = COSIM_PCIE_PROTO_BAR_64 |
+        COSIM_PCIE_PROTO_BAR_DUMMY;
+
     di.pci_vendor_id = I40E_INTEL_VENDOR_ID;
     di.pci_device_id = I40E_DEV_ID_QSFP_A;
     di.pci_class = 0x02;
     di.pci_subclass = 0x00;
     di.pci_revision = 0x01;
     di.pci_msi_nvecs = 32;
+
+    di.pci_msix_nvecs = 0x80;
+    di.pci_msix_table_bar = BAR_MSIX;
+    di.pci_msix_pba_bar = BAR_MSIX;
+    di.pci_msix_table_offset = 0x0;
+    di.pci_msix_pba_offset = 0x1000;
+    di.psi_msix_cap_offset = 0x70;
+
 }
 
 void i40e_bm::dma_complete(nicbm::DMAOp &op)
@@ -195,6 +207,18 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
             addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX))
     {
         val = regs.pfqf_hlut[(addr - I40E_PFQF_HLUT(0)) / 128];
+    } else if (addr >= I40E_PFINT_ITRN(0, 0) &&
+            addr <= I40E_PFINT_ITRN(0, NUM_PFINTS - 1))
+    {
+        val = regs.pfint_itrn[0][(addr - I40E_PFINT_ITRN(0, 0)) / 4];
+    } else if (addr >= I40E_PFINT_ITRN(1, 0) &&
+            addr <= I40E_PFINT_ITRN(1, NUM_PFINTS - 1))
+    {
+        val = regs.pfint_itrn[1][(addr - I40E_PFINT_ITRN(1, 0)) / 4];
+    } else if (addr >= I40E_PFINT_ITRN(2, 0) &&
+            addr <= I40E_PFINT_ITRN(2, NUM_PFINTS - 1))
+    {
+        val = regs.pfint_itrn[2][(addr - I40E_PFINT_ITRN(2, 0)) / 4];
     } else {
 
         switch (addr) {
@@ -247,6 +271,10 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 val = regs.pfint_icr0;
                 // read clears
                 regs.pfint_icr0 = 0;
+                break;
+
+            case I40E_PFINT_STAT_CTL0:
+                val = regs.pfint_stat_ctl0;
                 break;
 
             case I40E_PFINT_DYN_CTL0:
@@ -504,6 +532,18 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
             addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX))
     {
         regs.pfqf_hlut[(addr - I40E_PFQF_HLUT(0)) / 128] = val;
+    } else if (addr >= I40E_PFINT_ITRN(0, 0) &&
+            addr <= I40E_PFINT_ITRN(0, NUM_PFINTS - 1))
+    {
+        regs.pfint_itrn[0][(addr - I40E_PFINT_ITRN(0, 0)) / 4] = val;
+    } else if (addr >= I40E_PFINT_ITRN(1, 0) &&
+            addr <= I40E_PFINT_ITRN(1, NUM_PFINTS - 1))
+    {
+        regs.pfint_itrn[1][(addr - I40E_PFINT_ITRN(1, 0)) / 4] = val;
+    } else if (addr >= I40E_PFINT_ITRN(2, 0) &&
+            addr <= I40E_PFINT_ITRN(2, NUM_PFINTS - 1))
+    {
+        regs.pfint_itrn[2][(addr - I40E_PFINT_ITRN(2, 0)) / 4] = val;
     } else {
         switch (addr) {
             case I40E_PFGEN_CTRL:
@@ -542,6 +582,9 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
                 break;
             case I40E_PFINT_ICR0:
                 regs.pfint_icr0 = val;
+                break;
+            case I40E_PFINT_STAT_CTL0:
+                regs.pfint_stat_ctl0 = val;
                 break;
             case I40E_PFINT_DYN_CTL0:
                 regs.pfint_dyn_ctl0 = val;
@@ -659,22 +702,28 @@ void i40e_bm::timed_event(nicbm::TimedEvent &ev)
         logger::endl;
 #endif
     iev.armed = false;
-    runner->msi_issue(0);
+
+    if (int_msix_en) {
+        runner->msix_issue(iev.vector);
+    } else if (iev.vector > 0) {
+        log << "timed_event: MSI-X disabled, but vector != 0" << logger::endl;
+        abort();
+    } else if (int_msi_en) {
+        runner->msi_issue(0);
+    }
 }
 
 void i40e_bm::signal_interrupt(uint16_t vector, uint8_t itr)
 {
-    if (vector != 0) {
-        log << "signal_interrupt() only supports vector 0" << logger::endl;
-        abort();
-    }
-
     int_ev &iev = intevs[vector];
 
     uint64_t mindelay;
     if (itr <= 2) {
         // itr 0-2
-        mindelay = regs.pfint_itr0[itr];
+        if (vector == 0)
+            mindelay = regs.pfint_itr0[itr];
+        else
+            mindelay = regs.pfint_itrn[itr][vector];
         mindelay *= 2000000ULL;
     } else if (itr == 3) {
         // noitr
