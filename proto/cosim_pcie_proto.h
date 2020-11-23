@@ -213,6 +213,7 @@ COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_d2h);
 #define COSIM_PCIE_PROTO_H2D_MSG_WRITE 0x3
 #define COSIM_PCIE_PROTO_H2D_MSG_READCOMP 0x4
 #define COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP 0x5
+#define COSIM_PCIE_PROTO_H2D_MSG_DEVCTRL 0x7
 
 struct cosim_pcie_proto_h2d_dummy {
     uint8_t pad[48];
@@ -274,6 +275,18 @@ struct cosim_pcie_proto_h2d_writecomp {
 } __attribute__((packed));
 COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_writecomp);
 
+#define COSIM_PCIE_PROTO_CTRL_INTX_EN (1 << 0)
+#define COSIM_PCIE_PROTO_CTRL_MSI_EN (1 << 1)
+#define COSIM_PCIE_PROTO_CTRL_MSIX_EN (1 << 2)
+struct cosim_pcie_proto_h2d_devctrl {
+    uint64_t flags;
+    uint8_t pad[40];
+    uint64_t timestamp;
+    uint8_t pad_[7];
+    uint8_t own_type;
+} __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_devctrl);
+
 union cosim_pcie_proto_h2d {
     struct cosim_pcie_proto_h2d_dummy dummy;
     struct cosim_pcie_proto_h2d_sync sync;
@@ -281,6 +294,7 @@ union cosim_pcie_proto_h2d {
     struct cosim_pcie_proto_h2d_write write;
     struct cosim_pcie_proto_h2d_readcomp readcomp;
     struct cosim_pcie_proto_h2d_writecomp writecomp;
+    struct cosim_pcie_proto_h2d_devctrl devctrl;
 } __attribute__((packed));
 COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_h2d);
 
