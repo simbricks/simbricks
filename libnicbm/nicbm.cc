@@ -245,6 +245,11 @@ void Runner::h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc)
     dma_trigger();
 }
 
+void Runner::h2d_devctrl(volatile struct cosim_pcie_proto_h2d_devctrl *dc)
+{
+    dev.devctrl_update(*(struct cosim_pcie_proto_h2d_devctrl *) dc);
+}
+
 void Runner::eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv)
 {
 #ifdef DEBUG_NICBM
@@ -294,6 +299,10 @@ void Runner::poll_h2d()
 
         case COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP:
             h2d_writecomp(&msg->writecomp);
+            break;
+
+        case COSIM_PCIE_PROTO_H2D_MSG_DEVCTRL:
+            h2d_devctrl(&msg->devctrl);
             break;
 
         case COSIM_PCIE_PROTO_H2D_MSG_SYNC:
@@ -451,4 +460,12 @@ int Runner::runMain(int argc, char *argv[])
 
 void Runner::Device::timed_event(TimedEvent &te)
 {
+}
+
+void Runner::Device::devctrl_update(
+        struct cosim_pcie_proto_h2d_devctrl &devctrl)
+{
+    int_intx_en = devctrl.flags & COSIM_PCIE_PROTO_CTRL_INTX_EN;
+    int_msi_en = devctrl.flags & COSIM_PCIE_PROTO_CTRL_MSI_EN;
+    int_msix_en = devctrl.flags & COSIM_PCIE_PROTO_CTRL_MSIX_EN;
 }
