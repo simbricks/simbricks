@@ -144,6 +144,21 @@ void Runner::msi_issue(uint8_t vec)
         COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
 
+void Runner::msix_issue(uint8_t vec)
+{
+    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
+#ifdef DEBUG_NICBM
+    printf("nicbm: issue MSI-X interrupt vec %u\n", vec);
+#endif
+    volatile struct cosim_pcie_proto_d2h_interrupt *intr = &msg->interrupt;
+    intr->vector = vec;
+    intr->inttype = COSIM_PCIE_PROTO_INT_MSIX;
+
+    // WMB();
+    intr->own_type = COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT |
+        COSIM_PCIE_PROTO_D2H_OWN_HOST;
+}
+
 void Runner::event_schedule(TimedEvent &evt)
 {
     events.insert(&evt);

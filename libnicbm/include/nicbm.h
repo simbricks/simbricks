@@ -118,6 +118,7 @@ class Runner {
         /* these three are for `Runner::Device`. */
         void issue_dma(DMAOp &op);
         void msi_issue(uint8_t vec);
+        void msix_issue(uint8_t vec);
         void eth_send(const void *data, size_t len);
 
         void event_schedule(TimedEvent &evt);
