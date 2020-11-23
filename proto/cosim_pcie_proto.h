@@ -66,8 +66,22 @@ struct cosim_pcie_proto_dev_intro {
     uint8_t pci_subclass;
     /* PCI revision */
     uint8_t pci_revision;
+
     /* PCI number of MSI vectors */
     uint8_t pci_msi_nvecs;
+
+    /* PCI number of MSI-X vectors */
+    uint16_t pci_msix_nvecs;
+    /* BAR number for MSI-X table */
+    uint8_t pci_msix_table_bar;
+    /* BAR number for MSI-X PBA */
+    uint8_t pci_msix_pba_bar;
+    /* Offset for MSI-X table */
+    uint32_t pci_msix_table_offset;
+    /* Offset for MSI-X PBA */
+    uint32_t pci_msix_pba_offset;
+    /* MSI-X capability offset */
+    uint16_t psi_msix_cap_offset;
 } __attribute__((packed));
 
 
