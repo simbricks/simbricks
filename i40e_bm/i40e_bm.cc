@@ -708,7 +708,7 @@ void i40e_bm::timed_event(nicbm::TimedEvent &ev)
     } else if (iev.vector > 0) {
         log << "timed_event: MSI-X disabled, but vector != 0" << logger::endl;
         abort();
-    } else if (int_msi_en) {
+    } else {
         runner->msi_issue(0);
     }
 }
