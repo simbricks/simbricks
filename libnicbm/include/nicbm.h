@@ -1,13 +1,13 @@
 #include <set>
 #include <deque>
+extern "C" {
+    #include <nicsim.h>
+}
 
 namespace nicbm {
 
 #include <cassert>
 
-extern "C" {
-    #include <nicsim.h>
-}
 
 static const size_t MAX_DMA_LEN = 2048;
 
@@ -36,6 +36,11 @@ class TimedEvent {
 class Runner {
     public:
         class Device {
+            protected:
+                bool int_intx_en;
+                bool int_msi_en;
+                bool int_msix_en;
+
             public:
                 /**
                  * Initialize device specific parameters (pci dev/vendor id,
@@ -74,6 +79,12 @@ class Runner {
                  * A timed event is due.
                  */
                 virtual void timed_event(TimedEvent &ev);
+
+                /**
+                 * Device control update
+                 */
+                virtual void devctrl_update(
+                        struct cosim_pcie_proto_h2d_devctrl &devctrl);
         };
 
     protected:
@@ -99,6 +110,7 @@ class Runner {
         void h2d_write(volatile struct cosim_pcie_proto_h2d_write *write);
         void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc);
         void h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc);
+        void h2d_devctrl(volatile struct cosim_pcie_proto_h2d_devctrl *dc);
         void poll_h2d();
 
         void eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv);
@@ -118,6 +130,7 @@ class Runner {
         /* these three are for `Runner::Device`. */
         void issue_dma(DMAOp &op);
         void msi_issue(uint8_t vec);
+        void msix_issue(uint8_t vec);
         void eth_send(const void *data, size_t len);
 
         void event_schedule(TimedEvent &evt);

@@ -61,6 +61,7 @@ class NetSim(Simulator):
 
 
 class QemuHost(HostSim):
+    sync = False
     def resreq_cores(self):
         return self.node_config.cores + 1
 
@@ -74,8 +75,8 @@ class QemuHost(HostSim):
             f'{env.hdcopy_path(self)}']
 
     def run_cmd(self, env):
-        cmd = (f'{env.qemu_path} -machine q35 -cpu host -serial mon:stdio '
-            '-display none -enable-kvm -nic none '
+        cmd = (f'{env.qemu_path} -machine q35 -serial mon:stdio '
+            '-display none -nic none '
             f'-kernel {env.qemu_kernel_path} '
             f'-drive file={env.hdcopy_path(self)},if=ide,index=0,media=disk '
             f'-drive file={env.cfgtar_path(self)},if=ide,index=1,media=disk,'
@@ -83,11 +84,18 @@ class QemuHost(HostSim):
             '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
                 'init=/home/ubuntu/guestinit.sh rw" '
             f'-m {self.node_config.memory} -smp {self.node_config.cores} ')
+
+        if self.sync:
+            cmd += ' -cpu Skylake-Server -icount shift=0,sleep=off '
+        else:
+            cmd += ' -cpu host -enable-kvm '
+
         if len(self.nics) > 0:
             assert len(self.nics) == 1
             cmd += f'-chardev socket,path={env.nic_pci_path(self.nics[0])},'
             cmd += 'id=cosimcd '
-            cmd += '-device cosim-pci,chardev=cosimcd '
+            sync_onoff = 'on' if self.sync else 'off'
+            cmd += f'-device cosim-pci,chardev=cosimcd,sync={sync_onoff} '
         return cmd
 
 class Gem5Host(HostSim):
@@ -122,6 +130,7 @@ class Gem5Host(HostSim):
             f'--disk-image={env.hd_raw_path(self.node_config.disk_image)} '
             f'--disk-image={env.cfgtar_path(self)} '
             f'--cpu-type={cpu_type} --mem-size={self.node_config.memory}MB '
+            f'--num-cpus={self.node_config.cores} '
             '--ddio-enabled --ddio-way-part=8 --mem-type=DDR4_2400_16x4 ')
 
         if env.restore_cp:

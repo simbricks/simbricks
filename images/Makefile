@@ -9,7 +9,7 @@ TAS_IMAGE := output-tas/tas
 IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MTCP_IMAGE) $(TAS_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
-QEMU_IMG := ../qemu/qemu-img
+QEMU_IMG := ../qemu/build/qemu-img
 
 all: $(IMAGES) $(RAW_IMAGES) vmlinux bzImage mqnic/mqnic.ko
 

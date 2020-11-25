@@ -22,6 +22,9 @@
 #define COSIM_PCIE_PROTO_BAR_64 (1 << 1)
 /** in bars.flags: this memory bar is prefetchable */
 #define COSIM_PCIE_PROTO_BAR_PF (1 << 2)
+/** in bars.flags: this memory bar is a dummy bar (device doesn't get MMIO
+ * messages for this, but it dose get exposed to software. used for MSI-X). */
+#define COSIM_PCIE_PROTO_BAR_DUMMY (1 << 3)
 
 /**
  * welcome message sent by device to host. This message comes with the shared
@@ -63,8 +66,22 @@ struct cosim_pcie_proto_dev_intro {
     uint8_t pci_subclass;
     /* PCI revision */
     uint8_t pci_revision;
+
     /* PCI number of MSI vectors */
     uint8_t pci_msi_nvecs;
+
+    /* PCI number of MSI-X vectors */
+    uint16_t pci_msix_nvecs;
+    /* BAR number for MSI-X table */
+    uint8_t pci_msix_table_bar;
+    /* BAR number for MSI-X PBA */
+    uint8_t pci_msix_pba_bar;
+    /* Offset for MSI-X table */
+    uint32_t pci_msix_table_offset;
+    /* Offset for MSI-X PBA */
+    uint32_t pci_msix_pba_offset;
+    /* MSI-X capability offset */
+    uint16_t psi_msix_cap_offset;
 } __attribute__((packed));
 
 
@@ -196,6 +213,7 @@ COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_d2h);
 #define COSIM_PCIE_PROTO_H2D_MSG_WRITE 0x3
 #define COSIM_PCIE_PROTO_H2D_MSG_READCOMP 0x4
 #define COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP 0x5
+#define COSIM_PCIE_PROTO_H2D_MSG_DEVCTRL 0x7
 
 struct cosim_pcie_proto_h2d_dummy {
     uint8_t pad[48];
@@ -257,6 +275,18 @@ struct cosim_pcie_proto_h2d_writecomp {
 } __attribute__((packed));
 COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_writecomp);
 
+#define COSIM_PCIE_PROTO_CTRL_INTX_EN (1 << 0)
+#define COSIM_PCIE_PROTO_CTRL_MSI_EN (1 << 1)
+#define COSIM_PCIE_PROTO_CTRL_MSIX_EN (1 << 2)
+struct cosim_pcie_proto_h2d_devctrl {
+    uint64_t flags;
+    uint8_t pad[40];
+    uint64_t timestamp;
+    uint8_t pad_[7];
+    uint8_t own_type;
+} __attribute__((packed));
+COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_devctrl);
+
 union cosim_pcie_proto_h2d {
     struct cosim_pcie_proto_h2d_dummy dummy;
     struct cosim_pcie_proto_h2d_sync sync;
@@ -264,6 +294,7 @@ union cosim_pcie_proto_h2d {
     struct cosim_pcie_proto_h2d_write write;
     struct cosim_pcie_proto_h2d_readcomp readcomp;
     struct cosim_pcie_proto_h2d_writecomp writecomp;
+    struct cosim_pcie_proto_h2d_devctrl devctrl;
 } __attribute__((packed));
 COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_h2d);
 
