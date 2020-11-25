@@ -12,9 +12,6 @@
 
 //#define DEBUG_NICBM 1
 
-#define SYNC_PERIOD (100 * 1000ULL) // 100ns
-#define PCI_LATENCY (500 * 1000ULL) // 500ns
-#define ETH_LATENCY (500 * 1000ULL) // 500ns
 #define DMA_MAX_PENDING 64
 
 
@@ -395,14 +392,23 @@ int Runner::runMain(int argc, char *argv[])
 {
     uint64_t next_ts;
     uint64_t max_step = 10000;
+    uint64_t sync_period = 100 * 1000ULL;
+    uint64_t pci_latency = 500 * 1000ULL;
+    uint64_t eth_latency = 500 * 1000ULL;
 
-    if (argc != 4 && argc != 5) {
+    if (argc < 4 && argc > 8) {
         fprintf(stderr, "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
-                "SHM [START-TICK]\n");
+                "SHM [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] [ETH-LATENCY]\n");
         return EXIT_FAILURE;
     }
-    if (argc == 5)
+    if (argc >= 5)
         main_time = strtoull(argv[4], NULL, 0);
+    if (argc >= 6)
+        sync_period = strtoull(argv[5], NULL, 0) * 1000ULL;
+    if (argc >= 7)
+        pci_latency = strtoull(argv[6], NULL, 0) * 1000ULL;
+    if (argc >= 8)
+        eth_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
 
 
     signal(SIGINT, sigint_handler);
@@ -416,9 +422,9 @@ int Runner::runMain(int argc, char *argv[])
     nsparams.pci_socket_path = argv[1];
     nsparams.eth_socket_path = argv[2];
     nsparams.shm_path = argv[3];
-    nsparams.pci_latency = PCI_LATENCY;
-    nsparams.eth_latency = ETH_LATENCY;
-    nsparams.sync_delay = SYNC_PERIOD;
+    nsparams.pci_latency = pci_latency;
+    nsparams.eth_latency = eth_latency;
+    nsparams.sync_delay = sync_period;
     if (nicsim_init(&nsparams, &dintro)) {
         return EXIT_FAILURE;
     }
