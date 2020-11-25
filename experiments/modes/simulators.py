@@ -77,7 +77,10 @@ class NetSim(Simulator):
 class QemuHost(HostSim):
     sync = False
     def resreq_cores(self):
-        return self.node_config.cores + 1
+        if self.sync:
+            return 1
+        else:
+            return self.node_config.cores + 1
 
     def resreq_mem(self):
         return 4096
