@@ -20,6 +20,9 @@ class HostSim(Simulator):
     sleep = 0
     cpu_freq = '3GHz'
 
+    sync_period = 500
+    pci_latency = 500
+
     def __init__(self):
         self.nics = []
 
@@ -37,14 +40,23 @@ class NICSim(Simulator):
     network = None
     name = ''
 
+    sync_period = 500
+    pci_latency = 500
+    eth_latency = 500
+
     def set_network(self, net):
         self.network = net
         net.nics.append(self)
 
-    def basic_run_cmd(self, env, name):
-        return '%s/%s %s %s %s' % \
+    def basic_run_cmd(self, env, name, extra=None):
+        cmd = '%s/%s %s %s %s 0 %d %d %d' % \
             (env.repodir, name, env.nic_pci_path(self), env.nic_eth_path(self),
-                    env.nic_shm_path(self))
+                    env.nic_shm_path(self), self.sync_period, self.pci_latency,
+                    self.eth_latency)
+
+        if extra is not None:
+            cmd += ' ' + extra
+        return cmd
 
     def full_name(self):
         return 'nic.' + self.name
@@ -52,6 +64,8 @@ class NICSim(Simulator):
 class NetSim(Simulator):
     name = ''
     opt = ''
+    sync_period = 500
+    eth_latency = 500
 
     def __init__(self):
         self.nics = []
@@ -94,8 +108,15 @@ class QemuHost(HostSim):
             assert len(self.nics) == 1
             cmd += f'-chardev socket,path={env.nic_pci_path(self.nics[0])},'
             cmd += 'id=cosimcd '
-            sync_onoff = 'on' if self.sync else 'off'
-            cmd += f'-device cosim-pci,chardev=cosimcd,sync={sync_onoff} '
+            cmd += f'-device cosim-pci,chardev=cosimcd'
+            if self.sync:
+                cmd += ',sync=on'
+                cmd += f',pci-latency={self.pci_latency}'
+                cmd += f',sync-period={self.sync_period}'
+            else:
+                cmd += ',sync=off'
+            cmd += ' '
+
         return cmd
 
 class Gem5Host(HostSim):
@@ -143,6 +164,8 @@ class Gem5Host(HostSim):
             cmd += f'--cosim-shm={env.nic_shm_path(nic)} '
             if cpu_type == 'TimingSimpleCPU':
                 cmd += '--cosim-sync '
+                cmd += f'--cosim-pci-lat={self.pci_latency} '
+                cmd += f'--cosim-sync-int={self.sync_period} '
             if isinstance(nic, I40eNIC):
                 cmd += '--cosim-type=i40e '
         return cmd
@@ -150,12 +173,15 @@ class Gem5Host(HostSim):
 
 
 class CorundumVerilatorNIC(NICSim):
+    clock_freq = 250 # MHz
+
     def resreq_mem(self):
         # this is a guess
         return 512
 
     def run_cmd(self, env):
-        return self.basic_run_cmd(env, 'corundum/corundum_verilator')
+        return self.basic_run_cmd(env, 'corundum/corundum_verilator',
+            str(self.clock_freq))
 
 class CorundumBMNIC(NICSim):
     def run_cmd(self, env):
@@ -170,13 +196,15 @@ class I40eNIC(NICSim):
 class WireNet(NetSim):
     def run_cmd(self, env):
         assert len(self.nics) == 2
-        return '%s/net_wire/net_wire %s %s' % \
+        return '%s/net_wire/net_wire %s %s %d %d' % \
                 (env.repodir, env.nic_eth_path(self.nics[0]),
-                        env.nic_eth_path(self.nics[1]))
+                        env.nic_eth_path(self.nics[1]),
+                        self.sync_period, self.eth_latency)
 
 class SwitchNet(NetSim):
     def run_cmd(self, env):
         cmd = env.repodir + '/net_switch/net_switch'
+        cmd += f' -S {self.sync_period} -E {self.eth_latency}'
         for n in self.nics:
             cmd += ' -s ' + env.nic_eth_path(n)
         return cmd
