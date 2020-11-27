@@ -36,9 +36,8 @@
 
 #include <netsim.h>
 
-#define SYNC_PERIOD (500 * 1000ULL) // 500ns
-#define ETH_LATENCY (500 * 1000ULL) // 500ns
-
+static uint64_t sync_period = (500 * 1000ULL); // 500ns
+static uint64_t eth_latency = (500 * 1000ULL); // 500ns
 static uint64_t cur_ts;
 static int exiting = 0;
 static pcap_dumper_t *dumpfile = NULL;
@@ -80,7 +79,7 @@ static void move_pkt(struct netsim_interface *from, struct netsim_interface *to)
                     (unsigned char *) tx->data);
         }
 
-        msg_to = netsim_n2d_alloc(to, cur_ts, ETH_LATENCY);
+        msg_to = netsim_n2d_alloc(to, cur_ts, eth_latency);
         if (msg_to != NULL) {
             rx = &msg_to->recv;
             rx->len = tx->len;
@@ -109,8 +108,9 @@ int main(int argc, char *argv[])
     int sync_a, sync_b;
     pcap_t *pc = NULL;
 
-    if (argc != 3 && argc != 4) {
-        fprintf(stderr, "Usage: net_tap SOCKET-A SOCKET-B [PCAP-FILE]\n");
+    if (argc < 3 && argc > 6) {
+        fprintf(stderr, "Usage: net_wire SOCKET-A SOCKET-B [SYNC-PERIOD] "
+                "[ETH-LATENCY] [PCAP-FILE]\n");
         return EXIT_FAILURE;
     }
 
@@ -118,7 +118,13 @@ int main(int argc, char *argv[])
     signal(SIGTERM, sigint_handler);
     signal(SIGUSR1, sigusr1_handler);
 
-    if (argc == 4) {
+    if (argc >= 4)
+        sync_period = strtoull(argv[3], NULL, 0) * 1000ULL;
+
+    if (argc >= 5)
+        eth_latency = strtoull(argv[4], NULL, 0) * 1000ULL;
+
+    if (argc >= 6) {
         pc = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, 65535,
                 PCAP_TSTAMP_PRECISION_NANO);
         if (pc == NULL) {
@@ -126,7 +132,7 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        dumpfile = pcap_dump_open(pc, argv[3]);
+        dumpfile = pcap_dump_open(pc, argv[5]);
     }
 
     sync_a = sync_b = 1;
@@ -139,11 +145,11 @@ int main(int argc, char *argv[])
 
     printf("start polling\n");
     while (!exiting) {
-        if (netsim_n2d_sync(&nsif_a, cur_ts, ETH_LATENCY, SYNC_PERIOD) != 0) {
+        if (netsim_n2d_sync(&nsif_a, cur_ts, eth_latency, sync_period) != 0) {
             fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
             abort();
         }
-        if (netsim_n2d_sync(&nsif_b, cur_ts, ETH_LATENCY, SYNC_PERIOD) != 0) {
+        if (netsim_n2d_sync(&nsif_b, cur_ts, eth_latency, sync_period) != 0) {
             fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
             abort();
         }

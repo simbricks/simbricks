@@ -19,12 +19,14 @@ extern "C" {
 #include "dma.h"
 #include "mem.h"
 
-#define CLOCK_PERIOD (4 * 1000ULL) // 4ns -> 2500MHz
-#define SYNC_PERIOD (500 * 1000ULL) // 500ns
-#define PCI_LATENCY (500 * 1000ULL) // 500ns
-#define ETH_LATENCY (500 * 1000ULL) // 500ns
-
 struct DMAOp;
+
+static uint64_t clock_period = 4 * 1000ULL; // 4ns -> 250MHz
+static uint64_t sync_period = 500 * 1000ULL; // 500ns
+static uint64_t pci_latency = 500 * 1000ULL; // 500ns
+static uint64_t eth_latency = 500 * 1000ULL; // 500ns
+
+
 
 static volatile int exiting = 0;
 uint64_t main_time = 0;
@@ -613,7 +615,7 @@ class EthernetTx {
             send = &msg->send;
             memcpy((void *) send->data, packet_buf, packet_len);
             send->len = packet_len;
-            send->timestamp = main_time + ETH_LATENCY;
+            send->timestamp = main_time + eth_latency;
 
             //WMB();
             send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND |
@@ -890,13 +892,22 @@ int main(int argc, char *argv[])
     Verilated::traceEverOn(true);
 #endif
 
-    if (argc != 4 && argc != 5) {
+    if (argc < 4 && argc > 9) {
         fprintf(stderr, "Usage: corundum_verilator PCI-SOCKET ETH-SOCKET "
-                "SHM [START-TICK]\n");
+                "SHM [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] [ETH-LATENCY] "
+                "[CLOCK-FREQ-MHZ]\n");
         return EXIT_FAILURE;
     }
-    if (argc == 5)
+    if (argc >= 5)
         main_time = strtoull(argv[4], NULL, 0);
+    if (argc >= 6)
+        sync_period = strtoull(argv[5], NULL, 0) * 1000ULL;
+    if (argc >= 7)
+        pci_latency = strtoull(argv[6], NULL, 0) * 1000ULL;
+    if (argc >= 8)
+        eth_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
+    if (argc >= 9)
+        clock_period = 1000000ULL / strtoull(argv[8], NULL, 0);
 
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
@@ -916,9 +927,9 @@ int main(int argc, char *argv[])
     nsparams.pci_socket_path = argv[1];
     nsparams.eth_socket_path = argv[2];
     nsparams.shm_path = argv[3];
-    nsparams.pci_latency = PCI_LATENCY;
-    nsparams.eth_latency = ETH_LATENCY;
-    nsparams.sync_delay = SYNC_PERIOD;
+    nsparams.pci_latency = pci_latency;
+    nsparams.eth_latency = eth_latency;
+    nsparams.sync_delay = sync_period;
     if (nicsim_init(&nsparams, &di)) {
         return EXIT_FAILURE;
     }
@@ -1054,7 +1065,7 @@ int main(int argc, char *argv[])
 
         /* falling edge */
         top->clk = !top->clk;
-        main_time += CLOCK_PERIOD / 2;
+        main_time += clock_period / 2;
         top->eval();
 
         mmio.step();
@@ -1076,7 +1087,7 @@ int main(int argc, char *argv[])
 
         /* raising edge */
         top->clk = !top->clk;
-        main_time += CLOCK_PERIOD / 2;
+        main_time += clock_period / 2;
 
         //top->s_axis_tx_ptp_ts_96 = main_time;
         top->s_axis_tx_ptp_ts_valid = 1;
