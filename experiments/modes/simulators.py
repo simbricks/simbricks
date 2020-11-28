@@ -1,3 +1,5 @@
+import math
+
 class Simulator(object):
     # number of cores required for this simulator
     def resreq_cores(self):
@@ -103,7 +105,17 @@ class QemuHost(HostSim):
             f'-m {self.node_config.memory} -smp {self.node_config.cores} ')
 
         if self.sync:
-            cmd += ' -cpu Skylake-Server -icount shift=0,sleep=off '
+            unit = self.cpu_freq[-3:]
+            if unit.lower() == 'ghz':
+                base = 0
+            elif unit.lower() == 'mhz':
+                base = 3
+            else:
+                raise Exception('cpu frequency specified in unsupported unit')
+            num = float(self.cpu_freq[:-3])
+            shift = base - int(math.ceil(math.log(num, 2)))
+
+            cmd += f' -cpu Skylake-Server -icount shift={shift},sleep=off '
         else:
             cmd += ' -cpu host -enable-kvm '
 
