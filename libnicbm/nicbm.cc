@@ -34,22 +34,18 @@ static void sigusr1_handler(int dummy)
 
 volatile union cosim_pcie_proto_d2h *Runner::d2h_alloc(void)
 {
-    volatile union cosim_pcie_proto_d2h *msg =
-        nicsim_d2h_alloc(&nsparams, main_time);
-    if (msg == NULL) {
+    volatile union cosim_pcie_proto_d2h *msg;
+    while ((msg = nicsim_d2h_alloc(&nsparams, main_time)) == NULL) {
         fprintf(stderr, "d2h_alloc: no entry available\n");
-        abort();
     }
     return msg;
 }
 
 volatile union cosim_eth_proto_d2n *Runner::d2n_alloc(void)
 {
-    volatile union cosim_eth_proto_d2n *msg =
-        nicsim_d2n_alloc(&nsparams, main_time);
-    if (msg == NULL) {
+    volatile union cosim_eth_proto_d2n *msg;
+    while ((msg = nicsim_d2n_alloc(&nsparams, main_time)) == NULL) {
         fprintf(stderr, "d2n_alloc: no entry available\n");
-        abort();
     }
     return msg;
 }
