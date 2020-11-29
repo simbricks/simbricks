@@ -215,7 +215,7 @@ class I40eDCTCPNode(NodeConfig):
         return super().prepare_post_cp() + [
             'modprobe i40e',
             'ethtool -G eth0 rx 4096 tx 4096',
-            'ethtool -K eth0 tso off',
+            'ethtool -K eth0 tso on',
             'ip link set eth0 txqueuelen 13888',
             f'ip link set dev eth0 mtu {self.mtu} up',
             f'ip addr add {self.ip}/24 dev eth0',
@@ -264,6 +264,12 @@ class DctcpClient(AppConfig):
                     f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
                     'sleep 20'
                     ]
+
+class PingClient(AppConfig):
+    server_ip = '192.168.64.1'
+
+    def run_cmds(self, node):
+        return [f'ping {self.server_ip} -c 100']
 
 class IperfTCPServer(AppConfig):
     def run_cmds(self, node):
