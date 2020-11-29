@@ -170,10 +170,18 @@ class SlurmRuntime(Runtime):
 
     def prep_run(self, run):
         exp = run.experiment
-        exp_path = '%s/%s-%d.exp' % (self.slurmdir, exp.name, run.index)
-        exp_log = '%s/%s-%d.log' % (self.slurmdir, exp.name, run.index)
-        exp_script = '%s/%s-%d.sh' % (self.slurmdir, exp.name, run.index)
+        e_idx = exp.name + f'-{run.index}' + '.exp'
+        exp_path = os.path.join(self.slurmdir, e_idx)
+        
+        log_idx = exp.name + f'-{run.index}' + '.log'
+        exp_log = os.path.join(self.slurmdir, log_idx)
 
+        sc_idx = exp.name + f'-{run.index}' + '.sh'
+        exp_script = os.path.join(self.slurmdir, sc_idx)
+        print(exp_path)
+        print(exp_log)
+        print(exp_script)
+        
         # write out pickled run
         with open(exp_path, 'wb') as f:
             run.prereq = None # we don't want to pull in the prereq too
