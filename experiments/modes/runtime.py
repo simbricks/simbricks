@@ -200,7 +200,11 @@ class SlurmRuntime(Runtime):
                 s = int(exp.timeout % 60)
                 f.write('#SBATCH --time=%02d:%02d:%02d\n' % (h, m, s))
 
-            f.write('python3 run.py --pickled %s\n' % (exp_path))
+            extra = ''
+            if self.verbose:
+                extra = '--verbose'
+
+            f.write('python3 run.py %s --pickled %s\n' % (extra, exp_path))
             f.write('status=$?\n')
             if self.cleanup:
                 f.write('rm -rf %s\n' % (run.env.workdir))

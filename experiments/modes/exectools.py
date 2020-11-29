@@ -159,16 +159,16 @@ class SimpleComponent(Component):
     async def process_out(self, lines, eof):
         if self.verbose:
             for l in lines:
-                print(self.label, 'OUT:', lines)
+                print(self.label, 'OUT:', lines, flush=True)
 
     async def process_err(self, lines, eof):
         if self.verbose:
             for l in lines:
-                print(self.label, 'ERR:', lines)
+                print(self.label, 'ERR:', lines, flush=True)
 
     async def terminated(self, rc):
         if self.verbose:
-            print(self.label, 'TERMINATED:', rc)
+            print(self.label, 'TERMINATED:', rc, flush=True)
         if not self.canfail and rc != 0:
             raise Exception('Command Failed: ' + str(self.cmd_parts))
 

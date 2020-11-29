@@ -10,7 +10,7 @@ import modes.nodeconfig as node
 # net:  switch/dumbbell/bridge
 # app: DCTCPm
 
-types_of_host = ['qemu', 'gt']
+types_of_host = ['qemu', 'qt','gt']
 types_of_nic = ['cv','cb','ib']
 types_of_net = ['dumbbell']
 types_of_app = ['DCTCPm']
@@ -41,13 +41,19 @@ for h in types_of_host:
 
             e = exp.Experiment( h + '-' + c + '-' + 'dumbbell' + '-' + 'DCTCPm' + f'{k_val}' + f'-{mtu}')
             e.add_network(net)
-            e.checkpoint = True
 
             # host
             if h == 'qemu':
                 host_class = sim.QemuHost
+            elif h == 'qt':
+                def qemu_timing():
+                    h = sim.QemuHost()
+                    h.sync = True
+                    return h
+                host_class = qemu_timing
             elif h == 'gt':
                 host_class = sim.Gem5Host
+                e.checkpoint = True
             else:
                 raise NameError(h)
 
