@@ -42,6 +42,7 @@ class NICSim(Simulator):
     network = None
     name = ''
 
+    sync_mode = 0
     sync_period = 500
     pci_latency = 500
     eth_latency = 500
@@ -51,10 +52,10 @@ class NICSim(Simulator):
         net.nics.append(self)
 
     def basic_run_cmd(self, env, name, extra=None):
-        cmd = '%s/%s %s %s %s 0 %d %d %d' % \
+        cmd = '%s/%s %s %s %s %d 0 %d %d %d' % \
             (env.repodir, name, env.nic_pci_path(self), env.nic_eth_path(self),
-                    env.nic_shm_path(self), self.sync_period, self.pci_latency,
-                    self.eth_latency)
+                    env.nic_shm_path(self), self.sync_mode, self.sync_period,
+                    self.pci_latency, self.eth_latency)
 
         if extra is not None:
             cmd += ' ' + extra
@@ -66,6 +67,7 @@ class NICSim(Simulator):
 class NetSim(Simulator):
     name = ''
     opt = ''
+    sync_mode = 0
     sync_period = 500
     eth_latency = 500
 
@@ -211,15 +213,15 @@ class I40eNIC(NICSim):
 class WireNet(NetSim):
     def run_cmd(self, env):
         assert len(self.nics) == 2
-        return '%s/net_wire/net_wire %s %s %d %d' % \
+        return '%s/net_wire/net_wire %s %s %d %d %d' % \
                 (env.repodir, env.nic_eth_path(self.nics[0]),
                         env.nic_eth_path(self.nics[1]),
-                        self.sync_period, self.eth_latency)
+                        self.sync_mode, self.sync_period, self.eth_latency)
 
 class SwitchNet(NetSim):
     def run_cmd(self, env):
         cmd = env.repodir + '/net_switch/net_switch'
-        cmd += f' -S {self.sync_period} -E {self.eth_latency}'
+        cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency}'
         for n in self.nics:
             cmd += ' -s ' + env.nic_eth_path(n)
         return cmd
