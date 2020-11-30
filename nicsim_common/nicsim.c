@@ -66,6 +66,8 @@ static uint64_t pci_last_tx_time = 0;
 static uint64_t eth_last_rx_time = 0;
 static uint64_t eth_last_tx_time = 0;
 
+static uint64_t current_epoch = 0;
+
 static int shm_fd = -1;
 static int pci_cfd = -1;
 static int eth_cfd = -1;
@@ -266,35 +268,91 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp)
     volatile union cosim_eth_proto_d2n *d2n;
 
     /* sync PCI if necessary */
-    if (params->sync_pci && (pci_last_tx_time == 0 ||
-            timestamp - pci_last_tx_time >= params->sync_delay))
-    {
-        d2h = nicsim_d2h_alloc(params, timestamp);
-        if (d2h == NULL) {
-            ret = -1;
-        } else {
-            d2h->sync.own_type = COSIM_PCIE_PROTO_D2H_MSG_SYNC |
-                COSIM_PCIE_PROTO_D2H_OWN_HOST;
+    if (params->sync_pci) {
+        int sync;
+        switch (params->sync_mode) {
+        case SYNC_MODES:
+            sync = pci_last_tx_time == 0 ||
+                timestamp - pci_last_tx_time >= params->sync_delay;
+            break;
+        case SYNC_BARRIER:
+            sync = current_epoch == 0 ||
+                timestamp - current_epoch >= params->sync_delay;
+            break;
+        default:
+            fprintf(stderr, "unsupported sync mode=%u\n", params->sync_mode);
+            return ret;
+        }
+
+        if (sync)
+        {
+            d2h = nicsim_d2h_alloc(params, timestamp);
+            if (d2h == NULL) {
+                ret = -1;
+            } else {
+                d2h->sync.own_type = COSIM_PCIE_PROTO_D2H_MSG_SYNC |
+                    COSIM_PCIE_PROTO_D2H_OWN_HOST;
+            }
         }
     }
 
     /* sync Ethernet if necessary */
-    if (params->sync_eth && (eth_last_tx_time == 0 ||
-            timestamp - eth_last_tx_time >= params->sync_delay))
-    {
-        d2n = nicsim_d2n_alloc(params, timestamp);
-        if (d2n == NULL) {
-            ret = -1;
-        } else {
-            d2n->sync.own_type = COSIM_ETH_PROTO_D2N_MSG_SYNC |
-                COSIM_ETH_PROTO_D2N_OWN_NET;
+    if (params->sync_eth) {
+        int sync;
+        switch (params->sync_mode) {
+        case SYNC_MODES:
+            sync = eth_last_tx_time == 0 ||
+                timestamp - eth_last_tx_time >= params->sync_delay;
+            break;
+        case SYNC_BARRIER:
+            sync = current_epoch == 0 ||
+                timestamp - current_epoch >= params->sync_delay;
+            break;
+        default:
+            fprintf(stderr, "unsupported sync mode=%u\n", params->sync_mode);
+            return ret;
+        }
+
+        if (sync)
+        {
+            d2n = nicsim_d2n_alloc(params, timestamp);
+            if (d2n == NULL) {
+                ret = -1;
+            } else {
+                d2n->sync.own_type = COSIM_ETH_PROTO_D2N_MSG_SYNC |
+                    COSIM_ETH_PROTO_D2N_OWN_NET;
+            }
         }
     }
 
     return ret;
 }
 
-uint64_t netsim_next_timestamp(struct nicsim_params *params)
+void nicsim_advance_epoch(struct nicsim_params *params, uint64_t timestamp)
+{
+    if (params->sync_mode == SYNC_BARRIER) {
+        if ((params->sync_pci || params->sync_eth) &&
+                timestamp - current_epoch >= params->sync_delay) {
+            current_epoch = timestamp;
+        }
+    }
+}
+
+uint64_t nicsim_advance_time(struct nicsim_params *params, uint64_t timestamp)
+{
+    switch (params->sync_mode) {
+    case SYNC_MODES:
+        return timestamp;
+    case SYNC_BARRIER:
+        return timestamp < current_epoch + params->sync_delay ?
+            timestamp : current_epoch + params->sync_delay;
+    default:
+        fprintf(stderr, "unsupported sync mode=%u\n", params->sync_mode);
+        return timestamp;
+    }
+}
+
+uint64_t nicsim_next_timestamp(struct nicsim_params *params)
 {
     if (params->sync_pci && params->sync_eth) {
         return (pci_last_rx_time <= eth_last_rx_time ? pci_last_rx_time :
