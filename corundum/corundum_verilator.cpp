@@ -888,26 +888,29 @@ int main(int argc, char *argv[])
 {
     char *vargs[2] = { argv[0], NULL };
     Verilated::commandArgs(1, vargs);
+    int sync_mode = SYNC_MODES;
 #ifdef TRACE_ENABLED
     Verilated::traceEverOn(true);
 #endif
 
-    if (argc < 4 && argc > 9) {
+    if (argc < 4 && argc > 10) {
         fprintf(stderr, "Usage: corundum_verilator PCI-SOCKET ETH-SOCKET "
-                "SHM [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] [ETH-LATENCY] "
+                "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] [ETH-LATENCY] "
                 "[CLOCK-FREQ-MHZ]\n");
         return EXIT_FAILURE;
     }
     if (argc >= 5)
-        main_time = strtoull(argv[4], NULL, 0);
+        sync_mode = strtol(argv[4], NULL, 0);
     if (argc >= 6)
-        sync_period = strtoull(argv[5], NULL, 0) * 1000ULL;
+        main_time = strtoull(argv[5], NULL, 0);
     if (argc >= 7)
-        pci_latency = strtoull(argv[6], NULL, 0) * 1000ULL;
+        sync_period = strtoull(argv[6], NULL, 0) * 1000ULL;
     if (argc >= 8)
-        eth_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
+        pci_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
     if (argc >= 9)
-        clock_period = 1000000ULL / strtoull(argv[8], NULL, 0);
+        eth_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+    if (argc >= 10)
+        clock_period = 1000000ULL / strtoull(argv[9], NULL, 0);
 
     struct cosim_pcie_proto_dev_intro di;
     memset(&di, 0, sizeof(di));
@@ -930,6 +933,9 @@ int main(int argc, char *argv[])
     nsparams.pci_latency = pci_latency;
     nsparams.eth_latency = eth_latency;
     nsparams.sync_delay = sync_period;
+    assert(sync_mode == SYNC_MODES || sync_mode == SYNC_BARRIER);
+    nsparams.sync_mode = sync_mode;
+
     if (nicsim_init(&nsparams, &di)) {
         return EXIT_FAILURE;
     }
@@ -1056,12 +1062,13 @@ int main(int argc, char *argv[])
             std::cerr << "warn: nicsim_sync failed (t=" << main_time << ")" <<
                 std::endl;
         }
+        nicsim_advance_epoch(&nsparams, main_time);
 
         do {
             poll_h2d(mmio);
             poll_n2d(rx);
         } while ((nsparams.sync_pci || nsparams.sync_eth) &&
-            netsim_next_timestamp(&nsparams) <= main_time && !exiting);
+            nicsim_next_timestamp(&nsparams) <= main_time && !exiting);
 
         /* falling edge */
         top->clk = !top->clk;
