@@ -22,6 +22,7 @@ class HostSim(Simulator):
     sleep = 0
     cpu_freq = '3GHz'
 
+    sync_mode = 0
     sync_period = 500
     pci_latency = 500
 
@@ -181,6 +182,7 @@ class Gem5Host(HostSim):
             cmd += f'--cosim-shm={env.nic_shm_path(nic)} '
             if cpu_type == 'TimingSimpleCPU':
                 cmd += '--cosim-sync '
+                cmd += f'--cosim-sync_mode={self.sync_mode} '
                 cmd += f'--cosim-pci-lat={self.pci_latency} '
                 cmd += f'--cosim-sync-int={self.sync_period} '
             if isinstance(nic, I40eNIC):
