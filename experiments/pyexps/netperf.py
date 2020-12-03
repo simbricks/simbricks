@@ -2,7 +2,7 @@ import modes.experiments as exp
 import modes.simulators as sim
 import modes.nodeconfig as node
 
-host_types = ['qemu', 'gem5']
+host_types = ['qemu', 'gem5', 'qt']
 nic_types = ['i40e', 'cd_bm', 'cd_verilator']
 net_types = ['switch', 'ns3']
 experiments = []
@@ -24,8 +24,15 @@ for host_type in host_types:
             # host
             if host_type == 'qemu':
                 host_class = sim.QemuHost
+            elif host_type == 'qt':
+                def qemu_timing():
+                    h = sim.QemuHost()
+                    h.sync = True
+                    return h
+                host_class = qemu_timing
             elif host_type == 'gem5':
                 host_class = sim.Gem5Host
+                e.checkpoint = True
             else:
                 raise NameError(host_type)
 
