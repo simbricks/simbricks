@@ -141,6 +141,7 @@ class QemuHost(HostSim):
 class Gem5Host(HostSim):
     cpu_type_cp = 'X86KvmCPU'
     cpu_type = 'TimingSimpleCPU'
+    sys_clock  = '1GHz'
 
 
     def set_config(self, nc):
@@ -164,7 +165,7 @@ class Gem5Host(HostSim):
         cmd = (f'{env.gem5_path} --outdir={env.gem5_outdir(self)} '
             f'{env.gem5_py_path} --caches --l2cache --l3cache '
             '--l1d_size=32kB --l1i_size=32kB --l2_size=2MB --l3_size=32MB '
-            f'--cacheline_size=64 --cpu-clock={self.cpu_freq} '
+            f'--cacheline_size=64 --cpu-clock={self.cpu_freq} --sys-clock={self.sys_clock} '
             f'--checkpoint-dir={env.gem5_cpdir(self)} '
             f'--kernel={env.gem5_kernel_path} '
             f'--disk-image={env.hd_raw_path(self.node_config.disk_image)} '
