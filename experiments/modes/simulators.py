@@ -129,6 +129,7 @@ class QemuHost(HostSim):
             cmd += f'-device cosim-pci,chardev=cosimcd'
             if self.sync:
                 cmd += ',sync=on'
+                cmd += f',sync-mode={self.sync_mode}'
                 cmd += f',pci-latency={self.pci_latency}'
                 cmd += f',sync-period={self.sync_period}'
             else:
