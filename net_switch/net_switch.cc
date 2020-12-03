@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <vector>
 #include <unordered_map>
+#include <cassert>
 
 extern "C" {
 #include <netsim.h>
@@ -118,9 +119,10 @@ int main(int argc, char *argv[])
 {
     int c;
     int bad_option = 0;
+    int sync_mode = SYNC_MODES;
 
     // Parse command line argument
-    while ((c = getopt(argc, argv, "s:S:E:")) != -1 && !bad_option) {
+    while ((c = getopt(argc, argv, "s:S:E:m:")) != -1 && !bad_option) {
         switch (c) {
         case 's': {
             struct netsim_interface nsif;
@@ -139,6 +141,11 @@ int main(int argc, char *argv[])
 
         case 'E':
             eth_latency = strtoull(optarg, NULL, 0) * 1000ULL;
+            break;
+
+        case 'm':
+            sync_mode = strtol(optarg, NULL, 0);
+            assert(sync_mode == SYNC_MODES || sync_mode == SYNC_BARRIER);
             break;
 
         default:
@@ -161,11 +168,14 @@ int main(int argc, char *argv[])
     while (!exiting) {
         // Sync all interfaces
         for (auto &nsif : nsifs) {
-            if (netsim_n2d_sync(&nsif, cur_ts, eth_latency, sync_period) != 0) {
+            if (netsim_n2d_sync(&nsif, cur_ts, eth_latency,
+                        sync_period, sync_mode) != 0) {
                 fprintf(stderr, "netsim_n2d_sync failed\n");
                 abort();
             }
         }
+        netsim_advance_epoch(cur_ts, sync_period, sync_mode);
+
         // Switch packets
         uint64_t min_ts;
         do {
@@ -182,7 +192,7 @@ int main(int argc, char *argv[])
 
         // Update cur_ts
         if (min_ts < ULLONG_MAX) {
-            cur_ts = min_ts;
+            cur_ts = netsim_advance_time(min_ts, sync_period, sync_mode);
         }
     }
 

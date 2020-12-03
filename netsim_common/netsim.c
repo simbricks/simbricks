@@ -31,6 +31,8 @@
 #include <netsim.h>
 #include "internal.h"
 
+static uint64_t current_epoch = 0;
+
 int netsim_init(struct netsim_interface *nsif,
         const char *eth_socket_path, int *sync_eth)
 {
@@ -137,17 +139,32 @@ volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
 }
 
 int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
-        uint64_t latency, uint64_t sync_delay)
+        uint64_t latency, uint64_t sync_delay, int sync_mode)
 {
     volatile union cosim_eth_proto_n2d *msg;
     volatile struct cosim_eth_proto_n2d_sync *sync;
+    int do_sync;
 
     if (!nsif->sync)
         return 0;
 
-    if (nsif->n2d_timestamp != 0 &&
-            timestamp - nsif->n2d_timestamp < sync_delay)
+    switch (sync_mode) {
+    case SYNC_MODES:
+        do_sync = nsif->n2d_timestamp == 0 ||
+            timestamp - nsif->n2d_timestamp >= sync_delay;
+        break;
+    case SYNC_BARRIER:
+        do_sync = current_epoch == 0 ||
+            timestamp - current_epoch >= sync_delay;
+        break;
+    default:
+        fprintf(stderr, "unsupported sync mode=%u\n", sync_mode);
         return 0;
+    }
+
+    if (!do_sync) {
+        return 0;
+    }
 
     msg = netsim_n2d_alloc(nsif, timestamp, latency);
     if (msg == NULL)
@@ -158,4 +175,27 @@ int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
     sync->own_type = COSIM_ETH_PROTO_N2D_MSG_SYNC | COSIM_ETH_PROTO_N2D_OWN_DEV;
 
     return 0;
+}
+
+void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay, int sync_mode)
+{
+    if (sync_mode == SYNC_BARRIER) {
+        if (timestamp - current_epoch >= sync_delay) {
+            current_epoch = timestamp;
+        }
+    }
+}
+
+uint64_t netsim_advance_time(uint64_t timestamp, uint64_t sync_delay, int sync_mode)
+{
+    switch (sync_mode) {
+    case SYNC_MODES:
+        return timestamp;
+    case SYNC_BARRIER:
+        return timestamp < current_epoch + sync_delay ?
+            timestamp : current_epoch + sync_delay;
+    default:
+        fprintf(stderr, "unsupported sync mode=%u\n", sync_mode);
+        return timestamp;
+    }
 }

@@ -27,6 +27,9 @@
 #include <cosim_pcie_proto.h>
 #include <cosim_eth_proto.h>
 
+#define SYNC_MODES 0 // ModES style synchronization
+#define SYNC_BARRIER 1 // Global barrier style synchronization
+
 struct nicsim_params {
     const char *pci_socket_path;
     const char *eth_socket_path;
@@ -38,6 +41,7 @@ struct nicsim_params {
 
     int sync_pci;
     int sync_eth;
+    int sync_mode;
 };
 
 int nicsim_init(struct nicsim_params *params,
@@ -45,7 +49,9 @@ int nicsim_init(struct nicsim_params *params,
 void nicsim_cleanup(void);
 
 int nicsim_sync(struct nicsim_params *params, uint64_t timestamp);
-uint64_t netsim_next_timestamp(struct nicsim_params *params);
+void nicsim_advance_epoch(struct nicsim_params *params, uint64_t timestamp);
+uint64_t nicsim_advance_time(struct nicsim_params *params, uint64_t timestamp);
+uint64_t nicsim_next_timestamp(struct nicsim_params *params);
 
 volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(
         struct nicsim_params *params, uint64_t timestamp);

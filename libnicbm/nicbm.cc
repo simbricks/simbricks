@@ -391,21 +391,23 @@ int Runner::runMain(int argc, char *argv[])
     uint64_t sync_period = 100 * 1000ULL;
     uint64_t pci_latency = 500 * 1000ULL;
     uint64_t eth_latency = 500 * 1000ULL;
+    int sync_mode = SYNC_MODES;
 
-    if (argc < 4 && argc > 8) {
+    if (argc < 4 && argc > 9) {
         fprintf(stderr, "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
-                "SHM [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] [ETH-LATENCY]\n");
+                "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] [ETH-LATENCY]\n");
         return EXIT_FAILURE;
     }
     if (argc >= 5)
-        main_time = strtoull(argv[4], NULL, 0);
+        sync_mode = strtol(argv[4], NULL, 0);
     if (argc >= 6)
-        sync_period = strtoull(argv[5], NULL, 0) * 1000ULL;
+        main_time = strtoull(argv[5], NULL, 0);
     if (argc >= 7)
-        pci_latency = strtoull(argv[6], NULL, 0) * 1000ULL;
+        sync_period = strtoull(argv[6], NULL, 0) * 1000ULL;
     if (argc >= 8)
-        eth_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
-
+        pci_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
+    if (argc >= 9)
+        eth_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
 
     signal(SIGINT, sigint_handler);
     signal(SIGUSR1, sigusr1_handler);
@@ -421,6 +423,9 @@ int Runner::runMain(int argc, char *argv[])
     nsparams.pci_latency = pci_latency;
     nsparams.eth_latency = eth_latency;
     nsparams.sync_delay = sync_period;
+    assert(sync_mode == SYNC_MODES || sync_mode == SYNC_BARRIER);
+    nsparams.sync_mode = sync_mode;
+
     if (nicsim_init(&nsparams, &dintro)) {
         return EXIT_FAILURE;
     }
@@ -433,6 +438,7 @@ int Runner::runMain(int argc, char *argv[])
         while (nicsim_sync(&nsparams, main_time)) {
             fprintf(stderr, "warn: nicsim_sync failed (t=%lu)\n", main_time);
         }
+        nicsim_advance_epoch(&nsparams, main_time);
 
         do {
             poll_h2d();
@@ -440,7 +446,7 @@ int Runner::runMain(int argc, char *argv[])
             event_trigger();
 
             if (is_sync) {
-                next_ts = netsim_next_timestamp(&nsparams);
+                next_ts = nicsim_next_timestamp(&nsparams);
                 if (next_ts > main_time + max_step)
                     next_ts = main_time + max_step;
             } else {
@@ -452,7 +458,7 @@ int Runner::runMain(int argc, char *argv[])
                 next_ts = ev_ts;
 
         } while (next_ts <= main_time && !exiting);
-        main_time = next_ts;
+        main_time = nicsim_advance_time(&nsparams, next_ts);
     }
 
     fprintf(stderr, "exit main_time: %lu\n", main_time);
