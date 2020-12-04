@@ -22,7 +22,8 @@ k_step = 8320
 #k_step = 16640
 link_rate_opt = '--LinkRate=10Gb/s ' # don't forget space at the end
 link_latency_opt = '--LinkLatency=500ns '
-cpu_freq = '5GHz' #GHz
+cpu_freq = '5GHz'
+cpu_freq_qemu = '2GHz'
 #mtu = 4000
 sys_clock = '2GHz' # if not set, default 1GHz
 
@@ -44,10 +45,12 @@ for mtu in types_of_mtu:
                 e = exp.Experiment( h + '-' + c + '-' + 'dumbbell' + '-' + 'DCTCPm' + f'{k_val}' + f'-{mtu}')
                 e.add_network(net)
 
+                freq = cpu_freq
                 # host
                 if h == 'qemu':
                     host_class = sim.QemuHost
                 elif h == 'qt':
+                    freq = cpu_freq_qemu
                     def qemu_timing():
                         h = sim.QemuHost()
                         h.sync = True
@@ -80,9 +83,9 @@ for mtu in types_of_mtu:
 
 
                 servers = sim.create_dctcp_hosts(e, num_pairs, 'server', net, nic_class, host_class, 
-                                                nc_class, node.DctcpServer, cpu_freq, mtu)
+                                                nc_class, node.DctcpServer, freq, mtu)
                 clients = sim.create_dctcp_hosts(e, num_pairs, 'client', net, nic_class, host_class, 
-                                                nc_class, node.DctcpClient, cpu_freq, mtu, ip_start=num_pairs+1)
+                                                nc_class, node.DctcpClient, freq, mtu, ip_start=num_pairs+1)
 
             
                 i = 0
