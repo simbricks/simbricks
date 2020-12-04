@@ -8,7 +8,7 @@ if len(sys.argv) != 2:
 
 basedir = sys.argv[1] + '/'
 
-types_of_host = ['gt', 'qt']
+types_of_host = ['tb', 'gt', 'qt']
 mtus = [1500, 4000]
 max_k = 199680
 k_step = 16640
