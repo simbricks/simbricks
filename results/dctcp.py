@@ -29,8 +29,8 @@ for k_val in range(0, max_k + 1, k_step):
             continue
 
         tp = res['avg']
-        # TP * (MTU + ETH(14(MAC) + 24(PHY))) / (MTU - IP (20) - TCP w/option (24))
-        tp_calib = tp * (mtu + (14 + 24)) / (mtu - 20 - 24)
+        # TP * (MTU ) / (MTU - IP (20) - TCP w/option (24))
+        tp_calib = tp * (mtu) / (mtu - 20 - 24)
         line.append('%.2f' % (tp_calib))
 
     print('\t'.join(line))
