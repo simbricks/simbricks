@@ -30,7 +30,11 @@ for k_val in range(0, max_k + 1, k_step):
 
         tp = res['avg']
         # TP * (MTU ) / (MTU - IP (20) - TCP w/option (24))
-        tp_calib = tp * (mtu) / (mtu - 20 - 24)
+        if (h == 'gt' or h == 'qt'):
+            tp_calib = tp * (mtu) / (mtu - 20 - 24)
+        else:
+            # TP * (MTU + ETH(14) + PHY(24)) / (MTU - IP (20) - TCP w/option (24))
+            tp_calib = tp * (mtu + 14 + 24) / (mtu - 20 - 24)
         line.append('%.2f' % (tp_calib))
 
     print('\t'.join(line))
