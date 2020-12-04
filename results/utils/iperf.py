@@ -7,7 +7,7 @@ import itertools
 import sys
 
 def parse_iperf_run(data, skip=1, use=8):
-    tp_pat = re.compile(r'\[ *\d*\] *([0-9\.]*)- *([0-9\.]*) sec.*Bytes *([0-9\.]*) Gbits.*')
+    tp_pat = re.compile(r'\[ *\d*\] *([0-9\.]*)- *([0-9\.]*) sec.*Bytes *([0-9\.]*) ([GM])bits.*')
     tps_time = {}
     for hn in fnmatch.filter(data['sims'].keys(), 'host.client.*'):
         sim = data['sims'][hn]
@@ -25,7 +25,11 @@ def parse_iperf_run(data, skip=1, use=8):
             if not time in tps_time:
                 tps_time[time] = []
 
-            tps_time[time].append(float(m.group(3)))
+            if m.group(4) == 'G':
+                tps_time[time].append(float(m.group(3)))
+            elif m.group(4) == 'M':
+                m_tps = float(m.group(3))/1000
+                tps_time[time].append(m_tps)
 
     tps = []
     for t in sorted(tps_time.keys()):
