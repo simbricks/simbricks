@@ -10,59 +10,87 @@ import modes.nodeconfig as node
 # net:  wire/switch/dumbbell/bridge
 # app: UDPs
 
-kinds_of_host = ['gem5-timing']
-kinds_of_nic = ['cv','cb','ib']
-kinds_of_net = ['wire', 'switch', 'dumbbell', 'bridge']
-kinds_of_app = ['UDPs']
+host_types = ['gt', 'qt', 'qemu']
+nic_types = ['cv','cb','ib']
+net_types = ['wire', 'switch', 'bridge']
+app = ['UDPs']
 
-rate = '200m'
+rate_types = []
+rate_start = 0
+rate_end = 140
+rate_step = 20
+for r in range(rate_start, rate_end + 1, rate_step):
+    rate = f'{r}m'
+    rate_types.append(rate)
+    
 
 experiments = []
 
-# set network sim
-for n in kinds_of_net:
-    if n == 'wire':
-        net_class = sim.WireNet
-    if n == 'switch':
-        net_class = sim.SwitchNet
-    if n == 'dumbbell':
-        net_class = sim.NS3DumbbellNet
-    if n == 'bridge':
-        net_class = sim.NS3BridgeNet
+for rate in rate_types:
+    for host_type in host_types:
+        for nic_type in nic_types:
+            for net_type in net_types:
+
+                e = exp.Experiment(host_type + '-' + nic_type + '-' + net_type + '-UDPs-' + rate )
+                # network
+                if net_type == 'switch':
+                    net = sim.SwitchNet()
+                elif net_type == 'bridge':
+                    net = sim.NS3BridgeNet()
+                elif net_type == 'wire':
+                    net = sim.WireNet()
+                else:
+                    raise NameError(net_type)
+                e.add_network(net)
+
+                # host
+                if host_type == 'qemu':
+                    host_class = sim.QemuHost
+                elif host_type == 'qt':
+                    def qemu_timing():
+                        h = sim.QemuHost()
+                        h.sync = True
+                        return h
+                    host_class = qemu_timing
+                elif host_type == 'gt':
+                    host_class = sim.Gem5Host
+                    e.checkpoint = False
+                else:
+                    raise NameError(host_type)
+
+                # nic
+                if nic_type == 'ib':
+                    nic_class = sim.I40eNIC
+                    nc_class = node.I40eLinuxNode
+                elif nic_type == 'cb':
+                    nic_class = sim.CorundumBMNIC
+                    nc_class = node.CorundumLinuxNode
+                elif nic_type == 'cv':
+                    nic_class = sim.CorundumVerilatorNIC
+                    nc_class = node.CorundumLinuxNode
+                else:
+                    raise NameError(nic_type)
+
+                # create servers and clients
+                servers = sim.create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
+                        nc_class, node.IperfUDPServer)
+
+                if rate == '0m':
+                    clients = sim.create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
+                                                     nc_class, node.IperfUDPClientSleep, ip_start=2)
+                else:
+                    clients = sim.create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
+                                                     nc_class, node.IperfUDPClient, ip_start=2)
+
+                clients[0].wait = True
+                clients[0].node_config.app.server_ip = servers[0].node_config.ip
+                clients[0].node_config.app.rate = rate
+
+                print(e.name)
 
 
-    # set nic sim
-    for c in kinds_of_nic:
-        net = net_class()
-        e = exp.Experiment('gt-'  + c + '-' + n + '-' + 'UDPs')
-        e.checkpoint = True
-        e.add_network(net)
-        
-        if c == 'cv':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.CorundumVerilatorNIC, sim.Gem5Host, 
-                                             node.CorundumLinuxNode, node.IperfUDPServer)
-            clients = sim.create_basic_hosts(e, 1, 'client', net, sim.CorundumVerilatorNIC, sim.Gem5Host, 
-                                             node.CorundumLinuxNode, node.IperfUDPClient, ip_start = 2)
+                # add to experiments
+                experiments.append(e)
 
-        
-        if c == 'cb':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.CorundumBMNIC, sim.Gem5Host, 
-                                             node.CorundumLinuxNode, node.IperfUDPServer)
-            clients = sim.create_basic_hosts(e, 1, 'client', net, sim.CorundumBMNIC, sim.Gem5Host, 
-                                             node.CorundumLinuxNode, node.IperfUDPClient, ip_start = 2)
-            
-        
 
-        if c == 'ib':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.Gem5Host, 
-                                             node.I40eLinuxNode, node.IperfUDPServer)
-            clients = sim.create_basic_hosts(e, 1, 'client', net, sim.I40eNIC, sim.Gem5Host, 
-                                             node.I40eLinuxNode, node.IperfUDPClient, ip_start = 2)
-            
-        clients[0].wait = True
-        clients[0].node_config.app.server_ip = servers[0].node_config.ip
-        clients[0].node_config.app.rate = rate
-
-        print(e.name)
-        experiments.append(e)
 
