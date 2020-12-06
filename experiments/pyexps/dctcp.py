@@ -25,7 +25,7 @@ link_latency_opt = '--LinkLatency=500ns '
 cpu_freq = '5GHz'
 cpu_freq_qemu = '2GHz'
 #mtu = 4000
-sys_clock = '2GHz' # if not set, default 1GHz
+sys_clock = '1GHz' # if not set, default 1GHz
 
 ip_start = '192.168.64.1'
 
@@ -57,13 +57,19 @@ for mtu in types_of_mtu:
                         return h
                     host_class = qemu_timing
                 elif h == 'gt':
-                    host_class = sim.Gem5Host
-                    host_class.sys_clock = sys_clock
+                    def gem5_timing():
+                        h = sim.Gem5Host()
+                        #h.sys_clock = sys_clock
+                        return h
+                    host_class = gem5_timing
                     e.checkpoint = True
                 elif h == 'gO3':
-                    host_class = sim.Gem5Host
-                    host_class.cpu_type = 'DerivO3CPU' 
-                    host_class.sys_clock = sys_clock
+                    def gem5_o3():
+                        h = sim.Gem5Host()
+                        h.cpu_type = 'DerivO3CPU' 
+                        h.sys_clock = sys_clock
+                        return h
+                    host_class = gem5_o3    
                     e.checkpoint = True
                 else:
                     raise NameError(h)
