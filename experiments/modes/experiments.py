@@ -16,6 +16,7 @@ class Experiment(object):
         self.hosts = []
         self.nics = []
         self.networks = []
+        self.metadata = {}
 
     def add_host(self, sim):
         for h in self.hosts:
@@ -201,6 +202,7 @@ class ExpEnv(object):
 class ExpOutput(object):
     def __init__(self, exp):
         self.exp_name = exp.name
+        self.metadata = exp.metadata
         self.start_time = None
         self.end_time = None
         self.sims = {}
