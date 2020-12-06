@@ -7,7 +7,7 @@ class NodeConfig(object):
     ip = '10.0.0.1'
     prefix = 24
     cores = 1
-    memory = 4 * 1024
+    memory = 8 * 1024
     disk_image = 'base'
     app = None
     mtu = 1500
@@ -215,7 +215,7 @@ class I40eDCTCPNode(NodeConfig):
         return super().prepare_post_cp() + [
             'modprobe i40e',
             'ethtool -G eth0 rx 4096 tx 4096',
-            'ethtool -K eth0 tso on',
+            'ethtool -K eth0 tso off',
             'ip link set eth0 txqueuelen 13888',
             f'ip link set dev eth0 mtu {self.mtu} up',
             f'ip addr add {self.ip}/24 dev eth0',
@@ -293,7 +293,15 @@ class IperfUDPClient(AppConfig):
     rate = '150m'
     def run_cmds(self, node):
         return ['sleep 1',
-                'iperf -c ' + self.server_ip + ' -u -b ' + self.rate]
+                'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate]
+
+class IperfUDPClientSleep(AppConfig):
+    server_ip = '10.0.0.1'
+    rate = '150m'
+    def run_cmds(self, node):
+        return ['sleep 1',
+                'sleep 10'
+                ]
 
 class NetperfServer(AppConfig):
     def run_cmds(self, node):
@@ -303,7 +311,7 @@ class NetperfServer(AppConfig):
 class NetperfClient(AppConfig):
     server_ip = '10.0.0.1'
     def run_cmds(self, node):
-        return ['netserver',
+        return ['netserver', 'sleep 0.5',
                 'netperf -H ' + self.server_ip,
                 'netperf -H ' + self.server_ip + ' -t TCP_RR -- -o mean_latency,p50_latency,p90_latency,p99_latency']
 
@@ -321,6 +329,18 @@ class NOPaxosClient(AppConfig):
             cmds.append('ping -c 1 ' + ip)
         cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
                 '-m nopaxos -n 2000')
+        cmds.append('sleep 20')
+        return cmds
+
+class NOPaxosClientLast(AppConfig):
+    server_ips = []
+    def run_cmds(self, node):
+        cmds = []
+        for ip in self.server_ips:
+            cmds.append('ping -c 1 ' + ip)
+        cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
+                '-m nopaxos -n 2000')
+        cmds.append('sleep 0.5')
         return cmds
 
 class NOPaxosSequencer(AppConfig):
