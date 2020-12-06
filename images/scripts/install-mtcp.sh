@@ -40,7 +40,7 @@ make -j4 -C dpdk install T=$RTE_TARGET
 #sed -i -e 's://#define DEBUG:#define DEBUG:' \
 #    -e 's/RTE_LOG_EMERG/RTE_LOG_DEBUG/g' \
 #    dpdk-iface-kmod/dpdk_iface_main.c
-#(cd dpdk-iface-kmod && make -j4)
+(cd dpdk-iface-kmod && make -j4)
 make -j4
 
 
