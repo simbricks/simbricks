@@ -20,7 +20,8 @@ class NodeConfig(object):
             cp_es = ['m5 checkpoint']
             exit_es = ['m5 exit']
 
-        es = self.prepare_pre_cp() + cp_es + self.prepare_post_cp() + \
+        es = self.prepare_pre_cp() + self.app.prepare_pre_cp() + cp_es + \
+            self.prepare_post_cp() + self.app.prepare_post_cp() + \
             self.run_cmds() + self.cleanup_cmds() + exit_es
         return '\n'.join(es)
 
@@ -68,7 +69,7 @@ class NodeConfig(object):
         return []
 
     def config_files(self):
-        return {}
+        return self.app.config_files()
 
     def strfile(self, s):
         return io.BytesIO(bytes(s, encoding='UTF-8'))
@@ -77,6 +78,18 @@ class NodeConfig(object):
 class AppConfig(object):
     def run_cmds(self, node):
         return []
+
+    def prepare_pre_cp(self):
+        return []
+
+    def prepare_post_cp(self):
+        return []
+
+    def config_files(self):
+        return {}
+
+    def strfile(self, s):
+        return io.BytesIO(bytes(s, encoding='UTF-8'))
 
 
 class LinuxNode(NodeConfig):
@@ -382,3 +395,68 @@ class RPCClient(AppConfig):
                 self.max_pending, self.max_flows, self.openall_delay,
                 self.max_msgs_conn, self.max_pend_conns),
             'sleep %d' % (self.time)]
+
+
+################################################################################
+
+class HTTPD(AppConfig):
+    threads = 1
+    file_size = 64
+    mtcp_config = 'lighttpd.conf'
+
+    def prepare_pre_cp(self):
+        return ['mkdir -p /srv/www/htdocs/ /tmp/lighttpd/',
+            'dd if=/dev/zero of=/srv/www/htdocs/file bs=%d count=1' % \
+                (self.file_size)]
+
+    def run_cmds(self, node):
+        return ['cd %s/src/' % (self.httpd_dir),
+            './lighttpd -D -f ../doc/config/%s -n %d -m ./.libs/' % \
+                (self.mtcp_config, self.threads)]
+
+class HTTPDLinux(HTTPD):
+    httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux'
+
+class HTTPDLinuxRPO(HTTPD):
+    httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux-rop'
+
+class HTTPDMtcp(HTTPD):
+    httpd_dir = '/root/mtcp/apps/lighttpd-mtcp'
+    mtcp_config = 'm-lighttpd.conf'
+
+    def prepare_pre_cp(self):
+        return super().prepare_pre_cp() + [
+            'cp /tmp/guest/mtcp.conf %s/src/mtcp.conf' % (self.httpd_dir),
+            'sed -i "s:^server.document-root =.*:server.document-root = server_root + \\"/htdocs\\":" %s' % \
+                    (self.httpd_dir + '/doc/config/' + self.mtcp_config)
+        ]
+
+
+class HTTPC(AppConfig):
+    server_ip = '10.0.0.1'
+    conns = 1000
+    #requests = 10000000
+    requests = 10000
+    threads = 1
+    url = '/file'
+
+    def run_cmds(self, node):
+        return ['cd %s/support/' % (self.ab_dir),
+            './ab -N %d -c %d -n %d %s%s' % \
+                (self.threads, self.conns, self.requests, self.server_ip,
+                    self.url)]
+
+class HTTPCLinux(HTTPC):
+    ab_dir = '/root/mtcp/apps/ab-linux'
+
+class HTTPCMtcp(HTTPC):
+    ab_dir = '/root/mtcp/apps/ab-mtcp'
+
+    def prepare_pre_cp(self):
+        return super().prepare_pre_cp() + [
+            'cp /tmp/guest/mtcp.conf %s/support/config/mtcp.conf' % \
+                    (self.ab_dir),
+            'rm -f %s/support/config/arp.conf' % (self.ab_dir)
+        ]
+
+
