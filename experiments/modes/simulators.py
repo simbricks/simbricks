@@ -88,7 +88,7 @@ class QemuHost(HostSim):
             return self.node_config.cores + 1
 
     def resreq_mem(self):
-        return 4096
+        return 8192
 
     def prep_cmds(self, env):
         to_path = env.hdcopy_path(self)
