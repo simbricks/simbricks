@@ -19,7 +19,7 @@ for bw in types_of_bw:
     start_time = exp_log["start_time"]
     end_time = exp_log["end_time"]
     diff_time = (end_time - start_time)/60 #min
-    print(start_time, end_time, diff_time)
+    print('%d\t%f' % (bw, diff_time))
 
     log.close()
 
