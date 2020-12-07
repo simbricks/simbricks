@@ -29,3 +29,4 @@ experiments/local-config.sh
 gem5/
 qemu/
 ns-3/
+experiments/slurm
