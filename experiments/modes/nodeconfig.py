@@ -328,6 +328,22 @@ class NetperfClient(AppConfig):
                 'netperf -H ' + self.server_ip,
                 'netperf -H ' + self.server_ip + ' -t TCP_RR -- -o mean_latency,p50_latency,p90_latency,p99_latency']
 
+class VRReplica(AppConfig):
+    index = 0
+    def run_cmds(self, node):
+        return ['/root/nopaxos/bench/replica -c /root/nopaxos.config -i ' +
+                str(self.index) + ' -m vr']
+
+class VRClient(AppConfig):
+    server_ips = []
+    def run_cmds(self, node):
+        cmds = []
+        for ip in self.server_ips:
+            cmds.append('ping -c 1 ' + ip)
+        cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
+                '-m vr -n 2000')
+        return cmds
+
 class NOPaxosReplica(AppConfig):
     index = 0
     def run_cmds(self, node):
@@ -342,18 +358,6 @@ class NOPaxosClient(AppConfig):
             cmds.append('ping -c 1 ' + ip)
         cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
                 '-m nopaxos -n 2000')
-        cmds.append('sleep 20')
-        return cmds
-
-class NOPaxosClientLast(AppConfig):
-    server_ips = []
-    def run_cmds(self, node):
-        cmds = []
-        for ip in self.server_ips:
-            cmds.append('ping -c 1 ' + ip)
-        cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
-                '-m nopaxos -n 2000')
-        cmds.append('sleep 0.5')
         return cmds
 
 class NOPaxosSequencer(AppConfig):
