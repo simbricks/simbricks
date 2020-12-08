@@ -315,7 +315,7 @@ class IperfUDPClientLast(AppConfig):
     def run_cmds(self, node):
         return ['sleep 1',
                 'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate,
-                'sleep 1']               
+                'sleep 0.5']               
 
 class IperfUDPClientSleep(AppConfig):
     server_ip = '10.0.0.1'
@@ -350,12 +350,7 @@ class VRClient(AppConfig):
         for ip in self.server_ips:
             cmds.append('ping -c 1 ' + ip)
         cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
-<<<<<<< HEAD
                 '-m vr -n 2000')
-=======
-                '-m nopaxos -n 2000')
-        cmds.append('sleep infinity')
->>>>>>> experiments
         return cmds
 
 class NOPaxosReplica(AppConfig):
@@ -366,16 +361,18 @@ class NOPaxosReplica(AppConfig):
 
 class NOPaxosClient(AppConfig):
     server_ips = []
+    is_last = False
+
     def run_cmds(self, node):
         cmds = []
         for ip in self.server_ips:
             cmds.append('ping -c 1 ' + ip)
         cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
                 '-m nopaxos -n 2000')
-<<<<<<< HEAD
-=======
-        cmds.append('sleep 100')
->>>>>>> experiments
+        if self.is_last:
+            cmds.append('sleep 1')
+        else:
+            cmds.append('sleep infinity')
         return cmds
 
 class NOPaxosSequencer(AppConfig):

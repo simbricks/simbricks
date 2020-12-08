@@ -8,6 +8,7 @@ nic_configs = ['ib', 'cb', 'cv']
 proto_configs = ['vr', 'nopaxos']
 num_client_configs = [1, 2, 3, 4]
 experiments = []
+sync_period = 200
 
 link_rate_opt = '--LinkRate=100Gb/s ' # don't forget space at the end
 link_latency_opt = '--LinkLatency=500ns '
@@ -19,6 +20,7 @@ for proto_config in proto_configs:
                 for nic_config in nic_configs:
                     e = exp.Experiment(proto_config + '-'  + host_config + '-' + nic_config + '-' + seq_config + f'-{num_c}')
                     net = sim.NS3SequencerNet()
+                    net.sync_period = sync_period
                     net.opt = link_rate_opt + link_latency_opt
                     e.add_network(net)
 
@@ -27,7 +29,7 @@ for proto_config in proto_configs:
                         host_class = sim.QemuHost
                     elif host_config == 'gt':
                         host_class = sim.Gem5Host
-                        e.checkpoint = False
+                        e.checkpoint = True
                     else:
                         raise NameError(host_config)
 
@@ -44,7 +46,6 @@ for proto_config in proto_configs:
                     else:
                         raise NameError(nic_config)
 
-                    nc_class.disk_image = 'nopaxos'
 
                     # app
                     if proto_config == 'vr':
@@ -61,21 +62,28 @@ for proto_config in proto_configs:
                         sequencer = sim.create_basic_hosts(e, 1, 'sequencer', net, nic_class,
                                 host_class, nc_class, node.NOPaxosSequencer, ip_start = 100)
                         sequencer[0].sleep = 1
+                        sequencer[0].node_config.disk_image = 'nopaxos'
+                        sequencer[0].nics[0].sync_period = sync_period
 
                     replicas = sim.create_basic_hosts(e, 3, 'replica', net, nic_class,
                             host_class, nc_class, replica_class)
                     for i in range(len(replicas)):
                         replicas[i].node_config.app.index = i
                         replicas[i].sleep = 1
+                        replicas[i].node_config.disk_image = 'nopaxos'
+                        replicas[i].nics[0].sync_period = sync_period
 
                     clients = sim.create_basic_hosts(e, num_c, 'client', net, nic_class,
                             host_class, nc_class, client_class, ip_start = 4)
 
                     for c in clients:
+                        c.sleep = 5
                         c.node_config.app.server_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
+                        c.node_config.disk_image = 'nopaxos'
+                        c.nics[0].sync_period = sync_period
 
                     clients[num_c - 1].wait = True
-                    clients[num_c - 1].sleep = 5
+                    clients[num_c - 1].node_config.app.is_last = True
 
                     print(e.name)
                     #print (len(experiments))
