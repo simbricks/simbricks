@@ -6,7 +6,7 @@ host_configs = ['qemu', 'gt']
 seq_configs = ['swseq', 'ehseq']
 nic_configs = ['ib', 'cb', 'cv']
 proto_configs = ['vr', 'nopaxos']
-num_client_configs = [1, 2, 3, 4]
+num_client_configs = [1, 2, 3, 4, 5, 6, 7, 8]
 experiments = []
 sync_period = 200
 
@@ -64,6 +64,7 @@ for proto_config in proto_configs:
                         sequencer[0].sleep = 1
                         sequencer[0].node_config.disk_image = 'nopaxos'
                         sequencer[0].nics[0].sync_period = sync_period
+                        sequencer[0].sync_period = sync_period
 
                     replicas = sim.create_basic_hosts(e, 3, 'replica', net, nic_class,
                             host_class, nc_class, replica_class)
@@ -72,6 +73,7 @@ for proto_config in proto_configs:
                         replicas[i].sleep = 1
                         replicas[i].node_config.disk_image = 'nopaxos'
                         replicas[i].nics[0].sync_period = sync_period
+                        replicas[i].sync_period = sync_period
 
                     clients = sim.create_basic_hosts(e, num_c, 'client', net, nic_class,
                             host_class, nc_class, client_class, ip_start = 4)
@@ -81,6 +83,7 @@ for proto_config in proto_configs:
                         c.node_config.app.server_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
                         c.node_config.disk_image = 'nopaxos'
                         c.nics[0].sync_period = sync_period
+                        c.sync_period = sync_period
 
                     clients[num_c - 1].wait = True
                     clients[num_c - 1].node_config.app.is_last = True
