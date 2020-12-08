@@ -18,15 +18,15 @@ for cl in types_of_client:
     try:
         log = open(log_path, 'r')
     except:
-        print(f'no file: {log_path}')
-        continue
+        diff_time = ''
     else:
         exp_log = json.load(log)
         start_time = exp_log["start_time"]
         end_time = exp_log["end_time"]
         diff_time = (end_time - start_time)/60 #min
-        
-        print(diff_time)
-
+        diff_time = str(diff_time)
         log.close()
+
+    print('%d\t%s' % (cl, diff_time))
+
 
