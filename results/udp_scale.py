@@ -9,7 +9,7 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 basedir = sys.argv[1] + '/'
-types_of_client = [1, 3, 7, 15, 31]
+types_of_client = [1, 3, 7, 11, 15, 31]
 bw = 1000
 
 for cl in types_of_client:
