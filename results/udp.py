@@ -11,7 +11,7 @@ if len(sys.argv) != 2:
 basedir = sys.argv[1] + '/'
 
 # FIXME: dropped 140 because it looks off
-types_of_bw = [0, 20, 40, 60, 80, 100, 120, 200, 500, 1000]
+types_of_bw = [0, 20, 40, 60, 80, 100, 120, 200, 500, 800, 1000]
 
 
 for bw in types_of_bw:
