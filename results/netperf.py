@@ -44,5 +44,5 @@ for (h,h_l) in hosts:
     tp = fmt_tp(data.get('throughput', ''))
     latMean = fmt_lat(data.get('latenyMean', ''))
     latTail = fmt_lat(data.get('latenyTail', ''))
-    print('  %s & %s & %s & %s & %s & %s & %s \\\\' % (h_l, nic_l, net_l,
-        tp, latMean, latTail, t))
+    print('  %s & %s & %s & %s & %s & %s \\\\' % (h_l, nic_l, net_l,
+        tp, latMean, t))
