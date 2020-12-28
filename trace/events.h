@@ -1,10 +1,10 @@
 #pragma once
 
-class Event {
+class event {
   public:
     uint64_t ts;
 
-    Event(uint64_t ts_)
+    event(uint64_t ts_)
         : ts(ts_)
     {
     }
@@ -12,12 +12,12 @@ class Event {
     virtual void dump(std::ostream &out) = 0;
 };
 
-class EHostCall : public Event {
+class EHostCall : public event {
   public:
     const std::string &fun;
 
     EHostCall(uint64_t ts_, const std::string &fun_)
-        : Event(ts_), fun(fun_)
+        : event(ts_), fun(fun_)
     {
     }
 
@@ -27,12 +27,12 @@ class EHostCall : public Event {
     }
 };
 
-class EHostMsiX : public Event {
+class EHostMsiX : public event {
   public:
     uint16_t vec;
 
     EHostMsiX(uint64_t ts_, uint16_t vec_)
-        : Event(ts_), vec(vec_)
+        : event(ts_), vec(vec_)
     {
     }
 
@@ -42,14 +42,14 @@ class EHostMsiX : public Event {
     }
 };
 
-class EHostDmaR : public Event {
+class EHostDmaR : public event {
   public:
     uint64_t id;
     uint64_t addr;
     uint64_t size;
 
     EHostDmaR(uint64_t ts_, uint64_t id_, uint64_t addr_, uint64_t size_)
-        : Event(ts_), id(id_), addr(addr_), size(size_)
+        : event(ts_), id(id_), addr(addr_), size(size_)
     {
     }
 
@@ -60,14 +60,14 @@ class EHostDmaR : public Event {
     }
 };
 
-class EHostDmaW : public Event {
+class EHostDmaW : public event {
   public:
     uint64_t id;
     uint64_t addr;
     uint64_t size;
 
     EHostDmaW(uint64_t ts_, uint64_t id_, uint64_t addr_, uint64_t size_)
-        : Event(ts_), id(id_), addr(addr_), size(size_)
+        : event(ts_), id(id_), addr(addr_), size(size_)
     {
     }
 
@@ -78,12 +78,12 @@ class EHostDmaW : public Event {
     }
 };
 
-class EHostDmaC : public Event {
+class EHostDmaC : public event {
   public:
     uint64_t id;
 
     EHostDmaC(uint64_t ts_, uint64_t id_)
-        : Event(ts_), id(id_)    {
+        : event(ts_), id(id_)    {
     }
 
     virtual void dump(std::ostream &out)
@@ -92,14 +92,14 @@ class EHostDmaC : public Event {
     }
 };
 
-class EHostMmioR : public Event {
+class EHostMmioR : public event {
   public:
     uint64_t id;
     uint64_t addr;
     uint64_t size;
 
     EHostMmioR(uint64_t ts_, uint64_t id_, uint64_t addr_, uint64_t size_)
-        : Event(ts_), id(id_), addr(addr_), size(size_)
+        : event(ts_), id(id_), addr(addr_), size(size_)
     {
     }
 
@@ -110,14 +110,14 @@ class EHostMmioR : public Event {
     }
 };
 
-class EHostMmioW : public Event {
+class EHostMmioW : public event {
   public:
     uint64_t id;
     uint64_t addr;
     uint64_t size;
 
     EHostMmioW(uint64_t ts_, uint64_t id_, uint64_t addr_, uint64_t size_)
-        : Event(ts_), id(id_), addr(addr_), size(size_)
+        : event(ts_), id(id_), addr(addr_), size(size_)
     {
     }
 
@@ -128,12 +128,12 @@ class EHostMmioW : public Event {
     }
 };
 
-class EHostMmioC : public Event {
+class EHostMmioC : public event {
   public:
     uint64_t id;
 
     EHostMmioC(uint64_t ts_, uint64_t id_)
-        : Event(ts_), id(id_)    {
+        : event(ts_), id(id_)    {
     }
 
     virtual void dump(std::ostream &out)
