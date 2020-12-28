@@ -29,7 +29,9 @@ int main(int argc, char *argv[])
     std::cerr << "map loaded" << std::endl;
 
     gem5_parser client(syms);
-    gem5_parser server(syms);
+    //gem5_parser server(syms);
+    //nicbm_parser client;
+    nicbm_parser server;
     client.open(argv[1]);
     server.open(argv[2]);
 

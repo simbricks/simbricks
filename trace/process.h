@@ -69,3 +69,12 @@ class gem5_parser : public log_parser {
     gem5_parser(sym_map &syms_);
     virtual ~gem5_parser();
 };
+
+class nicbm_parser : public log_parser {
+  protected:
+    virtual void process_line(char *line, size_t len);
+
+  public:
+    virtual ~nicbm_parser();
+
+};
