@@ -9,6 +9,8 @@ class event {
     {
     }
 
+    virtual ~event() { }
+
     virtual void dump(std::ostream &out) = 0;
 };
 
@@ -20,6 +22,8 @@ class EHostCall : public event {
         : event(ts_), fun(fun_)
     {
     }
+
+    virtual ~EHostCall() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -35,6 +39,8 @@ class EHostMsiX : public event {
         : event(ts_), vec(vec_)
     {
     }
+
+    virtual ~EHostMsiX() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -52,6 +58,8 @@ class EHostDmaR : public event {
         : event(ts_), id(id_), addr(addr_), size(size_)
     {
     }
+
+    virtual ~EHostDmaR() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -71,6 +79,8 @@ class EHostDmaW : public event {
     {
     }
 
+    virtual ~EHostDmaW() { }
+
     virtual void dump(std::ostream &out)
     {
         out << ts << ": H.DMAW id=" << id << " addr=" << addr << " size=" <<
@@ -83,8 +93,11 @@ class EHostDmaC : public event {
     uint64_t id;
 
     EHostDmaC(uint64_t ts_, uint64_t id_)
-        : event(ts_), id(id_)    {
+        : event(ts_), id(id_)
+    {
     }
+
+    virtual ~EHostDmaC() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -102,6 +115,8 @@ class EHostMmioR : public event {
         : event(ts_), id(id_), addr(addr_), size(size_)
     {
     }
+
+    virtual ~EHostMmioR() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -121,6 +136,8 @@ class EHostMmioW : public event {
     {
     }
 
+    virtual ~EHostMmioW() { }
+
     virtual void dump(std::ostream &out)
     {
         out << ts << ": H.MMIOW id=" << id << " addr=" << addr << " size=" <<
@@ -133,8 +150,11 @@ class EHostMmioC : public event {
     uint64_t id;
 
     EHostMmioC(uint64_t ts_, uint64_t id_)
-        : event(ts_), id(id_)    {
+        : event(ts_), id(id_)
+    {
     }
+
+    virtual ~EHostMmioC() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -150,6 +170,8 @@ class e_nic_msix : public event {
         : event(ts_), vec(vec_)
     {
     }
+
+    virtual ~e_nic_msix() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -168,6 +190,8 @@ class e_nic_dma_i : public event {
     {
     }
 
+    virtual ~e_nic_dma_i() { }
+
     virtual void dump(std::ostream &out)
     {
         out << ts << ": N.DMAI id=" << id << " addr=" << addr << " size=" <<
@@ -182,6 +206,8 @@ class e_nic_dma_c : public event {
     e_nic_dma_c(uint64_t ts_, uint64_t id_)
         : event(ts_), id(id_)    {
     }
+
+    virtual ~e_nic_dma_c() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -199,6 +225,8 @@ class e_nic_mmio_r : public event {
         : event(ts_), addr(addr_), size(size_), val(val_)
     {
     }
+
+    virtual ~e_nic_mmio_r() { }
 
     virtual void dump(std::ostream &out)
     {
@@ -218,6 +246,8 @@ class e_nic_mmio_w : public event {
     {
     }
 
+    virtual ~e_nic_mmio_w() { }
+
     virtual void dump(std::ostream &out)
     {
         out << ts << ": N.MMIOW addr=" << addr << " size=" << size << " val=" <<
@@ -234,6 +264,8 @@ class e_nic_tx : public event {
     {
     }
 
+    virtual ~e_nic_tx() { }
+
     virtual void dump(std::ostream &out)
     {
         out << ts << ": N.TX " << len << std::endl;
@@ -248,6 +280,8 @@ class e_nic_rx : public event {
         : event(ts_), len(len_)
     {
     }
+
+    virtual ~e_nic_rx() { }
 
     virtual void dump(std::ostream &out)
     {
