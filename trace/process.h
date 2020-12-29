@@ -49,6 +49,7 @@ class log_parser {
     virtual void process_line(char *line, size_t len) = 0;
 
   public:
+    const char *label;
     event *cur_event;
 
     log_parser();

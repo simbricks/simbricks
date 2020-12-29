@@ -4,6 +4,12 @@
 #include "parser.h"
 #include "process.h"
 
+struct log_parser_cmp {
+    bool operator() (const log_parser *l, const log_parser *r) const {
+        return l->cur_event->ts < r->cur_event->ts;
+    }
+};
+
 int main(int argc, char *argv[])
 {
     sym_map syms;
@@ -28,32 +34,55 @@ int main(int argc, char *argv[])
     syms.load_file("i40e.dump", 0xffffffffa0000000ULL);
     std::cerr << "map loaded" << std::endl;
 
-    gem5_parser client(syms);
-    //gem5_parser server(syms);
-    //nicbm_parser client;
-    nicbm_parser server;
-    client.open(argv[1]);
-    server.open(argv[2]);
+    std::set<log_parser *> all_parsers;
+    gem5_parser ch(syms);
+    gem5_parser sh(syms);
+    nicbm_parser cn;
+    nicbm_parser sn;
+    ch.open(argv[1]);
+    cn.open(argv[2]);
+    sh.open(argv[3]);
+    sn.open(argv[4]);
+    ch.label = cn.label = "C";
+    sh.label = sn.label = "S";
+    all_parsers.insert(&ch);
+    all_parsers.insert(&cn);
+    all_parsers.insert(&sh);
+    all_parsers.insert(&sn);
 
-    client.next_event();
-    server.next_event();
-    while (client.cur_event || server.cur_event) {
-        event *ev;
-        const char *pref;
-        if (((client.cur_event && server.cur_event) &&
-                    client.cur_event->ts <= server.cur_event->ts) ||
-                (!server.cur_event && client.cur_event))
+    std::set<log_parser *, log_parser_cmp> active_parsers;
+
+    for (auto p: all_parsers) {
+        if (p->next_event() && p->cur_event)
+            active_parsers.insert(p);
+    }
+
+    uint64_t ts_off = 0;
+    while (!active_parsers.empty()) {
+        auto i = active_parsers.begin();
+        log_parser *p = *i;
+        active_parsers.erase(i);
+
+        EHostCall *hc;
+        event *ev = p->cur_event;
+        if (p == &ch && (hc = dynamic_cast<EHostCall *>(ev)) &&
+                hc->fun == "__sys_sendto")
         {
-            ev = client.cur_event;
-            client.next_event();
-            pref = "C";
-        } else {
-            ev = server.cur_event;
-            server.next_event();
-            pref = "S";
+            std::cout << "---------- REQ START:" << ev->ts << std::endl;
+            ts_off = ev->ts;
         }
-        std::cout << pref << " ";
+
+        std::cout << p->label << " ";
+
+        ev->ts -= ts_off;
+        ev->ts /= 1000;
         ev->dump(std::cout);
+
+        delete ev;
+
+        if (p->next_event() && p->cur_event)
+            active_parsers.insert(p);
+
     }
 
 }
