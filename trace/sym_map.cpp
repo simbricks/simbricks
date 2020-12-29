@@ -3,6 +3,12 @@
 #include "parser.h"
 #include "process.h"
 
+
+sym_map::sym_map()
+    : filter_en(false), insmap_en(false)
+{
+}
+
 void sym_map::add_filter(const std::string &sym)
 {
     filter_en = true;

@@ -17,6 +17,8 @@ class sym_map {
     std::map<uint64_t, std::string> map;
     std::map<uint64_t, std::string> map_ins;
 
+    sym_map();
+
     void add_filter(const std::string &sym);
     void load_file(const char *path, uint64_t offset = 0);
 
