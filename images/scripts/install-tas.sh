@@ -4,8 +4,8 @@ set -eux
 apt-get -y install libnuma-dev libgmp-dev bc python
 
 cd /root/
-wget http://deb.debian.org/debian/pool/main/d/dpdk/dpdk_18.11.8.orig.tar.xz
-tar xf dpdk_18.11.8.orig.tar.xz
+wget http://fast.dpdk.org/rel/dpdk-18.11.8.tar.gz
+tar xf dpdk-18.11.8.tar.gz
 cd dpdk-stable-18.11.8
 make -j4 install T=x86_64-native-linuxapp-gcc DESTDIR=/root/dpdk
 cd ..
