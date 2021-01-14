@@ -13,6 +13,7 @@ VFLAGS = +1364-2005ext+v \
 
 $(eval $(call subdir,lib))
 $(eval $(call subdir,sims))
+$(eval $(call subdir,doc))
 $(eval $(call subdir,images))
 
 
@@ -21,6 +22,7 @@ help:
 	@echo "  all: builds all the tools directly in this repo"
 	@echo "  clean: cleans all the tool folders in this repo"
 	@echo "  build-images: prepare prereqs for VMs (images directory)"
+	@echo "  documentation: build documentation in doc/build_"
 	@echo "  external: clone and build our tools in external repos "
 	@echo "            (qemu, gem5, ns-3)"
 
