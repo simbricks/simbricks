@@ -17,7 +17,7 @@ $(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/ -I$(lib_proto_inc) \
 
 $(verilator_src_corundum): $(vsrcs_corundum)
 	$(VERILATOR) $(VFLAGS) --cc -O3 \
-	    -CFLAGS "-I$(abspath $(lib_nicsim_inc)) -I$(abspath $(lib_proto_inc)) -O3 -g -Wall" \
+	    -CFLAGS "-I$(abspath $(lib_nicsim_inc)) -I$(abspath $(lib_proto_inc)) -O3 -g -Wall -Wno-maybe-uninitialized" \
 	    --Mdir $(verilator_dir_corundum) \
 	    -y $(dir_corundum)rtl \
 	    -y $(dir_corundum)lib/axi/rtl \
