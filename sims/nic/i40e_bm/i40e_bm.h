@@ -28,9 +28,9 @@
 #include <sstream>
 #include <stdint.h>
 extern "C" {
-#include <cosim_pcie_proto.h>
+#include <simbricks/proto/pcie.h>
 }
-#include <nicbm.h>
+#include <simbricks/nicbm/nicbm.h>
 
 //#define DEBUG_DEV
 //#define DEBUG_ADMINQ

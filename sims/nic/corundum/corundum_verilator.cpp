@@ -28,7 +28,7 @@
 #include <signal.h>
 
 extern "C" {
-    #include <nicsim.h>
+    #include <simbricks/nicif/nicsim.h>
 }
 
 #include "Vinterface.h"

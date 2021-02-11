@@ -32,7 +32,7 @@
 #include <ctime>
 #include <iostream>
 
-#include <nicbm.h>
+#include <simbricks/nicbm/nicbm.h>
 
 //#define DEBUG_NICBM 1
 

@@ -27,7 +27,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <cosim_eth_proto.h>
+#include <simbricks/proto/network.h>
 
 #define SYNC_MODES 0
 #define SYNC_BARRIER 1

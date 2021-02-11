@@ -33,7 +33,7 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
-#include <netsim.h>
+#include <simbricks/netif/netsim.h>
 
 //#define DEBUG_PKTMETA
 

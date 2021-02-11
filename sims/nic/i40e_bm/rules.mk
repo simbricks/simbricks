@@ -27,8 +27,7 @@ bin_i40e_bm := $(d)i40e_bm
 OBJS := $(addprefix $(d),i40e_bm.o i40e_queues.o i40e_adminq.o i40e_hmc.o \
     i40e_lan.o xsums.o rss.o logger.o)
 
-$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/ -I$(lib_proto_inc) \
-    -I$(lib_nicbm_inc) -I$(lib_nicsim_inc)
+$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
 $(bin_i40e_bm): $(OBJS) $(lib_nicbm) $(lib_nicsim)
 

@@ -25,8 +25,8 @@
 #ifndef COSIM_NICSIM_H_
 #define COSIM_NICSIM_H_
 
-#include <cosim_pcie_proto.h>
-#include <cosim_eth_proto.h>
+#include <simbricks/proto/pcie.h>
+#include <simbricks/proto/network.h>
 
 #define SYNC_MODES 0 // ModES style synchronization
 #define SYNC_BARRIER 1 // Global barrier style synchronization

@@ -33,7 +33,7 @@
 #include <cassert>
 
 extern "C" {
-#include <netsim.h>
+#include <simbricks/netif/netsim.h>
 };
 
 static uint64_t sync_period = (500 * 1000ULL); // 500ns

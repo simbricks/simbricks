@@ -26,8 +26,7 @@ bin_net_switch := $(d)net_switch
 
 OBJS := $(d)net_switch.o
 
-$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/ -I$(lib_proto_inc) \
-    -I$(lib_netsim_inc)
+$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
 $(bin_net_switch): $(OBJS) $(lib_netsim) -lpcap
 

@@ -25,7 +25,7 @@
 #include <set>
 #include <deque>
 extern "C" {
-    #include <nicsim.h>
+    #include <simbricks/nicif/nicsim.h>
 }
 
 namespace nicbm {

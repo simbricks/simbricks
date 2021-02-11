@@ -22,14 +22,11 @@
 
 include mk/subdir_pre.mk
 
-bin_net_tap := $(d)net_tap
+lib_netsim := $(d)libnetsim_common.a
 
-OBJS := $(d)net_tap.o
+OBJS := $(addprefix $(d),netsim.o utils.o)
 
-$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
+$(lib_netsim): $(OBJS)
 
-$(bin_net_tap): $(OBJS) $(lib_netsim) -lpcap -lpthread
-
-CLEAN := $(bin_net_tap) $(OBJS)
-ALL := $(bin_net_tap)
+CLEAN := $(lib_netsim) $(OBJS)
 include mk/subdir_post.mk

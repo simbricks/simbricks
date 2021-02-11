@@ -29,7 +29,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <netsim.h>
+#include <simbricks/netif/netsim.h>
 #include "internal.h"
 
 static uint64_t current_epoch = 0;

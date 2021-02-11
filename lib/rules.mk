@@ -22,10 +22,8 @@
 
 include mk/subdir_pre.mk
 
-lib_proto_inc := $(d)proto/
+lib_dir := $(d)
 
-$(eval $(call subdir,netif))
-$(eval $(call subdir,nicif))
-$(eval $(call subdir,nicbm))
+$(eval $(call subdir,simbricks))
 
 include mk/subdir_post.mk

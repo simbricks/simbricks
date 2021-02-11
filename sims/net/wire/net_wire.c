@@ -36,7 +36,7 @@
 #include <pcap/pcap.h>
 #include <assert.h>
 
-#include <netsim.h>
+#include <simbricks/netif/netsim.h>
 
 static uint64_t sync_period = (500 * 1000ULL); // 500ns
 static uint64_t eth_latency = (500 * 1000ULL); // 500ns

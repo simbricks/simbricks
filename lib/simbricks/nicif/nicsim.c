@@ -29,7 +29,7 @@
 #include <poll.h>
 #include <unistd.h>
 
-#include <nicsim.h>
+#include <simbricks/nicif/nicsim.h>
 
 #include "internal.h"
 

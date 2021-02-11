@@ -43,7 +43,7 @@ $(d)qemu/ready: $(d)qemu
 	+cd $< && ./configure \
 	    --target-list=x86_64-softmmu \
 	    --disable-werror \
-	    --extra-cflags="-I$(abspath $(lib_proto_inc))" \
+	    --extra-cflags="-I$(abspath $(lib_dir))" \
 	    --enable-cosim-pci && \
 	  $(MAKE)
 	touch $@

@@ -22,15 +22,11 @@
 
 include mk/subdir_pre.mk
 
-lib_nicbm := $(d)libnicbm.a
-lib_nicbm_inc := $(d)include/
+lib_nicsim := $(d)libnicsim_common.a
 
-OBJS := $(addprefix $(d),nicbm.o)
+OBJS := $(addprefix $(d),nicsim.o utils.o)
 
-$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(lib_nicbm_inc) -I$(lib_proto_inc) \
-    -I$(lib_nicsim_inc)
+$(lib_nicsim): $(OBJS)
 
-$(lib_nicbm): $(OBJS)
-
-CLEAN := $(lib_nicbm) $(OBJS)
+CLEAN := $(lib_nicsim) $(OBJS)
 include mk/subdir_post.mk
