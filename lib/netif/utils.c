@@ -1,5 +1,6 @@
 /*
- * Copyright 2020 Max Planck Institute for Software Systems
+ * Copyright 2021 Max Planck Institute for Software Systems, and
+ * National University of Singapore
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
