@@ -33,11 +33,21 @@ VFLAGS = +1364-2005ext+v \
     -Wno-WIDTH -Wno-PINMISSING -Wno-LITENDIAN -Wno-IMPLICIT -Wno-SELRANGE \
     -Wno-CASEINCOMPLETE -Wno-UNSIGNED
 
+
 $(eval $(call subdir,lib))
 $(eval $(call subdir,sims))
 $(eval $(call subdir,doc))
 $(eval $(call subdir,images))
 
+
+all: $(ALL_ALL)
+.DEFAULT_GOAL := all
+
+clean:
+	rm -rf $(CLEAN_ALL)
+
+distclean:
+	rm -rf $(CLEAN_ALL) $(DISTCLEAN_ALL)
 
 help:
 	@echo "Targets:"
@@ -48,6 +58,7 @@ help:
 	@echo "  external: clone and build our tools in external repos "
 	@echo "            (qemu, gem5, ns-3)"
 
-.PHONY: help
+.PHONY: all clean distclean help
 
 include mk/subdir_post.mk
+-include $(DEPS_ALL)

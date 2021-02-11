@@ -30,12 +30,6 @@ DISTCLEAN_ALL := $(DISTCLEAN_ALL) $(DISTCLEAN)
 DEPS_ALL := $(DEPS_ALL) $(DEPS)
 ALL_ALL := $(ALL_ALL) $(ALL)
 
-ifeq "$(d)" ""
-include mk/global.mk
--include $(DEPS_ALL)
-else
-endif
-
 d := $(dirstack_$(sp))
 sp := $(basename $(sp))
 
