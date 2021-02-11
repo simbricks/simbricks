@@ -22,14 +22,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef COSIM_NICSIM_H_
-#define COSIM_NICSIM_H_
+#ifndef SIMBRICKS_NICIF_NICSIM_H_
+#define SIMBRICKS_NICIF_NICSIM_H_
 
 #include <simbricks/proto/pcie.h>
 #include <simbricks/proto/network.h>
 
-#define SYNC_MODES 0 // ModES style synchronization
-#define SYNC_BARRIER 1 // Global barrier style synchronization
+#define SYNC_MODES 0    // ModES style synchronization
+#define SYNC_BARRIER 1  // Global barrier style synchronization
 
 struct nicsim_params {
     const char *pci_socket_path;
@@ -71,4 +71,4 @@ void nicif_n2d_next(void);
 volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(
         struct nicsim_params *params, uint64_t timestamp);
 
-#endif /* ndef COSIM_NICSIM_H_ */
+#endif  // SIMBRICKS_NICIF_NICSIM_H_

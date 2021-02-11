@@ -22,13 +22,13 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef COSIM_PCIE_PROTO_H_
-#define COSIM_PCIE_PROTO_H_
+#ifndef SIMBRICKS_PROTO_PCIE_H_
+#define SIMBRICKS_PROTO_PCIE_H_
 
 #include <stdint.h>
 
-//#define COSIM_PCI_MSG_SZCHECK(s) static_assert(sizeof(s) == 64)
-//#define COSIM_PCI_MSG_SZCHECK(s) _Static_assert(sizeof(s) == 64)
+// #define COSIM_PCI_MSG_SZCHECK(s) static_assert(sizeof(s) == 64)
+// #define COSIM_PCI_MSG_SZCHECK(s) _Static_assert(sizeof(s) == 64)
 #define COSIM_PCI_MSG_SZCHECK(s)
 
 /******************************************************************************/
@@ -322,4 +322,4 @@ union cosim_pcie_proto_h2d {
 } __attribute__((packed));
 COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_h2d);
 
-#endif /* ndef COSIM_PCIE_PROTO_H_ */
+#endif  // SIMBRICKS_PROTO_PCIE_H_

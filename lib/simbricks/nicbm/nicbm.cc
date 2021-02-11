@@ -34,7 +34,7 @@
 
 #include <simbricks/nicbm/nicbm.h>
 
-//#define DEBUG_NICBM 1
+// #define DEBUG_NICBM 1
 
 #define DMA_MAX_PENDING 64
 
@@ -204,7 +204,7 @@ void Runner::h2d_read(volatile struct cosim_pcie_proto_h2d_read *read)
             read->len, dbg_val);
 #endif
 
-    //WMB();
+    // WMB();
     rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
         COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
@@ -219,14 +219,15 @@ void Runner::h2d_write(volatile struct cosim_pcie_proto_h2d_write *write)
 
 #ifdef DEBUG_NICBM
     uint64_t dbg_val = 0;
-    memcpy(&dbg_val, (const void *) write->data, write->len <= 8 ? write->len : 8);
+    memcpy(&dbg_val, (const void *) write->data, write->len <= 8 ? write->len :
+            8);
     printf("nicbm: write(off=0x%lx, len=%u, val=0x%lx)\n", write->offset,
             write->len, dbg_val);
 #endif
     dev.reg_write(write->bar, write->offset, (void *) write->data, write->len);
     wc->req_id = write->req_id;
 
-    //WMB();
+    // WMB();
     wc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
         COSIM_PCIE_PROTO_D2H_OWN_HOST;
 }
@@ -284,7 +285,7 @@ void Runner::eth_send(const void *data, size_t len)
 
     volatile union cosim_eth_proto_d2n *msg = d2n_alloc();
     volatile struct cosim_eth_proto_d2n_send *send = &msg->send;
-    send->port = 0; // single port
+    send->port = 0;  // single port
     send->len = len;
     memcpy((void *)send->data, data, len);
     send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND |
@@ -397,7 +398,7 @@ void Runner::event_trigger()
 Runner::Runner(Device &dev_)
     : dev(dev_), events(event_cmp())
 {
-    //mac_addr = lrand48() & ~(3ULL << 46);
+    // mac_addr = lrand48() & ~(3ULL << 46);
     dma_pending = 0;
     srand48(time(NULL) ^ getpid());
     mac_addr = lrand48();
@@ -419,7 +420,8 @@ int Runner::runMain(int argc, char *argv[])
 
     if (argc < 4 && argc > 9) {
         fprintf(stderr, "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
-                "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] [ETH-LATENCY]\n");
+                "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
+                "[ETH-LATENCY]\n");
         return EXIT_FAILURE;
     }
     if (argc >= 5)
@@ -480,7 +482,6 @@ int Runner::runMain(int argc, char *argv[])
             uint64_t ev_ts;
             if (event_next(ev_ts) && ev_ts < next_ts)
                 next_ts = ev_ts;
-
         } while (next_ts <= main_time && !exiting);
         main_time = nicsim_advance_time(&nsparams, next_ts);
     }

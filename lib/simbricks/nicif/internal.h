@@ -22,9 +22,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef SIMBRICKS_NICIF_INTERNAL_H_
+#define SIMBRICKS_NICIF_INTERNAL_H_
+
 #include <stddef.h>
 #include <stdio.h>
 
 int uxsocket_init(const char *path);
 int uxsocket_send(int connfd, void *data, size_t len, int fd);
 int shm_create(const char *path, size_t size, void **addr);
+
+#endif  // SIMBRICKS_NICIF_INTERNAL_H_

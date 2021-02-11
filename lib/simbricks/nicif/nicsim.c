@@ -31,7 +31,7 @@
 
 #include <simbricks/nicif/nicsim.h>
 
-#include "internal.h"
+#include "lib/simbricks/nicif/internal.h"
 
 #define D2H_ELEN (9024 + 64)
 #define D2H_ENUM 1024
@@ -195,7 +195,6 @@ int nicsim_init(struct nicsim_params *params,
     if ((shm_fd = shm_create(params->shm_path, shm_size, &shmptr))
             < 0)
     {
-
         return -1;
     }
 

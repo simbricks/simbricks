@@ -22,6 +22,9 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef SIMBRICKS_NICBM_NICBM_H_
+#define SIMBRICKS_NICBM_NICBM_H_
+
 #include <set>
 #include <deque>
 extern "C" {
@@ -145,6 +148,7 @@ class Runner {
 
         void dma_do(DMAOp &op);
         void dma_trigger();
+
     public:
         Runner(Device &dev_);
 
@@ -190,4 +194,6 @@ class SimpleDevice : public Runner::Device {
             reg_write(bar, addr, r);
         }
 };
-}
+}  // namespace nicbm
+
+#endif  // SIMBRICKS_NICBM_NICBM_H_

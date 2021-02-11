@@ -30,7 +30,7 @@
 #include <unistd.h>
 
 #include <simbricks/netif/netsim.h>
-#include "internal.h"
+#include "lib/simbricks/netif/internal.h"
 
 static uint64_t current_epoch = 0;
 
@@ -178,7 +178,8 @@ int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
     return 0;
 }
 
-void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay, int sync_mode)
+void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay,
+        int sync_mode)
 {
     if (sync_mode == SYNC_BARRIER) {
         if (timestamp - current_epoch >= sync_delay) {
@@ -187,7 +188,8 @@ void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay, int sync_mode
     }
 }
 
-uint64_t netsim_advance_time(uint64_t timestamp, uint64_t sync_delay, int sync_mode)
+uint64_t netsim_advance_time(uint64_t timestamp, uint64_t sync_delay,
+        int sync_mode)
 {
     switch (sync_mode) {
     case SYNC_MODES:

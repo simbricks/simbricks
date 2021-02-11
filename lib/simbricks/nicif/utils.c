@@ -32,7 +32,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "internal.h"
+#include "lib/simbricks/nicif/internal.h"
 
 int uxsocket_init(const char *path)
 {
@@ -97,7 +97,7 @@ int uxsocket_send(int connfd, void *data, size_t len, int fd)
         *(int *) CMSG_DATA(cmsg) = fd;
     }
 
-    if((tx = sendmsg(connfd, &msg, 0)) != (ssize_t) len) {
+    if ((tx = sendmsg(connfd, &msg, 0)) != (ssize_t) len) {
         fprintf(stderr, "tx == %zd\n", tx);
         return -1;
     }

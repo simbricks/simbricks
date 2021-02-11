@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef COSIM_ETH_PROTO_H_
-#define COSIM_ETH_PROTO_H_
+#ifndef SIMBRICKS_PROTO_NETWORK_H_
+#define SIMBRICKS_PROTO_NETWORK_H_
 
 #include <stdint.h>
 
@@ -155,4 +155,4 @@ union cosim_eth_proto_n2d {
     struct cosim_eth_proto_n2d_recv recv;
 };
 
-#endif /* ndef COSIM_ETH_PROTO_H_ */
+#endif  // SIMBRICKS_PROTO_NETWORK_H_

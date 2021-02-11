@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef COSIM_NETSIM_H_
-#define COSIM_NETSIM_H_
+#ifndef SIMBRICKS_NETIF_NETSIM_H_
+#define SIMBRICKS_NETIF_NETSIM_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -66,7 +66,9 @@ volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
         uint64_t latency);
 int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
         uint64_t latency, uint64_t sync_delay, int sync_mode);
-void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay, int sync_mode);
-uint64_t netsim_advance_time(uint64_t timestamp, uint64_t sync_delay, int sync_mode);
+void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay,
+        int sync_mode);
+uint64_t netsim_advance_time(uint64_t timestamp, uint64_t sync_delay,
+        int sync_mode);
 
-#endif /* ndef COSIM_NETSIM_H_ */
+#endif  // SIMBRICKS_NETIF_NETSIM_H_

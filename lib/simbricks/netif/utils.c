@@ -34,7 +34,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "internal.h"
+#include "lib/simbricks/netif/internal.h"
 
 int uxsocket_connect(const char *path)
 {
