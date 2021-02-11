@@ -27,7 +27,7 @@ base_dir := $(d)./
 
 CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
 CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
-CPPFLAGS += -I$(base_dir)/lib
+CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir)
 
 VERILATOR = verilator
 VFLAGS = +1364-2005ext+v \
