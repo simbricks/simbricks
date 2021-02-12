@@ -24,9 +24,8 @@
 
 #include <fstream>
 
-#include "parser.h"
-#include "process.h"
-
+#include "trace/parser.h"
+#include "trace/process.h"
 
 sym_map::sym_map()
     : filter_en(false), insmap_en(false)

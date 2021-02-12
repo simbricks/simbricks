@@ -24,9 +24,9 @@
 
 #include <iostream>
 
-#include "events.h"
-#include "parser.h"
-#include "process.h"
+#include "trace/events.h"
+#include "trace/parser.h"
+#include "trace/process.h"
 
 namespace bio = boost::iostreams;
 
@@ -48,7 +48,7 @@ void gem5_parser::process_msg(uint64_t ts, char *comp_name,
         return;*/
 
     if (comp_name_len == 18 && !memcmp(comp_name, "system.switch_cpus", 18)) {
-        //cpu_lines++;
+        // cpu_lines++;
         if (!p.consume_str("T0 : 0x"))
             return;
 
@@ -59,8 +59,9 @@ void gem5_parser::process_msg(uint64_t ts, char *comp_name,
         if (const std::string *s = syms.lookup(addr)) {
             cur_event = new EHostCall(ts, *s);
         }
-    } else if (comp_name_len == 18 && !memcmp(comp_name, "system.pc.ethernet", 18)) {
-        //eth_lines++;
+    } else if (comp_name_len == 18 &&
+            !memcmp(comp_name, "system.pc.ethernet", 18)) {
+        // eth_lines++;
 
         /*std::cout.write(msg, msg_len);
         std::cout << std::endl;*/
@@ -76,38 +77,34 @@ void gem5_parser::process_msg(uint64_t ts, char *comp_name,
                 cur_event = new EHostMsiX(ts, id);
             } else if (p.consume_str("DMA read id ") && p.consume_dec(id) &&
                     p.consume_str(" addr ") && p.consume_hex(addr) &&
-                    p.consume_str(" size ") && p.consume_dec(size))
-            {
-                // cosim: received DMA read id 94113551511792 addr 23697ad60 size 20
+                    p.consume_str(" size ") && p.consume_dec(size)) {
+                // cosim: received DMA read id 94113551511792 addr 23697ad60
+                //          size 20
                 cur_event = new EHostDmaR(ts, id, addr, size);
             } else if (p.consume_str("DMA write id ") && p.consume_dec(id) &&
                     p.consume_str(" addr ") && p.consume_hex(addr) &&
-                    p.consume_str(" size ") && p.consume_dec(size))
-            {
-                // cosim: received DMA write id 94113551528032 addr 236972000 size 4
+                    p.consume_str(" size ") && p.consume_dec(size)) {
+                // cosim: received DMA write id 94113551528032 addr 236972000
+                //          size 4
                 cur_event = new EHostDmaW(ts, id, addr, size);
             } else if (p.consume_str("read completion id ") &&
-                    p.consume_dec(id))
-            {
+                    p.consume_dec(id)) {
                 // cosim: received read completion id 94583743418112
                 cur_event = new EHostMmioC(ts, id);
             } else if (p.consume_str("write completion id ") &&
-                    p.consume_dec(id))
-            {
+                    p.consume_dec(id)) {
                 // cosim: received write completion id 94583743418736
                 cur_event = new EHostMmioC(ts, id);
             }
         } else if (p.consume_str("sending ")) {
             if (p.consume_str("read addr ") && p.consume_hex(addr) &&
                     p.consume_str(" size ") && p.consume_dec(size) &&
-                    p.consume_str(" id ") && p.consume_dec(id))
-            {
+                    p.consume_str(" id ") && p.consume_dec(id)) {
                 // cosim: sending read addr c012a500 size 4 id 94583743418112
                 cur_event = new EHostMmioR(ts, id, addr, size);
             } else if (p.consume_str("write addr ") && p.consume_hex(addr) &&
                     p.consume_str(" size ") && p.consume_dec(size) &&
-                    p.consume_str(" id ") && p.consume_dec(id))
-            {
+                    p.consume_str(" id ") && p.consume_dec(id)) {
                 // cosim: sending write addr c0108000 size 4 id 94584005188256
                 cur_event = new EHostMmioW(ts, id, addr, size);
             }
@@ -133,7 +130,7 @@ void gem5_parser::process_line(char *line, size_t line_len)
     bool valid = true;
 
     // eat spaces
-    for (; pos < line_len && line[pos] == ' '; pos++);
+    for (; pos < line_len && line[pos] == ' '; pos++) {}
 
     // parse ts
     uint64_t ts = 0;
@@ -163,7 +160,7 @@ void gem5_parser::process_line(char *line, size_t line_len)
 
     comp_name_start = pos;
     for (; pos < line_len && line[pos] != ' ' && line[pos] != '\n'; pos++,
-            comp_name_len++);
+            comp_name_len++) {}
     // skip space
     if (line[pos] != ' ') {
         valid = false;

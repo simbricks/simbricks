@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <string>
+
 class event {
   public:
     uint64_t ts;

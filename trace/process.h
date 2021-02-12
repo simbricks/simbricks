@@ -29,7 +29,7 @@
 #include <string>
 #include <boost/iostreams/filtering_streambuf.hpp>
 
-#include "events.h"
+#include "trace/events.h"
 
 class sym_map {
   protected:
@@ -103,5 +103,4 @@ class nicbm_parser : public log_parser {
 
   public:
     virtual ~nicbm_parser();
-
 };

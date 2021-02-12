@@ -27,9 +27,9 @@
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 
-#include "events.h"
-#include "parser.h"
-#include "process.h"
+#include "trace/events.h"
+#include "trace/parser.h"
+#include "trace/process.h"
 
 namespace bio = boost::iostreams;
 
@@ -90,7 +90,7 @@ size_t log_parser::try_line()
     size_t pos = buf_pos;
     size_t line_len = 0;
 
-    for (; pos < buf_len && buf[pos] != '\n'; pos++, line_len++);
+    for (; pos < buf_len && buf[pos] != '\n'; pos++, line_len++) {}
     if (pos >= buf_len) {
         // line is incomplete
         return 0;

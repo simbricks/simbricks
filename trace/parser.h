@@ -26,6 +26,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <string>
 
 class parser {
   protected:
@@ -42,7 +43,7 @@ class parser {
     inline size_t trim_spaces()
     {
         size_t cnt = 0;
-        for (; pos < buf_len && buf[pos] == ' '; pos++, cnt++);
+        for (; pos < buf_len && buf[pos] == ' '; pos++, cnt++) {}
         return cnt;
     }
 
@@ -109,7 +110,7 @@ class parser {
     inline bool extract_until(char end_c, std::string &str)
     {
         size_t end = pos;
-        for (; end < buf_len && buf[end] != end_c; end++);
+        for (; end < buf_len && buf[end] != end_c; end++) {}
 
         if (end >= buf_len)
             return false;

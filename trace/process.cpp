@@ -24,9 +24,9 @@
 
 #include <iostream>
 
-#include "events.h"
-#include "parser.h"
-#include "process.h"
+#include "trace/events.h"
+#include "trace/parser.h"
+#include "trace/process.h"
 
 struct log_parser_cmp {
     bool operator() (const log_parser *l, const log_parser *r) const {
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
     std::set<log_parser *, log_parser_cmp> active_parsers;
 
-    for (auto p: all_parsers) {
+    for (auto p : all_parsers) {
         if (p->next_event() && p->cur_event)
             active_parsers.insert(p);
     }
@@ -106,7 +106,5 @@ int main(int argc, char *argv[])
 
         if (p->next_event() && p->cur_event)
             active_parsers.insert(p);
-
     }
-
 }
