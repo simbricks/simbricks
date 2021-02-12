@@ -38,7 +38,7 @@ $(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
 $(verilator_src_corundum): $(vsrcs_corundum)
 	$(VERILATOR) $(VFLAGS) --cc -O3 \
-	    -CFLAGS "-I$(abspath $(lib_dir)) -O3 -g -Wall -Wno-maybe-uninitialized" \
+	    -CFLAGS "-I$(abspath $(lib_dir)) -iquote $(abspath $(base_dir)) -O3 -g -Wall -Wno-maybe-uninitialized" \
 	    --Mdir $(verilator_dir_corundum) \
 	    -y $(dir_corundum)rtl \
 	    -y $(dir_corundum)lib/axi/rtl \

@@ -137,7 +137,7 @@ struct Desc {
     uint16_t tx_csum_cmd;
     uint32_t len;
     uint64_t addr;
-} __attribute__((packed)) ;
+} __attribute__((packed));
 
 struct Cpl {
     uint16_t queue;
@@ -154,7 +154,7 @@ struct Cpl {
     uint8_t rsvd3;
     uint32_t rsvd4;
     uint32_t rsvd5;
-} __attribute__((packed)) ;
+} __attribute__((packed));
 
 #define EVENT_TYPE_TX_CPL 0x0000
 #define EVENT_TYPE_RX_CPL 0x0001
@@ -162,7 +162,7 @@ struct Cpl {
 struct Event {
     uint16_t type;
     uint16_t source;
-} __attribute__((packed)) ;
+} __attribute__((packed));
 
 struct RxData {
     size_t len;
@@ -231,7 +231,7 @@ public:
     EventRing();
     ~EventRing();
 
-    virtual void dmaDone(DMAOp *op) override;
+    void dmaDone(DMAOp *op) override;
     void issueEvent(unsigned type, unsigned source);
 };
 
@@ -240,7 +240,7 @@ public:
     CplRing(EventRing *eventRing);
     ~CplRing();
 
-    virtual void dmaDone(DMAOp *op) override;
+    void dmaDone(DMAOp *op) override;
     void complete(unsigned index, size_t len, bool tx);
 
 private:
@@ -258,8 +258,8 @@ public:
     TxRing(CplRing *cplRing);
     ~TxRing();
 
-    virtual void setHeadPtr(ptr_t ptr) override;
-    virtual void dmaDone(DMAOp *op) override;
+    void setHeadPtr(ptr_t ptr) override;
+    void dmaDone(DMAOp *op) override;
 
 private:
     CplRing *txCplRing;
@@ -270,7 +270,7 @@ public:
     RxRing(CplRing *cplRing);
     ~RxRing();
 
-    virtual void dmaDone(DMAOp *op) override;
+    void dmaDone(DMAOp *op) override;
     void rx(RxData *rx_data);
 
 private:
@@ -338,4 +338,4 @@ private:
     uint32_t features;
 };
 
-} // namespace corundum
+}  // namespace corundum

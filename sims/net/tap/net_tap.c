@@ -35,7 +35,7 @@
 
 #include <simbricks/netif/netsim.h>
 
-//#define DEBUG_PKTMETA
+// #define DEBUG_PKTMETA
 
 static struct netsim_interface nsif;
 static int tap_fd;

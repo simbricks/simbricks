@@ -24,7 +24,7 @@
 
 #include <iostream>
 
-#include "i40e_bm.h"
+#include "sims/nic/i40e_bm/i40e_bm.h"
 
 using namespace i40e;
 

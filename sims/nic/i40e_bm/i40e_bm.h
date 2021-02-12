@@ -26,17 +26,18 @@
 
 #include <deque>
 #include <sstream>
+#include <string>
 #include <stdint.h>
 extern "C" {
 #include <simbricks/proto/pcie.h>
 }
 #include <simbricks/nicbm/nicbm.h>
 
-//#define DEBUG_DEV
-//#define DEBUG_ADMINQ
-//#define DEBUG_LAN
-//#define DEBUG_HMC
-//#define DEBUG_QUEUES
+// #define DEBUG_DEV
+// #define DEBUG_ADMINQ
+// #define DEBUG_LAN
+// #define DEBUG_HMC
+// #define DEBUG_QUEUES
 
 struct i40e_aq_desc;
 struct i40e_tx_desc;
@@ -54,7 +55,7 @@ class dma_base : public nicbm::DMAOp {
 
 class int_ev : public nicbm::TimedEvent {
     public:
-        uint16_t vector;
+        uint16_t vec;
         bool armed;
 
         int_ev();
@@ -124,6 +125,7 @@ class queue_base {
 
             protected:
                 queue_base &queue;
+
             public:
                 enum state state;
                 uint32_t index;
@@ -195,6 +197,7 @@ class queue_base {
     public:
         std::string qname;
         logger log;
+
     protected:
         desc_ctx *desc_ctxs[MAX_ACTIVE_DESCS];
         uint32_t active_first_pos;
@@ -233,6 +236,7 @@ class queue_base {
 
         // called by dma op when writeback has completed
         void writeback_done(uint32_t first_pos, uint32_t cnt);
+
     public:
         queue_base(const std::string &qname_, uint32_t &reg_head_,
                 uint32_t &reg_tail_);
@@ -258,7 +262,7 @@ class queue_admin_tx : public queue_base {
                 // complete indirect response
                 void desc_complete_indir(uint16_t retval, const void *data,
                         size_t len, uint16_t extra_flags = 0,
-                        bool ignore_datalen=false);
+                        bool ignore_datalen = false);
 
             public:
                 admin_desc_ctx(queue_admin_tx &queue_, i40e_bm &dev);
@@ -272,6 +276,7 @@ class queue_admin_tx : public queue_base {
         uint32_t &reg_len;
 
         virtual desc_ctx &desc_ctx_create();
+
     public:
         queue_admin_tx(i40e_bm &dev_, uint64_t &reg_base_,
                 uint32_t &reg_len_, uint32_t &reg_head_, uint32_t &reg_tail_);
@@ -337,9 +342,9 @@ class lan_queue_base : public queue_base {
 
         uint32_t reg_dummy_head;
 
-        lan_queue_base(lan &lanmgr_, const std::string &qtype, uint32_t &reg_tail,
-                size_t idx_,
-                uint32_t &reg_ena_, uint32_t &fpm_basereg, uint32_t &reg_intqctl,
+        lan_queue_base(lan &lanmgr_, const std::string &qtype,
+                uint32_t &reg_tail, size_t idx_, uint32_t &reg_ena_,
+                uint32_t &fpm_basereg, uint32_t &reg_intqctl,
                 uint16_t ctx_size);
         virtual void reset();
         void enable();
@@ -435,7 +440,8 @@ class lan_queue_rx : public lan_queue_base {
 class rss_key_cache {
     protected:
         static const size_t key_len = 52;
-        static const size_t cache_len = 288; // big enough for 2x ipv6 (2x128 + 2x16)
+        // big enough for 2x ipv6 (2x128 + 2x16)
+        static const size_t cache_len = 288;
         bool cache_dirty;
         const uint32_t (&key)[key_len / 4];
         uint32_t cache[cache_len];
@@ -622,4 +628,4 @@ void xsum_tcpip_tso(void *iphdr, uint8_t iplen, uint8_t l4len,
 void tso_postupdate_header(void *iphdr, uint8_t iplen, uint8_t l4len,
         uint16_t paylen);
 
-} // namespace corundum
+}  // namespace i40e

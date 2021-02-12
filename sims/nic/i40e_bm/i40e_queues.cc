@@ -28,9 +28,8 @@
 #include <iostream>
 #include <algorithm>
 
-#include "i40e_bm.h"
-
-#include "i40e_base_wrapper.h"
+#include "sims/nic/i40e_bm/i40e_bm.h"
+#include "sims/nic/i40e_bm/i40e_base_wrapper.h"
 
 using namespace i40e;
 
@@ -38,8 +37,8 @@ extern nicbm::Runner *runner;
 
 queue_base::queue_base(const std::string &qname_, uint32_t &reg_head_,
         uint32_t &reg_tail_)
-    : qname(qname_), log(qname_), active_first_pos(0), active_first_idx(0), active_cnt(0),
-    base(0), len(0), reg_head(reg_head_), reg_tail(reg_tail_),
+    : qname(qname_), log(qname_), active_first_pos(0), active_first_idx(0),
+    active_cnt(0), base(0), len(0), reg_head(reg_head_), reg_tail(reg_tail_),
     enabled(false), desc_len(0)
 {
     for (size_t i = 0; i < MAX_ACTIVE_DESCS; i++) {
@@ -346,7 +345,6 @@ void queue_base::desc_ctx::data_fetch(uint64_t addr, size_t data_len)
     queue.log << "  dma = " << dma << " data=" << data << logger::endl;
 #endif
     runner->issue_dma(*dma);
-
 }
 
 void queue_base::desc_ctx::data_fetched(uint64_t addr, size_t len)
@@ -427,7 +425,8 @@ void queue_base::dma_data_fetch::done()
 
     if (part_offset < total_len) {
 #ifdef DEBUG_QUEUES
-        ctx.queue.log << "  dma_fetch: next part of multi part dma" << logger::endl;
+        ctx.queue.log << "  dma_fetch: next part of multi part dma" <<
+            logger::endl;
 #endif
         len = std::min(total_len - part_offset, MAX_DMA_SIZE);
         runner->issue_dma(*this);

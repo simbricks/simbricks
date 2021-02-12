@@ -38,13 +38,13 @@ namespace headers {
 
 struct eth_addr {
   uint8_t addr[ETH_ADDR_LEN];
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct eth_hdr {
   struct eth_addr dest;
   struct eth_addr src;
   uint16_t type;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 
 /******************************************************************************/
@@ -68,7 +68,7 @@ struct eth_hdr {
 #define IP_PROTO_UDP     17
 #define IP_PROTO_UDPLITE 136
 #define IP_PROTO_TCP     6
-#define IP_PROTO_DCCP	 33
+#define IP_PROTO_DCCP    33
 
 #define IP_ECN_NONE      0x0
 #define IP_ECN_ECT0      0x2
@@ -95,7 +95,7 @@ struct ip_hdr {
   /* source and destination IP addresses */
   uint32_t src;
   uint32_t dest;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 
 /******************************************************************************/
@@ -140,14 +140,21 @@ struct arp_hdr {
 #define TCPH_HDRLEN(phdr) (ntohs((phdr)->_hdrlen_rsvd_flags) >> 12)
 #define TCPH_FLAGS(phdr)  (ntohs((phdr)->_hdrlen_rsvd_flags) & TCP_FLAGS)
 
-#define TCPH_HDRLEN_SET(phdr, len) (phdr)->_hdrlen_rsvd_flags = htons(((len) << 12) | TCPH_FLAGS(phdr))
-#define TCPH_FLAGS_SET(phdr, flags) (phdr)->_hdrlen_rsvd_flags = (((phdr)->_hdrlen_rsvd_flags & PP_HTONS((uint16_t)(~(uint16_t)(TCP_FLAGS)))) | htons(flags))
-#define TCPH_HDRLEN_FLAGS_SET(phdr, len, flags) (phdr)->_hdrlen_rsvd_flags = htons(((len) << 12) | (flags))
+#define TCPH_HDRLEN_SET(phdr, len) (phdr)->_hdrlen_rsvd_flags = \
+    htons(((len) << 12) | TCPH_FLAGS(phdr))
+#define TCPH_FLAGS_SET(phdr, flags) (phdr)->_hdrlen_rsvd_flags = \
+    (((phdr)->_hdrlen_rsvd_flags & PP_HTONS( \
+    (uint16_t)(~(uint16_t)(TCP_FLAGS)))) | htons(flags))
+#define TCPH_HDRLEN_FLAGS_SET(phdr, len, flags) \
+    (phdr)->_hdrlen_rsvd_flags = htons(((len) << 12) | (flags))
 
-#define TCPH_SET_FLAG(phdr, flags ) (phdr)->_hdrlen_rsvd_flags = ((phdr)->_hdrlen_rsvd_flags | htons(flags))
-#define TCPH_UNSET_FLAG(phdr, flags) (phdr)->_hdrlen_rsvd_flags = htons(ntohs((phdr)->_hdrlen_rsvd_flags) | (TCPH_FLAGS(phdr) & ~(flags)) )
+#define TCPH_SET_FLAG(phdr, flags) (phdr)->_hdrlen_rsvd_flags = \
+    ((phdr)->_hdrlen_rsvd_flags | htons(flags))
+#define TCPH_UNSET_FLAG(phdr, flags) (phdr)->_hdrlen_rsvd_flags = \
+    htons(ntohs((phdr)->_hdrlen_rsvd_flags) | (TCPH_FLAGS(phdr) & ~(flags)) )
 
-#define TCP_TCPLEN(seg) ((seg)->len + ((TCPH_FLAGS((seg)->tcphdr) & (TCP_FIN | TCP_SYN)) != 0))
+#define TCP_TCPLEN(seg) ((seg)->len + ((TCPH_FLAGS((seg)->tcphdr) & \
+    (TCP_FIN | TCP_SYN)) != 0))
 
 struct tcp_hdr {
   uint16_t src;
@@ -178,23 +185,23 @@ struct udp_hdr {
 struct pkt_arp {
   struct eth_hdr eth;
   struct arp_hdr arp;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct pkt_ip {
   struct eth_hdr eth;
   struct ip_hdr  ip;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct pkt_tcp {
   struct eth_hdr eth;
   struct ip_hdr  ip;
   struct tcp_hdr tcp;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct pkt_udp {
   struct eth_hdr eth;
   struct ip_hdr  ip;
   struct udp_hdr udp;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
-} // namespace headers
+}  // namespace headers

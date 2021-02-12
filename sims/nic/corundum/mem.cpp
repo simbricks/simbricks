@@ -24,9 +24,9 @@
 
 #include <iostream>
 
-#include "debug.h"
-#include "mem.h"
-#include "dma.h"
+#include "sims/nic/corundum/debug.h"
+#include "sims/nic/corundum/mem.h"
+#include "sims/nic/corundum/dma.h"
 
 /*
  * 1024 bits total data width
@@ -85,7 +85,8 @@ void MemWriter::step()
                 data_byte_width - data_offset : cur->len - cur_off);
         for (size_t i = 0; i < cur_len; i++, off++) {
             size_t byte_off = off % 4;
-            p.mem_data[off / 4] |= (((uint32_t) cur->data[cur_off + i]) << (byte_off * 8));
+            p.mem_data[off / 4] |= (((uint32_t) cur->data[cur_off + i]) <<
+                    (byte_off * 8));
             p.mem_be[off / 32] |= (1 << (off % 32));
             p.mem_valid |= (1 << (off / (SEG_WIDTH / 8)));
         }
@@ -125,7 +126,8 @@ void MemReader::step()
     if (cur && p.mem_resvalid &&
             ((p.mem_resvalid & p.mem_valid) == p.mem_valid)) {
 #ifdef MEM_DEBUG
-        std::cerr << "completed read from: " << std::hex << cur->ram_addr << std::endl;
+        std::cerr << "completed read from: " << std::hex << cur->ram_addr <<
+            std::endl;
         std::cerr << "  reval = " << (unsigned) p.mem_resvalid << std::endl;
 #endif
         p.mem_valid = 0;
@@ -139,7 +141,8 @@ void MemReader::step()
                 data_byte_width - off : cur->len - cur_off);
         for (size_t i = 0; i < cur_len; i++, off++) {
             size_t byte_off = (off % 4);
-            cur->data[cur_off + i] = (p.mem_data[off / 4] >> (byte_off * 8)) & 0xff;
+            cur->data[cur_off + i] = (p.mem_data[off / 4] >> (byte_off * 8)) &
+                0xff;
         }
         cur_off += cur_len;
 
@@ -158,7 +161,8 @@ void MemReader::step()
         size_t data_offset = (cur->ram_addr + cur_off) % data_byte_width;
 
 #ifdef MEM_DEBUG
-        std::cerr << "issuing op=" << cur << " read from " << std::hex << cur->ram_addr << std::endl;
+        std::cerr << "issuing op=" << cur << " read from " << std::hex <<
+            cur->ram_addr << std::endl;
         std::cerr << "    off=" << data_offset << std::endl;
 #endif
 
@@ -175,7 +179,7 @@ void MemReader::step()
         for (size_t i = 0; i < cur_len; i++, off++) {
             p.mem_valid |= (1 << (off / (SEG_WIDTH / 8)));
         }
-        //p.mem_resready = p.mem_valid;
+        // p.mem_resready = p.mem_valid;
         p.mem_resready = 0xff;
 
         uint64_t seg_addr = (cur->ram_addr + cur_off) / data_byte_width;
@@ -196,7 +200,6 @@ void MemReader::step()
             std::cerr << "    addr = " << p.mem_addr[i] << std::endl;
         std::cerr << "    mem_valid = " << (unsigned) p.mem_valid << std::endl;
 #endif
-
     }
 }
 

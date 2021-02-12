@@ -28,10 +28,9 @@
 #include <iostream>
 #include <arpa/inet.h>
 
-#include "i40e_bm.h"
-
-#include "i40e_base_wrapper.h"
-#include "headers.h"
+#include "sims/nic/i40e_bm/i40e_bm.h"
+#include "sims/nic/i40e_bm/i40e_base_wrapper.h"
+#include "sims/nic/i40e_bm/headers.h"
 
 using namespace i40e;
 
@@ -102,19 +101,19 @@ bool lan::rss_steering(const void *data, size_t len, uint16_t &queue,
 {
     hash = 0;
 
-    const headers::pkt_tcp *tcp = reinterpret_cast<const headers::pkt_tcp *> (data);
-    const headers::pkt_udp *udp = reinterpret_cast<const headers::pkt_udp *> (data);
+    const headers::pkt_tcp *tcp =
+        reinterpret_cast<const headers::pkt_tcp *> (data);
+    const headers::pkt_udp *udp =
+        reinterpret_cast<const headers::pkt_udp *> (data);
 
     // should actually determine packet type and mask with enabled packet types
-    // TODO: ipv6
+    // TODO(antoinek): ipv6
     if (tcp->eth.type == htons(ETH_TYPE_IP) &&
-            tcp->ip.proto == IP_PROTO_TCP)
-    {
+            tcp->ip.proto == IP_PROTO_TCP) {
         hash = rss_kc.hash_ipv4(ntohl(tcp->ip.src), ntohl(tcp->ip.dest),
                 ntohs(tcp->tcp.src), ntohs(tcp->tcp.dest));
     } else if (udp->eth.type == htons(ETH_TYPE_IP) &&
-            udp->ip.proto == IP_PROTO_UDP)
-    {
+            udp->ip.proto == IP_PROTO_UDP) {
         hash = rss_kc.hash_ipv4(ntohl(udp->ip.src), ntohl(udp->ip.dest),
                 ntohs(udp->udp.src), ntohs(udp->udp.dest));
     } else if (udp->eth.type == htons(ETH_TYPE_IP)) {
@@ -205,7 +204,7 @@ void lan_queue_base::disable()
     log << " lan disabling queue " << idx << logger::endl;
 #endif
     enabled = false;
-    // TODO: write back
+    // TODO(antoinek): write back
     reg_ena &= ~I40E_QRX_ENA_QENA_STAT_MASK;
 }
 
@@ -242,7 +241,6 @@ void lan_queue_base::interrupt()
     uint8_t itr = (qctl & I40E_QINT_TQCTL_ITR_INDX_MASK) >>
         I40E_QINT_TQCTL_ITR_INDX_SHIFT;
     lanmgr.dev.signal_interrupt(msix_idx, itr);
-
 }
 
 lan_queue_base::qctx_fetch::qctx_fetch(lan_queue_base &lq_)
@@ -382,12 +380,14 @@ void lan_queue_rx::rx_desc_ctx::packet_received(const void *data,
 
     memset(rxd, 0, sizeof(*rxd));
     rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_DD_SHIFT);
-    rxd->wb.qword1.status_error_len |= (pktlen << I40E_RXD_QW1_LENGTH_PBUF_SHIFT);
+    rxd->wb.qword1.status_error_len |=
+        (pktlen << I40E_RXD_QW1_LENGTH_PBUF_SHIFT);
 
     if (last) {
         rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_EOF_SHIFT);
-        // TODO: only if checksums are correct
-        rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_L3L4P_SHIFT);
+        // TODO(antoinek): only if checksums are correct
+        rxd->wb.qword1.status_error_len |=
+            (1 << I40E_RX_DESC_STATUS_L3L4P_SHIFT);
     }
     data_write(addr, pktlen, data);
 }
@@ -527,7 +527,8 @@ bool lan_queue_tx::trigger_tx_packet()
         l4t = (cmd & I40E_TX_DESC_CMD_L4T_EOFT_MASK);
 
         if (eop) {
-            uint32_t off = (d1 & I40E_TXD_QW1_OFFSET_MASK) >> I40E_TXD_QW1_OFFSET_SHIFT;
+            uint32_t off = (d1 & I40E_TXD_QW1_OFFSET_MASK) >>
+                I40E_TXD_QW1_OFFSET_SHIFT;
             maclen = ((off & I40E_TXD_QW1_MACLEN_MASK) >>
                 I40E_TX_DESC_LENGTH_MACLEN_SHIFT) * 2;
             iplen = ((off & I40E_TXD_QW1_IPLEN_MASK) >>
@@ -663,7 +664,7 @@ bool lan_queue_tx::trigger_tx_packet()
 
 void lan_queue_tx::trigger_tx()
 {
-    while (trigger_tx_packet());
+    while (trigger_tx_packet()) {}
 }
 
 lan_queue_tx::tx_desc_ctx::tx_desc_ctx(lan_queue_tx &queue_)
@@ -697,15 +698,16 @@ void lan_queue_tx::tx_desc_ctx::prepare()
         struct i40e_tx_context_desc *ctxd =
             reinterpret_cast<struct i40e_tx_context_desc *> (d);
         queue.log << "  context descriptor: tp=" << ctxd->tunneling_params <<
-            " l2t=" << ctxd->l2tag2 << " tctm=" << ctxd->type_cmd_tso_mss << logger::endl;
+            " l2t=" << ctxd->l2tag2 << " tctm=" << ctxd->type_cmd_tso_mss <<
+            logger::endl;
 #endif
 
         prepared();
     } else {
-        queue.log << "txq: only support context & data descriptors" << logger::endl;
+        queue.log << "txq: only support context & data descriptors" <<
+            logger::endl;
         abort();
     }
-
 }
 
 void lan_queue_tx::tx_desc_ctx::process()

@@ -27,9 +27,8 @@
 #include <cassert>
 #include <iostream>
 
-#include "i40e_bm.h"
-
-#include "i40e_base_wrapper.h"
+#include "sims/nic/i40e_bm/i40e_bm.h"
+#include "sims/nic/i40e_bm/i40e_base_wrapper.h"
 
 nicbm::Runner *runner;
 
@@ -70,7 +69,6 @@ void i40e_bm::setup_intro(struct cosim_pcie_proto_dev_intro &di)
     di.pci_msix_table_offset = 0x0;
     di.pci_msix_pba_offset = 0x1000;
     di.psi_msix_cap_offset = 0x70;
-
 }
 
 void i40e_bm::dma_complete(nicbm::DMAOp &op)
@@ -163,88 +161,67 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
     uint32_t val = 0;
 
     if (addr >= I40E_PFINT_DYN_CTLN(0) &&
-            addr < I40E_PFINT_DYN_CTLN(NUM_PFINTS - 1))
-    {
+            addr < I40E_PFINT_DYN_CTLN(NUM_PFINTS - 1)) {
         val = regs.pfint_dyn_ctln[(addr - I40E_PFINT_DYN_CTLN(0)) / 4];
     } else if (addr >= I40E_PFINT_LNKLSTN(0) &&
-            addr <= I40E_PFINT_LNKLSTN(NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_LNKLSTN(NUM_PFINTS - 1)) {
         val = regs.pfint_lnklstn[(addr - I40E_PFINT_LNKLSTN(0)) / 4];
     } else if (addr >= I40E_PFINT_RATEN(0) &&
-            addr <= I40E_PFINT_RATEN(NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_RATEN(NUM_PFINTS - 1)) {
         val = regs.pfint_raten[(addr - I40E_PFINT_RATEN(0)) / 4];
 
     } else if (addr >= I40E_GLLAN_TXPRE_QDIS(0) &&
-            addr < I40E_GLLAN_TXPRE_QDIS(12))
-    {
+            addr < I40E_GLLAN_TXPRE_QDIS(12)) {
         val = regs.gllan_txpre_qdis[(addr - I40E_GLLAN_TXPRE_QDIS(0)) / 4];
     } else if (addr >= I40E_QINT_TQCTL(0) &&
-            addr <= I40E_QINT_TQCTL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QINT_TQCTL(NUM_QUEUES - 1)) {
         val = regs.qint_tqctl[(addr - I40E_QINT_TQCTL(0)) / 4];
     } else if (addr >= I40E_QTX_ENA(0) &&
-            addr <= I40E_QTX_ENA(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QTX_ENA(NUM_QUEUES - 1)) {
         val = regs.qtx_ena[(addr - I40E_QTX_ENA(0)) / 4];
     } else if (addr >= I40E_QTX_TAIL(0) &&
-            addr <= I40E_QTX_TAIL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QTX_TAIL(NUM_QUEUES - 1)) {
         val = regs.qtx_tail[(addr - I40E_QTX_TAIL(0)) / 4];
     } else if (addr >= I40E_QTX_CTL(0) &&
-            addr <= I40E_QTX_CTL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QTX_CTL(NUM_QUEUES - 1)) {
         val = regs.qtx_ctl[(addr - I40E_QTX_CTL(0)) / 4];
     } else if (addr >= I40E_QINT_RQCTL(0) &&
-            addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1)) {
         val = regs.qint_rqctl[(addr - I40E_QINT_RQCTL(0)) / 4];
     } else if (addr >= I40E_QRX_ENA(0) &&
-            addr <= I40E_QRX_ENA(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QRX_ENA(NUM_QUEUES - 1)) {
         val = regs.qrx_ena[(addr - I40E_QRX_ENA(0)) / 4];
     } else if (addr >= I40E_QRX_TAIL(0) &&
-            addr <= I40E_QRX_TAIL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QRX_TAIL(NUM_QUEUES - 1)) {
         val = regs.qrx_tail[(addr - I40E_QRX_TAIL(0)) / 4];
     } else if (addr >= I40E_GLHMC_LANTXBASE(0) &&
-            addr <= I40E_GLHMC_LANTXBASE(I40E_GLHMC_LANTXBASE_MAX_INDEX))
-    {
+            addr <= I40E_GLHMC_LANTXBASE(I40E_GLHMC_LANTXBASE_MAX_INDEX)) {
         val = regs.glhmc_lantxbase[(addr - I40E_GLHMC_LANTXBASE(0)) / 4];
     } else if (addr >= I40E_GLHMC_LANTXCNT(0) &&
-            addr <= I40E_GLHMC_LANTXCNT(I40E_GLHMC_LANTXCNT_MAX_INDEX))
-    {
+            addr <= I40E_GLHMC_LANTXCNT(I40E_GLHMC_LANTXCNT_MAX_INDEX)) {
         val = regs.glhmc_lantxcnt[(addr - I40E_GLHMC_LANTXCNT(0)) / 4];
     } else if (addr >= I40E_GLHMC_LANRXBASE(0) &&
-            addr <= I40E_GLHMC_LANRXBASE(I40E_GLHMC_LANRXBASE_MAX_INDEX))
-    {
+            addr <= I40E_GLHMC_LANRXBASE(I40E_GLHMC_LANRXBASE_MAX_INDEX)) {
         val = regs.glhmc_lanrxbase[(addr - I40E_GLHMC_LANRXBASE(0)) / 4];
     } else if (addr >= I40E_GLHMC_LANRXCNT(0) &&
-            addr <= I40E_GLHMC_LANRXCNT(I40E_GLHMC_LANRXCNT_MAX_INDEX))
-    {
+            addr <= I40E_GLHMC_LANRXCNT(I40E_GLHMC_LANRXCNT_MAX_INDEX)) {
         val = regs.glhmc_lanrxcnt[(addr - I40E_GLHMC_LANRXCNT(0)) / 4];
     } else if (addr >= I40E_PFQF_HKEY(0) &&
-            addr <= I40E_PFQF_HKEY(I40E_PFQF_HKEY_MAX_INDEX))
-    {
+            addr <= I40E_PFQF_HKEY(I40E_PFQF_HKEY_MAX_INDEX)) {
         val = regs.pfqf_hkey[(addr - I40E_PFQF_HKEY(0)) / 128];
     } else if (addr >= I40E_PFQF_HLUT(0) &&
-            addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX))
-    {
+            addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX)) {
         val = regs.pfqf_hlut[(addr - I40E_PFQF_HLUT(0)) / 128];
     } else if (addr >= I40E_PFINT_ITRN(0, 0) &&
-            addr <= I40E_PFINT_ITRN(0, NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_ITRN(0, NUM_PFINTS - 1)) {
         val = regs.pfint_itrn[0][(addr - I40E_PFINT_ITRN(0, 0)) / 4];
     } else if (addr >= I40E_PFINT_ITRN(1, 0) &&
-            addr <= I40E_PFINT_ITRN(1, NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_ITRN(1, NUM_PFINTS - 1)) {
         val = regs.pfint_itrn[1][(addr - I40E_PFINT_ITRN(1, 0)) / 4];
     } else if (addr >= I40E_PFINT_ITRN(2, 0) &&
-            addr <= I40E_PFINT_ITRN(2, NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_ITRN(2, NUM_PFINTS - 1)) {
         val = regs.pfint_itrn[2][(addr - I40E_PFINT_ITRN(2, 0)) / 4];
     } else {
-
         switch (addr) {
             case I40E_PFGEN_CTRL:
                 val = 0; /* we always simulate immediate reset */
@@ -264,12 +241,12 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
 
             case I40E_GLNVM_GENS:
                 val = I40E_GLNVM_GENS_NVM_PRES_MASK |
-                    (6 << I40E_GLNVM_GENS_SR_SIZE_SHIFT); // shadow ram 64kb
+                    (6 << I40E_GLNVM_GENS_SR_SIZE_SHIFT);  // shadow ram 64kb
                 break;
 
             case I40E_GLNVM_FLA:
-                val = I40E_GLNVM_FLA_LOCKED_MASK; /* normal flash programming
-                                                     mode */
+                val = I40E_GLNVM_FLA_LOCKED_MASK;  // normal flash programming
+                                                   // mode
                 break;
 
             case I40E_GLGEN_RSTCTL:
@@ -316,12 +293,9 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 break;
 
             case I40E_GLPCI_CNF2:
+                // that is ugly, but linux driver needs this not to crash
                 val = ((NUM_PFINTS - 2) << I40E_GLPCI_CNF2_MSI_X_PF_N_SHIFT) |
-                    (2 << I40E_GLPCI_CNF2_MSI_X_VF_N_SHIFT); /* that is ugly,
-                                                                but linux
-                                                                driver needs
-                                                                this not to
-                                                                crash. */
+                    (2 << I40E_GLPCI_CNF2_MSI_X_VF_N_SHIFT);
                 break;
 
             case I40E_GLNVM_SRCTL:
@@ -338,7 +312,7 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
                 break;
 
             case I40E_PF_VT_PFALLOC:
-                val = 0; // we don't currently support VFs
+                val = 0;  // we don't currently support VFs
                 break;
 
             case I40E_PFGEN_PORTNUM:
@@ -351,14 +325,14 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
 
 
             case I40E_GLHMC_LANTXOBJSZ:
-                val = 7; // 128 B
+                val = 7;  // 128 B
                 break;
 
             case I40E_GLHMC_LANQMAX:
                 val = NUM_QUEUES;
                 break;
             case I40E_GLHMC_LANRXOBJSZ:
-                val = 5; // 32 B
+                val = 5;  // 32 B
                 break;
 
             case I40E_GLHMC_FCOEMAX:
@@ -479,94 +453,73 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr)
 void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
 {
     if (addr >= I40E_PFINT_DYN_CTLN(0) &&
-            addr <= I40E_PFINT_DYN_CTLN(NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_DYN_CTLN(NUM_PFINTS - 1)) {
         regs.pfint_dyn_ctln[(addr - I40E_PFINT_DYN_CTLN(0)) / 4] = val;
     } else if (addr >= I40E_PFINT_LNKLSTN(0) &&
-            addr <= I40E_PFINT_LNKLSTN(NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_LNKLSTN(NUM_PFINTS - 1)) {
         regs.pfint_lnklstn[(addr - I40E_PFINT_LNKLSTN(0)) / 4] = val;
     } else if (addr >= I40E_PFINT_RATEN(0) &&
-            addr <= I40E_PFINT_RATEN(NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_RATEN(NUM_PFINTS - 1)) {
         regs.pfint_raten[(addr - I40E_PFINT_RATEN(0)) / 4] = val;
     } else if (addr >= I40E_GLLAN_TXPRE_QDIS(0) &&
-            addr <= I40E_GLLAN_TXPRE_QDIS(11))
-    {
+            addr <= I40E_GLLAN_TXPRE_QDIS(11)) {
         regs.gllan_txpre_qdis[(addr - I40E_GLLAN_TXPRE_QDIS(0)) / 4] = val;
     } else if (addr >= I40E_QINT_TQCTL(0) &&
-            addr <= I40E_QINT_TQCTL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QINT_TQCTL(NUM_QUEUES - 1)) {
         regs.qint_tqctl[(addr - I40E_QINT_TQCTL(0)) / 4] = val;
     } else if (addr >= I40E_QTX_ENA(0) &&
-            addr <= I40E_QTX_ENA(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QTX_ENA(NUM_QUEUES - 1)) {
         size_t idx = (addr - I40E_QTX_ENA(0)) / 4;
         regs.qtx_ena[idx] = val;
         lanmgr.qena_updated(idx, false);
     } else if (addr >= I40E_QTX_TAIL(0) &&
-            addr <= I40E_QTX_TAIL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QTX_TAIL(NUM_QUEUES - 1)) {
         size_t idx = (addr - I40E_QTX_TAIL(0)) / 4;
         regs.qtx_tail[idx] = val;
         lanmgr.tail_updated(idx, false);
     } else if (addr >= I40E_QTX_CTL(0) &&
-            addr <= I40E_QTX_CTL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QTX_CTL(NUM_QUEUES - 1)) {
         regs.qtx_ctl[(addr - I40E_QTX_CTL(0)) / 4] = val;
-
     } else if (addr >= I40E_QINT_RQCTL(0) &&
-            addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QINT_RQCTL(NUM_QUEUES - 1)) {
         regs.qint_rqctl[(addr - I40E_QINT_RQCTL(0)) / 4] = val;
     } else if (addr >= I40E_QRX_ENA(0) &&
-            addr <= I40E_QRX_ENA(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QRX_ENA(NUM_QUEUES - 1)) {
         size_t idx = (addr - I40E_QRX_ENA(0)) / 4;
         regs.qrx_ena[idx] = val;
         lanmgr.qena_updated(idx, true);
     } else if (addr >= I40E_QRX_TAIL(0) &&
-            addr <= I40E_QRX_TAIL(NUM_QUEUES - 1))
-    {
+            addr <= I40E_QRX_TAIL(NUM_QUEUES - 1)) {
         size_t idx = (addr - I40E_QRX_TAIL(0)) / 4;
         regs.qrx_tail[idx] = val;
         lanmgr.tail_updated(idx, true);
     } else if (addr >= I40E_GLHMC_LANTXBASE(0) &&
-            addr <= I40E_GLHMC_LANTXBASE(I40E_GLHMC_LANTXBASE_MAX_INDEX))
-    {
+            addr <= I40E_GLHMC_LANTXBASE(I40E_GLHMC_LANTXBASE_MAX_INDEX)) {
         regs.glhmc_lantxbase[(addr - I40E_GLHMC_LANTXBASE(0)) / 4] = val;
     } else if (addr >= I40E_GLHMC_LANTXCNT(0) &&
-            addr <= I40E_GLHMC_LANTXCNT(I40E_GLHMC_LANTXCNT_MAX_INDEX))
-    {
+            addr <= I40E_GLHMC_LANTXCNT(I40E_GLHMC_LANTXCNT_MAX_INDEX)) {
         regs.glhmc_lantxcnt[(addr - I40E_GLHMC_LANTXCNT(0)) / 4] = val;
     } else if (addr >= I40E_GLHMC_LANRXBASE(0) &&
-            addr <= I40E_GLHMC_LANRXBASE(I40E_GLHMC_LANRXBASE_MAX_INDEX))
-    {
+            addr <= I40E_GLHMC_LANRXBASE(I40E_GLHMC_LANRXBASE_MAX_INDEX)) {
         regs.glhmc_lanrxbase[(addr - I40E_GLHMC_LANRXBASE(0)) / 4] = val;
     } else if (addr >= I40E_GLHMC_LANRXCNT(0) &&
-            addr <= I40E_GLHMC_LANRXCNT(I40E_GLHMC_LANRXCNT_MAX_INDEX))
-    {
+            addr <= I40E_GLHMC_LANRXCNT(I40E_GLHMC_LANRXCNT_MAX_INDEX)) {
         regs.glhmc_lanrxcnt[(addr - I40E_GLHMC_LANRXCNT(0)) / 4] = val;
     } else if (addr >= I40E_PFQF_HKEY(0) &&
-            addr <= I40E_PFQF_HKEY(I40E_PFQF_HKEY_MAX_INDEX))
-    {
+            addr <= I40E_PFQF_HKEY(I40E_PFQF_HKEY_MAX_INDEX)) {
         regs.pfqf_hkey[(addr - I40E_PFQF_HKEY(0)) / 128] = val;
         lanmgr.rss_key_updated();
     } else if (addr >= I40E_PFQF_HLUT(0) &&
-            addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX))
-    {
+            addr <= I40E_PFQF_HLUT(I40E_PFQF_HLUT_MAX_INDEX)) {
         regs.pfqf_hlut[(addr - I40E_PFQF_HLUT(0)) / 128] = val;
     } else if (addr >= I40E_PFINT_ITRN(0, 0) &&
-            addr <= I40E_PFINT_ITRN(0, NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_ITRN(0, NUM_PFINTS - 1)) {
         regs.pfint_itrn[0][(addr - I40E_PFINT_ITRN(0, 0)) / 4] = val;
     } else if (addr >= I40E_PFINT_ITRN(1, 0) &&
-            addr <= I40E_PFINT_ITRN(1, NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_ITRN(1, NUM_PFINTS - 1)) {
         regs.pfint_itrn[1][(addr - I40E_PFINT_ITRN(1, 0)) / 4] = val;
     } else if (addr >= I40E_PFINT_ITRN(2, 0) &&
-            addr <= I40E_PFINT_ITRN(2, NUM_PFINTS - 1))
-    {
+            addr <= I40E_PFINT_ITRN(2, NUM_PFINTS - 1)) {
         regs.pfint_itrn[2][(addr - I40E_PFINT_ITRN(2, 0)) / 4] = val;
     } else {
         switch (addr) {
@@ -645,7 +598,7 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
                 pf_atq.reg_updated();
                 break;
             case I40E_PF_ATQBAH:
-                regs.pf_atqba = ((uint64_t ) val << 32) |
+                regs.pf_atqba = ((uint64_t) val << 32) |
                     (regs.pf_atqba & 0xffffffffULL);
                 pf_atq.reg_updated();
                 break;
@@ -666,7 +619,7 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val)
                 regs.pf_arqba = val | (regs.pf_atqba & 0xffffffff00000000ULL);
                 break;
             case I40E_PF_ARQBAH:
-                regs.pf_arqba = ((uint64_t ) val << 32) |
+                regs.pf_arqba = ((uint64_t) val << 32) |
                     (regs.pf_arqba & 0xffffffffULL);
                 break;
             case I40E_PF_ARQLEN:
@@ -722,32 +675,32 @@ void i40e_bm::timed_event(nicbm::TimedEvent &ev)
 {
     int_ev &iev = *((int_ev *) &ev);
 #ifdef DEBUG_DEV
-    log << "timed_event: triggering interrupt (" << iev.vector << ")" <<
+    log << "timed_event: triggering interrupt (" << iev.vec << ")" <<
         logger::endl;
 #endif
     iev.armed = false;
 
     if (int_msix_en) {
-        runner->msix_issue(iev.vector);
-    } else if (iev.vector > 0) {
-        log << "timed_event: MSI-X disabled, but vector != 0" << logger::endl;
+        runner->msix_issue(iev.vec);
+    } else if (iev.vec > 0) {
+        log << "timed_event: MSI-X disabled, but vec != 0" << logger::endl;
         abort();
     } else {
         runner->msi_issue(0);
     }
 }
 
-void i40e_bm::signal_interrupt(uint16_t vector, uint8_t itr)
+void i40e_bm::signal_interrupt(uint16_t vec, uint8_t itr)
 {
-    int_ev &iev = intevs[vector];
+    int_ev &iev = intevs[vec];
 
     uint64_t mindelay;
     if (itr <= 2) {
         // itr 0-2
-        if (vector == 0)
+        if (vec == 0)
             mindelay = regs.pfint_itr0[itr];
         else
-            mindelay = regs.pfint_itrn[itr][vector];
+            mindelay = regs.pfint_itrn[itr][vec];
         mindelay *= 2000000ULL;
     } else if (itr == 3) {
         // noitr
@@ -762,7 +715,7 @@ void i40e_bm::signal_interrupt(uint16_t vector, uint8_t itr)
     if (iev.armed && iev.time <= newtime) {
         // already armed and this is not scheduled sooner
 #ifdef DEBUG_DEV
-        log << "signal_interrupt: vector " << vector << " already scheduled" <<
+        log << "signal_interrupt: vec " << vec << " already scheduled" <<
             logger::endl;
 #endif
         return;
@@ -775,7 +728,7 @@ void i40e_bm::signal_interrupt(uint16_t vector, uint8_t itr)
     iev.time = newtime;
 
 #ifdef DEBUG_DEV
-    log << "signal_interrupt: scheduled vector " << vector << " for time=" <<
+    log << "signal_interrupt: scheduled vec " << vec << " for time=" <<
         newtime << " (itr " << itr << ")" << logger::endl;
 #endif
 
@@ -797,7 +750,7 @@ void i40e_bm::reset(bool indicate_done)
         regs.glnvm_srctl = I40E_GLNVM_SRCTL_DONE_MASK;
 
     for (uint16_t i = 0; i < NUM_PFINTS; i++) {
-        intevs[i].vector = i;
+        intevs[i].vec = i;
         if (intevs[i].armed) {
             runner->event_cancel(intevs[i]);
             intevs[i].armed = false;
@@ -904,7 +857,7 @@ int_ev::int_ev()
     time = 0;
 }
 
-} //namespace i40e
+}  // namespace i40e
 
 using namespace i40e;
 

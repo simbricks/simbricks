@@ -36,8 +36,8 @@ extern "C" {
 #include <simbricks/netif/netsim.h>
 };
 
-static uint64_t sync_period = (500 * 1000ULL); // 500ns
-static uint64_t eth_latency = (500 * 1000ULL); // 500ns
+static uint64_t sync_period = (500 * 1000ULL);  // 500ns
+static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
 
 /* MAC address type */
 struct MAC {
@@ -56,18 +56,18 @@ struct MAC {
     }
 };
 namespace std {
-    template <>
-    struct hash<MAC>
-    {
-        size_t operator()(const MAC &m) const {
-            size_t res = 0;
-            for (int i = 0; i < 6; i++) {
-                res = (res << 4) | (res ^ m.data[i]);
-            }
-            return res;
-        }
-    };
-} // namespace std
+template <>
+struct hash<MAC>
+{
+size_t operator()(const MAC &m) const {
+    size_t res = 0;
+    for (int i = 0; i < 6; i++) {
+        res = (res << 4) | (res ^ m.data[i]);
+    }
+    return res;
+}
+};
+}  // namespace std
 
 /* Global variables */
 static uint64_t cur_ts = 0;
@@ -103,7 +103,8 @@ static void forward_pkt(volatile struct cosim_eth_proto_d2n_send *tx, int port)
 
 static void switch_pkt(struct netsim_interface *nsif, int iport)
 {
-    volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(nsif, cur_ts);
+    volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(nsif,
+            cur_ts);
     if (msg_from == NULL) {
         return;
     }

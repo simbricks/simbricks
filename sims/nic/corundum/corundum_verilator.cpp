@@ -27,28 +27,29 @@
 #include <set>
 #include <signal.h>
 
+#include <verilated.h>
+#ifdef TRACE_ENABLED
+#include <verilated_vcd_c.h>
+#endif
+
 extern "C" {
     #include <simbricks/nicif/nicsim.h>
 }
 
-#include "Vinterface.h"
-#include "verilated.h"
-#ifdef TRACE_ENABLED
-#include "verilated_vcd_c.h"
-#endif
+#include "sims/nic/corundum/obj_dir/Vinterface.h"
 
-#include "debug.h"
-#include "corundum.h"
-#include "coord.h"
-#include "dma.h"
-#include "mem.h"
+#include "sims/nic/corundum/debug.h"
+#include "sims/nic/corundum/corundum.h"
+#include "sims/nic/corundum/coord.h"
+#include "sims/nic/corundum/dma.h"
+#include "sims/nic/corundum/mem.h"
 
 struct DMAOp;
 
-static uint64_t clock_period = 4 * 1000ULL; // 4ns -> 250MHz
-static uint64_t sync_period = 500 * 1000ULL; // 500ns
-static uint64_t pci_latency = 500 * 1000ULL; // 500ns
-static uint64_t eth_latency = 500 * 1000ULL; // 500ns
+static uint64_t clock_period = 4 * 1000ULL;   // 4ns -> 250MHz
+static uint64_t sync_period = 500 * 1000ULL;  // 500ns
+static uint64_t pci_latency = 500 * 1000ULL;  // 500ns
+static uint64_t eth_latency = 500 * 1000ULL;  // 500ns
 
 
 
@@ -113,19 +114,19 @@ static void reset_inputs(Vinterface *top)
     top->m_axil_csr_rresp = 0;
     top->m_axil_csr_rvalid = 0;
     top->ctrl_dma_ram_wr_cmd_sel = 0;
-    //top->ctrl_dma_ram_wr_cmd_be = 0;
-    //top->ctrl_dma_ram_wr_cmd_addr = 0;
+    // top->ctrl_dma_ram_wr_cmd_be = 0;
+    // top->ctrl_dma_ram_wr_cmd_addr = 0;
     top->ctrl_dma_ram_wr_cmd_valid = 0;
     top->ctrl_dma_ram_rd_cmd_sel = 0;
-    //top->ctrl_dma_ram_rd_cmd_addr = 0;
+    // top->ctrl_dma_ram_rd_cmd_addr = 0;
     top->ctrl_dma_ram_rd_cmd_valid = 0;
     top->ctrl_dma_ram_rd_resp_ready = 0;
     top->data_dma_ram_wr_cmd_sel = 0;
-    //top->data_dma_ram_wr_cmd_be = 0;
-    //top->data_dma_ram_wr_cmd_addr = 0;
+    // top->data_dma_ram_wr_cmd_be = 0;
+    // top->data_dma_ram_wr_cmd_addr = 0;
     top->data_dma_ram_wr_cmd_valid = 0;
     top->data_dma_ram_rd_cmd_sel = 0;
-    //top->data_dma_ram_rd_cmd_addr = 0;
+    // top->data_dma_ram_rd_cmd_addr = 0;
     top->data_dma_ram_rd_cmd_valid = 0;
     top->data_dma_ram_rd_resp_ready = 0;
     top->tx_axis_tready = 0;
@@ -148,30 +149,54 @@ static void report_output(const char *label, uint64_t val)
 
 static void report_outputs(Vinterface *top)
 {
-    report_output("m_axis_ctrl_dma_read_desc_dma_addr", top->m_axis_ctrl_dma_read_desc_dma_addr);
-    report_output("m_axis_ctrl_dma_read_desc_ram_sel", top->m_axis_ctrl_dma_read_desc_ram_sel);
-    report_output("m_axis_ctrl_dma_read_desc_ram_addr", top->m_axis_ctrl_dma_read_desc_ram_addr);
-    report_output("m_axis_ctrl_dma_read_desc_len", top->m_axis_ctrl_dma_read_desc_len);
-    report_output("m_axis_ctrl_dma_read_desc_tag", top->m_axis_ctrl_dma_read_desc_tag);
-    report_output("m_axis_ctrl_dma_read_desc_valid", top->m_axis_ctrl_dma_read_desc_valid);
-    report_output("m_axis_ctrl_dma_write_desc_dma_addr", top->m_axis_ctrl_dma_write_desc_dma_addr);
-    report_output("m_axis_ctrl_dma_write_desc_ram_sel", top->m_axis_ctrl_dma_write_desc_ram_sel);
-    report_output("m_axis_ctrl_dma_write_desc_ram_addr", top->m_axis_ctrl_dma_write_desc_ram_addr);
-    report_output("m_axis_ctrl_dma_write_desc_len", top->m_axis_ctrl_dma_write_desc_len);
-    report_output("m_axis_ctrl_dma_write_desc_tag", top->m_axis_ctrl_dma_write_desc_tag);
-    report_output("m_axis_ctrl_dma_write_desc_valid", top->m_axis_ctrl_dma_write_desc_valid);
-    report_output("m_axis_data_dma_read_desc_dma_addr", top->m_axis_data_dma_read_desc_dma_addr);
-    report_output("m_axis_data_dma_read_desc_ram_sel", top->m_axis_data_dma_read_desc_ram_sel);
-    report_output("m_axis_data_dma_read_desc_ram_addr", top->m_axis_data_dma_read_desc_ram_addr);
-    report_output("m_axis_data_dma_read_desc_len", top->m_axis_data_dma_read_desc_len);
-    report_output("m_axis_data_dma_read_desc_tag", top->m_axis_data_dma_read_desc_tag);
-    report_output("m_axis_data_dma_read_desc_valid", top->m_axis_data_dma_read_desc_valid);
-    report_output("m_axis_data_dma_write_desc_dma_addr", top->m_axis_data_dma_write_desc_dma_addr);
-    report_output("m_axis_data_dma_write_desc_ram_sel", top->m_axis_data_dma_write_desc_ram_sel);
-    report_output("m_axis_data_dma_write_desc_ram_addr", top->m_axis_data_dma_write_desc_ram_addr);
-    report_output("m_axis_data_dma_write_desc_len", top->m_axis_data_dma_write_desc_len);
-    report_output("m_axis_data_dma_write_desc_tag", top->m_axis_data_dma_write_desc_tag);
-    report_output("m_axis_data_dma_write_desc_valid", top->m_axis_data_dma_write_desc_valid);
+    report_output("m_axis_ctrl_dma_read_desc_dma_addr",
+            top->m_axis_ctrl_dma_read_desc_dma_addr);
+    report_output("m_axis_ctrl_dma_read_desc_ram_sel",
+            top->m_axis_ctrl_dma_read_desc_ram_sel);
+    report_output("m_axis_ctrl_dma_read_desc_ram_addr",
+            top->m_axis_ctrl_dma_read_desc_ram_addr);
+    report_output("m_axis_ctrl_dma_read_desc_len",
+            top->m_axis_ctrl_dma_read_desc_len);
+    report_output("m_axis_ctrl_dma_read_desc_tag",
+            top->m_axis_ctrl_dma_read_desc_tag);
+    report_output("m_axis_ctrl_dma_read_desc_valid",
+            top->m_axis_ctrl_dma_read_desc_valid);
+    report_output("m_axis_ctrl_dma_write_desc_dma_addr",
+            top->m_axis_ctrl_dma_write_desc_dma_addr);
+    report_output("m_axis_ctrl_dma_write_desc_ram_sel",
+            top->m_axis_ctrl_dma_write_desc_ram_sel);
+    report_output("m_axis_ctrl_dma_write_desc_ram_addr",
+            top->m_axis_ctrl_dma_write_desc_ram_addr);
+    report_output("m_axis_ctrl_dma_write_desc_len",
+            top->m_axis_ctrl_dma_write_desc_len);
+    report_output("m_axis_ctrl_dma_write_desc_tag",
+            top->m_axis_ctrl_dma_write_desc_tag);
+    report_output("m_axis_ctrl_dma_write_desc_valid",
+            top->m_axis_ctrl_dma_write_desc_valid);
+    report_output("m_axis_data_dma_read_desc_dma_addr",
+            top->m_axis_data_dma_read_desc_dma_addr);
+    report_output("m_axis_data_dma_read_desc_ram_sel",
+            top->m_axis_data_dma_read_desc_ram_sel);
+    report_output("m_axis_data_dma_read_desc_ram_addr",
+            top->m_axis_data_dma_read_desc_ram_addr);
+    report_output("m_axis_data_dma_read_desc_len",
+            top->m_axis_data_dma_read_desc_len);
+    report_output("m_axis_data_dma_read_desc_tag",
+            top->m_axis_data_dma_read_desc_tag);
+    report_output("m_axis_data_dma_read_desc_valid",
+            top->m_axis_data_dma_read_desc_valid);
+    report_output("m_axis_data_dma_write_desc_dma_addr",
+            top->m_axis_data_dma_write_desc_dma_addr);
+    report_output("m_axis_data_dma_write_desc_ram_sel",
+            top->m_axis_data_dma_write_desc_ram_sel);
+    report_output("m_axis_data_dma_write_desc_ram_addr",
+            top->m_axis_data_dma_write_desc_ram_addr);
+    report_output("m_axis_data_dma_write_desc_len",
+            top->m_axis_data_dma_write_desc_len);
+    report_output("m_axis_data_dma_write_desc_tag",
+            top->m_axis_data_dma_write_desc_tag);
+    report_output("m_axis_data_dma_write_desc_valid",
+            top->m_axis_data_dma_write_desc_valid);
     report_output("s_axil_awready", top->s_axil_awready);
     report_output("s_axil_wready", top->s_axil_wready);
     report_output("s_axil_bresp", top->s_axil_bresp);
@@ -193,10 +218,12 @@ static void report_outputs(Vinterface *top)
     report_output("m_axil_csr_rready", top->m_axil_csr_rready);
     report_output("ctrl_dma_ram_wr_cmd_ready", top->ctrl_dma_ram_wr_cmd_ready);
     report_output("ctrl_dma_ram_rd_cmd_ready", top->ctrl_dma_ram_rd_cmd_ready);
-    report_output("ctrl_dma_ram_rd_resp_valid", top->ctrl_dma_ram_rd_resp_valid);
+    report_output("ctrl_dma_ram_rd_resp_valid",
+            top->ctrl_dma_ram_rd_resp_valid);
     report_output("data_dma_ram_wr_cmd_ready", top->data_dma_ram_wr_cmd_ready);
     report_output("data_dma_ram_rd_cmd_ready", top->data_dma_ram_rd_cmd_ready);
-    report_output("data_dma_ram_rd_resp_valid", top->data_dma_ram_rd_resp_valid);
+    report_output("data_dma_ram_rd_resp_valid",
+            top->data_dma_ram_rd_resp_valid);
     report_output("tx_axis_tkeep", top->tx_axis_tkeep);
     report_output("tx_axis_tvalid", top->tx_axis_tvalid);
     report_output("tx_axis_tlast", top->tx_axis_tlast);
@@ -217,7 +244,6 @@ struct MMIOOp {
 
 class MMIOInterface {
     protected:
-
         enum OpState {
             AddrIssued,
             AddrAcked,
@@ -252,8 +278,8 @@ class MMIOInterface {
                     rCur->value = top.s_axil_rdata;
                     coord.mmio_comp_enqueue(rCur);
 #ifdef MMIO_DEBUG
-                    std::cout << main_time << " MMIO: completed AXI read op=" << rCur << " val=" <<
-                        rCur->value << std::endl;
+                    std::cout << main_time << " MMIO: completed AXI read op=" <<
+                        rCur << " val=" << rCur->value << std::endl;
 #endif
                     rCur = 0;
                 }
@@ -274,10 +300,10 @@ class MMIOInterface {
                 if (wState == AddrDone && top.s_axil_bvalid) {
                     /* write complete */
                     top.s_axil_bready = 0;
-                    // TODO: check top.s_axil_bresp
+                    // TODO(antoinek): check top.s_axil_bresp
 #ifdef MMIO_DEBUG
-                    std::cout << main_time << " MMIO: completed AXI write op=" << wCur <<
-                        std::endl;
+                    std::cout << main_time << " MMIO: completed AXI write op="
+                        << wCur << std::endl;
 #endif
                     coord.mmio_comp_enqueue(wCur);
                     wCur = 0;
@@ -310,7 +336,6 @@ class MMIOInterface {
                     top.s_axil_wdata = wCur->value;
                     top.s_axil_wstrb = 0xf;
                     top.s_axil_wvalid = 1;
-
                 }
             }
         }
@@ -319,8 +344,8 @@ class MMIOInterface {
         {
             MMIOOp *op = new MMIOOp;
 #ifdef MMIO_DEBUG
-            std::cout << main_time << " MMIO: read id=" << id << " addr=" << std::hex << addr
-                << " len=" << len << " op=" << op << std::endl;
+            std::cout << main_time << " MMIO: read id=" << id << " addr=" <<
+                std::hex << addr << " len=" << len << " op=" << op << std::endl;
 #endif
             op->id = id;
             op->addr = addr;
@@ -334,8 +359,9 @@ class MMIOInterface {
         {
             MMIOOp *op = new MMIOOp;
 #ifdef MMIO_DEBUG
-            std::cout << main_time << " MMIO: write id=" << id << " addr=" << std::hex << addr
-                << " len=" << len << " val=" << val << " op=" << op << std::endl;
+            std::cout << main_time << " MMIO: write id=" << id << " addr=" <<
+                std::hex << addr << " len=" << len << " val=" << val << " op="
+                << op << std::endl;
 #endif
             op->id = id;
             op->addr = addr;
@@ -344,7 +370,6 @@ class MMIOInterface {
             op->isWrite = true;
             queue.push_back(op);
         }
-
 };
 
 void pci_rwcomp_issue(MMIOOp *op)
@@ -360,7 +385,7 @@ void pci_rwcomp_issue(MMIOOp *op)
         wc = &msg->writecomp;
         wc->req_id = op->id;
 
-        //WMB();
+        // WMB();
         wc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
             COSIM_PCIE_PROTO_D2H_OWN_HOST;
     } else {
@@ -368,7 +393,7 @@ void pci_rwcomp_issue(MMIOOp *op)
         memcpy((void *) rc->data, &op->value, op->len);
         rc->req_id = op->id;
 
-        //WMB();
+        // WMB();
         rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
             COSIM_PCIE_PROTO_D2H_OWN_HOST;
     }
@@ -435,7 +460,7 @@ void pci_dma_issue(DMAOp *op)
         write->offset = op->dma_addr;
         write->len = op->len;
 
-        // TODO: check DMA length
+        // TODO(antoinek): check DMA length
         memcpy((void *) write->data, op->data, op->len);
 
         // WMB();
@@ -513,7 +538,7 @@ static void csr_write(uint64_t off, uint64_t val)
 static void h2d_read(MMIOInterface &mmio,
         volatile struct cosim_pcie_proto_h2d_read *read)
 {
-    //std::cout << "got read " << read->offset << std::endl;
+    // std::cout << "got read " << read->offset << std::endl;
     if (read->offset < 0x80000) {
         volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
         volatile struct cosim_pcie_proto_d2h_readcomp *rc;
@@ -527,7 +552,7 @@ static void h2d_read(MMIOInterface &mmio,
         memcpy((void *) rc->data, &val, read->len);
         rc->req_id = read->req_id;
 
-        //WMB();
+        // WMB();
         rc->own_type = COSIM_PCIE_PROTO_D2H_MSG_READCOMP |
             COSIM_PCIE_PROTO_D2H_OWN_HOST;
     } else {
@@ -544,7 +569,7 @@ static void h2d_write(MMIOInterface &mmio,
 
     memcpy(&val, (void *) write->data, write->len);
 
-    //std::cout << "got write " << write->offset << " = " << val << std::endl;
+    // std::cout << "got write " << write->offset << " = " << val << std::endl;
 
     if (write->offset < 0x80000) {
         volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
@@ -558,7 +583,7 @@ static void h2d_write(MMIOInterface &mmio,
         wc = &msg->writecomp;
         wc->req_id = write->req_id;
 
-        //WMB();
+        // WMB();
         wc->own_type = COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP |
             COSIM_PCIE_PROTO_D2H_OWN_HOST;
     } else {
@@ -577,7 +602,7 @@ static void poll_h2d(MMIOInterface &mmio)
 
     t = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
 
-    //std::cerr << "poll_h2d: polled type=" << (int) t << std::endl;
+    // std::cerr << "poll_h2d: polled type=" << (int) t << std::endl;
     switch (t) {
         case COSIM_PCIE_PROTO_H2D_MSG_READ:
             h2d_read(mmio, &msg->read);
@@ -607,7 +632,6 @@ static void poll_h2d(MMIOInterface &mmio)
 
     nicif_h2d_done(msg);
     nicif_h2d_next();
-
 };
 
 static volatile union cosim_pcie_proto_d2h *d2h_alloc(void)
@@ -641,12 +665,13 @@ class EthernetTx {
             send->len = packet_len;
             send->timestamp = main_time + eth_latency;
 
-            //WMB();
+            // WMB();
             send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND |
                 COSIM_ETH_PROTO_D2N_OWN_NET;
 
 #ifdef ETH_DEBUG
-            std::cerr << main_time << " EthernetTx: packet len=" << std::hex << packet_len << " ";
+            std::cerr << main_time << " EthernetTx: packet len=" << std::hex <<
+                packet_len << " ";
             for (size_t i = 0; i < packet_len; i++) {
                 std::cerr << (unsigned) packet_buf[i] << " ";
             }
@@ -663,7 +688,8 @@ class EthernetTx {
                 for (size_t i = 0; i < 8; i++) {
                     if ((top.tx_axis_tkeep & (1 << i)) != 0) {
                         assert(packet_len < 2048);
-                        packet_buf[packet_len++] = (top.tx_axis_tdata >> (i * 8));
+                        packet_buf[packet_len++] =
+                            (top.tx_axis_tdata >> (i * 8));
                     }
                 }
 
@@ -708,7 +734,8 @@ class EthernetRx {
 
 #ifdef ETH_DEBUG
             std::cout << main_time << " rx into " << fifo_pos_wr << std::endl;
-            std::cerr << main_time << " EthernetRx: packet len=" << std::hex << len << " ";
+            std::cerr << main_time << " EthernetRx: packet len=" << std::hex <<
+                len << " ";
             for (size_t i = 0; i < len; i++) {
                 std::cerr << (unsigned) fifo_bufs[fifo_pos_wr][i] << " ";
             }
@@ -728,7 +755,8 @@ class EthernetRx {
                 } else if (packet_off == fifo_lens[fifo_pos_rd]) {
                     // done with packet
 #ifdef ETH_DEBUG
-                    std::cerr << main_time << " EthernetRx: finished packet" << std::endl;
+                    std::cerr << main_time << " EthernetRx: finished packet" <<
+                        std::endl;
 #endif
                     top.rx_axis_tvalid = 0;
                     top.rx_axis_tlast = 0;
@@ -739,14 +767,16 @@ class EthernetRx {
                 } else {
                     // put out more packet data
 #ifdef ETH_DEBUG
-                    std::cerr << main_time << " EthernetRx: push flit " << packet_off << std::endl;
+                    std::cerr << main_time << " EthernetRx: push flit " <<
+                        packet_off << std::endl;
                     if (packet_off == 0)
                         std::cout << "rx from " << fifo_pos_rd << std::endl;
 #endif
                     top.rx_axis_tkeep = 0;
                     top.rx_axis_tdata = 0;
                     size_t i;
-                    for (i = 0; i < 8 && packet_off < fifo_lens[fifo_pos_rd]; i++) {
+                    for (i = 0; i < 8 && packet_off < fifo_lens[fifo_pos_rd];
+                            i++) {
                         top.rx_axis_tdata |=
                             ((uint64_t) fifo_bufs[fifo_pos_rd][packet_off]) <<
                             (i * 8);
@@ -756,14 +786,13 @@ class EthernetRx {
                     top.rx_axis_tvalid = 1;
                     top.rx_axis_tlast = (packet_off == fifo_lens[fifo_pos_rd]);
                 }
-                //trace->dump(main_time);
+                //  trace->dump(main_time);
             } else {
                 // no data
                 top.rx_axis_tvalid = 0;
                 top.rx_axis_tlast = 0;
             }
         }
-
 };
 
 static void n2d_recv(EthernetRx &rx,
@@ -899,7 +928,8 @@ static void msi_step(Vinterface &top, PCICoordinator &coord)
         return;
 
 #ifdef MSI_DEBUG
-    std::cerr << main_time << " msi_step: MSI interrupt raw vec=" << (int) top.msi_irq << std::endl;
+    std::cerr << main_time << " msi_step: MSI interrupt raw vec=" <<
+        (int) top.msi_irq << std::endl;
 #endif
     for (size_t i = 0; i < 32; i++) {
         if (!((1ULL << i) & top.msi_irq))
@@ -919,8 +949,8 @@ int main(int argc, char *argv[])
 
     if (argc < 4 && argc > 10) {
         fprintf(stderr, "Usage: corundum_verilator PCI-SOCKET ETH-SOCKET "
-                "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] [ETH-LATENCY] "
-                "[CLOCK-FREQ-MHZ]\n");
+                "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
+                "[ETH-LATENCY] [CLOCK-FREQ-MHZ]\n");
         return EXIT_FAILURE;
     }
     if (argc >= 5)
@@ -1049,7 +1079,7 @@ int main(int argc, char *argv[])
             top->s_axis_data_dma_write_desc_status_tag,
             top->s_axis_data_dma_write_desc_status_valid);
 
-    //PCICoordinator pci_coord;
+    // PCICoordinator pci_coord;
     PCICoordinator pci_coord_mmio;
     PCICoordinator pci_coord_msi;
     PCICoordinator pci_coord_rc;
@@ -1063,10 +1093,14 @@ int main(int argc, char *argv[])
     MemWriter mem_data_writer(p_mem_write_data_dma);
     MemReader mem_data_reader(p_mem_read_data_dma);
 
-    DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer, pci_coord_rc);
-    DMAWriter dma_write_ctrl("write ctrl", p_dma_write_ctrl, mem_control_reader, pci_coord_wc);
-    DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer, pci_coord_rd);
-    DMAWriter dma_write_data("write data", p_dma_write_data, mem_data_reader, pci_coord_wd);
+    DMAReader dma_read_ctrl("read ctrl", p_dma_read_ctrl, mem_control_writer,
+            pci_coord_rc);
+    DMAWriter dma_write_ctrl("write ctrl", p_dma_write_ctrl, mem_control_reader,
+            pci_coord_wc);
+    DMAReader dma_read_data("read data", p_dma_read_data, mem_data_writer,
+            pci_coord_rd);
+    DMAWriter dma_write_data("write data", p_dma_write_data, mem_data_reader,
+            pci_coord_wd);
 
     EthernetTx tx(*top);
     EthernetRx rx(*top);
@@ -1120,14 +1154,15 @@ int main(int argc, char *argv[])
         top->clk = !top->clk;
         main_time += clock_period / 2;
 
-        //top->s_axis_tx_ptp_ts_96 = main_time;
+        // top->s_axis_tx_ptp_ts_96 = main_time;
         top->s_axis_tx_ptp_ts_valid = 1;
         top->s_axis_rx_ptp_ts_valid = 1;
 
         top->eval();
     }
     report_outputs(top);
-    std::cout << std::endl << std::endl << "main_time:" << main_time << std::endl;
+    std::cout << std::endl << std::endl << "main_time:" << main_time <<
+        std::endl;
 
 #ifdef TRACE_ENABLED
     trace->dump(main_time + 1);

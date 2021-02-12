@@ -27,9 +27,8 @@
 #include <cassert>
 #include <iostream>
 
-#include "i40e_bm.h"
-
-#include "i40e_base_wrapper.h"
+#include "sims/nic/i40e_bm/i40e_bm.h"
+#include "sims/nic/i40e_bm/i40e_base_wrapper.h"
 
 using namespace i40e;
 
@@ -116,7 +115,7 @@ void host_mem_cache::issue_mem_op(mem_op &op)
     }
 
     if (!seg->valid) {
-        // TODO: errorinfo and data registers
+        // TODO(antoinek): errorinfo and data registers
         std::cerr << "hmc issue_mem_op: segment invalid addr=" << addr <<
             std::endl;
         op.failed = true;

@@ -22,17 +22,18 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef MEM_H_
-#define MEM_H_
+#ifndef DMA_H_
+#define DMA_H_
 
 #include <set>
 #include <deque>
 
-#include "Vinterface.h"
-#include "verilated.h"
+#include <verilated.h>
 
-#include "debug.h"
-#include "coord.h"
+#include "sims/nic/corundum/obj_dir/Vinterface.h"
+
+#include "sims/nic/corundum/debug.h"
+#include "sims/nic/corundum/coord.h"
 
 #define MAX_DMA_LEN 2048
 
@@ -132,4 +133,4 @@ class DMAWriter : public DMAEngine {
 };
 
 
-#endif /* ndef DMA_H_ */
+#endif  // DMA_H_

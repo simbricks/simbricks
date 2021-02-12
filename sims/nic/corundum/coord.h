@@ -29,7 +29,7 @@
 #include <map>
 #include <iostream>
 
-#include "debug.h"
+#include "sims/nic/corundum/debug.h"
 
 class DMAOp;
 struct MMIOOp;
@@ -68,18 +68,21 @@ class PCICoordinator {
                 queue.pop_front();
                 if (op->type == PCIOp::OP_MSI) {
 #ifdef COORD_DEBUG
-                    std::cout << main_time << " issuing msi " << op->msi_vec << std::endl;
+                    std::cout << main_time << " issuing msi " << op->msi_vec <<
+                        std::endl;
 #endif
                     pci_msi_issue(op->msi_vec);
                 } else if (op->type == PCIOp::OP_DMA) {
 #ifdef COORD_DEBUG
-                    std::cout << main_time << " issuing dma " << op->dma_op << std::endl;
+                    std::cout << main_time << " issuing dma " << op->dma_op <<
+                        std::endl;
 #endif
                     pci_dma_issue(op->dma_op);
                     dmamap.erase(op->dma_op);
                 } else if (op->type == PCIOp::OP_RWCOMP) {
 #ifdef COORD_DEBUG
-                    std::cout << main_time << " issuing mmio " << op->mmio_op << std::endl;
+                    std::cout << main_time << " issuing mmio " << op->mmio_op <<
+                        std::endl;
 #endif
                     pci_rwcomp_issue(op->mmio_op);
                 } else {
@@ -94,7 +97,8 @@ class PCICoordinator {
         void dma_register(DMAOp *dma_op, bool ready)
         {
 #ifdef COORD_DEBUG
-            std::cout << main_time << " registering dma op " << dma_op << "  " << ready << std::endl;
+            std::cout << main_time << " registering dma op " << dma_op << "  "
+                << ready << std::endl;
 #endif
             PCIOp *op = new PCIOp;
             op->dma_op = dma_op;
@@ -134,7 +138,8 @@ class PCICoordinator {
         void mmio_comp_enqueue(MMIOOp *mmio_op)
         {
 #ifdef COORD_DEBUG
-            std::cout << main_time << " enqueuing MMIO comp " << mmio_op <<  std::endl;
+            std::cout << main_time << " enqueuing MMIO comp " << mmio_op <<
+                std::endl;
 #endif
             PCIOp *op = new PCIOp;
             op->mmio_op = mmio_op;
@@ -143,10 +148,7 @@ class PCICoordinator {
             queue.push_back(op);
 
             process();
-
         }
 };
 
-
-
-#endif
+#endif  // COORD_H_

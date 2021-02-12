@@ -30,7 +30,7 @@
 #include <signal.h>
 #include <cassert>
 
-#include "corundum_bm.h"
+#include "sims/nic/corundum_bm/corundum_bm.h"
 
 static nicbm::Runner *runner;
 
@@ -202,7 +202,8 @@ EventRing::issueEvent(unsigned type, unsigned source)
             fprintf(stderr, "Event ring is rull\n");
             return;
         }
-        addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * EVENT_SIZE;
+        addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) *
+            EVENT_SIZE;
         /* Issue DMA write */
         DMAOp *op = new DMAOp;
         op->type = DMA_TYPE_EVENT;
@@ -261,7 +262,8 @@ CplRing::complete(unsigned index, size_t len, bool tx)
     this->pending.push_back(data);
     while (!full() && !this->pending.empty()) {
         CplData &data = this->pending.front();
-        addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) * CPL_SIZE;
+        addr_t dma_addr = this->_dmaAddr + (this->_currHead & this->_sizeMask) *
+            CPL_SIZE;
         /* Issue DMA write */
         DMAOp *op = new DMAOp;
         op->type = data.tx ? DMA_TYPE_TX_CPL : DMA_TYPE_RX_CPL;
@@ -380,7 +382,8 @@ RxRing::rx(RxData *rx_data)
         delete rx_data;
         return;
     }
-    addr_t dma_addr = this->_dmaAddr + (this->_currTail & this->_sizeMask) * DESC_SIZE;
+    addr_t dma_addr = this->_dmaAddr + (this->_currTail & this->_sizeMask) *
+        DESC_SIZE;
     /* Issue DMA read */
     DMAOp *op = new DMAOp;
     op->type = DMA_TYPE_DESC;
@@ -804,7 +807,7 @@ Corundum::eth_rx(uint8_t port, const void *data, size_t len)
     rxRing.rx(rx_data);
 }
 
-} //namespace corundum
+}  // namespace corundum
 
 using namespace corundum;
 

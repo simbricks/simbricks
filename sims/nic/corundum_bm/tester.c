@@ -137,8 +137,8 @@ volatile union cosim_pcie_proto_d2h *d2h_poll()
 
 void d2h_done(volatile union cosim_pcie_proto_d2h *msg)
 {
-    msg->dummy.own_type = (msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK) |
-        COSIM_PCIE_PROTO_D2H_OWN_DEV;
+    msg->dummy.own_type = (msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_MSG_MASK)
+        | COSIM_PCIE_PROTO_D2H_OWN_DEV;
     d2h_pos = (d2h_pos + 1) % d2h_enum;
 }
 
@@ -150,7 +150,8 @@ static void dev_read(uint64_t offset, uint16_t len)
     read->offset = offset;
     read->len = len;
     read->bar = 0;
-    read->own_type = COSIM_PCIE_PROTO_H2D_MSG_READ | COSIM_PCIE_PROTO_H2D_OWN_DEV;
+    read->own_type = COSIM_PCIE_PROTO_H2D_MSG_READ |
+        COSIM_PCIE_PROTO_H2D_OWN_DEV;
 
     volatile union cosim_pcie_proto_d2h *d2h_msg = NULL;
     while (d2h_msg == NULL) {

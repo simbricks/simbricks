@@ -27,9 +27,9 @@
 #include <cassert>
 #include <iostream>
 
-#include "i40e_bm.h"
+#include "sims/nic/i40e_bm/i40e_bm.h"
 
-#include "i40e_base_wrapper.h"
+#include "sims/nic/i40e_bm/i40e_base_wrapper.h"
 
 using namespace i40e;
 
@@ -188,8 +188,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         dev.regs.gllan_rctl_0 &= ~I40E_GLLAN_RCTL_0_PXE_MODE_MASK;
         desc_complete(0);
     } else if (d->opcode == i40e_aqc_opc_list_func_capabilities ||
-            d->opcode == i40e_aqc_opc_list_dev_capabilities)
-    {
+            d->opcode == i40e_aqc_opc_list_dev_capabilities) {
 #ifdef DEBUG_ADMINQ
         queue.log << "  get dev/fun caps" << logger::endl;
 #endif
@@ -270,16 +269,18 @@ void queue_admin_tx::admin_desc_ctx::process()
             reinterpret_cast<struct i40e_aqc_get_link_status *>(
                     d->params.raw);
 
-        gls->command_flags &= I40E_AQ_LSE_IS_ENABLED; // should actually return
-                                                      // status of link status
-                                                      // notification
+        gls->command_flags &= I40E_AQ_LSE_IS_ENABLED;  // should actually return
+                                                       // status of link status
+                                                       // notification
         gls->phy_type = I40E_PHY_TYPE_40GBASE_CR4_CU;
         gls->link_speed = I40E_LINK_SPEED_40GB;
         gls->link_info = I40E_AQ_LINK_UP_FUNCTION | I40E_AQ_LINK_UP_PORT |
             I40E_AQ_MEDIA_AVAILABLE | I40E_AQ_SIGNAL_DETECT;
-        gls->an_info = I40E_AQ_AN_COMPLETED | I40E_AQ_LP_AN_ABILITY; // might need qualified module
+        // might need qualified module
+        gls->an_info = I40E_AQ_AN_COMPLETED | I40E_AQ_LP_AN_ABILITY;
         gls->ext_info = 0;
-        gls->loopback = I40E_AQ_LINK_POWER_CLASS_4 << I40E_AQ_PWR_CLASS_SHIFT_LB;
+        gls->loopback = I40E_AQ_LINK_POWER_CLASS_4 <<
+            I40E_AQ_PWR_CLASS_SHIFT_LB;
         gls->max_frame_size = dev.MAX_MTU;
         gls->config = I40E_AQ_CONFIG_CRC_ENA;
 
@@ -319,7 +320,7 @@ void queue_admin_tx::admin_desc_ctx::process()
         // find start idx
         size_t cnt = sizeof(els) / sizeof(els[0]);
         size_t first = 0;
-        for (first = 0; first < cnt && els[first].seid < sw->seid; first++);
+        for (first = 0; first < cnt && els[first].seid < sw->seid; first++) {}
 
         // figure out how many fit in the buffer
         size_t max = (d->datalen - sizeof(hr)) / sizeof(els[0]);
@@ -425,7 +426,7 @@ void queue_admin_tx::admin_desc_ctx::process()
 #ifdef DEBUG_ADMINQ
         queue.log << "  uknown opcode=" << d->opcode << logger::endl;
 #endif
-        //desc_complete(I40E_AQ_RC_ESRCH);
+        // desc_complete(I40E_AQ_RC_ESRCH);
         desc_complete(0);
     }
 }

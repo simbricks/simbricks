@@ -12,7 +12,7 @@
 #include <cassert>
 #include <iostream>
 
-#include "i40e_bm.h"
+#include "sims/nic/i40e_bm/i40e_bm.h"
 
 namespace i40e {
 
@@ -44,7 +44,8 @@ struct ipv4_hdr {
         uint32_t dst_addr;              /**< destination address */
 } __attribute__((packed));
 
-static inline uint32_t __rte_raw_cksum(const void *buf, size_t len, uint32_t sum)
+static inline uint32_t __rte_raw_cksum(const void *buf, size_t len,
+        uint32_t sum)
 {
     /* workaround gcc strict-aliasing warning */
     uintptr_t ptr = (uintptr_t)buf;
@@ -115,8 +116,8 @@ void xsum_tcp(void *tcphdr, size_t l4_len)
 {
     struct rte_tcp_hdr *tcph = reinterpret_cast<struct rte_tcp_hdr *> (tcphdr);
     uint32_t cksum = rte_raw_cksum(tcphdr, l4_len);
-	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
-	cksum = (~cksum) & 0xffff;
+    cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
+    cksum = (~cksum) & 0xffff;
     tcph->cksum = cksum;
 }
 
@@ -155,5 +156,4 @@ void tso_postupdate_header(void *iphdr, uint8_t iplen, uint8_t l4len,
     ih->packet_id = htons(ntohs(ih->packet_id) + 1);
 }
 
-
-}
+}  // namespace i40e

@@ -22,13 +22,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef DMA_H_
-#define DMA_H_
+#ifndef MEM_H_
+#define MEM_H_
 
 #include <deque>
 
-#include "Vinterface.h"
-#include "verilated.h"
+#include <verilated.h>
+
+#include "sims/nic/corundum/obj_dir/Vinterface.h"
 
 class DMAOp;
 
@@ -111,4 +112,4 @@ class MemWriter {
         void op_issue(DMAOp *op);
 };
 
-#endif /* ndef MEM_H_ */
+#endif  // MEM_H_

@@ -38,8 +38,8 @@
 
 #include <simbricks/netif/netsim.h>
 
-static uint64_t sync_period = (500 * 1000ULL); // 500ns
-static uint64_t eth_latency = (500 * 1000ULL); // 500ns
+static uint64_t sync_period = (500 * 1000ULL);  // 500ns
+static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
 static uint64_t cur_ts;
 static int exiting = 0;
 static pcap_dumper_t *dumpfile = NULL;
@@ -56,7 +56,8 @@ static void sigusr1_handler(int dummy)
 
 static void move_pkt(struct netsim_interface *from, struct netsim_interface *to)
 {
-    volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(from, cur_ts);
+    volatile union cosim_eth_proto_d2n *msg_from =
+        netsim_d2n_poll(from, cur_ts);
     volatile union cosim_eth_proto_n2d *msg_to;
     volatile struct cosim_eth_proto_d2n_send *tx;
     volatile struct cosim_eth_proto_n2d_recv *rx;
@@ -112,8 +113,8 @@ int main(int argc, char *argv[])
     int sync_mode = SYNC_MODES;
 
     if (argc < 3 && argc > 7) {
-        fprintf(stderr, "Usage: net_wire SOCKET-A SOCKET-B [SYNC-MODE] [SYNC-PERIOD] "
-                "[ETH-LATENCY] [PCAP-FILE]\n");
+        fprintf(stderr, "Usage: net_wire SOCKET-A SOCKET-B [SYNC-MODE] "
+                "[SYNC-PERIOD] [ETH-LATENCY] [PCAP-FILE]\n");
         return EXIT_FAILURE;
     }
 
@@ -153,11 +154,13 @@ int main(int argc, char *argv[])
 
     printf("start polling\n");
     while (!exiting) {
-        if (netsim_n2d_sync(&nsif_a, cur_ts, eth_latency, sync_period, sync_mode) != 0) {
+        if (netsim_n2d_sync(&nsif_a, cur_ts, eth_latency, sync_period,
+                    sync_mode) != 0) {
             fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
             abort();
         }
-        if (netsim_n2d_sync(&nsif_b, cur_ts, eth_latency, sync_period, sync_mode) != 0) {
+        if (netsim_n2d_sync(&nsif_b, cur_ts, eth_latency, sync_period,
+                    sync_mode) != 0) {
             fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
             abort();
         }
