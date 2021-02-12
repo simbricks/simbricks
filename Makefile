@@ -25,6 +25,7 @@ include mk/recipes.mk
 
 base_dir := $(d)./
 
+CPPLINT = cpplint
 CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
 CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
 CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir)
@@ -51,6 +52,9 @@ clean:
 distclean:
 	rm -rf $(CLEAN_ALL) $(DISTCLEAN_ALL)
 
+lint:
+	$(CPPLINT) --quiet --recursive .
+
 help:
 	@echo "Targets:"
 	@echo "  all: builds all the tools directly in this repo"
@@ -60,7 +64,7 @@ help:
 	@echo "  external: clone and build our tools in external repos "
 	@echo "            (qemu, gem5, ns-3)"
 
-.PHONY: all clean distclean help
+.PHONY: all clean distclean lint help
 
 include mk/subdir_post.mk
 -include $(DEPS_ALL)

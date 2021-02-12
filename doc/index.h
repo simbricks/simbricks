@@ -22,6 +22,9 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifndef DOC_INDEX_H_
+#define DOC_INDEX_H_
+
 /**
  * @mainpage SimBricks Overview
  *
@@ -29,3 +32,5 @@
  *    - TAS. (@ref tas)
  *      + Slow Path: the control plane. (@ref tas-sp)
  */
+
+#endif  // DOC_INDEX_H_
