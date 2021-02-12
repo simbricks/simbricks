@@ -20,11 +20,14 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-CXXFLAGS := -O3 -Wall -Wextra -g -Wno-unused-parameter -fpermissive
-LDLIBS := -lboost_iostreams
+include mk/subdir_pre.mk
 
-process: process.o sym_map.o log_parser.o gem5.o nicbm.o
-process: CC=$(CXX)
+bin_trace_process := $(d)process
 
-clean:
-	rm *.o process
+OBJS := $(addprefix $(d), process.o sym_map.o log_parser.o gem5.o nicbm.o)
+
+$(bin_trace_process): $(OBJS) -lboost_iostreams
+
+CLEAN := $(bin_trace_process) $(OBJS)
+ALL := $(bin_trace_process)
+include mk/subdir_post.mk

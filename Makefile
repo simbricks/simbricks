@@ -39,6 +39,7 @@ $(eval $(call subdir,lib))
 $(eval $(call subdir,sims))
 $(eval $(call subdir,doc))
 $(eval $(call subdir,images))
+$(eval $(call subdir,trace))
 
 
 all: $(ALL_ALL)
