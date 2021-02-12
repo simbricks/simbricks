@@ -31,8 +31,8 @@ verilator_bin_corundum := $(verilator_dir_corundum)/Vinterface
 
 vsrcs_corundum := $(wildcard $(d)rtl/*.v $(d)lib/*/rtl/*.v \
     $(d)lib/*/lib/*/rtl/*.v)
-srcs_corundum := $(addprefix $(d),corundum_verilator.cpp dma.cpp mem.cpp)
-OBJS := $(srcs_corundum:.cpp=.o)
+srcs_corundum := $(addprefix $(d),corundum_verilator.cc dma.cc mem.cc)
+OBJS := $(srcs_corundum:.cc=.o)
 
 $(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
