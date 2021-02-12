@@ -29,3 +29,4 @@ experiments/build
 experiments/out
 experiments/local-config.sh
 experiments/slurm
+trace/process
