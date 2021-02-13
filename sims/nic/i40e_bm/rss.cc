@@ -26,74 +26,66 @@
 
 using namespace i40e;
 
-rss_key_cache::rss_key_cache(const uint32_t (&key_)[key_len / 4])
-    : key(key_)
-{
-    cache_dirty = true;
+rss_key_cache::rss_key_cache(const uint32_t (&key_)[key_len / 4]) : key(key_) {
+  cache_dirty = true;
 }
 
+void rss_key_cache::build() {
+  const uint8_t *k = reinterpret_cast<const uint8_t *>(&key);
+  uint32_t result = (((uint32_t)k[0]) << 24) | (((uint32_t)k[1]) << 16) |
+                    (((uint32_t)k[2]) << 8) | ((uint32_t)k[3]);
 
-void rss_key_cache::build()
-{
-    const uint8_t *k = reinterpret_cast<const uint8_t *> (&key);
-    uint32_t result = (((uint32_t)k[0]) << 24) |
-        (((uint32_t)k[1]) << 16) |
-        (((uint32_t)k[2]) << 8) |
-        ((uint32_t)k[3]);
+  uint32_t idx = 32;
+  size_t i;
 
-    uint32_t idx = 32;
-    size_t i;
+  for (i = 0; i < cache_len; i++, idx++) {
+    uint8_t shift = (idx % 8);
+    uint32_t bit;
 
-    for (i = 0; i < cache_len; i++, idx++) {
-        uint8_t shift = (idx % 8);
-        uint32_t bit;
+    cache[i] = result;
+    bit = ((k[idx / 8] << shift) & 0x80) ? 1 : 0;
+    result = ((result << 1) | bit);
+  }
 
-        cache[i] = result;
-        bit = ((k[idx / 8] << shift) & 0x80) ? 1 : 0;
-        result = ((result << 1) | bit);
-    }
-
-    cache_dirty = false;
+  cache_dirty = false;
 }
 
-void rss_key_cache::set_dirty()
-{
-    cache_dirty = true;
+void rss_key_cache::set_dirty() {
+  cache_dirty = true;
 }
 
 uint32_t rss_key_cache::hash_ipv4(uint32_t sip, uint32_t dip, uint16_t sp,
-        uint16_t dp)
-{
-    static const uint32_t MSB32 = 0x80000000;
-    static const uint32_t MSB16 = 0x8000;
-    uint32_t res = 0;
-    int i;
+                                  uint16_t dp) {
+  static const uint32_t MSB32 = 0x80000000;
+  static const uint32_t MSB16 = 0x8000;
+  uint32_t res = 0;
+  int i;
 
-    if (cache_dirty)
-        build();
+  if (cache_dirty)
+    build();
 
-    for (i = 0; i < 32; i++) {
-        if (sip & MSB32)
-            res ^= cache[i];
-        sip <<= 1;
-    }
-    for (i = 0; i < 32; i++) {
-        if (dip & MSB32)
-            res ^= cache[32+i];
-        dip <<= 1;
-    }
-    for (i = 0; i < 16; i++) {
-        if (sp & MSB16)
-            res ^= cache[64+i];
-        sp <<= 1;
-    }
-    for (i = 0; i < 16; i++) {
-        if (dp & MSB16)
-            res ^= cache[80+i];
-        dp <<= 1;
-    }
+  for (i = 0; i < 32; i++) {
+    if (sip & MSB32)
+      res ^= cache[i];
+    sip <<= 1;
+  }
+  for (i = 0; i < 32; i++) {
+    if (dip & MSB32)
+      res ^= cache[32 + i];
+    dip <<= 1;
+  }
+  for (i = 0; i < 16; i++) {
+    if (sp & MSB16)
+      res ^= cache[64 + i];
+    sp <<= 1;
+  }
+  for (i = 0; i < 16; i++) {
+    if (dp & MSB16)
+      res ^= cache[80 + i];
+    dp <<= 1;
+  }
 
-    return res;
+  return res;
 }
 
 #if 0

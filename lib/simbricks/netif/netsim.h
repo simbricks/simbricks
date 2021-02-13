@@ -27,48 +27,47 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
 #include <simbricks/proto/network.h>
 
 #define SYNC_MODES 0
 #define SYNC_BARRIER 1
 
 struct netsim_interface {
-    uint8_t *d2n_queue;
-    size_t d2n_pos;
-    size_t d2n_elen;
-    size_t d2n_enum;
-    uint64_t d2n_timestamp;
+  uint8_t *d2n_queue;
+  size_t d2n_pos;
+  size_t d2n_elen;
+  size_t d2n_enum;
+  uint64_t d2n_timestamp;
 
-    uint8_t *n2d_queue;
-    size_t n2d_pos;
-    size_t n2d_elen;
-    size_t n2d_enum;
-    uint64_t n2d_timestamp;
+  uint8_t *n2d_queue;
+  size_t n2d_pos;
+  size_t n2d_elen;
+  size_t n2d_enum;
+  uint64_t n2d_timestamp;
 
-    int sync;
+  int sync;
 };
 
-int netsim_init(struct netsim_interface *nsif,
-        const char *eth_socket_path, int *sync_eth);
+int netsim_init(struct netsim_interface *nsif, const char *eth_socket_path,
+                int *sync_eth);
 void netsim_cleanup(struct netsim_interface *nsif);
 
 volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
-        struct netsim_interface *nsif, uint64_t timestamp);
+    struct netsim_interface *nsif, uint64_t timestamp);
 void netsim_d2n_done(struct netsim_interface *nsif,
-        volatile union cosim_eth_proto_d2n *msg);
-static inline uint64_t netsim_d2n_timestamp(struct netsim_interface *nsif)
-{
-    return nsif->d2n_timestamp;
+                     volatile union cosim_eth_proto_d2n *msg);
+static inline uint64_t netsim_d2n_timestamp(struct netsim_interface *nsif) {
+  return nsif->d2n_timestamp;
 }
 
 volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
-        struct netsim_interface *nsif, uint64_t timestamp,
-        uint64_t latency);
+    struct netsim_interface *nsif, uint64_t timestamp, uint64_t latency);
 int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
-        uint64_t latency, uint64_t sync_delay, int sync_mode);
+                    uint64_t latency, uint64_t sync_delay, int sync_mode);
 void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay,
-        int sync_mode);
+                          int sync_mode);
 uint64_t netsim_advance_time(uint64_t timestamp, uint64_t sync_delay,
-        int sync_mode);
+                             int sync_mode);
 
 #endif  // SIMBRICKS_NETIF_NETSIM_H_

@@ -25,28 +25,28 @@
 #ifndef SIMBRICKS_NICIF_NICSIM_H_
 #define SIMBRICKS_NICIF_NICSIM_H_
 
-#include <simbricks/proto/pcie.h>
 #include <simbricks/proto/network.h>
+#include <simbricks/proto/pcie.h>
 
 #define SYNC_MODES 0    // ModES style synchronization
 #define SYNC_BARRIER 1  // Global barrier style synchronization
 
 struct nicsim_params {
-    const char *pci_socket_path;
-    const char *eth_socket_path;
-    const char *shm_path;
+  const char *pci_socket_path;
+  const char *eth_socket_path;
+  const char *shm_path;
 
-    uint64_t pci_latency;
-    uint64_t eth_latency;
-    uint64_t sync_delay;
+  uint64_t pci_latency;
+  uint64_t eth_latency;
+  uint64_t sync_delay;
 
-    int sync_pci;
-    int sync_eth;
-    int sync_mode;
+  int sync_pci;
+  int sync_eth;
+  int sync_mode;
 };
 
 int nicsim_init(struct nicsim_params *params,
-        struct cosim_pcie_proto_dev_intro *di);
+                struct cosim_pcie_proto_dev_intro *di);
 void nicsim_cleanup(void);
 
 int nicsim_sync(struct nicsim_params *params, uint64_t timestamp);
@@ -55,20 +55,19 @@ uint64_t nicsim_advance_time(struct nicsim_params *params, uint64_t timestamp);
 uint64_t nicsim_next_timestamp(struct nicsim_params *params);
 
 volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(
-        struct nicsim_params *params, uint64_t timestamp);
+    struct nicsim_params *params, uint64_t timestamp);
 void nicif_h2d_done(volatile union cosim_pcie_proto_h2d *msg);
 void nicif_h2d_next(void);
 
 volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(
-        struct nicsim_params *params, uint64_t timestamp);
+    struct nicsim_params *params, uint64_t timestamp);
 
-
-volatile union cosim_eth_proto_n2d *nicif_n2d_poll(
-        struct nicsim_params *params, uint64_t timestamp);
+volatile union cosim_eth_proto_n2d *nicif_n2d_poll(struct nicsim_params *params,
+                                                   uint64_t timestamp);
 void nicif_n2d_done(volatile union cosim_eth_proto_n2d *msg);
 void nicif_n2d_next(void);
 
 volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(
-        struct nicsim_params *params, uint64_t timestamp);
+    struct nicsim_params *params, uint64_t timestamp);
 
 #endif  // SIMBRICKS_NICIF_NICSIM_H_

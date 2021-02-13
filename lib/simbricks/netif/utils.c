@@ -24,96 +24,93 @@
 
 #include <fcntl.h>
 #include <pthread.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/un.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include "lib/simbricks/netif/internal.h"
 
-int uxsocket_connect(const char *path)
-{
-    int fd;
-    struct sockaddr_un saun;
+int uxsocket_connect(const char *path) {
+  int fd;
+  struct sockaddr_un saun;
 
-    /* prepare and connect socket */
-    memset(&saun, 0, sizeof(saun));
-    saun.sun_family = AF_UNIX;
-    strcpy(saun.sun_path, path);
+  /* prepare and connect socket */
+  memset(&saun, 0, sizeof(saun));
+  saun.sun_family = AF_UNIX;
+  strcpy(saun.sun_path, path);
 
-    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-        perror("socket failed");
-        return -1;
-    }
+  if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+    perror("socket failed");
+    return -1;
+  }
 
-    if (connect(fd, (struct sockaddr *) &saun, sizeof(saun)) != 0) {
-        perror("connect failed");
-        return -1;
-    }
+  if (connect(fd, (struct sockaddr *)&saun, sizeof(saun)) != 0) {
+    perror("connect failed");
+    return -1;
+  }
 
-    return fd;
+  return fd;
 }
 
-int uxsocket_recv(int fd, void *data, size_t len, int *pfd)
-{
-    int *ppfd;
-    ssize_t ret;
-    struct cmsghdr *cmsg;
-    union {
-        char buf[CMSG_SPACE(sizeof(int))];
-        struct cmsghdr align;
-    } u;
-    struct iovec iov = {
-        .iov_base = data,
-        .iov_len = len,
-    };
-    struct msghdr msg = {
-        .msg_name = NULL,
-        .msg_namelen = 0,
-        .msg_iov = &iov,
-        .msg_iovlen = 1,
-        .msg_control = u.buf,
-        .msg_controllen = sizeof(u.buf),
-        .msg_flags = 0,
-    };
+int uxsocket_recv(int fd, void *data, size_t len, int *pfd) {
+  int *ppfd;
+  ssize_t ret;
+  struct cmsghdr *cmsg;
+  union {
+    char buf[CMSG_SPACE(sizeof(int))];
+    struct cmsghdr align;
+  } u;
+  struct iovec iov = {
+      .iov_base = data,
+      .iov_len = len,
+  };
+  struct msghdr msg = {
+      .msg_name = NULL,
+      .msg_namelen = 0,
+      .msg_iov = &iov,
+      .msg_iovlen = 1,
+      .msg_control = u.buf,
+      .msg_controllen = sizeof(u.buf),
+      .msg_flags = 0,
+  };
 
-    if ((ret = recvmsg(fd, &msg, 0)) != (ssize_t) len) {
-        perror("recvmsg failed");
-        return -1;
-    }
+  if ((ret = recvmsg(fd, &msg, 0)) != (ssize_t)len) {
+    perror("recvmsg failed");
+    return -1;
+  }
 
-    cmsg = CMSG_FIRSTHDR(&msg);
-    ppfd = (int *) CMSG_DATA(cmsg);
-    if (msg.msg_controllen <= 0 || cmsg->cmsg_len != CMSG_LEN(sizeof(int))) {
-        fprintf(stderr, "accessing ancillary data failed\n");
-        return -1;
-    }
+  cmsg = CMSG_FIRSTHDR(&msg);
+  ppfd = (int *)CMSG_DATA(cmsg);
+  if (msg.msg_controllen <= 0 || cmsg->cmsg_len != CMSG_LEN(sizeof(int))) {
+    fprintf(stderr, "accessing ancillary data failed\n");
+    return -1;
+  }
 
-    *pfd = *ppfd;
-    return 0;
+  *pfd = *ppfd;
+  return 0;
 }
 
-void *shm_map(int shm_fd)
-{
-    void *p;
-    struct stat statbuf;
+void *shm_map(int shm_fd) {
+  void *p;
+  struct stat statbuf;
 
-    if (fstat(shm_fd, &statbuf) != 0) {
-        perror("shm_map: fstat failed");
-        return NULL;
-    }
+  if (fstat(shm_fd, &statbuf) != 0) {
+    perror("shm_map: fstat failed");
+    return NULL;
+  }
 
-    p = mmap(NULL, statbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd,
-            0);
-    if (p == MAP_FAILED) {
-        perror("shm_map: mmap failed");
-        return NULL;
-    }
+  p = mmap(NULL, statbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd,
+           0);
+  if (p == MAP_FAILED) {
+    perror("shm_map: mmap failed");
+    return NULL;
+  }
 
-    return p;
+  return p;
 }
