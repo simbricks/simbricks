@@ -25,6 +25,8 @@
 #ifndef SIMBRICKS_NICBM_NICBM_H_
 #define SIMBRICKS_NICBM_NICBM_H_
 
+#include <cassert>
+#include <cstring>
 #include <set>
 #include <deque>
 extern "C" {
@@ -32,9 +34,6 @@ extern "C" {
 }
 
 namespace nicbm {
-
-#include <cassert>
-
 
 static const size_t MAX_DMA_LEN = 2048;
 
