@@ -32,7 +32,8 @@ $(d)gem5:
 	git clone git@github.com:simbricks/gem5.git $@
 
 $(d)gem5/ready: $(d)gem5
-	+cd $< && scons build/X86/gem5.opt -j`nproc`
+	+cd $< && scons build/X86/gem5.opt CCFLAGS="-I$(abspath $(lib_dir))" \
+	    -j`nproc`
 	touch $@
 
 
