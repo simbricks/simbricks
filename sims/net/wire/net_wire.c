@@ -37,6 +37,7 @@
 #include <unistd.h>
 
 #include <simbricks/netif/netsim.h>
+#include <simbricks/proto/base.h>
 
 static uint64_t sync_period = (500 * 1000ULL);  // 500ns
 static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
   uint64_t ts_a, ts_b;
   int sync_a, sync_b;
   pcap_t *pc = NULL;
-  int sync_mode = SYNC_MODES;
+  int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
 
   if (argc < 3 && argc > 7) {
     fprintf(stderr,
@@ -139,7 +140,8 @@ int main(int argc, char *argv[]) {
     dumpfile = pcap_dump_open(pc, argv[6]);
   }
 
-  assert(sync_mode == SYNC_MODES || sync_mode == SYNC_BARRIER);
+  assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
+      sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
 
   sync_a = sync_b = 1;
   if (netsim_init(&nsif_a, argv[1], &sync_a) != 0) {

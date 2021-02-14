@@ -28,9 +28,6 @@
 #include <simbricks/proto/network.h>
 #include <simbricks/proto/pcie.h>
 
-#define SYNC_MODES 0    // ModES style synchronization
-#define SYNC_BARRIER 1  // Global barrier style synchronization
-
 struct nicsim_params {
   const char *pci_socket_path;
   const char *eth_socket_path;

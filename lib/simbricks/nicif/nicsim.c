@@ -32,6 +32,7 @@
 #include <simbricks/nicif/nicsim.h>
 
 #include "lib/simbricks/nicif/internal.h"
+#include <simbricks/proto/base.h>
 
 #define D2H_ELEN (9024 + 64)
 #define D2H_ENUM 1024
@@ -259,11 +260,11 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
   if (params->sync_pci) {
     int sync;
     switch (params->sync_mode) {
-      case SYNC_MODES:
+      case SIMBRICKS_PROTO_SYNC_SIMBRICKS:
         sync = pci_last_tx_time == 0 ||
                timestamp - pci_last_tx_time >= params->sync_delay;
         break;
-      case SYNC_BARRIER:
+      case SIMBRICKS_PROTO_SYNC_BARRIER:
         sync = current_epoch == 0 ||
                timestamp - current_epoch >= params->sync_delay;
         break;
@@ -288,11 +289,11 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
   if (params->sync_eth) {
     int sync;
     switch (params->sync_mode) {
-      case SYNC_MODES:
+      case SIMBRICKS_PROTO_SYNC_SIMBRICKS:
         sync = eth_last_tx_time == 0 ||
                timestamp - eth_last_tx_time >= params->sync_delay;
         break;
-      case SYNC_BARRIER:
+      case SIMBRICKS_PROTO_SYNC_BARRIER:
         sync = current_epoch == 0 ||
                timestamp - current_epoch >= params->sync_delay;
         break;
@@ -316,7 +317,7 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
 }
 
 void nicsim_advance_epoch(struct nicsim_params *params, uint64_t timestamp) {
-  if (params->sync_mode == SYNC_BARRIER) {
+  if (params->sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER) {
     if ((params->sync_pci || params->sync_eth) &&
         timestamp - current_epoch >= params->sync_delay) {
       current_epoch = timestamp;
@@ -326,9 +327,9 @@ void nicsim_advance_epoch(struct nicsim_params *params, uint64_t timestamp) {
 
 uint64_t nicsim_advance_time(struct nicsim_params *params, uint64_t timestamp) {
   switch (params->sync_mode) {
-    case SYNC_MODES:
+    case SIMBRICKS_PROTO_SYNC_SIMBRICKS:
       return timestamp;
-    case SYNC_BARRIER:
+    case SIMBRICKS_PROTO_SYNC_BARRIER:
       return timestamp < current_epoch + params->sync_delay
                  ? timestamp
                  : current_epoch + params->sync_delay;

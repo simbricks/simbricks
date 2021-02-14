@@ -35,6 +35,10 @@
 #include <ctime>
 #include <iostream>
 
+extern "C" {
+#include <simbricks/proto/base.h>
+}
+
 // #define DEBUG_NICBM 1
 
 #define DMA_MAX_PENDING 64
@@ -394,7 +398,7 @@ int Runner::runMain(int argc, char *argv[]) {
   uint64_t sync_period = 100 * 1000ULL;
   uint64_t pci_latency = 500 * 1000ULL;
   uint64_t eth_latency = 500 * 1000ULL;
-  int sync_mode = SYNC_MODES;
+  int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
 
   if (argc < 4 && argc > 9) {
     fprintf(stderr,
@@ -428,7 +432,8 @@ int Runner::runMain(int argc, char *argv[]) {
   nsparams.pci_latency = pci_latency;
   nsparams.eth_latency = eth_latency;
   nsparams.sync_delay = sync_period;
-  assert(sync_mode == SYNC_MODES || sync_mode == SYNC_BARRIER);
+  assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
+      sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
   nsparams.sync_mode = sync_mode;
 
   if (nicsim_init(&nsparams, &dintro)) {

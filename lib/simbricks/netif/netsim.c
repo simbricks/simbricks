@@ -32,6 +32,7 @@
 #include <simbricks/netif/netsim.h>
 
 #include "lib/simbricks/netif/internal.h"
+#include <simbricks/proto/base.h>
 
 static uint64_t current_epoch = 0;
 
@@ -144,11 +145,11 @@ int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
     return 0;
 
   switch (sync_mode) {
-    case SYNC_MODES:
+    case SIMBRICKS_PROTO_SYNC_SIMBRICKS:
       do_sync = nsif->n2d_timestamp == 0 ||
                 timestamp - nsif->n2d_timestamp >= sync_delay;
       break;
-    case SYNC_BARRIER:
+    case SIMBRICKS_PROTO_SYNC_BARRIER:
       do_sync = current_epoch == 0 || timestamp - current_epoch >= sync_delay;
       break;
     default:
@@ -174,7 +175,7 @@ int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
 
 void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay,
                           int sync_mode) {
-  if (sync_mode == SYNC_BARRIER) {
+  if (sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER) {
     if (timestamp - current_epoch >= sync_delay) {
       current_epoch = timestamp;
     }
@@ -184,9 +185,9 @@ void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay,
 uint64_t netsim_advance_time(uint64_t timestamp, uint64_t sync_delay,
                              int sync_mode) {
   switch (sync_mode) {
-    case SYNC_MODES:
+    case SIMBRICKS_PROTO_SYNC_SIMBRICKS:
       return timestamp;
-    case SYNC_BARRIER:
+    case SIMBRICKS_PROTO_SYNC_BARRIER:
       return timestamp < current_epoch + sync_delay
                  ? timestamp
                  : current_epoch + sync_delay;

@@ -30,9 +30,6 @@
 
 #include <simbricks/proto/network.h>
 
-#define SYNC_MODES 0
-#define SYNC_BARRIER 1
-
 struct netsim_interface {
   uint8_t *d2n_queue;
   size_t d2n_pos;

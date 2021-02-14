@@ -34,6 +34,7 @@
 
 extern "C" {
 #include <simbricks/nicif/nicsim.h>
+#include <simbricks/proto/base.h>
 #include <simbricks/proto/pcie.h>
 }
 
@@ -794,7 +795,7 @@ static void msi_step(Vinterface &top, PCICoordinator &coord) {
 int main(int argc, char *argv[]) {
   char *vargs[2] = {argv[0], NULL};
   Verilated::commandArgs(1, vargs);
-  int sync_mode = SYNC_MODES;
+  int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
 #ifdef TRACE_ENABLED
   Verilated::traceEverOn(true);
 #endif
@@ -840,7 +841,8 @@ int main(int argc, char *argv[]) {
   nsparams.pci_latency = pci_latency;
   nsparams.eth_latency = eth_latency;
   nsparams.sync_delay = sync_period;
-  assert(sync_mode == SYNC_MODES || sync_mode == SYNC_BARRIER);
+  assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
+      sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
   nsparams.sync_mode = sync_mode;
 
   if (nicsim_init(&nsparams, &di)) {

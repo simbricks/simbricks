@@ -35,6 +35,7 @@
 
 extern "C" {
 #include <simbricks/netif/netsim.h>
+#include <simbricks/proto/base.h>
 };
 
 static uint64_t sync_period = (500 * 1000ULL);  // 500ns
@@ -141,7 +142,7 @@ static void switch_pkt(struct netsim_interface *nsif, int iport) {
 int main(int argc, char *argv[]) {
   int c;
   int bad_option = 0;
-  int sync_mode = SYNC_MODES;
+  int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
 
   // Parse command line argument
   while ((c = getopt(argc, argv, "s:S:E:m:")) != -1 && !bad_option) {
@@ -167,7 +168,8 @@ int main(int argc, char *argv[]) {
 
       case 'm':
         sync_mode = strtol(optarg, NULL, 0);
-        assert(sync_mode == SYNC_MODES || sync_mode == SYNC_BARRIER);
+        assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
+            sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
         break;
 
       default:
