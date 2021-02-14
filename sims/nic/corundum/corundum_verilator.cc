@@ -34,6 +34,7 @@
 
 extern "C" {
 #include <simbricks/nicif/nicsim.h>
+#include <simbricks/proto/pcie.h>
 }
 
 #include "sims/nic/corundum/coord.h"
@@ -57,7 +58,7 @@ static struct nicsim_params nsparams;
 static VerilatedVcdC *trace;
 #endif
 
-static volatile union cosim_pcie_proto_d2h *d2h_alloc(void);
+static volatile union SimbricksProtoPcieD2H *d2h_alloc(void);
 
 static void sigint_handler(int dummy) {
   exiting = 1;
@@ -356,9 +357,9 @@ class MMIOInterface {
 };
 
 void pci_rwcomp_issue(MMIOOp *op) {
-  volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
-  volatile struct cosim_pcie_proto_d2h_readcomp *rc;
-  volatile struct cosim_pcie_proto_d2h_writecomp *wc;
+  volatile union SimbricksProtoPcieD2H *msg = d2h_alloc();
+  volatile struct SimbricksProtoPcieD2HReadcomp *rc;
+  volatile struct SimbricksProtoPcieD2HWritecomp *wc;
 
   if (!msg)
     throw "completion alloc failed";
@@ -369,7 +370,8 @@ void pci_rwcomp_issue(MMIOOp *op) {
 
     // WMB();
     wc->own_type =
-        COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP | COSIM_PCIE_PROTO_D2H_OWN_HOST;
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
+        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   } else {
     rc = &msg->readcomp;
     memcpy((void *)rc->data, &op->value, op->len);
@@ -377,7 +379,8 @@ void pci_rwcomp_issue(MMIOOp *op) {
 
     // WMB();
     rc->own_type =
-        COSIM_PCIE_PROTO_D2H_MSG_READCOMP | COSIM_PCIE_PROTO_D2H_OWN_HOST;
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
+        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   }
 
   delete op;
@@ -386,14 +389,14 @@ void pci_rwcomp_issue(MMIOOp *op) {
 std::set<DMAOp *> pci_dma_pending;
 
 void pci_dma_issue(DMAOp *op) {
-  volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
+  volatile union SimbricksProtoPcieD2H *msg = d2h_alloc();
   uint8_t ty;
 
   if (!msg)
     throw "completion alloc failed";
 
   if (op->write) {
-    volatile struct cosim_pcie_proto_d2h_write *write = &msg->write;
+    volatile struct SimbricksProtoPcieD2HWrite *write = &msg->write;
     write->req_id = (uintptr_t)op;
     write->offset = op->dma_addr;
     write->len = op->len;
@@ -403,22 +406,22 @@ void pci_dma_issue(DMAOp *op) {
 
     // WMB();
     write->own_type =
-        COSIM_PCIE_PROTO_D2H_MSG_WRITE | COSIM_PCIE_PROTO_D2H_OWN_HOST;
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE | SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   } else {
-    volatile struct cosim_pcie_proto_d2h_read *read = &msg->read;
+    volatile struct SimbricksProtoPcieD2HRead *read = &msg->read;
     read->req_id = (uintptr_t)op;
     read->offset = op->dma_addr;
     read->len = op->len;
 
     // WMB();
     read->own_type =
-        COSIM_PCIE_PROTO_D2H_MSG_READ | COSIM_PCIE_PROTO_D2H_OWN_HOST;
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_READ | SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   }
 
   pci_dma_pending.insert(op);
 }
 
-static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc) {
+static void h2d_readcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc) {
   DMAOp *op = (DMAOp *)(uintptr_t)rc->req_id;
   if (pci_dma_pending.find(op) == pci_dma_pending.end())
     throw "unexpected completion";
@@ -436,7 +439,7 @@ static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc) {
   op->engine->pci_op_complete(op);
 }
 
-static void h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc) {
+static void h2d_writecomp(volatile struct SimbricksProtoPcieH2DWritecomp *wc) {
   DMAOp *op = (DMAOp *)(uintptr_t)wc->req_id;
   if (pci_dma_pending.find(op) == pci_dma_pending.end())
     throw "unexpected completion";
@@ -479,11 +482,11 @@ static void csr_write(uint64_t off, uint64_t val) {
 }
 
 static void h2d_read(MMIOInterface &mmio,
-                     volatile struct cosim_pcie_proto_h2d_read *read) {
+                     volatile struct SimbricksProtoPcieH2DRead *read) {
   // std::cout << "got read " << read->offset << std::endl;
   if (read->offset < 0x80000) {
-    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
-    volatile struct cosim_pcie_proto_d2h_readcomp *rc;
+    volatile union SimbricksProtoPcieD2H *msg = d2h_alloc();
+    volatile struct SimbricksProtoPcieD2HReadcomp *rc;
 
     if (!msg)
       throw "completion alloc failed";
@@ -496,7 +499,8 @@ static void h2d_read(MMIOInterface &mmio,
 
     // WMB();
     rc->own_type =
-        COSIM_PCIE_PROTO_D2H_MSG_READCOMP | COSIM_PCIE_PROTO_D2H_OWN_HOST;
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
+        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   } else {
     /*printf("read(bar=%u, off=%lu, len=%u) = %lu\n", read->bar, read->offset,
             read->len, val);*/
@@ -505,7 +509,7 @@ static void h2d_read(MMIOInterface &mmio,
 }
 
 static void h2d_write(MMIOInterface &mmio,
-                      volatile struct cosim_pcie_proto_h2d_write *write) {
+                      volatile struct SimbricksProtoPcieH2DWrite *write) {
   uint64_t val = 0;
 
   memcpy(&val, (void *)write->data, write->len);
@@ -513,8 +517,8 @@ static void h2d_write(MMIOInterface &mmio,
   // std::cout << "got write " << write->offset << " = " << val << std::endl;
 
   if (write->offset < 0x80000) {
-    volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
-    volatile struct cosim_pcie_proto_d2h_writecomp *wc;
+    volatile union SimbricksProtoPcieD2H *msg = d2h_alloc();
+    volatile struct SimbricksProtoPcieD2HWritecomp *wc;
 
     if (!msg)
       throw "completion alloc failed";
@@ -526,44 +530,45 @@ static void h2d_write(MMIOInterface &mmio,
 
     // WMB();
     wc->own_type =
-        COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP | COSIM_PCIE_PROTO_D2H_OWN_HOST;
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
+        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   } else {
     mmio.issueWrite(write->req_id, write->offset, write->len, val);
   }
 }
 
 static void poll_h2d(MMIOInterface &mmio) {
-  volatile union cosim_pcie_proto_h2d *msg =
+  volatile union SimbricksProtoPcieH2D *msg =
       nicif_h2d_poll(&nsparams, main_time);
   uint8_t t;
 
   if (msg == NULL)
     return;
 
-  t = msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK;
+  t = msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK;
 
   // std::cerr << "poll_h2d: polled type=" << (int) t << std::endl;
   switch (t) {
-    case COSIM_PCIE_PROTO_H2D_MSG_READ:
+    case SIMBRICKS_PROTO_PCIE_H2D_MSG_READ:
       h2d_read(mmio, &msg->read);
       break;
 
-    case COSIM_PCIE_PROTO_H2D_MSG_WRITE:
+    case SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE:
       h2d_write(mmio, &msg->write);
       break;
 
-    case COSIM_PCIE_PROTO_H2D_MSG_READCOMP:
+    case SIMBRICKS_PROTO_PCIE_H2D_MSG_READCOMP:
       h2d_readcomp(&msg->readcomp);
       break;
 
-    case COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP:
+    case SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITECOMP:
       h2d_writecomp(&msg->writecomp);
       break;
 
-    case COSIM_PCIE_PROTO_H2D_MSG_DEVCTRL:
+    case SIMBRICKS_PROTO_PCIE_H2D_MSG_DEVCTRL:
       break;
 
-    case COSIM_PCIE_PROTO_H2D_MSG_SYNC:
+    case SIMBRICKS_PROTO_PCIE_H2D_MSG_SYNC:
       break;
 
     default:
@@ -574,7 +579,7 @@ static void poll_h2d(MMIOInterface &mmio) {
   nicif_h2d_next();
 }
 
-static volatile union cosim_pcie_proto_d2h *d2h_alloc(void) {
+static volatile union SimbricksProtoPcieD2H *d2h_alloc(void) {
   return nicsim_d2h_alloc(&nsparams, main_time);
 }
 
@@ -752,8 +757,8 @@ static void poll_n2d(EthernetRx &rx) {
 }
 
 void pci_msi_issue(uint8_t vec) {
-  volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
-  volatile struct cosim_pcie_proto_d2h_interrupt *intr;
+  volatile union SimbricksProtoPcieD2H *msg = d2h_alloc();
+  volatile struct SimbricksProtoPcieD2HInterrupt *intr;
 
 #ifdef MSI_DEBUG
   std::cerr << main_time << " MSI interrupt vec=" << (int)vec << std::endl;
@@ -761,11 +766,12 @@ void pci_msi_issue(uint8_t vec) {
 
   intr = &msg->interrupt;
   intr->vector = vec;
-  intr->inttype = COSIM_PCIE_PROTO_INT_MSI;
+  intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSI;
 
   // WMB();
   intr->own_type =
-      COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT | COSIM_PCIE_PROTO_D2H_OWN_HOST;
+      SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
+      SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
 }
 
 static void msi_step(Vinterface &top, PCICoordinator &coord) {
@@ -812,11 +818,11 @@ int main(int argc, char *argv[]) {
   if (argc >= 10)
     clock_period = 1000000ULL / strtoull(argv[9], NULL, 0);
 
-  struct cosim_pcie_proto_dev_intro di;
+  struct SimbricksProtoPcieDevIntro di;
   memset(&di, 0, sizeof(di));
 
   di.bars[0].len = 1 << 24;
-  di.bars[0].flags = COSIM_PCIE_PROTO_BAR_64;
+  di.bars[0].flags = SIMBRICKS_PROTO_PCIE_BAR_64;
 
   di.pci_vendor_id = 0x5543;
   di.pci_device_id = 0x1001;

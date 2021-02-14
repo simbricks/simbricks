@@ -583,7 +583,7 @@ class i40e_bm : public nicbm::Runner::Device {
   i40e_bm();
   ~i40e_bm();
 
-  virtual void setup_intro(struct cosim_pcie_proto_dev_intro &di);
+  virtual void setup_intro(struct SimbricksProtoPcieDevIntro &di);
   virtual void reg_read(uint8_t bar, uint64_t addr, void *dest, size_t len);
   virtual uint32_t reg_read32(uint8_t bar, uint64_t addr);
   virtual void reg_write(uint8_t bar, uint64_t addr, const void *src,

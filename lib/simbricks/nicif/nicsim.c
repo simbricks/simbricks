@@ -72,7 +72,7 @@ static int shm_fd = -1;
 static int pci_cfd = -1;
 static int eth_cfd = -1;
 
-static int accept_pci(struct cosim_pcie_proto_dev_intro *di, int pci_lfd,
+static int accept_pci(struct SimbricksProtoPcieDevIntro *di, int pci_lfd,
                       int *sync_pci) {
   if ((pci_cfd = accept(pci_lfd, NULL, NULL)) < 0) {
     return -1;
@@ -89,9 +89,9 @@ static int accept_pci(struct cosim_pcie_proto_dev_intro *di, int pci_lfd,
   di->h2d_nentries = H2D_ENUM;
 
   if (*sync_pci)
-    di->flags |= COSIM_PCIE_PROTO_FLAGS_DI_SYNC;
+    di->flags |= SIMBRICKS_PROTO_PCIE_FLAGS_DI_SYNC;
   else
-    di->flags &= ~((uint64_t)COSIM_PCIE_PROTO_FLAGS_DI_SYNC);
+    di->flags &= ~((uint64_t)SIMBRICKS_PROTO_PCIE_FLAGS_DI_SYNC);
 
   if (uxsocket_send(pci_cfd, di, sizeof(*di), shm_fd)) {
     return -1;
@@ -129,7 +129,7 @@ static int accept_eth(int eth_lfd, int *sync_eth) {
   return 0;
 }
 
-static int accept_conns(struct cosim_pcie_proto_dev_intro *di, int pci_lfd,
+static int accept_conns(struct SimbricksProtoPcieDevIntro *di, int pci_lfd,
                         int *sync_pci, int eth_lfd, int *sync_eth) {
   struct pollfd pfds[2];
   int await_pci = pci_lfd != -1;
@@ -177,7 +177,7 @@ static int accept_conns(struct cosim_pcie_proto_dev_intro *di, int pci_lfd,
 }
 
 int nicsim_init(struct nicsim_params *params,
-                struct cosim_pcie_proto_dev_intro *di) {
+                struct SimbricksProtoPcieDevIntro *di) {
   int pci_lfd = -1, eth_lfd = -1;
   void *shmptr;
   size_t shm_size;
@@ -221,11 +221,11 @@ int nicsim_init(struct nicsim_params *params,
 
   /* receive introductions from other end */
   if (params->pci_socket_path != NULL) {
-    struct cosim_pcie_proto_host_intro hi;
+    struct SimbricksProtoPcieHostIntro hi;
     if (recv(pci_cfd, &hi, sizeof(hi), 0) != sizeof(hi)) {
       return -1;
     }
-    if ((hi.flags & COSIM_PCIE_PROTO_FLAGS_HI_SYNC) == 0)
+    if ((hi.flags & SIMBRICKS_PROTO_PCIE_FLAGS_HI_SYNC) == 0)
       params->sync_pci = 0;
     printf("pci host info received\n");
   }
@@ -252,7 +252,7 @@ void nicsim_cleanup(void) {
 
 int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
   int ret = 0;
-  volatile union cosim_pcie_proto_d2h *d2h;
+  volatile union SimbricksProtoPcieD2H *d2h;
   volatile union cosim_eth_proto_d2n *d2n;
 
   /* sync PCI if necessary */
@@ -278,7 +278,8 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
         ret = -1;
       } else {
         d2h->sync.own_type =
-            COSIM_PCIE_PROTO_D2H_MSG_SYNC | COSIM_PCIE_PROTO_D2H_OWN_HOST;
+            SIMBRICKS_PROTO_PCIE_D2H_MSG_SYNC |
+            SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
       }
     }
   }
@@ -353,14 +354,14 @@ uint64_t nicsim_next_timestamp(struct nicsim_params *params) {
 /******************************************************************************/
 /* PCI */
 
-volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(
+volatile union SimbricksProtoPcieH2D *nicif_h2d_poll(
     struct nicsim_params *params, uint64_t timestamp) {
-  volatile union cosim_pcie_proto_h2d *msg =
-      (volatile union cosim_pcie_proto_h2d *)(h2d_queue + h2d_pos * H2D_ELEN);
+  volatile union SimbricksProtoPcieH2D *msg =
+      (volatile union SimbricksProtoPcieH2D *)(h2d_queue + h2d_pos * H2D_ELEN);
 
   /* message not ready */
-  if ((msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_OWN_MASK) !=
-      COSIM_PCIE_PROTO_H2D_OWN_DEV)
+  if ((msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_OWN_MASK) !=
+      SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV)
     return NULL;
 
   /* if in sync mode, wait till message is ready */
@@ -371,22 +372,23 @@ volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(
   return msg;
 }
 
-void nicif_h2d_done(volatile union cosim_pcie_proto_h2d *msg) {
-  msg->dummy.own_type = (msg->dummy.own_type & COSIM_PCIE_PROTO_H2D_MSG_MASK) |
-                        COSIM_PCIE_PROTO_H2D_OWN_HOST;
+void nicif_h2d_done(volatile union SimbricksProtoPcieH2D *msg) {
+  msg->dummy.own_type =
+      (msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK) |
+      SIMBRICKS_PROTO_PCIE_H2D_OWN_HOST;
 }
 
 void nicif_h2d_next(void) {
   h2d_pos = (h2d_pos + 1) % H2D_ENUM;
 }
 
-volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(
+volatile union SimbricksProtoPcieD2H *nicsim_d2h_alloc(
     struct nicsim_params *params, uint64_t timestamp) {
-  volatile union cosim_pcie_proto_d2h *msg =
-      (volatile union cosim_pcie_proto_d2h *)(d2h_queue + d2h_pos * D2H_ELEN);
+  volatile union SimbricksProtoPcieD2H *msg =
+      (volatile union SimbricksProtoPcieD2H *)(d2h_queue + d2h_pos * D2H_ELEN);
 
-  if ((msg->dummy.own_type & COSIM_PCIE_PROTO_D2H_OWN_MASK) !=
-      COSIM_PCIE_PROTO_D2H_OWN_DEV) {
+  if ((msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_D2H_OWN_MASK) !=
+      SIMBRICKS_PROTO_PCIE_D2H_OWN_DEV) {
     return NULL;
   }
 

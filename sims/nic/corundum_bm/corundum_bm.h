@@ -323,7 +323,7 @@ class Corundum : public nicbm::SimpleDevice<reg_t> {
   Corundum();
   ~Corundum();
 
-  virtual void setup_intro(struct cosim_pcie_proto_dev_intro &di);
+  virtual void setup_intro(struct SimbricksProtoPcieDevIntro &di);
   virtual reg_t reg_read(uint8_t bar, addr_t addr);
   virtual void reg_write(uint8_t bar, addr_t addr, reg_t val);
   virtual void dma_complete(nicbm::DMAOp &op);

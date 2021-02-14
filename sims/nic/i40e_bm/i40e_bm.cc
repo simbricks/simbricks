@@ -48,14 +48,14 @@ i40e_bm::i40e_bm()
 i40e_bm::~i40e_bm() {
 }
 
-void i40e_bm::setup_intro(struct cosim_pcie_proto_dev_intro &di) {
+void i40e_bm::setup_intro(struct SimbricksProtoPcieDevIntro &di) {
   di.bars[BAR_REGS].len = 4 * 1024 * 1024;
-  di.bars[BAR_REGS].flags = COSIM_PCIE_PROTO_BAR_64;
+  di.bars[BAR_REGS].flags = SIMBRICKS_PROTO_PCIE_BAR_64;
   di.bars[BAR_IO].len = 32;
-  di.bars[BAR_IO].flags = COSIM_PCIE_PROTO_BAR_IO;
+  di.bars[BAR_IO].flags = SIMBRICKS_PROTO_PCIE_BAR_IO;
   di.bars[BAR_MSIX].len = 32 * 1024;
   di.bars[BAR_MSIX].flags =
-      COSIM_PCIE_PROTO_BAR_64 | COSIM_PCIE_PROTO_BAR_DUMMY;
+      SIMBRICKS_PROTO_PCIE_BAR_64 | SIMBRICKS_PROTO_PCIE_BAR_DUMMY;
 
   di.pci_vendor_id = I40E_INTEL_VENDOR_ID;
   di.pci_device_id = I40E_DEV_ID_QSFP_A;

@@ -46,7 +46,7 @@ struct nicsim_params {
 };
 
 int nicsim_init(struct nicsim_params *params,
-                struct cosim_pcie_proto_dev_intro *di);
+                struct SimbricksProtoPcieDevIntro *di);
 void nicsim_cleanup(void);
 
 int nicsim_sync(struct nicsim_params *params, uint64_t timestamp);
@@ -54,12 +54,12 @@ void nicsim_advance_epoch(struct nicsim_params *params, uint64_t timestamp);
 uint64_t nicsim_advance_time(struct nicsim_params *params, uint64_t timestamp);
 uint64_t nicsim_next_timestamp(struct nicsim_params *params);
 
-volatile union cosim_pcie_proto_h2d *nicif_h2d_poll(
+volatile union SimbricksProtoPcieH2D *nicif_h2d_poll(
     struct nicsim_params *params, uint64_t timestamp);
-void nicif_h2d_done(volatile union cosim_pcie_proto_h2d *msg);
+void nicif_h2d_done(volatile union SimbricksProtoPcieH2D *msg);
 void nicif_h2d_next(void);
 
-volatile union cosim_pcie_proto_d2h *nicsim_d2h_alloc(
+volatile union SimbricksProtoPcieD2H *nicsim_d2h_alloc(
     struct nicsim_params *params, uint64_t timestamp);
 
 volatile union cosim_eth_proto_n2d *nicif_n2d_poll(struct nicsim_params *params,

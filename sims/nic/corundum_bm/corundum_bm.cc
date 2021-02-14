@@ -686,9 +686,9 @@ void Corundum::reg_write(uint8_t bar, uint64_t addr, reg_t val) {
   }
 }
 
-void Corundum::setup_intro(struct cosim_pcie_proto_dev_intro &di) {
+void Corundum::setup_intro(struct SimbricksProtoPcieDevIntro &di) {
   di.bars[0].len = 1 << 24;
-  di.bars[0].flags = COSIM_PCIE_PROTO_BAR_64;
+  di.bars[0].flags = SIMBRICKS_PROTO_PCIE_BAR_64;
   di.pci_vendor_id = 0x5543;
   di.pci_device_id = 0x1001;
   di.pci_class = 0x02;

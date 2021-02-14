@@ -74,7 +74,7 @@ class Runner {
      * Initialize device specific parameters (pci dev/vendor id,
      * BARs etc. in intro struct.
      */
-    virtual void setup_intro(struct cosim_pcie_proto_dev_intro &di) = 0;
+    virtual void setup_intro(struct SimbricksProtoPcieDevIntro &di) = 0;
 
     /**
      * execute a register read from `bar`:`addr` of length `len`.
@@ -109,7 +109,7 @@ class Runner {
     /**
      * Device control update
      */
-    virtual void devctrl_update(struct cosim_pcie_proto_h2d_devctrl &devctrl);
+    virtual void devctrl_update(struct SimbricksProtoPcieH2DDevctrl &devctrl);
   };
 
  protected:
@@ -125,16 +125,16 @@ class Runner {
   size_t dma_pending;
   uint64_t mac_addr;
   struct nicsim_params nsparams;
-  struct cosim_pcie_proto_dev_intro dintro;
+  struct SimbricksProtoPcieDevIntro dintro;
 
-  volatile union cosim_pcie_proto_d2h *d2h_alloc(void);
+  volatile union SimbricksProtoPcieD2H *d2h_alloc(void);
   volatile union cosim_eth_proto_d2n *d2n_alloc(void);
 
-  void h2d_read(volatile struct cosim_pcie_proto_h2d_read *read);
-  void h2d_write(volatile struct cosim_pcie_proto_h2d_write *write);
-  void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc);
-  void h2d_writecomp(volatile struct cosim_pcie_proto_h2d_writecomp *wc);
-  void h2d_devctrl(volatile struct cosim_pcie_proto_h2d_devctrl *dc);
+  void h2d_read(volatile struct SimbricksProtoPcieH2DRead *read);
+  void h2d_write(volatile struct SimbricksProtoPcieH2DWrite *write);
+  void h2d_readcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc);
+  void h2d_writecomp(volatile struct SimbricksProtoPcieH2DWritecomp *wc);
+  void h2d_devctrl(volatile struct SimbricksProtoPcieH2DDevctrl *dc);
   void poll_h2d();
 
   void eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv);

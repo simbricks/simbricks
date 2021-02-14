@@ -27,35 +27,35 @@
 
 #include <stdint.h>
 
-// #define COSIM_PCI_MSG_SZCHECK(s) static_assert(sizeof(s) == 64)
-// #define COSIM_PCI_MSG_SZCHECK(s) _Static_assert(sizeof(s) == 64)
-#define COSIM_PCI_MSG_SZCHECK(s)
+// #define SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(s) static_assert(sizeof(s) == 64)
+// #define SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(s) _Static_assert(sizeof(s) == 64)
+#define SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(s)
 
 /******************************************************************************/
 /* Initialization messages on Unix socket */
 
 /** in dev_intro.flags to indicate that sender supports issuing syncs. */
-#define COSIM_PCIE_PROTO_FLAGS_DI_SYNC (1 << 0)
+#define SIMBRICKS_PROTO_PCIE_FLAGS_DI_SYNC (1 << 0)
 
 /** Number of PCI bars */
-#define COSIM_PCIE_PROTO_NBARS 6
+#define SIMBRICKS_PROTO_PCIE_NBARS 6
 
 /** in bars.flags: this is an I/O port bar. (otherwise memory) */
-#define COSIM_PCIE_PROTO_BAR_IO (1 << 0)
+#define SIMBRICKS_PROTO_PCIE_BAR_IO (1 << 0)
 /** in bars.flags: this is a 64-bit bar. (otherwise 32-bit only) */
-#define COSIM_PCIE_PROTO_BAR_64 (1 << 1)
+#define SIMBRICKS_PROTO_PCIE_BAR_64 (1 << 1)
 /** in bars.flags: this memory bar is prefetchable */
-#define COSIM_PCIE_PROTO_BAR_PF (1 << 2)
+#define SIMBRICKS_PROTO_PCIE_BAR_PF (1 << 2)
 /** in bars.flags: this memory bar is a dummy bar (device doesn't get MMIO
  * messages for this, but it dose get exposed to software. used for MSI-X). */
-#define COSIM_PCIE_PROTO_BAR_DUMMY (1 << 3)
+#define SIMBRICKS_PROTO_PCIE_BAR_DUMMY (1 << 3)
 
 /**
  * welcome message sent by device to host. This message comes with the shared
  * memory file descriptor attached.
  */
-struct cosim_pcie_proto_dev_intro {
-  /** flags: see COSIM_PCIE_PROTO_FLAGS_DI_* */
+struct SimbricksProtoPcieDevIntro {
+  /** flags: see SIMBRICKS_PROTO_PCIE_FLAGS_DI_* */
   uint64_t flags;
 
   /** offset of the device-to-host queue in shared memory region */
@@ -76,9 +76,9 @@ struct cosim_pcie_proto_dev_intro {
   struct {
     /** length of the bar in bytes (len = 0 indicates unused bar) */
     uint64_t len;
-    /** flags (see COSIM_PCIE_PROTO_BAR_*) */
+    /** flags (see SIMBRICKS_PROTO_PCIE_BAR_*) */
     uint64_t flags;
-  } __attribute__((packed)) bars[COSIM_PCIE_PROTO_NBARS];
+  } __attribute__((packed)) bars[SIMBRICKS_PROTO_PCIE_NBARS];
 
   /** PCI vendor id */
   uint16_t pci_vendor_id;
@@ -108,11 +108,11 @@ struct cosim_pcie_proto_dev_intro {
   uint16_t psi_msix_cap_offset;
 } __attribute__((packed));
 
-#define COSIM_PCIE_PROTO_FLAGS_HI_SYNC (1 << 0)
+#define SIMBRICKS_PROTO_PCIE_FLAGS_HI_SYNC (1 << 0)
 
 /** welcome message sent by host to device */
-struct cosim_pcie_proto_host_intro {
-  /** flags: see COSIM_PCIE_PROTO_FLAGS_HI_* */
+struct SimbricksProtoPcieHostIntro {
+  /** flags: see SIMBRICKS_PROTO_PCIE_FLAGS_HI_* */
   uint64_t flags;
 } __attribute__((packed));
 
@@ -120,38 +120,38 @@ struct cosim_pcie_proto_host_intro {
 /* Messages on in-memory device to host channel */
 
 /** Mask for ownership bit in own_type field */
-#define COSIM_PCIE_PROTO_D2H_OWN_MASK 0x80
+#define SIMBRICKS_PROTO_PCIE_D2H_OWN_MASK 0x80
 /** Message is owned by device */
-#define COSIM_PCIE_PROTO_D2H_OWN_DEV 0x00
+#define SIMBRICKS_PROTO_PCIE_D2H_OWN_DEV 0x00
 /** Message is owned by host */
-#define COSIM_PCIE_PROTO_D2H_OWN_HOST 0x80
+#define SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST 0x80
 
 /** Mask for type value in own_type field */
-#define COSIM_PCIE_PROTO_D2H_MSG_MASK 0x7f
-#define COSIM_PCIE_PROTO_D2H_MSG_SYNC 0x1
-#define COSIM_PCIE_PROTO_D2H_MSG_READ 0x2
-#define COSIM_PCIE_PROTO_D2H_MSG_WRITE 0x3
-#define COSIM_PCIE_PROTO_D2H_MSG_INTERRUPT 0x4
-#define COSIM_PCIE_PROTO_D2H_MSG_READCOMP 0x5
-#define COSIM_PCIE_PROTO_D2H_MSG_WRITECOMP 0x6
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_MASK 0x7f
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_SYNC 0x1
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_READ 0x2
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE 0x3
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT 0x4
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP 0x5
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP 0x6
 
-struct cosim_pcie_proto_d2h_dummy {
+struct SimbricksProtoPcieD2HDummy {
   uint8_t pad[48];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_dummy);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HDummy);
 
-struct cosim_pcie_proto_d2h_sync {
+struct SimbricksProtoPcieD2HSync {
   uint8_t pad[48];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_sync);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HSync);
 
-struct cosim_pcie_proto_d2h_read {
+struct SimbricksProtoPcieD2HRead {
   uint64_t req_id;
   uint64_t offset;
   uint16_t len;
@@ -160,9 +160,9 @@ struct cosim_pcie_proto_d2h_read {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_read);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HRead);
 
-struct cosim_pcie_proto_d2h_write {
+struct SimbricksProtoPcieD2HWrite {
   uint64_t req_id;
   uint64_t offset;
   uint16_t len;
@@ -172,14 +172,14 @@ struct cosim_pcie_proto_d2h_write {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_write);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HWrite);
 
-#define COSIM_PCIE_PROTO_INT_LEGACY_HI 0
-#define COSIM_PCIE_PROTO_INT_LEGACY_LO 1
-#define COSIM_PCIE_PROTO_INT_MSI 2
-#define COSIM_PCIE_PROTO_INT_MSIX 3
+#define SIMBRICKS_PROTO_PCIE_INT_LEGACY_HI 0
+#define SIMBRICKS_PROTO_PCIE_INT_LEGACY_LO 1
+#define SIMBRICKS_PROTO_PCIE_INT_MSI 2
+#define SIMBRICKS_PROTO_PCIE_INT_MSIX 3
 
-struct cosim_pcie_proto_d2h_interrupt {
+struct SimbricksProtoPcieD2HInterrupt {
   uint16_t vector;
   uint8_t inttype;
   uint8_t pad[45];
@@ -187,9 +187,9 @@ struct cosim_pcie_proto_d2h_interrupt {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_interrupt);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HInterrupt);
 
-struct cosim_pcie_proto_d2h_readcomp {
+struct SimbricksProtoPcieD2HReadcomp {
   uint64_t req_id;
   uint8_t pad[40];
   uint64_t timestamp;
@@ -197,62 +197,62 @@ struct cosim_pcie_proto_d2h_readcomp {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_readcomp);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HReadcomp);
 
-struct cosim_pcie_proto_d2h_writecomp {
+struct SimbricksProtoPcieD2HWritecomp {
   uint64_t req_id;
   uint8_t pad[40];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_d2h_writecomp);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HWritecomp);
 
-union cosim_pcie_proto_d2h {
-  struct cosim_pcie_proto_d2h_dummy dummy;
-  struct cosim_pcie_proto_d2h_sync sync;
-  struct cosim_pcie_proto_d2h_read read;
-  struct cosim_pcie_proto_d2h_write write;
-  struct cosim_pcie_proto_d2h_interrupt interrupt;
-  struct cosim_pcie_proto_d2h_readcomp readcomp;
-  struct cosim_pcie_proto_d2h_writecomp writecomp;
+union SimbricksProtoPcieD2H {
+  struct SimbricksProtoPcieD2HDummy dummy;
+  struct SimbricksProtoPcieD2HSync sync;
+  struct SimbricksProtoPcieD2HRead read;
+  struct SimbricksProtoPcieD2HWrite write;
+  struct SimbricksProtoPcieD2HInterrupt interrupt;
+  struct SimbricksProtoPcieD2HReadcomp readcomp;
+  struct SimbricksProtoPcieD2HWritecomp writecomp;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_d2h);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(union SimbricksProtoPcieD2H);
 
 /******************************************************************************/
 /* Messages on in-memory host to device channel */
 
-#define COSIM_PCIE_PROTO_H2D_OWN_MASK 0x80
+#define SIMBRICKS_PROTO_PCIE_H2D_OWN_MASK 0x80
 /** Message is owned by host */
-#define COSIM_PCIE_PROTO_H2D_OWN_HOST 0x00
+#define SIMBRICKS_PROTO_PCIE_H2D_OWN_HOST 0x00
 /** Message is owned by device */
-#define COSIM_PCIE_PROTO_H2D_OWN_DEV 0x80
+#define SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV 0x80
 
-#define COSIM_PCIE_PROTO_H2D_MSG_MASK 0x7f
-#define COSIM_PCIE_PROTO_H2D_MSG_SYNC 0x1
-#define COSIM_PCIE_PROTO_H2D_MSG_READ 0x2
-#define COSIM_PCIE_PROTO_H2D_MSG_WRITE 0x3
-#define COSIM_PCIE_PROTO_H2D_MSG_READCOMP 0x4
-#define COSIM_PCIE_PROTO_H2D_MSG_WRITECOMP 0x5
-#define COSIM_PCIE_PROTO_H2D_MSG_DEVCTRL 0x7
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK 0x7f
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_SYNC 0x1
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_READ 0x2
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE 0x3
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_READCOMP 0x4
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITECOMP 0x5
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_DEVCTRL 0x7
 
-struct cosim_pcie_proto_h2d_dummy {
+struct SimbricksProtoPcieH2DDummy {
   uint8_t pad[48];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_dummy);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DDummy);
 
-struct cosim_pcie_proto_h2d_sync {
+struct SimbricksProtoPcieH2DSync {
   uint8_t pad[48];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_sync);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DSync);
 
-struct cosim_pcie_proto_h2d_read {
+struct SimbricksProtoPcieH2DRead {
   uint64_t req_id;
   uint64_t offset;
   uint16_t len;
@@ -262,9 +262,9 @@ struct cosim_pcie_proto_h2d_read {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_read);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DRead);
 
-struct cosim_pcie_proto_h2d_write {
+struct SimbricksProtoPcieH2DWrite {
   uint64_t req_id;
   uint64_t offset;
   uint16_t len;
@@ -275,9 +275,9 @@ struct cosim_pcie_proto_h2d_write {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_write);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DWrite);
 
-struct cosim_pcie_proto_h2d_readcomp {
+struct SimbricksProtoPcieH2DReadcomp {
   uint64_t req_id;
   uint8_t pad[40];
   uint64_t timestamp;
@@ -285,38 +285,38 @@ struct cosim_pcie_proto_h2d_readcomp {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_readcomp);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DReadcomp);
 
-struct cosim_pcie_proto_h2d_writecomp {
+struct SimbricksProtoPcieH2DWritecomp {
   uint64_t req_id;
   uint8_t pad[40];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_writecomp);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DWritecomp);
 
-#define COSIM_PCIE_PROTO_CTRL_INTX_EN (1 << 0)
-#define COSIM_PCIE_PROTO_CTRL_MSI_EN (1 << 1)
-#define COSIM_PCIE_PROTO_CTRL_MSIX_EN (1 << 2)
-struct cosim_pcie_proto_h2d_devctrl {
+#define SIMBRICKS_PROTO_PCIE_CTRL_INTX_EN (1 << 0)
+#define SIMBRICKS_PROTO_PCIE_CTRL_MSI_EN (1 << 1)
+#define SIMBRICKS_PROTO_PCIE_CTRL_MSIX_EN (1 << 2)
+struct SimbricksProtoPcieH2DDevctrl {
   uint64_t flags;
   uint8_t pad[40];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(struct cosim_pcie_proto_h2d_devctrl);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DDevctrl);
 
-union cosim_pcie_proto_h2d {
-  struct cosim_pcie_proto_h2d_dummy dummy;
-  struct cosim_pcie_proto_h2d_sync sync;
-  struct cosim_pcie_proto_h2d_read read;
-  struct cosim_pcie_proto_h2d_write write;
-  struct cosim_pcie_proto_h2d_readcomp readcomp;
-  struct cosim_pcie_proto_h2d_writecomp writecomp;
-  struct cosim_pcie_proto_h2d_devctrl devctrl;
+union SimbricksProtoPcieH2D {
+  struct SimbricksProtoPcieH2DDummy dummy;
+  struct SimbricksProtoPcieH2DSync sync;
+  struct SimbricksProtoPcieH2DRead read;
+  struct SimbricksProtoPcieH2DWrite write;
+  struct SimbricksProtoPcieH2DReadcomp readcomp;
+  struct SimbricksProtoPcieH2DWritecomp writecomp;
+  struct SimbricksProtoPcieH2DDevctrl devctrl;
 } __attribute__((packed));
-COSIM_PCI_MSG_SZCHECK(union cosim_pcie_proto_h2d);
+SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(union SimbricksProtoPcieH2D);
 
 #endif  // SIMBRICKS_PROTO_PCIE_H_
