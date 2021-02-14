@@ -383,49 +383,6 @@ void pci_rwcomp_issue(MMIOOp *op) {
   delete op;
 }
 
-#if 0
-class MemAccessor {
-    protected:
-        Vinterface &top;
-
-        /* outputs to memory */
-        vluint8_t   &p_mem_sel;
-        vluint32_t (*p_mem_be)[4]; /* for write only */
-        vluint32_t (&p_mem_addr)[3];
-        vluint8_t   &p_mem_valid;
-        vluint8_t   *p_mem_resp_ready; /* for read only */
-
-        /* direction depends */
-        vluint32_t (&p_mem_data)[32];
-
-        /* inputs from memory */
-        vluint8_t   &p_mem_ready;
-        vluint8_t   *p_mem_resp_valid; /* for read only */
-
-    public:
-        MemAccessor(Vinterface &top_, bool read,
-                vluint8_t &p_mem_sel_,
-                vluint32_t (*p_mem_be_)[4],
-                vluint32_t (&p_mem_addr_)[3],
-                vluint8_t &p_mem_valid_,
-                vluint8_t *p_mem_resp_ready_,
-                vluint32_t (&p_mem_data_)[32],
-                vluint8_t &p_mem_ready_,
-                vluint8_t *p_mem_resp_valid_)
-            : top(top_),
-            p_mem_sel(p_mem_sel_), p_mem_be(p_mem_be_), p_mem_addr(p_mem_addr_),
-            p_mem_valid(p_mem_valid_), p_mem_resp_ready(p_mem_resp_ready_),
-            p_mem_data(p_mem_data_), p_mem_ready(p_mem_ready_),
-            p_mem_resp_valid(p_mem_resp_valid_)
-        {
-        }
-
-        void step()
-        {
-        }
-};
-#endif
-
 std::set<DMAOp *> pci_dma_pending;
 
 void pci_dma_issue(DMAOp *op) {
@@ -470,10 +427,10 @@ static void h2d_readcomp(volatile struct cosim_pcie_proto_h2d_readcomp *rc) {
   memcpy(op->data, (void *)rc->data, op->len);
 
 #if 0
-    std::cerr << "dma read comp: ";
-    for (size_t i = 0; i < op->len; i++)
-        std::cerr << (unsigned) op->data[i] << " ";
-    std::cerr << std::endl;
+  std::cerr << "dma read comp: ";
+  for (size_t i = 0; i < op->len; i++)
+    std::cerr << (unsigned) op->data[i] << " ";
+  std::cerr << std::endl;
 #endif
 
   op->engine->pci_op_complete(op);
@@ -793,81 +750,6 @@ static void poll_n2d(EthernetRx &rx) {
   nicif_n2d_done(msg);
   nicif_n2d_next();
 }
-
-#if 0
-class PCICoordinator {
-    protected:
-        struct PCIOp {
-            union {
-                DMAOp *dma_op;
-                uint32_t msi_vec;
-            };
-            bool isDma;
-            bool ready;
-        };
-
-        Vinterface &top;
-        std::deque<PCIOp *> queue;
-        std::map<DMAOp *, PCIOp *> dmamap;
-
-        void process()
-        {
-            PCIOp *op;
-            while (queue.empty()) {
-                op = queue.front();
-                if (!op->ready)
-                    break;
-
-                queue.pop_front();
-                if (!op->isDma) {
-                    pci_msi_issue(op->msi_vec);
-                    delete op;
-                } else {
-                    pci_dma_issue(op->dma_op);
-                    dmamap.erase(op->dma_op);
-                    delete op;
-                }
-            }
-        }
-
-    public:
-        PCICoordinator(Vinterface &top_)
-            : top(top_)
-        {
-        }
-
-        void dma_register(DMAOp *dma_op, bool ready)
-        {
-            PCIOp *op = new PCIOp;
-            op->dma_op = vec;
-            op->isDma = true;
-            op->ready = ready;
-
-            queue.push_back(op);
-            dmamap[op] = dma_op;
-
-            process();
-        }
-
-        void dma_mark_ready(DMAOp *op)
-        {
-            dmamap[op]->ready = true;
-
-            process();
-        }
-
-        void msi_enqueue(uint32_t vec)
-        {
-            PCIOp *op = new PCIOp;
-            op->msi_vec = vec;
-            op->isDma = false;
-            op->ready = true;
-            queue.push_back(op);
-
-            process();
-        }
-};
-#endif
 
 void pci_msi_issue(uint8_t vec) {
   volatile union cosim_pcie_proto_d2h *msg = d2h_alloc();
