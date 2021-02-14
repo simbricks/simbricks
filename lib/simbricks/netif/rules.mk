@@ -22,11 +22,11 @@
 
 include mk/subdir_pre.mk
 
-lib_netsim := $(d)libnetsim_common.a
+lib_netif := $(d)libnetif_common.a
 
-OBJS := $(addprefix $(d),netsim.o utils.o)
+OBJS := $(addprefix $(d),netif.o utils.o)
 
-$(lib_netsim): $(OBJS)
+$(lib_netif): $(OBJS)
 
-CLEAN := $(lib_netsim) $(OBJS)
+CLEAN := $(lib_netif) $(OBJS)
 include mk/subdir_post.mk

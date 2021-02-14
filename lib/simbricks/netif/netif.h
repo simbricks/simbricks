@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_NETIF_NETSIM_H_
-#define SIMBRICKS_NETIF_NETSIM_H_
+#ifndef SIMBRICKS_NETIF_NETIF_H_
+#define SIMBRICKS_NETIF_NETIF_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -67,4 +67,4 @@ void SimbricksNetIfAdvanceEpoch(uint64_t timestamp, uint64_t sync_delay,
 uint64_t SimbricksNetIfAdvanceTime(uint64_t timestamp, uint64_t sync_delay,
                              int sync_mode);
 
-#endif  // SIMBRICKS_NETIF_NETSIM_H_
+#endif  // SIMBRICKS_NETIF_NETIF_H_

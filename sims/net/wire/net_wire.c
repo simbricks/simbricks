@@ -36,7 +36,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <simbricks/netif/netsim.h>
+#include <simbricks/netif/netif.h>
 #include <simbricks/proto/base.h>
 
 static uint64_t sync_period = (500 * 1000ULL);  // 500ns

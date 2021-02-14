@@ -59,7 +59,7 @@ $(QEMU): $(d)qemu/ready
 $(d)ns-3:
 	git clone git@github.com:simbricks/ns-3.git $@
 
-$(d)ns-3/ready: $(d)ns-3 $(lib_netsim)
+$(d)ns-3/ready: $(d)ns-3 $(lib_netif)
 	+cd $< && COSIM_PATH=$(abspath $(base_dir)) ./cosim-build.sh configure
 	touch $@
 

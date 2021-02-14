@@ -22,14 +22,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <simbricks/netif/netif.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#include <simbricks/netif/netsim.h>
 
 #include "lib/simbricks/netif/internal.h"
 #include <simbricks/proto/base.h>

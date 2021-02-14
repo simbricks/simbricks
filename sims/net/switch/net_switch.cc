@@ -34,7 +34,7 @@
 #include <vector>
 
 extern "C" {
-#include <simbricks/netif/netsim.h>
+#include <simbricks/netif/netif.h>
 #include <simbricks/proto/base.h>
 };
 

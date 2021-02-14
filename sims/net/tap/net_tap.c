@@ -33,7 +33,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <simbricks/netif/netsim.h>
+#include <simbricks/netif/netif.h>
 
 // #define DEBUG_PKTMETA
 

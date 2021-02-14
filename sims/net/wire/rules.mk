@@ -28,7 +28,7 @@ OBJS := $(d)net_wire.o
 
 $(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
-$(bin_net_wire): $(OBJS) $(lib_netsim) -lpcap
+$(bin_net_wire): $(OBJS) $(lib_netif) -lpcap
 
 CLEAN := $(bin_net_wire) $(OBJS)
 ALL := $(bin_net_wire)
