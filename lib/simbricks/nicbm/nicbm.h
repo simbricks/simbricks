@@ -128,7 +128,7 @@ class Runner {
   struct SimbricksProtoPcieDevIntro dintro;
 
   volatile union SimbricksProtoPcieD2H *d2h_alloc(void);
-  volatile union cosim_eth_proto_d2n *d2n_alloc(void);
+  volatile union SimbricksProtoNetD2N *d2n_alloc(void);
 
   void h2d_read(volatile struct SimbricksProtoPcieH2DRead *read);
   void h2d_write(volatile struct SimbricksProtoPcieH2DWrite *write);
@@ -137,7 +137,7 @@ class Runner {
   void h2d_devctrl(volatile struct SimbricksProtoPcieH2DDevctrl *dc);
   void poll_h2d();
 
-  void eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv);
+  void eth_recv(volatile struct SimbricksProtoNetN2DRecv *recv);
   void poll_n2d();
 
   bool event_next(uint64_t &retval);

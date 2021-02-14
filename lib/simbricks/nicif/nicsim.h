@@ -62,12 +62,12 @@ void nicif_h2d_next(void);
 volatile union SimbricksProtoPcieD2H *nicsim_d2h_alloc(
     struct nicsim_params *params, uint64_t timestamp);
 
-volatile union cosim_eth_proto_n2d *nicif_n2d_poll(struct nicsim_params *params,
-                                                   uint64_t timestamp);
-void nicif_n2d_done(volatile union cosim_eth_proto_n2d *msg);
+volatile union SimbricksProtoNetN2D *nicif_n2d_poll(
+    struct nicsim_params *params, uint64_t timestamp);
+void nicif_n2d_done(volatile union SimbricksProtoNetN2D *msg);
 void nicif_n2d_next(void);
 
-volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(
+volatile union SimbricksProtoNetD2N *nicsim_d2n_alloc(
     struct nicsim_params *params, uint64_t timestamp);
 
 #endif  // SIMBRICKS_NICIF_NICSIM_H_

@@ -62,7 +62,7 @@ static int tap_open(const char *name) {
   return fd;
 }
 
-static void d2n_send(volatile struct cosim_eth_proto_d2n_send *s) {
+static void d2n_send(volatile struct SimbricksProtoNetD2NSend *s) {
 #ifdef DEBUG_PKTMETA
   printf("sent packet: len=%u\n", s->len);
 #endif
@@ -73,16 +73,16 @@ static void d2n_send(volatile struct cosim_eth_proto_d2n_send *s) {
 }
 
 static void poll_d2n(void) {
-  volatile union cosim_eth_proto_d2n *msg = netsim_d2n_poll(&nsif, 0);
+  volatile union SimbricksProtoNetD2N *msg = netsim_d2n_poll(&nsif, 0);
   uint8_t type;
 
   /* message not ready */
   if (msg == NULL)
     return;
 
-  type = msg->dummy.own_type & COSIM_ETH_PROTO_D2N_MSG_MASK;
+  type = msg->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK;
   switch (type) {
-    case COSIM_ETH_PROTO_D2N_MSG_SEND:
+    case SIMBRICKS_PROTO_NET_D2N_MSG_SEND:
       d2n_send(&msg->send);
       break;
 
@@ -94,8 +94,8 @@ static void poll_d2n(void) {
 }
 
 static void *rx_handler(void *arg) {
-  volatile union cosim_eth_proto_n2d *msg;
-  volatile struct cosim_eth_proto_n2d_recv *rx;
+  volatile union SimbricksProtoNetN2D *msg;
+  volatile struct SimbricksProtoNetN2DRecv *rx;
   ssize_t len;
 
   while (1) {
@@ -117,7 +117,8 @@ static void *rx_handler(void *arg) {
 #endif
 
     // WMB();
-    rx->own_type = COSIM_ETH_PROTO_N2D_MSG_RECV | COSIM_ETH_PROTO_N2D_OWN_DEV;
+    rx->own_type = SIMBRICKS_PROTO_NET_N2D_MSG_RECV |
+        SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
   }
 }
 

@@ -101,7 +101,7 @@ static int accept_pci(struct SimbricksProtoPcieDevIntro *di, int pci_lfd,
 }
 
 static int accept_eth(int eth_lfd, int *sync_eth) {
-  struct cosim_eth_proto_dev_intro di;
+  struct SimbricksProtoNetDevIntro di;
 
   if ((eth_cfd = accept(eth_lfd, NULL, NULL)) < 0) {
     return -1;
@@ -112,7 +112,7 @@ static int accept_eth(int eth_lfd, int *sync_eth) {
   memset(&di, 0, sizeof(di));
   di.flags = 0;
   if (*sync_eth)
-    di.flags |= COSIM_ETH_PROTO_FLAGS_DI_SYNC;
+    di.flags |= SIMBRICKS_PROTO_NET_FLAGS_DI_SYNC;
 
   di.d2n_offset = d2n_off;
   di.d2n_elen = D2N_ELEN;
@@ -230,11 +230,11 @@ int nicsim_init(struct nicsim_params *params,
     printf("pci host info received\n");
   }
   if (params->eth_socket_path != NULL) {
-    struct cosim_eth_proto_net_intro ni;
+    struct SimbricksProtoNetNetIntro ni;
     if (recv(eth_cfd, &ni, sizeof(ni), 0) != sizeof(ni)) {
       return -1;
     }
-    if ((ni.flags & COSIM_ETH_PROTO_FLAGS_NI_SYNC) == 0)
+    if ((ni.flags & SIMBRICKS_PROTO_NET_FLAGS_NI_SYNC) == 0)
       params->sync_eth = 0;
     printf("eth net info received\n");
   }
@@ -253,7 +253,7 @@ void nicsim_cleanup(void) {
 int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
   int ret = 0;
   volatile union SimbricksProtoPcieD2H *d2h;
-  volatile union cosim_eth_proto_d2n *d2n;
+  volatile union SimbricksProtoNetD2N *d2n;
 
   /* sync PCI if necessary */
   if (params->sync_pci) {
@@ -307,7 +307,7 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
         ret = -1;
       } else {
         d2n->sync.own_type =
-            COSIM_ETH_PROTO_D2N_MSG_SYNC | COSIM_ETH_PROTO_D2N_OWN_NET;
+            SIMBRICKS_PROTO_NET_D2N_MSG_SYNC | SIMBRICKS_PROTO_NET_D2N_OWN_NET;
       }
     }
   }
@@ -402,14 +402,14 @@ volatile union SimbricksProtoPcieD2H *nicsim_d2h_alloc(
 /******************************************************************************/
 /* Ethernet */
 
-volatile union cosim_eth_proto_n2d *nicif_n2d_poll(struct nicsim_params *params,
-                                                   uint64_t timestamp) {
-  volatile union cosim_eth_proto_n2d *msg =
-      (volatile union cosim_eth_proto_n2d *)(n2d_queue + n2d_pos * N2D_ELEN);
+volatile union SimbricksProtoNetN2D *nicif_n2d_poll(
+    struct nicsim_params *params, uint64_t timestamp) {
+  volatile union SimbricksProtoNetN2D *msg =
+      (volatile union SimbricksProtoNetN2D *)(n2d_queue + n2d_pos * N2D_ELEN);
 
   /* message not ready */
-  if ((msg->dummy.own_type & COSIM_ETH_PROTO_N2D_OWN_MASK) !=
-      COSIM_ETH_PROTO_N2D_OWN_DEV)
+  if ((msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) !=
+      SIMBRICKS_PROTO_NET_N2D_OWN_DEV)
     return NULL;
 
   /* if in sync mode, wait till message is ready */
@@ -420,22 +420,23 @@ volatile union cosim_eth_proto_n2d *nicif_n2d_poll(struct nicsim_params *params,
   return msg;
 }
 
-void nicif_n2d_done(volatile union cosim_eth_proto_n2d *msg) {
-  msg->dummy.own_type = (msg->dummy.own_type & COSIM_ETH_PROTO_N2D_MSG_MASK) |
-                        COSIM_ETH_PROTO_N2D_OWN_NET;
+void nicif_n2d_done(volatile union SimbricksProtoNetN2D *msg) {
+  msg->dummy.own_type =
+      (msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_MSG_MASK) |
+      SIMBRICKS_PROTO_NET_N2D_OWN_NET;
 }
 
 void nicif_n2d_next(void) {
   n2d_pos = (n2d_pos + 1) % N2D_ENUM;
 }
 
-volatile union cosim_eth_proto_d2n *nicsim_d2n_alloc(
+volatile union SimbricksProtoNetD2N *nicsim_d2n_alloc(
     struct nicsim_params *params, uint64_t timestamp) {
-  volatile union cosim_eth_proto_d2n *msg =
-      (volatile union cosim_eth_proto_d2n *)(d2n_queue + d2n_pos * D2N_ELEN);
+  volatile union SimbricksProtoNetD2N *msg =
+      (volatile union SimbricksProtoNetD2N *)(d2n_queue + d2n_pos * D2N_ELEN);
 
-  if ((msg->dummy.own_type & COSIM_ETH_PROTO_D2N_OWN_MASK) !=
-      COSIM_ETH_PROTO_D2N_OWN_DEV) {
+  if ((msg->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) !=
+      SIMBRICKS_PROTO_NET_D2N_OWN_DEV) {
     return NULL;
   }
 

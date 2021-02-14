@@ -37,8 +37,8 @@ static uint64_t current_epoch = 0;
 
 int netsim_init(struct netsim_interface *nsif, const char *eth_socket_path,
                 int *sync_eth) {
-  struct cosim_eth_proto_dev_intro di;
-  struct cosim_eth_proto_net_intro ni;
+  struct SimbricksProtoNetDevIntro di;
+  struct SimbricksProtoNetNetIntro ni;
   int cfd, shm_fd;
   void *p;
 
@@ -49,7 +49,7 @@ int netsim_init(struct netsim_interface *nsif, const char *eth_socket_path,
   memset(&ni, 0, sizeof(ni));
 
   if (*sync_eth)
-    ni.flags |= COSIM_ETH_PROTO_FLAGS_NI_SYNC;
+    ni.flags |= SIMBRICKS_PROTO_NET_FLAGS_NI_SYNC;
 
   if (send(cfd, &ni, sizeof(ni), 0) != sizeof(ni)) {
     perror("sending net intro failed");
@@ -65,7 +65,7 @@ int netsim_init(struct netsim_interface *nsif, const char *eth_socket_path,
   }
   close(shm_fd);
 
-  if ((di.flags & COSIM_ETH_PROTO_FLAGS_DI_SYNC) == 0) {
+  if ((di.flags & SIMBRICKS_PROTO_NET_FLAGS_DI_SYNC) == 0) {
     *sync_eth = 0;
     nsif->sync = 0;
   } else {
@@ -89,15 +89,15 @@ void netsim_cleanup(struct netsim_interface *nsif) {
   abort();
 }
 
-volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
+volatile union SimbricksProtoNetD2N *netsim_d2n_poll(
     struct netsim_interface *nsif, uint64_t timestamp) {
-  volatile union cosim_eth_proto_d2n *msg =
-      (volatile union cosim_eth_proto_d2n *)(nsif->d2n_queue +
+  volatile union SimbricksProtoNetD2N *msg =
+      (volatile union SimbricksProtoNetD2N *)(nsif->d2n_queue +
                                              nsif->d2n_pos * nsif->d2n_elen);
 
   /* message not ready */
-  if ((msg->dummy.own_type & COSIM_ETH_PROTO_D2N_OWN_MASK) !=
-      COSIM_ETH_PROTO_D2N_OWN_NET)
+  if ((msg->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) !=
+      SIMBRICKS_PROTO_NET_D2N_OWN_NET)
     return NULL;
 
   /* if in sync mode, wait till message is ready */
@@ -110,19 +110,20 @@ volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
 }
 
 void netsim_d2n_done(struct netsim_interface *nsif,
-                     volatile union cosim_eth_proto_d2n *msg) {
-  msg->dummy.own_type = (msg->dummy.own_type & COSIM_ETH_PROTO_D2N_MSG_MASK) |
-                        COSIM_ETH_PROTO_D2N_OWN_DEV;
+                     volatile union SimbricksProtoNetD2N *msg) {
+  msg->dummy.own_type =
+      (msg->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK) |
+      SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
 }
 
-volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
+volatile union SimbricksProtoNetN2D *netsim_n2d_alloc(
     struct netsim_interface *nsif, uint64_t timestamp, uint64_t latency) {
-  volatile union cosim_eth_proto_n2d *msg =
-      (volatile union cosim_eth_proto_n2d *)(nsif->n2d_queue +
+  volatile union SimbricksProtoNetN2D *msg =
+      (volatile union SimbricksProtoNetN2D *)(nsif->n2d_queue +
                                              nsif->n2d_pos * nsif->n2d_elen);
 
-  if ((msg->dummy.own_type & COSIM_ETH_PROTO_N2D_OWN_MASK) !=
-      COSIM_ETH_PROTO_N2D_OWN_NET) {
+  if ((msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) !=
+      SIMBRICKS_PROTO_NET_N2D_OWN_NET) {
     return NULL;
   }
 
@@ -135,8 +136,8 @@ volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
 
 int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
                     uint64_t latency, uint64_t sync_delay, int sync_mode) {
-  volatile union cosim_eth_proto_n2d *msg;
-  volatile struct cosim_eth_proto_n2d_sync *sync;
+  volatile union SimbricksProtoNetN2D *msg;
+  volatile struct SimbricksProtoNetN2DSync *sync;
   int do_sync;
 
   if (!nsif->sync)
@@ -165,7 +166,8 @@ int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
 
   sync = &msg->sync;
   // WMB();
-  sync->own_type = COSIM_ETH_PROTO_N2D_MSG_SYNC | COSIM_ETH_PROTO_N2D_OWN_DEV;
+  sync->own_type = SIMBRICKS_PROTO_NET_N2D_MSG_SYNC |
+      SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
 
   return 0;
 }

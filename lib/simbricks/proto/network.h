@@ -31,14 +31,14 @@
 /* Initialization messages on Unix socket */
 
 /** in dev_intro.flags to indicate that sender supports issuing syncs. */
-#define COSIM_ETH_PROTO_FLAGS_DI_SYNC (1 << 0)
+#define SIMBRICKS_PROTO_NET_FLAGS_DI_SYNC (1 << 0)
 
 /**
  * welcome message sent by device to network. This message comes with the shared
  * memory file descriptor attached.
  */
-struct cosim_eth_proto_dev_intro {
-  /** flags: see COSIM_ETH_PROTO_FLAGS_DI_* */
+struct SimbricksProtoNetDevIntro {
+  /** flags: see SIMBRICKS_PROTO_NET_FLAGS_DI_* */
   uint64_t flags;
 
   /** offset of the device-to-network queue in shared memory region */
@@ -56,11 +56,11 @@ struct cosim_eth_proto_dev_intro {
   uint64_t n2d_nentries;
 } __attribute__((packed));
 
-#define COSIM_ETH_PROTO_FLAGS_NI_SYNC (1 << 0)
+#define SIMBRICKS_PROTO_NET_FLAGS_NI_SYNC (1 << 0)
 
 /** welcome message sent by network to device */
-struct cosim_eth_proto_net_intro {
-  /** flags: see COSIM_ETH_PROTO_FLAGS_IN_* */
+struct SimbricksProtoNetNetIntro {
+  /** flags: see SIMBRICKS_PROTO_NET_FLAGS_IN_* */
   uint64_t flags;
 } __attribute__((packed));
 
@@ -68,32 +68,32 @@ struct cosim_eth_proto_net_intro {
 /* Messages on in-memory device to network channel */
 
 /** Mask for ownership bit in own_type field */
-#define COSIM_ETH_PROTO_D2N_OWN_MASK 0x80
+#define SIMBRICKS_PROTO_NET_D2N_OWN_MASK 0x80
 /** Message is owned by device */
-#define COSIM_ETH_PROTO_D2N_OWN_DEV 0x00
+#define SIMBRICKS_PROTO_NET_D2N_OWN_DEV 0x00
 /** Message is owned by network */
-#define COSIM_ETH_PROTO_D2N_OWN_NET 0x80
+#define SIMBRICKS_PROTO_NET_D2N_OWN_NET 0x80
 
 /** Mask for type value in own_type field */
-#define COSIM_ETH_PROTO_D2N_MSG_MASK 0x7f
-#define COSIM_ETH_PROTO_D2N_MSG_SYNC 0x1
-#define COSIM_ETH_PROTO_D2N_MSG_SEND 0x2
+#define SIMBRICKS_PROTO_NET_D2N_MSG_MASK 0x7f
+#define SIMBRICKS_PROTO_NET_D2N_MSG_SYNC 0x1
+#define SIMBRICKS_PROTO_NET_D2N_MSG_SEND 0x2
 
-struct cosim_eth_proto_d2n_dummy {
+struct SimbricksProtoNetD2NDummy {
   uint8_t pad[48];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
 
-struct cosim_eth_proto_d2n_sync {
+struct SimbricksProtoNetD2NSync {
   uint8_t pad[48];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
 
-struct cosim_eth_proto_d2n_send {
+struct SimbricksProtoNetD2NSend {
   uint16_t len;
   uint8_t port;
   uint8_t pad[45];
@@ -103,40 +103,40 @@ struct cosim_eth_proto_d2n_send {
   uint8_t data[];
 } __attribute__((packed));
 
-union cosim_eth_proto_d2n {
-  struct cosim_eth_proto_d2n_dummy dummy;
-  struct cosim_eth_proto_d2n_sync sync;
-  struct cosim_eth_proto_d2n_send send;
+union SimbricksProtoNetD2N {
+  struct SimbricksProtoNetD2NDummy dummy;
+  struct SimbricksProtoNetD2NSync sync;
+  struct SimbricksProtoNetD2NSend send;
 };
 
 /******************************************************************************/
 /* Messages on in-memory network to device channel */
 
-#define COSIM_ETH_PROTO_N2D_OWN_MASK 0x80
+#define SIMBRICKS_PROTO_NET_N2D_OWN_MASK 0x80
 /** Message is owned by host */
-#define COSIM_ETH_PROTO_N2D_OWN_NET 0x00
+#define SIMBRICKS_PROTO_NET_N2D_OWN_NET 0x00
 /** Message is owned by device */
-#define COSIM_ETH_PROTO_N2D_OWN_DEV 0x80
+#define SIMBRICKS_PROTO_NET_N2D_OWN_DEV 0x80
 
-#define COSIM_ETH_PROTO_N2D_MSG_MASK 0x7f
-#define COSIM_ETH_PROTO_N2D_MSG_SYNC 0x1
-#define COSIM_ETH_PROTO_N2D_MSG_RECV 0x2
+#define SIMBRICKS_PROTO_NET_N2D_MSG_MASK 0x7f
+#define SIMBRICKS_PROTO_NET_N2D_MSG_SYNC 0x1
+#define SIMBRICKS_PROTO_NET_N2D_MSG_RECV 0x2
 
-struct cosim_eth_proto_n2d_dummy {
+struct SimbricksProtoNetN2DDummy {
   uint8_t pad[48];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
 
-struct cosim_eth_proto_n2d_sync {
+struct SimbricksProtoNetN2DSync {
   uint8_t pad[48];
   uint64_t timestamp;
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
 
-struct cosim_eth_proto_n2d_recv {
+struct SimbricksProtoNetN2DRecv {
   uint16_t len;
   uint8_t port;
   uint8_t pad[45];
@@ -146,10 +146,10 @@ struct cosim_eth_proto_n2d_recv {
   uint8_t data[];
 };
 
-union cosim_eth_proto_n2d {
-  struct cosim_eth_proto_n2d_dummy dummy;
-  struct cosim_eth_proto_n2d_sync sync;
-  struct cosim_eth_proto_n2d_recv recv;
+union SimbricksProtoNetN2D {
+  struct SimbricksProtoNetN2DDummy dummy;
+  struct SimbricksProtoNetN2DSync sync;
+  struct SimbricksProtoNetN2DRecv recv;
 };
 
 #endif  // SIMBRICKS_PROTO_NETWORK_H_

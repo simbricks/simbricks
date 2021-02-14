@@ -53,15 +53,15 @@ int netsim_init(struct netsim_interface *nsif, const char *eth_socket_path,
                 int *sync_eth);
 void netsim_cleanup(struct netsim_interface *nsif);
 
-volatile union cosim_eth_proto_d2n *netsim_d2n_poll(
+volatile union SimbricksProtoNetD2N *netsim_d2n_poll(
     struct netsim_interface *nsif, uint64_t timestamp);
 void netsim_d2n_done(struct netsim_interface *nsif,
-                     volatile union cosim_eth_proto_d2n *msg);
+                     volatile union SimbricksProtoNetD2N *msg);
 static inline uint64_t netsim_d2n_timestamp(struct netsim_interface *nsif) {
   return nsif->d2n_timestamp;
 }
 
-volatile union cosim_eth_proto_n2d *netsim_n2d_alloc(
+volatile union SimbricksProtoNetN2D *netsim_n2d_alloc(
     struct netsim_interface *nsif, uint64_t timestamp, uint64_t latency);
 int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
                     uint64_t latency, uint64_t sync_delay, int sync_mode);

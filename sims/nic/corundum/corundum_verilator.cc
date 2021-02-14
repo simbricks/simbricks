@@ -594,9 +594,9 @@ class EthernetTx {
   }
 
   void packet_done() {
-    volatile union cosim_eth_proto_d2n *msg =
+    volatile union SimbricksProtoNetD2N *msg =
         nicsim_d2n_alloc(&nsparams, main_time);
-    volatile struct cosim_eth_proto_d2n_send *send;
+    volatile struct SimbricksProtoNetD2NSend *send;
 
     if (!msg)
       throw "completion alloc failed";
@@ -607,7 +607,8 @@ class EthernetTx {
     send->timestamp = main_time + eth_latency;
 
     // WMB();
-    send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND | COSIM_ETH_PROTO_D2N_OWN_NET;
+    send->own_type = SIMBRICKS_PROTO_NET_D2N_MSG_SEND |
+        SIMBRICKS_PROTO_NET_D2N_OWN_NET;
 
 #ifdef ETH_DEBUG
     std::cerr << main_time << " EthernetTx: packet len=" << std::hex
@@ -726,26 +727,26 @@ class EthernetRx {
 };
 
 static void n2d_recv(EthernetRx &rx,
-                     volatile struct cosim_eth_proto_n2d_recv *recv) {
+                     volatile struct SimbricksProtoNetN2DRecv *recv) {
   rx.packet_received((const void *)recv->data, recv->len);
 }
 
 static void poll_n2d(EthernetRx &rx) {
-  volatile union cosim_eth_proto_n2d *msg =
+  volatile union SimbricksProtoNetN2D *msg =
       nicif_n2d_poll(&nsparams, main_time);
   uint8_t t;
 
   if (msg == NULL)
     return;
 
-  t = msg->dummy.own_type & COSIM_ETH_PROTO_N2D_MSG_MASK;
+  t = msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_MSG_MASK;
 
   switch (t) {
-    case COSIM_ETH_PROTO_N2D_MSG_RECV:
+    case SIMBRICKS_PROTO_NET_N2D_MSG_RECV:
       n2d_recv(rx, &msg->recv);
       break;
 
-    case COSIM_ETH_PROTO_N2D_MSG_SYNC:
+    case SIMBRICKS_PROTO_NET_N2D_MSG_SYNC:
       break;
 
     default:

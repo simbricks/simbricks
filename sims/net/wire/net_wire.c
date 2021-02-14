@@ -54,18 +54,19 @@ static void sigusr1_handler(int dummy) {
 
 static void move_pkt(struct netsim_interface *from,
                      struct netsim_interface *to) {
-  volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(from, cur_ts);
-  volatile union cosim_eth_proto_n2d *msg_to;
-  volatile struct cosim_eth_proto_d2n_send *tx;
-  volatile struct cosim_eth_proto_n2d_recv *rx;
+  volatile union SimbricksProtoNetD2N *msg_from =
+      netsim_d2n_poll(from, cur_ts);
+  volatile union SimbricksProtoNetN2D *msg_to;
+  volatile struct SimbricksProtoNetD2NSend *tx;
+  volatile struct SimbricksProtoNetN2DRecv *rx;
   struct pcap_pkthdr ph;
   uint8_t type;
 
   if (msg_from == NULL)
     return;
 
-  type = msg_from->dummy.own_type & COSIM_ETH_PROTO_D2N_MSG_MASK;
-  if (type == COSIM_ETH_PROTO_D2N_MSG_SEND) {
+  type = msg_from->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK;
+  if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SEND) {
     tx = &msg_from->send;
 
     // log to pcap file if initialized
@@ -86,11 +87,12 @@ static void move_pkt(struct netsim_interface *from,
       memcpy((void *)rx->data, (void *)tx->data, tx->len);
 
       // WMB();
-      rx->own_type = COSIM_ETH_PROTO_N2D_MSG_RECV | COSIM_ETH_PROTO_N2D_OWN_DEV;
+      rx->own_type = SIMBRICKS_PROTO_NET_N2D_MSG_RECV |
+          SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
     } else {
       fprintf(stderr, "move_pkt: dropping packet\n");
     }
-  } else if (type == COSIM_ETH_PROTO_D2N_MSG_SYNC) {
+  } else if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SYNC) {
   } else {
     fprintf(stderr, "move_pkt: unsupported type=%u\n", type);
     abort();

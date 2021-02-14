@@ -61,8 +61,8 @@ volatile union SimbricksProtoPcieD2H *Runner::d2h_alloc(void) {
   return msg;
 }
 
-volatile union cosim_eth_proto_d2n *Runner::d2n_alloc(void) {
-  volatile union cosim_eth_proto_d2n *msg;
+volatile union SimbricksProtoNetD2N *Runner::d2n_alloc(void) {
+  volatile union SimbricksProtoNetD2N *msg;
   while ((msg = nicsim_d2n_alloc(&nsparams, main_time)) == NULL) {
     fprintf(stderr, "d2n_alloc: no entry available\n");
   }
@@ -257,7 +257,7 @@ void Runner::h2d_devctrl(volatile struct SimbricksProtoPcieH2DDevctrl *dc) {
   dev.devctrl_update(*(struct SimbricksProtoPcieH2DDevctrl *)dc);
 }
 
-void Runner::eth_recv(volatile struct cosim_eth_proto_n2d_recv *recv) {
+void Runner::eth_recv(volatile struct SimbricksProtoNetN2DRecv *recv) {
 #ifdef DEBUG_NICBM
   printf("nicbm: eth rx: port %u len %u\n", recv->port, recv->len);
 #endif
@@ -270,12 +270,13 @@ void Runner::eth_send(const void *data, size_t len) {
   printf("nicbm: eth tx: len %zu\n", len);
 #endif
 
-  volatile union cosim_eth_proto_d2n *msg = d2n_alloc();
-  volatile struct cosim_eth_proto_d2n_send *send = &msg->send;
+  volatile union SimbricksProtoNetD2N *msg = d2n_alloc();
+  volatile struct SimbricksProtoNetD2NSend *send = &msg->send;
   send->port = 0;  // single port
   send->len = len;
   memcpy((void *)send->data, data, len);
-  send->own_type = COSIM_ETH_PROTO_D2N_MSG_SEND | COSIM_ETH_PROTO_D2N_OWN_NET;
+  send->own_type = SIMBRICKS_PROTO_NET_D2N_MSG_SEND |
+      SIMBRICKS_PROTO_NET_D2N_OWN_NET;
 }
 
 void Runner::poll_h2d() {
@@ -320,20 +321,20 @@ void Runner::poll_h2d() {
 }
 
 void Runner::poll_n2d() {
-  volatile union cosim_eth_proto_n2d *msg =
+  volatile union SimbricksProtoNetN2D *msg =
       nicif_n2d_poll(&nsparams, main_time);
   uint8_t t;
 
   if (msg == NULL)
     return;
 
-  t = msg->dummy.own_type & COSIM_ETH_PROTO_N2D_MSG_MASK;
+  t = msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_MSG_MASK;
   switch (t) {
-    case COSIM_ETH_PROTO_N2D_MSG_RECV:
+    case SIMBRICKS_PROTO_NET_N2D_MSG_RECV:
       eth_recv(&msg->recv);
       break;
 
-    case COSIM_ETH_PROTO_N2D_MSG_SYNC:
+    case SIMBRICKS_PROTO_NET_N2D_MSG_SYNC:
       break;
 
     default:

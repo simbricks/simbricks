@@ -81,33 +81,35 @@ static void sigint_handler(int dummy) {
   exiting = 1;
 }
 
-static void forward_pkt(volatile struct cosim_eth_proto_d2n_send *tx,
+static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
                         int port) {
-  volatile union cosim_eth_proto_n2d *msg_to;
+  volatile union SimbricksProtoNetN2D *msg_to;
   msg_to = netsim_n2d_alloc(&nsifs[port], cur_ts, eth_latency);
   if (msg_to != NULL) {
-    volatile struct cosim_eth_proto_n2d_recv *rx;
+    volatile struct SimbricksProtoNetN2DRecv *rx;
     rx = &msg_to->recv;
     rx->len = tx->len;
     rx->port = 0;
     memcpy((void *)rx->data, (void *)tx->data, tx->len);
 
     // WMB();
-    rx->own_type = COSIM_ETH_PROTO_N2D_MSG_RECV | COSIM_ETH_PROTO_N2D_OWN_DEV;
+    rx->own_type = SIMBRICKS_PROTO_NET_N2D_MSG_RECV |
+        SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
   } else {
     fprintf(stderr, "forward_pkt: dropping packet\n");
   }
 }
 
 static void switch_pkt(struct netsim_interface *nsif, int iport) {
-  volatile union cosim_eth_proto_d2n *msg_from = netsim_d2n_poll(nsif, cur_ts);
+  volatile union SimbricksProtoNetD2N *msg_from =
+      netsim_d2n_poll(nsif, cur_ts);
   if (msg_from == NULL) {
     return;
   }
 
-  uint8_t type = msg_from->dummy.own_type & COSIM_ETH_PROTO_D2N_MSG_MASK;
-  if (type == COSIM_ETH_PROTO_D2N_MSG_SEND) {
-    volatile struct cosim_eth_proto_d2n_send *tx;
+  uint8_t type = msg_from->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK;
+  if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SEND) {
+    volatile struct SimbricksProtoNetD2NSend *tx;
     tx = &msg_from->send;
     // Get MAC addresses
     MAC dst(tx->data), src(tx->data + 6);
@@ -128,7 +130,7 @@ static void switch_pkt(struct netsim_interface *nsif, int iport) {
         }
       }
     }
-  } else if (type == COSIM_ETH_PROTO_D2N_MSG_SYNC) {
+  } else if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SYNC) {
   } else {
     fprintf(stderr, "switch_pkt: unsupported type=%u\n", type);
     abort();
