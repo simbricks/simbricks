@@ -30,7 +30,7 @@
 
 #include <simbricks/proto/network.h>
 
-struct netsim_interface {
+struct SimbricksNetIf {
   uint8_t *d2n_queue;
   size_t d2n_pos;
   size_t d2n_elen;
@@ -46,25 +46,25 @@ struct netsim_interface {
   int sync;
 };
 
-int netsim_init(struct netsim_interface *nsif, const char *eth_socket_path,
+int SimbricksNetIfInit(struct SimbricksNetIf *nsif, const char *eth_socket_path,
                 int *sync_eth);
-void netsim_cleanup(struct netsim_interface *nsif);
+void SimbricksNetIfCleanup(struct SimbricksNetIf *nsif);
 
-volatile union SimbricksProtoNetD2N *netsim_d2n_poll(
-    struct netsim_interface *nsif, uint64_t timestamp);
-void netsim_d2n_done(struct netsim_interface *nsif,
+volatile union SimbricksProtoNetD2N *SimbricksNetIfD2NPoll(
+    struct SimbricksNetIf *nsif, uint64_t timestamp);
+void SimbricksNetIfD2NDone(struct SimbricksNetIf *nsif,
                      volatile union SimbricksProtoNetD2N *msg);
-static inline uint64_t netsim_d2n_timestamp(struct netsim_interface *nsif) {
+static inline uint64_t SimbricksNetIfD2NTimestamp(struct SimbricksNetIf *nsif) {
   return nsif->d2n_timestamp;
 }
 
-volatile union SimbricksProtoNetN2D *netsim_n2d_alloc(
-    struct netsim_interface *nsif, uint64_t timestamp, uint64_t latency);
-int netsim_n2d_sync(struct netsim_interface *nsif, uint64_t timestamp,
+volatile union SimbricksProtoNetN2D *SimbricksNetIfN2DAlloc(
+    struct SimbricksNetIf *nsif, uint64_t timestamp, uint64_t latency);
+int SimbricksNetIfN2DSync(struct SimbricksNetIf *nsif, uint64_t timestamp,
                     uint64_t latency, uint64_t sync_delay, int sync_mode);
-void netsim_advance_epoch(uint64_t timestamp, uint64_t sync_delay,
+void SimbricksNetIfAdvanceEpoch(uint64_t timestamp, uint64_t sync_delay,
                           int sync_mode);
-uint64_t netsim_advance_time(uint64_t timestamp, uint64_t sync_delay,
+uint64_t SimbricksNetIfAdvanceTime(uint64_t timestamp, uint64_t sync_delay,
                              int sync_mode);
 
 #endif  // SIMBRICKS_NETIF_NETSIM_H_

@@ -53,10 +53,10 @@ static void sigusr1_handler(int dummy) {
   fprintf(stderr, "main_time = %lu\n", cur_ts);
 }
 
-static void move_pkt(struct netsim_interface *from,
-                     struct netsim_interface *to) {
+static void move_pkt(struct SimbricksNetIf *from,
+                     struct SimbricksNetIf *to) {
   volatile union SimbricksProtoNetD2N *msg_from =
-      netsim_d2n_poll(from, cur_ts);
+      SimbricksNetIfD2NPoll(from, cur_ts);
   volatile union SimbricksProtoNetN2D *msg_to;
   volatile struct SimbricksProtoNetD2NSend *tx;
   volatile struct SimbricksProtoNetN2DRecv *rx;
@@ -80,7 +80,7 @@ static void move_pkt(struct netsim_interface *from,
       pcap_dump((unsigned char *)dumpfile, &ph, (unsigned char *)tx->data);
     }
 
-    msg_to = netsim_n2d_alloc(to, cur_ts, eth_latency);
+    msg_to = SimbricksNetIfN2DAlloc(to, cur_ts, eth_latency);
     if (msg_to != NULL) {
       rx = &msg_to->recv;
       rx->len = tx->len;
@@ -99,11 +99,11 @@ static void move_pkt(struct netsim_interface *from,
     abort();
   }
 
-  netsim_d2n_done(from, msg_from);
+  SimbricksNetIfD2NDone(from, msg_from);
 }
 
 int main(int argc, char *argv[]) {
-  struct netsim_interface nsif_a, nsif_b;
+  struct SimbricksNetIf nsif_a, nsif_b;
   uint64_t ts_a, ts_b;
   int sync_a, sync_b;
   pcap_t *pc = NULL;
@@ -144,42 +144,42 @@ int main(int argc, char *argv[]) {
       sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
 
   sync_a = sync_b = 1;
-  if (netsim_init(&nsif_a, argv[1], &sync_a) != 0) {
+  if (SimbricksNetIfInit(&nsif_a, argv[1], &sync_a) != 0) {
     return -1;
   }
-  if (netsim_init(&nsif_b, argv[2], &sync_b) != 0) {
+  if (SimbricksNetIfInit(&nsif_b, argv[2], &sync_b) != 0) {
     return -1;
   }
 
   printf("start polling\n");
   while (!exiting) {
-    if (netsim_n2d_sync(&nsif_a, cur_ts, eth_latency, sync_period, sync_mode) !=
-        0) {
-      fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
+    if (SimbricksNetIfN2DSync(&nsif_a, cur_ts, eth_latency, sync_period,
+        sync_mode) != 0) {
+      fprintf(stderr, "SimbricksNetIfN2DSync(nsif_a) failed\n");
       abort();
     }
-    if (netsim_n2d_sync(&nsif_b, cur_ts, eth_latency, sync_period, sync_mode) !=
-        0) {
-      fprintf(stderr, "netsim_n2d_sync(nsif_a) failed\n");
+    if (SimbricksNetIfN2DSync(&nsif_b, cur_ts, eth_latency, sync_period,
+        sync_mode) != 0) {
+      fprintf(stderr, "SimbricksNetIfN2DSync(nsif_a) failed\n");
       abort();
     }
-    netsim_advance_epoch(cur_ts, sync_period, sync_mode);
+    SimbricksNetIfAdvanceEpoch(cur_ts, sync_period, sync_mode);
 
     do {
       move_pkt(&nsif_a, &nsif_b);
       move_pkt(&nsif_b, &nsif_a);
-      ts_a = netsim_d2n_timestamp(&nsif_a);
-      ts_b = netsim_d2n_timestamp(&nsif_b);
+      ts_a = SimbricksNetIfD2NTimestamp(&nsif_a);
+      ts_b = SimbricksNetIfD2NTimestamp(&nsif_b);
     } while (!exiting &&
              ((sync_a && ts_a <= cur_ts) || (sync_b && ts_b <= cur_ts)));
 
     if (sync_a && sync_b)
-      cur_ts = netsim_advance_time(ts_a <= ts_b ? ts_a : ts_b, sync_period,
-                                   sync_mode);
+      cur_ts = SimbricksNetIfAdvanceTime(ts_a <= ts_b ? ts_a : ts_b,
+                                   sync_period, sync_mode);
     else if (sync_a)
-      cur_ts = netsim_advance_time(ts_a, sync_period, sync_mode);
+      cur_ts = SimbricksNetIfAdvanceTime(ts_a, sync_period, sync_mode);
     else if (sync_b)
-      cur_ts = netsim_advance_time(ts_b, sync_period, sync_mode);
+      cur_ts = SimbricksNetIfAdvanceTime(ts_b, sync_period, sync_mode);
   }
 
   if (dumpfile)

@@ -22,14 +22,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <simbricks/nicif/nicsim.h>
+
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#include <simbricks/nicif/nicsim.h>
 
 #include "lib/simbricks/nicif/internal.h"
 #include <simbricks/proto/base.h>

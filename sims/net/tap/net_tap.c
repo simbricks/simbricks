@@ -37,7 +37,7 @@
 
 // #define DEBUG_PKTMETA
 
-static struct netsim_interface nsif;
+static struct SimbricksNetIf nsif;
 static int tap_fd;
 
 static int tap_open(const char *name) {
@@ -73,7 +73,7 @@ static void d2n_send(volatile struct SimbricksProtoNetD2NSend *s) {
 }
 
 static void poll_d2n(void) {
-  volatile union SimbricksProtoNetD2N *msg = netsim_d2n_poll(&nsif, 0);
+  volatile union SimbricksProtoNetD2N *msg = SimbricksNetIfD2NPoll(&nsif, 0);
   uint8_t type;
 
   /* message not ready */
@@ -90,7 +90,7 @@ static void poll_d2n(void) {
       fprintf(stderr, "poll_d2n: unsupported type=%u\n", type);
   }
 
-  netsim_d2n_done(&nsif, msg);
+  SimbricksNetIfD2NDone(&nsif, msg);
 }
 
 static void *rx_handler(void *arg) {
@@ -99,7 +99,7 @@ static void *rx_handler(void *arg) {
   ssize_t len;
 
   while (1) {
-    msg = netsim_n2d_alloc(&nsif, 0, 0);
+    msg = SimbricksNetIfN2DAlloc(&nsif, 0, 0);
     if (msg == NULL) {
       fprintf(stderr, "coudl not allocate message for rx\n");
       abort();
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
   }
 
   sync = 0;
-  if (netsim_init(&nsif, argv[2], &sync) != 0) {
+  if (SimbricksNetIfInit(&nsif, argv[2], &sync) != 0) {
     close(tap_fd);
     return -1;
   }

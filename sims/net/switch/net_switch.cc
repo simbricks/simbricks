@@ -75,7 +75,7 @@ static uint64_t cur_ts = 0;
 static int exiting = 0;
 static const volatile uint8_t bcast[6] = {0xFF};
 static const MAC bcast_addr(bcast);
-static std::vector<struct netsim_interface> nsifs;
+static std::vector<struct SimbricksNetIf> nsifs;
 static std::unordered_map<MAC, int> mac_table;
 
 static void sigint_handler(int dummy) {
@@ -85,7 +85,7 @@ static void sigint_handler(int dummy) {
 static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
                         int port) {
   volatile union SimbricksProtoNetN2D *msg_to;
-  msg_to = netsim_n2d_alloc(&nsifs[port], cur_ts, eth_latency);
+  msg_to = SimbricksNetIfN2DAlloc(&nsifs[port], cur_ts, eth_latency);
   if (msg_to != NULL) {
     volatile struct SimbricksProtoNetN2DRecv *rx;
     rx = &msg_to->recv;
@@ -101,9 +101,9 @@ static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
   }
 }
 
-static void switch_pkt(struct netsim_interface *nsif, int iport) {
+static void switch_pkt(struct SimbricksNetIf *nsif, int iport) {
   volatile union SimbricksProtoNetD2N *msg_from =
-      netsim_d2n_poll(nsif, cur_ts);
+      SimbricksNetIfD2NPoll(nsif, cur_ts);
   if (msg_from == NULL) {
     return;
   }
@@ -136,7 +136,7 @@ static void switch_pkt(struct netsim_interface *nsif, int iport) {
     fprintf(stderr, "switch_pkt: unsupported type=%u\n", type);
     abort();
   }
-  netsim_d2n_done(nsif, msg_from);
+  SimbricksNetIfD2NDone(nsif, msg_from);
 }
 
 int main(int argc, char *argv[]) {
@@ -148,9 +148,9 @@ int main(int argc, char *argv[]) {
   while ((c = getopt(argc, argv, "s:S:E:m:")) != -1 && !bad_option) {
     switch (c) {
       case 's': {
-        struct netsim_interface nsif;
+        struct SimbricksNetIf nsif;
         int sync = 1;
-        if (netsim_init(&nsif, optarg, &sync) != 0) {
+        if (SimbricksNetIfInit(&nsif, optarg, &sync) != 0) {
           fprintf(stderr, "connecting to %s failed\n", optarg);
           return EXIT_FAILURE;
         }
@@ -193,13 +193,13 @@ int main(int argc, char *argv[]) {
   while (!exiting) {
     // Sync all interfaces
     for (auto &nsif : nsifs) {
-      if (netsim_n2d_sync(&nsif, cur_ts, eth_latency, sync_period, sync_mode) !=
-          0) {
-        fprintf(stderr, "netsim_n2d_sync failed\n");
+      if (SimbricksNetIfN2DSync(&nsif, cur_ts, eth_latency, sync_period,
+          sync_mode) != 0) {
+        fprintf(stderr, "SimbricksNetIfN2DSync failed\n");
         abort();
       }
     }
-    netsim_advance_epoch(cur_ts, sync_period, sync_mode);
+    SimbricksNetIfAdvanceEpoch(cur_ts, sync_period, sync_mode);
 
     // Switch packets
     uint64_t min_ts;
@@ -209,7 +209,7 @@ int main(int argc, char *argv[]) {
         auto &nsif = nsifs.at(port);
         switch_pkt(&nsif, port);
         if (nsif.sync) {
-          uint64_t ts = netsim_d2n_timestamp(&nsif);
+          uint64_t ts = SimbricksNetIfD2NTimestamp(&nsif);
           min_ts = ts < min_ts ? ts : min_ts;
         }
       }
@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
 
     // Update cur_ts
     if (min_ts < ULLONG_MAX) {
-      cur_ts = netsim_advance_time(min_ts, sync_period, sync_mode);
+      cur_ts = SimbricksNetIfAdvanceTime(min_ts, sync_period, sync_mode);
     }
   }
 
