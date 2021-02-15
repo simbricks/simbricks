@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
   pcap_t *pc = NULL;
   int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
 
-  if (argc < 3 && argc > 7) {
+  if (argc < 3 || argc > 7) {
     fprintf(stderr,
             "Usage: net_wire SOCKET-A SOCKET-B [SYNC-MODE] "
             "[SYNC-PERIOD] [ETH-LATENCY] [PCAP-FILE]\n");

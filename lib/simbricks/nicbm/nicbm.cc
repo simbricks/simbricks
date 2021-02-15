@@ -400,7 +400,7 @@ int Runner::RunMain(int argc, char *argv[]) {
   uint64_t eth_latency = 500 * 1000ULL;
   int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
 
-  if (argc < 4 && argc > 9) {
+  if (argc < 4 || argc > 9) {
     fprintf(stderr,
             "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
             "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
