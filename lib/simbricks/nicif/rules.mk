@@ -22,11 +22,11 @@
 
 include mk/subdir_pre.mk
 
-lib_nicsim := $(d)libnicsim_common.a
+lib_nicif := $(d)libnicif_common.a
 
-OBJS := $(addprefix $(d),nicsim.o utils.o)
+OBJS := $(addprefix $(d),nicif.o utils.o)
 
-$(lib_nicsim): $(OBJS)
+$(lib_nicif): $(OBJS)
 
-CLEAN := $(lib_nicsim) $(OBJS)
+CLEAN := $(lib_nicif) $(OBJS)
 include mk/subdir_post.mk

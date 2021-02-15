@@ -44,10 +44,10 @@ $(verilator_src_corundum): $(vsrcs_corundum)
 	    -y $(dir_corundum)lib/axi/rtl \
 	    -y $(dir_corundum)lib/eth/lib/axis/rtl/ \
 	    -y $(dir_corundum)lib/pcie/rtl \
-	    $(dir_corundum)rtl/interface.v --exe $(abspath $(srcs_corundum)) $(abspath $(lib_nicsim))
+	    $(dir_corundum)rtl/interface.v --exe $(abspath $(srcs_corundum)) $(abspath $(lib_nicif))
 
 $(verilator_bin_corundum): $(verilator_src_corundum) $(srcs_corundum) \
-    $(lib_nicsim)
+    $(lib_nicif)
 	$(MAKE) -C $(verilator_dir_corundum) -f Vinterface.mk
 
 $(bin_corundum): $(verilator_bin_corundum)

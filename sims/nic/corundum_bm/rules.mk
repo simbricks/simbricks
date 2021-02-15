@@ -31,8 +31,8 @@ OBJS := $(objs_corundum_bm) $(objs_corundum_bm_tester)
 
 $(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
-$(bin_corundum_bm): $(objs_corundum_bm) $(lib_nicbm) $(lib_nicsim)
-$(bin_corundum_bm_tester): $(objs_corundum_bm_tester) $(lib_nicbm) $(lib_nicsim)
+$(bin_corundum_bm): $(objs_corundum_bm) $(lib_nicbm) $(lib_nicif)
+$(bin_corundum_bm_tester): $(objs_corundum_bm_tester) $(lib_nicbm) $(lib_nicif)
 
 CLEAN := $(bin_corundum_bm) $(bin_corundum_bm_tester) $(OBJS)
 ALL := $(bin_corundum_bm)

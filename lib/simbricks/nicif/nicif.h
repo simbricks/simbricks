@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_NICIF_NICSIM_H_
-#define SIMBRICKS_NICIF_NICSIM_H_
+#ifndef SIMBRICKS_NICIF_NICIF_H_
+#define SIMBRICKS_NICIF_NICIF_H_
 
 #include <simbricks/proto/network.h>
 #include <simbricks/proto/pcie.h>
@@ -69,4 +69,4 @@ void SimbricksNicIfN2DNext(void);
 volatile union SimbricksProtoNetD2N *SimbricksNicIfD2NAlloc(
     struct SimbricksNicIfParams *params, uint64_t timestamp);
 
-#endif  // SIMBRICKS_NICIF_NICSIM_H_
+#endif  // SIMBRICKS_NICIF_NICIF_H_

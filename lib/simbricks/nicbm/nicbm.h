@@ -31,7 +31,7 @@
 #include <set>
 
 extern "C" {
-#include <simbricks/nicif/nicsim.h>
+#include <simbricks/nicif/nicif.h>
 }
 
 namespace nicbm {

@@ -33,7 +33,7 @@
 #endif
 
 extern "C" {
-#include <simbricks/nicif/nicsim.h>
+#include <simbricks/nicif/nicif.h>
 #include <simbricks/proto/base.h>
 #include <simbricks/proto/pcie.h>
 }

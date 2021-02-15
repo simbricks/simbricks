@@ -33,7 +33,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <simbricks/nicif/nicsim.h>
+#include <simbricks/nicif/nicif.h>
 #include <simbricks/proto/pcie.h>
 
 static uint8_t *d2h_queue;
