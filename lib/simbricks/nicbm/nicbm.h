@@ -40,8 +40,7 @@ static const size_t kMaxDmaLen = 2048;
 
 class DMAOp {
  public:
-  virtual ~DMAOp() {
-  }
+  virtual ~DMAOp() = default;
   bool write_;
   uint64_t dma_addr_;
   size_t len_;
@@ -50,8 +49,7 @@ class DMAOp {
 
 class TimedEvent {
  public:
-  virtual ~TimedEvent() {
-  }
+  virtual ~TimedEvent() = default;
   uint64_t time_;
 };
 
@@ -104,7 +102,7 @@ class Runner {
     /**
      * A timed event is due.
      */
-    virtual void Timed(TimedEvent &ev);
+    virtual void Timed(TimedEvent &te);
 
     /**
      * Device control update
@@ -147,7 +145,7 @@ class Runner {
   void DmaTrigger();
 
  public:
-  Runner(Device &dev_);
+  explicit Runner(Device &dev_);
 
   /** Run the simulation */
   int RunMain(int argc, char *argv[]);
