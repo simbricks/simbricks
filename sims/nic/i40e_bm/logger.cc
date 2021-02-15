@@ -26,7 +26,7 @@
 
 #include "sims/nic/i40e_bm/i40e_bm.h"
 
-using namespace i40e;
+namespace i40e {
 
 extern nicbm::Runner *runner;
 
@@ -85,3 +85,4 @@ logger &logger::operator<<(void *ptr) {
   ss << ptr;
   return *this;
 }
+}  // namespace i40e

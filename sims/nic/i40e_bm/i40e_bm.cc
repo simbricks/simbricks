@@ -32,9 +32,9 @@
 
 #include "sims/nic/i40e_bm/i40e_base_wrapper.h"
 
-nicbm::Runner *runner;
-
 namespace i40e {
+
+nicbm::Runner *runner;
 
 i40e_bm::i40e_bm()
     : log("i40e"),
@@ -826,10 +826,8 @@ int_ev::int_ev() {
 
 }  // namespace i40e
 
-using namespace i40e;
-
 int main(int argc, char *argv[]) {
-  i40e_bm dev;
-  runner = new nicbm::Runner(dev);
-  return runner->RunMain(argc, argv);
+  i40e::i40e_bm dev;
+  i40e::runner = new nicbm::Runner(dev);
+  return i40e::runner->RunMain(argc, argv);
 }

@@ -33,7 +33,7 @@
 #include "sims/nic/i40e_bm/i40e_base_wrapper.h"
 #include "sims/nic/i40e_bm/i40e_bm.h"
 
-using namespace i40e;
+namespace i40e {
 
 extern nicbm::Runner *runner;
 
@@ -709,3 +709,4 @@ void lan_queue_tx::dma_hwb::done() {
   queue.trigger();
   delete this;
 }
+}  // namespace i40e

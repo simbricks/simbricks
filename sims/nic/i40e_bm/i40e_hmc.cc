@@ -31,7 +31,7 @@
 #include "sims/nic/i40e_bm/i40e_base_wrapper.h"
 #include "sims/nic/i40e_bm/i40e_bm.h"
 
-using namespace i40e;
+namespace i40e {
 
 extern nicbm::Runner *runner;
 
@@ -139,3 +139,4 @@ void host_mem_cache::issue_mem_op(mem_op &op) {
 #endif
   runner->IssueDma(op);
 }
+}  // namespace i40e
