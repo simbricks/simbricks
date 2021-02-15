@@ -36,7 +36,7 @@ logger::logger(const std::string &label_) : label(label_) {
 
 logger &logger::operator<<(char c) {
   if (c == endl) {
-    std::cerr << runner->time_ps() << " " << label << ": " << ss.str()
+    std::cerr << runner->TimePs() << " " << label << ": " << ss.str()
               << std::endl;
     ss.str(std::string());
     ss << std::hex;

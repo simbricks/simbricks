@@ -167,13 +167,13 @@ void lan_queue_base::enable() {
   enabling = true;
 
   qctx_fetch *qf = new qctx_fetch(*this);
-  qf->write = false;
-  qf->dma_addr = ((fpm_basereg & I40E_GLHMC_LANTXBASE_FPMLANTXBASE_MASK) >>
+  qf->write_ = false;
+  qf->dma_addr_ = ((fpm_basereg & I40E_GLHMC_LANTXBASE_FPMLANTXBASE_MASK) >>
                   I40E_GLHMC_LANTXBASE_FPMLANTXBASE_SHIFT) *
                  512;
-  qf->dma_addr += ctx_size * idx;
-  qf->len = ctx_size;
-  qf->data = ctx;
+  qf->dma_addr_ += ctx_size * idx;
+  qf->len_ = ctx_size;
+  qf->data_ = ctx;
 
   lanmgr.dev.hmc.issue_mem_op(*qf);
 }
@@ -233,7 +233,7 @@ void lan_queue_base::interrupt() {
 
   uint8_t itr =
       (qctl & I40E_QINT_TQCTL_ITR_INDX_MASK) >> I40E_QINT_TQCTL_ITR_INDX_SHIFT;
-  lanmgr.dev.signal_interrupt(msix_idx, itr);
+  lanmgr.dev.SignalInterrupt(msix_idx, itr);
 }
 
 lan_queue_base::qctx_fetch::qctx_fetch(lan_queue_base &lq_) : lq(lq_) {
@@ -427,12 +427,12 @@ void lan_queue_tx::do_writeback(uint32_t first_idx, uint32_t first_pos,
   } else {
     // else we just need to write the index back
     dma_hwb *dma = new dma_hwb(*this, first_pos, cnt, (first_idx + cnt) % len);
-    dma->dma_addr = hwb_addr;
+    dma->dma_addr_ = hwb_addr;
 
 #ifdef DEBUG_LAN
     log << " hwb=" << *((uint32_t *)dma->data) << logger::endl;
 #endif
-    runner->issue_dma(*dma);
+    runner->IssueDma(*dma);
   }
 }
 
@@ -593,7 +593,7 @@ bool lan_queue_tx::trigger_tx_packet() {
       xsum_tcp(pktbuf + tcp_off, tso_len - tcp_off);
     }
 
-    runner->eth_send(pktbuf, tso_len);
+    runner->EthSend(pktbuf, tso_len);
   } else {
 #ifdef DEBUG_LAN
     log << "    tso packet off=" << tso_off << " len=" << tso_len
@@ -610,7 +610,7 @@ bool lan_queue_tx::trigger_tx_packet() {
 
     xsum_tcpip_tso(pktbuf + maclen, iplen, l4len, tso_paylen);
 
-    runner->eth_send(pktbuf, tso_len);
+    runner->EthSend(pktbuf, tso_len);
 
     tso_postupdate_header(pktbuf + maclen, iplen, l4len, tso_paylen);
 
@@ -693,9 +693,9 @@ void lan_queue_tx::tx_desc_ctx::processed() {
 lan_queue_tx::dma_hwb::dma_hwb(lan_queue_tx &queue_, uint32_t pos_,
                                uint32_t cnt_, uint32_t nh_)
     : queue(queue_), pos(pos_), cnt(cnt_), next_head(nh_) {
-  data = &next_head;
-  len = 4;
-  write = true;
+  data_ = &next_head;
+  len_ = 4;
+  write_ = true;
 }
 
 lan_queue_tx::dma_hwb::~dma_hwb() {

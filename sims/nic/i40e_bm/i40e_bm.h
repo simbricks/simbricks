@@ -583,17 +583,17 @@ class i40e_bm : public nicbm::Runner::Device {
   i40e_bm();
   ~i40e_bm();
 
-  virtual void setup_intro(struct SimbricksProtoPcieDevIntro &di);
-  virtual void reg_read(uint8_t bar, uint64_t addr, void *dest, size_t len);
-  virtual uint32_t reg_read32(uint8_t bar, uint64_t addr);
-  virtual void reg_write(uint8_t bar, uint64_t addr, const void *src,
-                         size_t len);
-  virtual void reg_write32(uint8_t bar, uint64_t addr, uint32_t val);
-  virtual void dma_complete(nicbm::DMAOp &op);
-  virtual void eth_rx(uint8_t port, const void *data, size_t len);
-  virtual void timed_event(nicbm::TimedEvent &ev);
+  void SetupIntro(struct SimbricksProtoPcieDevIntro &di) override;
+  void RegRead(uint8_t bar, uint64_t addr, void *dest, size_t len) override;
+  virtual uint32_t RegRead32(uint8_t bar, uint64_t addr);
+  void RegWrite(uint8_t bar, uint64_t addr, const void *src, size_t len)
+      override;
+  virtual void RegWrite32(uint8_t bar, uint64_t addr, uint32_t val);
+  void DmaComplete(nicbm::DMAOp &op) override;
+  void EthRx(uint8_t port, const void *data, size_t len) override;
+  void Timed(nicbm::TimedEvent &ev) override;
 
-  void signal_interrupt(uint16_t vector, uint8_t itr);
+  virtual void SignalInterrupt(uint16_t vector, uint8_t itr);
 
  protected:
   logger log;

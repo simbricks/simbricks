@@ -152,11 +152,11 @@ EventRing::~EventRing() {
 }
 
 void EventRing::dmaDone(DMAOp *op) {
-  assert(op->write);
+  assert(op->write_);
   switch (op->type) {
     case DMA_TYPE_EVENT:
       if (updatePtr((ptr_t)op->tag, true)) {
-        runner->msi_issue(0);
+        runner->MsiIssue(0);
       }
       delete op;
       break;
@@ -178,16 +178,16 @@ void EventRing::issueEvent(unsigned type, unsigned source) {
     /* Issue DMA write */
     DMAOp *op = new DMAOp;
     op->type = DMA_TYPE_EVENT;
-    op->dma_addr = dma_addr;
-    op->len = EVENT_SIZE;
+    op->dma_addr_ = dma_addr;
+    op->len_ = EVENT_SIZE;
     op->ring = this;
     op->tag = this->_currHead;
-    op->write = true;
-    Event *event = (Event *)op->data;
+    op->write_ = true;
+    Event *event = (Event *)op->data_;
     memset(event, 0, sizeof(Event));
     event->type = type;
     event->source = source;
-    runner->issue_dma(*op);
+    runner->IssueDma(*op);
     this->_currHead++;
     this->armed = false;
   }
@@ -200,7 +200,7 @@ CplRing::~CplRing() {
 }
 
 void CplRing::dmaDone(DMAOp *op) {
-  assert(op->write);
+  assert(op->write_);
   switch (op->type) {
     case DMA_TYPE_TX_CPL:
     case DMA_TYPE_RX_CPL: {
@@ -231,17 +231,17 @@ void CplRing::complete(unsigned index, size_t len, bool tx) {
     /* Issue DMA write */
     DMAOp *op = new DMAOp;
     op->type = data.tx ? DMA_TYPE_TX_CPL : DMA_TYPE_RX_CPL;
-    op->dma_addr = dma_addr;
-    op->len = CPL_SIZE;
+    op->dma_addr_ = dma_addr;
+    op->len_ = CPL_SIZE;
     op->ring = this;
     op->tag = this->_currHead;
-    op->write = true;
-    Cpl *cpl = (Cpl *)op->data;
+    op->write_ = true;
+    Cpl *cpl = (Cpl *)op->data_;
     memset(cpl, 0, sizeof(Cpl));
     cpl->index = data.index;
     cpl->len = data.len;
     this->pending.pop_front();
-    runner->issue_dma(*op);
+    runner->IssueDma(*op);
     this->_currHead++;
   }
 }
@@ -260,12 +260,12 @@ void TxRing::setHeadPtr(ptr_t ptr) {
     /* Issue DMA read */
     DMAOp *op = new DMAOp;
     op->type = DMA_TYPE_DESC;
-    op->dma_addr = dma_addr;
-    op->len = DESC_SIZE;
+    op->dma_addr_ = dma_addr;
+    op->len_ = DESC_SIZE;
     op->ring = this;
     op->tag = this->_currTail;
-    op->write = false;
-    runner->issue_dma(*op);
+    op->write_ = false;
+    runner->IssueDma(*op);
     this->_currTail++;
   }
 }
@@ -273,20 +273,20 @@ void TxRing::setHeadPtr(ptr_t ptr) {
 void TxRing::dmaDone(DMAOp *op) {
   switch (op->type) {
     case DMA_TYPE_DESC: {
-      assert(!op->write);
-      Desc *desc = (Desc *)op->data;
+      assert(!op->write_);
+      Desc *desc = (Desc *)op->data_;
       op->type = DMA_TYPE_MEM;
-      op->dma_addr = desc->addr;
-      op->len = desc->len;
-      op->write = false;
-      runner->issue_dma(*op);
+      op->dma_addr_ = desc->addr;
+      op->len_ = desc->len;
+      op->write_ = false;
+      runner->IssueDma(*op);
       break;
     }
     case DMA_TYPE_MEM:
-      assert(!op->write);
-      runner->eth_send(op->data, op->len);
+      assert(!op->write_);
+      runner->EthSend(op->data_, op->len_);
       updatePtr((ptr_t)op->tag, false);
-      this->txCplRing->complete(op->tag, op->len, true);
+      this->txCplRing->complete(op->tag, op->len_, true);
       delete op;
       break;
     default:
@@ -304,21 +304,21 @@ RxRing::~RxRing() {
 void RxRing::dmaDone(DMAOp *op) {
   switch (op->type) {
     case DMA_TYPE_DESC: {
-      assert(!op->write);
-      Desc *desc = (Desc *)op->data;
+      assert(!op->write_);
+      Desc *desc = (Desc *)op->data_;
       op->type = DMA_TYPE_MEM;
-      op->dma_addr = desc->addr;
-      op->len = op->rx_data->len;
-      memcpy((void *)op->data, (void *)op->rx_data->data, op->len);
+      op->dma_addr_ = desc->addr;
+      op->len_ = op->rx_data->len;
+      memcpy((void *)op->data_, (void *)op->rx_data->data, op->len_);
       delete op->rx_data;
-      op->write = true;
-      runner->issue_dma(*op);
+      op->write_ = true;
+      runner->IssueDma(*op);
       break;
     }
     case DMA_TYPE_MEM:
-      assert(op->write);
+      assert(op->write_);
       updatePtr((ptr_t)op->tag, false);
-      this->rxCplRing->complete(op->tag, op->len, false);
+      this->rxCplRing->complete(op->tag, op->len_, false);
       delete op;
       break;
     default:
@@ -337,13 +337,13 @@ void RxRing::rx(RxData *rx_data) {
   /* Issue DMA read */
   DMAOp *op = new DMAOp;
   op->type = DMA_TYPE_DESC;
-  op->dma_addr = dma_addr;
-  op->len = DESC_SIZE;
+  op->dma_addr_ = dma_addr;
+  op->len_ = DESC_SIZE;
   op->ring = this;
   op->rx_data = rx_data;
   op->tag = this->_currTail;
-  op->write = false;
-  runner->issue_dma(*op);
+  op->write_ = false;
+  runner->IssueDma(*op);
   this->_currTail++;
 }
 
@@ -465,7 +465,7 @@ Corundum::Corundum()
 Corundum::~Corundum() {
 }
 
-reg_t Corundum::reg_read(uint8_t bar, addr_t addr) {
+reg_t Corundum::RegRead(uint8_t bar, addr_t addr) {
   switch (addr) {
     case REG_FW_ID:
       return 32;
@@ -555,7 +555,7 @@ reg_t Corundum::reg_read(uint8_t bar, addr_t addr) {
   }
 }
 
-void Corundum::reg_write(uint8_t bar, uint64_t addr, reg_t val) {
+void Corundum::RegWrite(uint8_t bar, uint64_t addr, reg_t val) {
   switch (addr) {
     case REG_FW_ID:
     case REG_FW_VER:
@@ -686,7 +686,7 @@ void Corundum::reg_write(uint8_t bar, uint64_t addr, reg_t val) {
   }
 }
 
-void Corundum::setup_intro(struct SimbricksProtoPcieDevIntro &di) {
+void Corundum::SetupIntro(struct SimbricksProtoPcieDevIntro &di) {
   di.bars[0].len = 1 << 24;
   di.bars[0].flags = SIMBRICKS_PROTO_PCIE_BAR_64;
   di.pci_vendor_id = 0x5543;
@@ -697,12 +697,12 @@ void Corundum::setup_intro(struct SimbricksProtoPcieDevIntro &di) {
   di.pci_msi_nvecs = 32;
 }
 
-void Corundum::dma_complete(nicbm::DMAOp &op) {
+void Corundum::DmaComplete(nicbm::DMAOp &op) {
   DMAOp *op_ = reinterpret_cast<DMAOp *>(&op);
   op_->ring->dmaDone(op_);
 }
 
-void Corundum::eth_rx(uint8_t port, const void *data, size_t len) {
+void Corundum::EthRx(uint8_t port, const void *data, size_t len) {
   RxData *rx_data = new RxData;
   memcpy((void *)rx_data->data, data, len);
   rx_data->len = len;
@@ -714,5 +714,5 @@ void Corundum::eth_rx(uint8_t port, const void *data, size_t len) {
 int main(int argc, char *argv[]) {
   corundum::Corundum dev;
   runner = new nicbm::Runner(dev);
-  return runner->runMain(argc, argv);
+  return runner->RunMain(argc, argv);
 }

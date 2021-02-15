@@ -178,7 +178,7 @@ struct RxData {
 
 struct DMAOp : public nicbm::DMAOp {
   DMAOp() {
-    data = databuf;
+    data_ = databuf;
   }
 
   uint8_t type;
@@ -323,11 +323,11 @@ class Corundum : public nicbm::SimpleDevice<reg_t> {
   Corundum();
   ~Corundum();
 
-  virtual void setup_intro(struct SimbricksProtoPcieDevIntro &di);
-  virtual reg_t reg_read(uint8_t bar, addr_t addr);
-  virtual void reg_write(uint8_t bar, addr_t addr, reg_t val);
-  virtual void dma_complete(nicbm::DMAOp &op);
-  virtual void eth_rx(uint8_t port, const void *data, size_t len);
+  void SetupIntro(struct SimbricksProtoPcieDevIntro &di) override;
+  reg_t RegRead(uint8_t bar, addr_t addr) override;
+  void RegWrite(uint8_t bar, addr_t addr, reg_t val) override;
+  void DmaComplete(nicbm::DMAOp &op) override;
+  void EthRx(uint8_t port, const void *data, size_t len) override;
 
  private:
   EventRing eventRing;

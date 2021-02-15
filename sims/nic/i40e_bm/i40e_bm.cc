@@ -48,7 +48,7 @@ i40e_bm::i40e_bm()
 i40e_bm::~i40e_bm() {
 }
 
-void i40e_bm::setup_intro(struct SimbricksProtoPcieDevIntro &di) {
+void i40e_bm::SetupIntro(struct SimbricksProtoPcieDevIntro &di) {
   di.bars[BAR_REGS].len = 4 * 1024 * 1024;
   di.bars[BAR_REGS].flags = SIMBRICKS_PROTO_PCIE_BAR_64;
   di.bars[BAR_IO].len = 32;
@@ -72,7 +72,7 @@ void i40e_bm::setup_intro(struct SimbricksProtoPcieDevIntro &di) {
   di.psi_msix_cap_offset = 0x70;
 }
 
-void i40e_bm::dma_complete(nicbm::DMAOp &op) {
+void i40e_bm::DmaComplete(nicbm::DMAOp &op) {
   dma_base &dma = dynamic_cast<dma_base &>(op);
 #ifdef DEBUG_DEV
   log << "dma_complete(" << &op << ")" << logger::endl;
@@ -80,21 +80,21 @@ void i40e_bm::dma_complete(nicbm::DMAOp &op) {
   dma.done();
 }
 
-void i40e_bm::eth_rx(uint8_t port, const void *data, size_t len) {
+void i40e_bm::EthRx(uint8_t port, const void *data, size_t len) {
 #ifdef DEBUG_DEV
   log << "i40e: received packet len=" << len << logger::endl;
 #endif
   lanmgr.packet_received(data, len);
 }
 
-void i40e_bm::reg_read(uint8_t bar, uint64_t addr, void *dest, size_t len) {
+void i40e_bm::RegRead(uint8_t bar, uint64_t addr, void *dest, size_t len) {
   uint32_t *dest_p = reinterpret_cast<uint32_t *>(dest);
 
   if (len == 4) {
-    dest_p[0] = reg_read32(bar, addr);
+    dest_p[0] = RegRead32(bar, addr);
   } else if (len == 8) {
-    dest_p[0] = reg_read32(bar, addr);
-    dest_p[1] = reg_read32(bar, addr + 4);
+    dest_p[0] = RegRead32(bar, addr);
+    dest_p[1] = RegRead32(bar, addr + 4);
   } else {
     log << "currently we only support 4/8B reads (got " << len << ")"
         << logger::endl;
@@ -102,7 +102,7 @@ void i40e_bm::reg_read(uint8_t bar, uint64_t addr, void *dest, size_t len) {
   }
 }
 
-uint32_t i40e_bm::reg_read32(uint8_t bar, uint64_t addr) {
+uint32_t i40e_bm::RegRead32(uint8_t bar, uint64_t addr) {
   if (bar == BAR_REGS) {
     return reg_mem_read32(addr);
   } else if (bar == BAR_IO) {
@@ -113,15 +113,15 @@ uint32_t i40e_bm::reg_read32(uint8_t bar, uint64_t addr) {
   }
 }
 
-void i40e_bm::reg_write(uint8_t bar, uint64_t addr, const void *src,
+void i40e_bm::RegWrite(uint8_t bar, uint64_t addr, const void *src,
                         size_t len) {
   const uint32_t *src_p = reinterpret_cast<const uint32_t *>(src);
 
   if (len == 4) {
-    reg_write32(bar, addr, src_p[0]);
+    RegWrite32(bar, addr, src_p[0]);
   } else if (len == 8) {
-    reg_write32(bar, addr, src_p[0]);
-    reg_write32(bar, addr + 4, src_p[1]);
+    RegWrite32(bar, addr, src_p[0]);
+    RegWrite32(bar, addr + 4, src_p[1]);
   } else {
     log << "currently we only support 4/8B writes (got " << len << ")"
         << logger::endl;
@@ -129,7 +129,7 @@ void i40e_bm::reg_write(uint8_t bar, uint64_t addr, const void *src,
   }
 }
 
-void i40e_bm::reg_write32(uint8_t bar, uint64_t addr, uint32_t val) {
+void i40e_bm::RegWrite32(uint8_t bar, uint64_t addr, uint32_t val) {
   if (bar == BAR_REGS) {
     reg_mem_write32(addr, val);
   } else if (bar == BAR_IO) {
@@ -246,7 +246,7 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr) {
         break;
 
       case I40E_GLVFGEN_TIMER:
-        val = runner->time_ps() / 1000000;
+        val = runner->TimePs() / 1000000;
         break;
 
       case I40E_PFINT_LNKLST0:
@@ -651,7 +651,7 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val) {
   }
 }
 
-void i40e_bm::timed_event(nicbm::TimedEvent &ev) {
+void i40e_bm::Timed(nicbm::TimedEvent &ev) {
   int_ev &iev = *((int_ev *)&ev);
 #ifdef DEBUG_DEV
   log << "timed_event: triggering interrupt (" << iev.vec << ")"
@@ -659,17 +659,17 @@ void i40e_bm::timed_event(nicbm::TimedEvent &ev) {
 #endif
   iev.armed = false;
 
-  if (int_msix_en) {
-    runner->msix_issue(iev.vec);
+  if (int_msix_en_) {
+    runner->MsiXIssue(iev.vec);
   } else if (iev.vec > 0) {
     log << "timed_event: MSI-X disabled, but vec != 0" << logger::endl;
     abort();
   } else {
-    runner->msi_issue(0);
+    runner->MsiIssue(0);
   }
 }
 
-void i40e_bm::signal_interrupt(uint16_t vec, uint8_t itr) {
+void i40e_bm::SignalInterrupt(uint16_t vec, uint8_t itr) {
   int_ev &iev = intevs[vec];
 
   uint64_t mindelay;
@@ -688,9 +688,9 @@ void i40e_bm::signal_interrupt(uint16_t vec, uint8_t itr) {
     abort();
   }
 
-  uint64_t curtime = runner->time_ps();
+  uint64_t curtime = runner->TimePs();
   uint64_t newtime = curtime + mindelay;
-  if (iev.armed && iev.time <= newtime) {
+  if (iev.armed && iev.time_ <= newtime) {
     // already armed and this is not scheduled sooner
 #ifdef DEBUG_DEV
     log << "signal_interrupt: vec " << vec << " already scheduled"
@@ -699,18 +699,18 @@ void i40e_bm::signal_interrupt(uint16_t vec, uint8_t itr) {
     return;
   } else if (iev.armed) {
     // need to reschedule
-    runner->event_cancel(iev);
+    runner->EventCancel(iev);
   }
 
   iev.armed = true;
-  iev.time = newtime;
+  iev.time_ = newtime;
 
 #ifdef DEBUG_DEV
   log << "signal_interrupt: scheduled vec " << vec << " for time=" << newtime
       << " (itr " << itr << ")" << logger::endl;
 #endif
 
-  runner->event_schedule(iev);
+  runner->EventSchedule(iev);
 }
 
 void i40e_bm::reset(bool indicate_done) {
@@ -729,10 +729,10 @@ void i40e_bm::reset(bool indicate_done) {
   for (uint16_t i = 0; i < NUM_PFINTS; i++) {
     intevs[i].vec = i;
     if (intevs[i].armed) {
-      runner->event_cancel(intevs[i]);
+      runner->EventCancel(intevs[i]);
       intevs[i].armed = false;
     }
-    intevs[i].time = 0;
+    intevs[i].time_ = 0;
   }
 
   // add default hash key
@@ -821,7 +821,7 @@ void shadow_ram::write(uint16_t addr, uint16_t val) {
 
 int_ev::int_ev() {
   armed = false;
-  time = 0;
+  time_ = 0;
 }
 
 }  // namespace i40e
@@ -831,5 +831,5 @@ using namespace i40e;
 int main(int argc, char *argv[]) {
   i40e_bm dev;
   runner = new nicbm::Runner(dev);
-  return runner->runMain(argc, argv);
+  return runner->RunMain(argc, argv);
 }

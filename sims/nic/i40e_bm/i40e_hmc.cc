@@ -100,9 +100,9 @@ void host_mem_cache::reg_updated(uint64_t addr) {
 }
 
 void host_mem_cache::issue_mem_op(mem_op &op) {
-  uint64_t addr = op.dma_addr;
+  uint64_t addr = op.dma_addr_;
   uint16_t seg_idx = addr >> 21;
-  uint16_t seg_idx_last = (addr + op.len - 1) >> 21;
+  uint16_t seg_idx_last = (addr + op.len_ - 1) >> 21;
   uint32_t dir_off = addr & ((1 << 21) - 1);
   struct segment *seg = &segs[seg_idx];
 
@@ -121,7 +121,7 @@ void host_mem_cache::issue_mem_op(mem_op &op) {
 
   if (seg_idx != seg_idx_last) {
     std::cerr << "hmc issue_mem_op: operation crosses segs addr=" << addr
-              << " len=" << op.len << std::endl;
+              << " len=" << op.len_ << std::endl;
     abort();
   }
 
@@ -131,11 +131,11 @@ void host_mem_cache::issue_mem_op(mem_op &op) {
   }
 
   op.failed = false;
-  op.dma_addr = seg->addr + dir_off;
+  op.dma_addr_ = seg->addr + dir_off;
 
 #ifdef DEBUG_HMC
   std::cerr << "hmc issue_mem_op: hmc_addr=" << addr
             << " dma_addr=" << op.dma_addr << " len=" << op.len << std::endl;
 #endif
-  runner->issue_dma(op);
+  runner->IssueDma(op);
 }

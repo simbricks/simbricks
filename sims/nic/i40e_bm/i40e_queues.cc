@@ -98,13 +98,13 @@ void queue_base::trigger_fetch() {
 
   // prepare & issue dma
   dma_fetch *dma = new dma_fetch(*this, desc_len * fetch_cnt);
-  dma->write = false;
-  dma->dma_addr = base + next_idx * desc_len;
+  dma->write_ = false;
+  dma->dma_addr_ = base + next_idx * desc_len;
   dma->pos = first_pos;
 #ifdef DEBUG_QUEUES
   log << "    dma = " << dma << logger::endl;
 #endif
-  runner->issue_dma(*dma);
+  runner->IssueDma(*dma);
 }
 
 void queue_base::trigger_process() {
@@ -219,18 +219,18 @@ void queue_base::interrupt() {
 void queue_base::do_writeback(uint32_t first_idx, uint32_t first_pos,
                               uint32_t cnt) {
   dma_wb *dma = new dma_wb(*this, desc_len * cnt);
-  dma->write = true;
-  dma->dma_addr = base + first_idx * desc_len;
+  dma->write_ = true;
+  dma->dma_addr_ = base + first_idx * desc_len;
   dma->pos = first_pos;
 
-  uint8_t *buf = reinterpret_cast<uint8_t *>(dma->data);
+  uint8_t *buf = reinterpret_cast<uint8_t *>(dma->data_);
   for (uint32_t i = 0; i < cnt; i++) {
     desc_ctx &ctx = *desc_ctxs[(first_pos + i) % MAX_ACTIVE_DESCS];
     assert(ctx.state == desc_ctx::DESC_WRITING_BACK);
     memcpy(buf + i * desc_len, ctx.desc, desc_len);
   }
 
-  runner->issue_dma(*dma);
+  runner->IssueDma(*dma);
 }
 
 void queue_base::writeback_done(uint32_t first_pos, uint32_t cnt) {
@@ -327,15 +327,15 @@ void queue_base::desc_ctx::data_fetch(uint64_t addr, size_t data_len) {
       new dma_data_fetch(*this, std::min(data_len, MAX_DMA_SIZE), data);
   dma->part_offset = 0;
   dma->total_len = data_len;
-  dma->write = false;
-  dma->dma_addr = addr;
+  dma->write_ = false;
+  dma->dma_addr_ = addr;
 
 #ifdef DEBUG_QUEUES
   queue.log << "fetching data idx=" << index << " addr=" << addr
             << " len=" << data_len << logger::endl;
   queue.log << "  dma = " << dma << " data=" << data << logger::endl;
 #endif
-  runner->issue_dma(*dma);
+  runner->IssueDma(*dma);
 }
 
 void queue_base::desc_ctx::data_fetched(uint64_t addr, size_t len) {
@@ -349,11 +349,11 @@ void queue_base::desc_ctx::data_write(uint64_t addr, size_t data_len,
             << logger::endl;
 #endif
   dma_data_wb *data_dma = new dma_data_wb(*this, data_len);
-  data_dma->write = true;
-  data_dma->dma_addr = addr;
-  memcpy(data_dma->data, buf, data_len);
+  data_dma->write_ = true;
+  data_dma->dma_addr_ = addr;
+  memcpy(data_dma->data_, buf, data_len);
 
-  runner->issue_dma(*data_dma);
+  runner->IssueDma(*data_dma);
 }
 
 void queue_base::desc_ctx::data_written(uint64_t addr, size_t len) {
@@ -364,19 +364,19 @@ void queue_base::desc_ctx::data_written(uint64_t addr, size_t len) {
   processed();
 }
 
-queue_base::dma_fetch::dma_fetch(queue_base &queue_, size_t len_)
+queue_base::dma_fetch::dma_fetch(queue_base &queue_, size_t len)
     : queue(queue_) {
-  data = new char[len_];
-  len = len_;
+  data_ = new char[len];
+  len_ = len;
 }
 
 queue_base::dma_fetch::~dma_fetch() {
-  delete[]((char *)data);
+  delete[]((char *)data_);
 }
 
 void queue_base::dma_fetch::done() {
-  uint8_t *buf = reinterpret_cast<uint8_t *>(data);
-  for (uint32_t i = 0; i < len / queue.desc_len; i++) {
+  uint8_t *buf = reinterpret_cast<uint8_t *>(data_);
+  for (uint32_t i = 0; i < len_ / queue.desc_len; i++) {
     desc_ctx &ctx = *queue.desc_ctxs[(pos + i) % queue.MAX_ACTIVE_DESCS];
     memcpy(ctx.desc, buf + queue.desc_len * i, queue.desc_len);
 
@@ -390,60 +390,60 @@ void queue_base::dma_fetch::done() {
   delete this;
 }
 
-queue_base::dma_data_fetch::dma_data_fetch(desc_ctx &ctx_, size_t len_,
+queue_base::dma_data_fetch::dma_data_fetch(desc_ctx &ctx_, size_t len,
                                            void *buffer)
     : ctx(ctx_) {
-  data = buffer;
-  len = len_;
+  data_ = buffer;
+  len_ = len;
 }
 
 queue_base::dma_data_fetch::~dma_data_fetch() {
 }
 
 void queue_base::dma_data_fetch::done() {
-  part_offset += len;
-  dma_addr += len;
-  data = (uint8_t *)data + len;
+  part_offset += len_;
+  dma_addr_ += len_;
+  data_ = (uint8_t *)data_ + len_;
 
   if (part_offset < total_len) {
 #ifdef DEBUG_QUEUES
     ctx.queue.log << "  dma_fetch: next part of multi part dma" << logger::endl;
 #endif
-    len = std::min(total_len - part_offset, MAX_DMA_SIZE);
-    runner->issue_dma(*this);
+    len_ = std::min(total_len - part_offset, MAX_DMA_SIZE);
+    runner->IssueDma(*this);
     return;
   }
-  ctx.data_fetched(dma_addr - part_offset, total_len);
+  ctx.data_fetched(dma_addr_ - part_offset, total_len);
   ctx.queue.trigger();
   delete this;
 }
 
-queue_base::dma_wb::dma_wb(queue_base &queue_, size_t len_) : queue(queue_) {
-  data = new char[len_];
-  len = len_;
+queue_base::dma_wb::dma_wb(queue_base &queue_, size_t len) : queue(queue_) {
+  data_ = new char[len];
+  len_ = len;
 }
 
 queue_base::dma_wb::~dma_wb() {
-  delete[]((char *)data);
+  delete[]((char *)data_);
 }
 
 void queue_base::dma_wb::done() {
-  queue.writeback_done(pos, len / queue.desc_len);
+  queue.writeback_done(pos, len_ / queue.desc_len);
   queue.trigger();
   delete this;
 }
 
-queue_base::dma_data_wb::dma_data_wb(desc_ctx &ctx_, size_t len_) : ctx(ctx_) {
-  data = new char[len_];
-  len = len_;
+queue_base::dma_data_wb::dma_data_wb(desc_ctx &ctx_, size_t len) : ctx(ctx_) {
+  data_ = new char[len];
+  len_ = len;
 }
 
 queue_base::dma_data_wb::~dma_data_wb() {
-  delete[]((char *)data);
+  delete[]((char *)data_);
 }
 
 void queue_base::dma_data_wb::done() {
-  ctx.data_written(dma_addr, len);
+  ctx.data_written(dma_addr_, len_);
   ctx.queue.trigger();
   delete this;
 }

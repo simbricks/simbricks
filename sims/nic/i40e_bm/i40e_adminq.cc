@@ -226,7 +226,7 @@ void queue_admin_tx::admin_desc_ctx::process() {
         reinterpret_cast<struct i40e_aqc_mac_address_read *>(d->params.raw);
 
     struct i40e_aqc_mac_address_read_data ard;
-    uint64_t mac = runner->get_mac_addr();
+    uint64_t mac = runner->GetMacAddr();
 #ifdef DEBUG_ADMINQ
     queue.log << "    mac = " << mac << logger::endl;
 #endif
