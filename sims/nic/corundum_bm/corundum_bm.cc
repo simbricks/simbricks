@@ -446,10 +446,10 @@ void Port::queueDisable() {
 }
 
 Corundum::Corundum()
-    : txCplRing(&this->eventRing),
-      rxCplRing(&this->eventRing),
-      txRing(&this->txCplRing),
+    : txRing(&this->txCplRing),
+      txCplRing(&this->eventRing),
       rxRing(&this->rxCplRing),
+      rxCplRing(&this->eventRing),
       features(0) {
   this->port.setId(0);
   this->port.setFeatures(this->features);

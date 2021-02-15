@@ -83,7 +83,7 @@ static void sigint_handler(int dummy) {
 }
 
 static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
-                        int port) {
+                        size_t port) {
   volatile union SimbricksProtoNetN2D *msg_to;
   msg_to = SimbricksNetIfN2DAlloc(&nsifs[port], cur_ts, eth_latency);
   if (msg_to != NULL) {
@@ -101,7 +101,7 @@ static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
   }
 }
 
-static void switch_pkt(struct SimbricksNetIf *nsif, int iport) {
+static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport) {
   volatile union SimbricksProtoNetD2N *msg_from =
       SimbricksNetIfD2NPoll(nsif, cur_ts);
   if (msg_from == NULL) {
@@ -120,11 +120,11 @@ static void switch_pkt(struct SimbricksNetIf *nsif, int iport) {
     }
     // L2 forwarding
     if (mac_table.count(dst) > 0) {
-      int eport = mac_table.at(dst);
+      size_t eport = mac_table.at(dst);
       forward_pkt(tx, eport);
     } else {
       // Broadcast
-      for (int eport = 0; eport < nsifs.size(); eport++) {
+      for (size_t eport = 0; eport < nsifs.size(); eport++) {
         if (eport != iport) {
           // Do not forward to ingress port
           forward_pkt(tx, eport);
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
     uint64_t min_ts;
     do {
       min_ts = ULLONG_MAX;
-      for (int port = 0; port < nsifs.size(); port++) {
+      for (size_t port = 0; port < nsifs.size(); port++) {
         auto &nsif = nsifs.at(port);
         switch_pkt(&nsif, port);
         if (nsif.sync) {
