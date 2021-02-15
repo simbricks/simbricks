@@ -54,7 +54,7 @@ static uint64_t eth_latency = 500 * 1000ULL;  // 500ns
 
 static volatile int exiting = 0;
 uint64_t main_time = 0;
-static struct nicsim_params nsparams;
+static struct SimbricksNicIfParams nsparams;
 #ifdef TRACE_ENABLED
 static VerilatedVcdC *trace;
 #endif
@@ -540,7 +540,7 @@ static void h2d_write(MMIOInterface &mmio,
 
 static void poll_h2d(MMIOInterface &mmio) {
   volatile union SimbricksProtoPcieH2D *msg =
-      nicif_h2d_poll(&nsparams, main_time);
+      SimbricksNicIfH2DPoll(&nsparams, main_time);
   uint8_t t;
 
   if (msg == NULL)
@@ -576,12 +576,12 @@ static void poll_h2d(MMIOInterface &mmio) {
       std::cerr << "poll_h2d: unsupported type=" << t << std::endl;
   }
 
-  nicif_h2d_done(msg);
-  nicif_h2d_next();
+  SimbricksNicIfH2DDone(msg);
+  SimbricksNicIfH2DNext();
 }
 
 static volatile union SimbricksProtoPcieD2H *d2h_alloc(void) {
-  return nicsim_d2h_alloc(&nsparams, main_time);
+  return SimbricksNicIfD2HAlloc(&nsparams, main_time);
 }
 
 class EthernetTx {
@@ -596,7 +596,7 @@ class EthernetTx {
 
   void packet_done() {
     volatile union SimbricksProtoNetD2N *msg =
-        nicsim_d2n_alloc(&nsparams, main_time);
+        SimbricksNicIfD2NAlloc(&nsparams, main_time);
     volatile struct SimbricksProtoNetD2NSend *send;
 
     if (!msg)
@@ -734,7 +734,7 @@ static void n2d_recv(EthernetRx &rx,
 
 static void poll_n2d(EthernetRx &rx) {
   volatile union SimbricksProtoNetN2D *msg =
-      nicif_n2d_poll(&nsparams, main_time);
+      SimbricksNicIfN2DPoll(&nsparams, main_time);
   uint8_t t;
 
   if (msg == NULL)
@@ -754,8 +754,8 @@ static void poll_n2d(EthernetRx &rx) {
       std::cerr << "poll_n2d: unsupported type=" << t << std::endl;
   }
 
-  nicif_n2d_done(msg);
-  nicif_n2d_next();
+  SimbricksNicIfN2DDone(msg);
+  SimbricksNicIfN2DNext();
 }
 
 void pci_msi_issue(uint8_t vec) {
@@ -845,7 +845,7 @@ int main(int argc, char *argv[]) {
       sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
   nsparams.sync_mode = sync_mode;
 
-  if (nicsim_init(&nsparams, &di)) {
+  if (SimbricksNicIfInit(&nsparams, &di)) {
     return EXIT_FAILURE;
   }
   std::cout << "sync_pci=" << nsparams.sync_pci
@@ -954,17 +954,17 @@ int main(int argc, char *argv[]) {
   top->rst = 0;
 
   while (!exiting) {
-    while (nicsim_sync(&nsparams, main_time)) {
-      std::cerr << "warn: nicsim_sync failed (t=" << main_time << ")"
+    while (SimbricksNicIfSync(&nsparams, main_time)) {
+      std::cerr << "warn: SimbricksNicIfSync failed (t=" << main_time << ")"
                 << std::endl;
     }
-    nicsim_advance_epoch(&nsparams, main_time);
+    SimbricksNicIfAdvanceEpoch(&nsparams, main_time);
 
     do {
       poll_h2d(mmio);
       poll_n2d(rx);
     } while ((nsparams.sync_pci || nsparams.sync_eth) &&
-             nicsim_next_timestamp(&nsparams) <= main_time && !exiting);
+             SimbricksNicIfNextTimestamp(&nsparams) <= main_time && !exiting);
 
     /* falling edge */
     top->clk = !top->clk;

@@ -59,7 +59,7 @@ static void sigusr1_handler(int dummy) {
 
 volatile union SimbricksProtoPcieD2H *Runner::d2h_alloc(void) {
   volatile union SimbricksProtoPcieD2H *msg;
-  while ((msg = nicsim_d2h_alloc(&nsparams, main_time)) == NULL) {
+  while ((msg = SimbricksNicIfD2HAlloc(&nsparams, main_time)) == NULL) {
     fprintf(stderr, "d2h_alloc: no entry available\n");
   }
   return msg;
@@ -67,7 +67,7 @@ volatile union SimbricksProtoPcieD2H *Runner::d2h_alloc(void) {
 
 volatile union SimbricksProtoNetD2N *Runner::d2n_alloc(void) {
   volatile union SimbricksProtoNetD2N *msg;
-  while ((msg = nicsim_d2n_alloc(&nsparams, main_time)) == NULL) {
+  while ((msg = SimbricksNicIfD2NAlloc(&nsparams, main_time)) == NULL) {
     fprintf(stderr, "d2n_alloc: no entry available\n");
   }
   return msg;
@@ -285,7 +285,7 @@ void Runner::eth_send(const void *data, size_t len) {
 
 void Runner::poll_h2d() {
   volatile union SimbricksProtoPcieH2D *msg =
-      nicif_h2d_poll(&nsparams, main_time);
+      SimbricksNicIfH2DPoll(&nsparams, main_time);
   uint8_t type;
 
   if (msg == NULL)
@@ -320,13 +320,13 @@ void Runner::poll_h2d() {
       fprintf(stderr, "poll_h2d: unsupported type=%u\n", type);
   }
 
-  nicif_h2d_done(msg);
-  nicif_h2d_next();
+  SimbricksNicIfH2DDone(msg);
+  SimbricksNicIfH2DNext();
 }
 
 void Runner::poll_n2d() {
   volatile union SimbricksProtoNetN2D *msg =
-      nicif_n2d_poll(&nsparams, main_time);
+      SimbricksNicIfN2DPoll(&nsparams, main_time);
   uint8_t t;
 
   if (msg == NULL)
@@ -345,8 +345,8 @@ void Runner::poll_n2d() {
       fprintf(stderr, "poll_n2d: unsupported type=%u", t);
   }
 
-  nicif_n2d_done(msg);
-  nicif_n2d_next();
+  SimbricksNicIfN2DDone(msg);
+  SimbricksNicIfN2DNext();
 }
 
 uint64_t Runner::time_ps() const {
@@ -436,7 +436,7 @@ int Runner::runMain(int argc, char *argv[]) {
       sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
   nsparams.sync_mode = sync_mode;
 
-  if (nicsim_init(&nsparams, &dintro)) {
+  if (SimbricksNicIfInit(&nsparams, &dintro)) {
     return EXIT_FAILURE;
   }
   fprintf(stderr, "sync_pci=%d sync_eth=%d\n", nsparams.sync_pci,
@@ -445,10 +445,10 @@ int Runner::runMain(int argc, char *argv[]) {
   bool is_sync = nsparams.sync_pci || nsparams.sync_eth;
 
   while (!exiting) {
-    while (nicsim_sync(&nsparams, main_time)) {
-      fprintf(stderr, "warn: nicsim_sync failed (t=%lu)\n", main_time);
+    while (SimbricksNicIfSync(&nsparams, main_time)) {
+      fprintf(stderr, "warn: SimbricksNicIfSync failed (t=%lu)\n", main_time);
     }
-    nicsim_advance_epoch(&nsparams, main_time);
+    SimbricksNicIfAdvanceEpoch(&nsparams, main_time);
 
     do {
       poll_h2d();
@@ -456,7 +456,7 @@ int Runner::runMain(int argc, char *argv[]) {
       event_trigger();
 
       if (is_sync) {
-        next_ts = nicsim_next_timestamp(&nsparams);
+        next_ts = SimbricksNicIfNextTimestamp(&nsparams);
         if (next_ts > main_time + max_step)
           next_ts = main_time + max_step;
       } else {
@@ -467,11 +467,11 @@ int Runner::runMain(int argc, char *argv[]) {
       if (event_next(ev_ts) && ev_ts < next_ts)
         next_ts = ev_ts;
     } while (next_ts <= main_time && !exiting);
-    main_time = nicsim_advance_time(&nsparams, next_ts);
+    main_time = SimbricksNicIfAdvanceTime(&nsparams, next_ts);
   }
 
   fprintf(stderr, "exit main_time: %lu\n", main_time);
-  nicsim_cleanup();
+  SimbricksNicIfCleanup();
   return 0;
 }
 

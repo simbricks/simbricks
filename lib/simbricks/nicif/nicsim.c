@@ -177,7 +177,7 @@ static int accept_conns(struct SimbricksProtoPcieDevIntro *di, int pci_lfd,
   return 0;
 }
 
-int nicsim_init(struct nicsim_params *params,
+int SimbricksNicIfInit(struct SimbricksNicIfParams *params,
                 struct SimbricksProtoPcieDevIntro *di) {
   int pci_lfd = -1, eth_lfd = -1;
   void *shmptr;
@@ -243,7 +243,7 @@ int nicsim_init(struct nicsim_params *params,
   return 0;
 }
 
-void nicsim_cleanup(void) {
+void SimbricksNicIfCleanup(void) {
   close(pci_cfd);
   close(eth_cfd);
 }
@@ -251,7 +251,8 @@ void nicsim_cleanup(void) {
 /******************************************************************************/
 /* Sync */
 
-int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
+int SimbricksNicIfSync(struct SimbricksNicIfParams *params,
+                       uint64_t timestamp) {
   int ret = 0;
   volatile union SimbricksProtoPcieD2H *d2h;
   volatile union SimbricksProtoNetD2N *d2n;
@@ -274,7 +275,7 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
     }
 
     if (sync) {
-      d2h = nicsim_d2h_alloc(params, timestamp);
+      d2h = SimbricksNicIfD2HAlloc(params, timestamp);
       if (d2h == NULL) {
         ret = -1;
       } else {
@@ -303,7 +304,7 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
     }
 
     if (sync) {
-      d2n = nicsim_d2n_alloc(params, timestamp);
+      d2n = SimbricksNicIfD2NAlloc(params, timestamp);
       if (d2n == NULL) {
         ret = -1;
       } else {
@@ -316,7 +317,8 @@ int nicsim_sync(struct nicsim_params *params, uint64_t timestamp) {
   return ret;
 }
 
-void nicsim_advance_epoch(struct nicsim_params *params, uint64_t timestamp) {
+void SimbricksNicIfAdvanceEpoch(struct SimbricksNicIfParams *params,
+                                uint64_t timestamp) {
   if (params->sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER) {
     if ((params->sync_pci || params->sync_eth) &&
         timestamp - current_epoch >= params->sync_delay) {
@@ -325,7 +327,8 @@ void nicsim_advance_epoch(struct nicsim_params *params, uint64_t timestamp) {
   }
 }
 
-uint64_t nicsim_advance_time(struct nicsim_params *params, uint64_t timestamp) {
+uint64_t SimbricksNicIfAdvanceTime(struct SimbricksNicIfParams *params,
+                                   uint64_t timestamp) {
   switch (params->sync_mode) {
     case SIMBRICKS_PROTO_SYNC_SIMBRICKS:
       return timestamp;
@@ -339,7 +342,7 @@ uint64_t nicsim_advance_time(struct nicsim_params *params, uint64_t timestamp) {
   }
 }
 
-uint64_t nicsim_next_timestamp(struct nicsim_params *params) {
+uint64_t SimbricksNicIfNextTimestamp(struct SimbricksNicIfParams *params) {
   if (params->sync_pci && params->sync_eth) {
     return (pci_last_rx_time <= eth_last_rx_time ? pci_last_rx_time
                                                  : eth_last_rx_time);
@@ -355,8 +358,8 @@ uint64_t nicsim_next_timestamp(struct nicsim_params *params) {
 /******************************************************************************/
 /* PCI */
 
-volatile union SimbricksProtoPcieH2D *nicif_h2d_poll(
-    struct nicsim_params *params, uint64_t timestamp) {
+volatile union SimbricksProtoPcieH2D *SimbricksNicIfH2DPoll(
+    struct SimbricksNicIfParams *params, uint64_t timestamp) {
   volatile union SimbricksProtoPcieH2D *msg =
       (volatile union SimbricksProtoPcieH2D *)(h2d_queue + h2d_pos * H2D_ELEN);
 
@@ -373,18 +376,18 @@ volatile union SimbricksProtoPcieH2D *nicif_h2d_poll(
   return msg;
 }
 
-void nicif_h2d_done(volatile union SimbricksProtoPcieH2D *msg) {
+void SimbricksNicIfH2DDone(volatile union SimbricksProtoPcieH2D *msg) {
   msg->dummy.own_type =
       (msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK) |
       SIMBRICKS_PROTO_PCIE_H2D_OWN_HOST;
 }
 
-void nicif_h2d_next(void) {
+void SimbricksNicIfH2DNext(void) {
   h2d_pos = (h2d_pos + 1) % H2D_ENUM;
 }
 
-volatile union SimbricksProtoPcieD2H *nicsim_d2h_alloc(
-    struct nicsim_params *params, uint64_t timestamp) {
+volatile union SimbricksProtoPcieD2H *SimbricksNicIfD2HAlloc(
+    struct SimbricksNicIfParams *params, uint64_t timestamp) {
   volatile union SimbricksProtoPcieD2H *msg =
       (volatile union SimbricksProtoPcieD2H *)(d2h_queue + d2h_pos * D2H_ELEN);
 
@@ -403,8 +406,8 @@ volatile union SimbricksProtoPcieD2H *nicsim_d2h_alloc(
 /******************************************************************************/
 /* Ethernet */
 
-volatile union SimbricksProtoNetN2D *nicif_n2d_poll(
-    struct nicsim_params *params, uint64_t timestamp) {
+volatile union SimbricksProtoNetN2D *SimbricksNicIfN2DPoll(
+    struct SimbricksNicIfParams *params, uint64_t timestamp) {
   volatile union SimbricksProtoNetN2D *msg =
       (volatile union SimbricksProtoNetN2D *)(n2d_queue + n2d_pos * N2D_ELEN);
 
@@ -421,18 +424,18 @@ volatile union SimbricksProtoNetN2D *nicif_n2d_poll(
   return msg;
 }
 
-void nicif_n2d_done(volatile union SimbricksProtoNetN2D *msg) {
+void SimbricksNicIfN2DDone(volatile union SimbricksProtoNetN2D *msg) {
   msg->dummy.own_type =
       (msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_MSG_MASK) |
       SIMBRICKS_PROTO_NET_N2D_OWN_NET;
 }
 
-void nicif_n2d_next(void) {
+void SimbricksNicIfN2DNext(void) {
   n2d_pos = (n2d_pos + 1) % N2D_ENUM;
 }
 
-volatile union SimbricksProtoNetD2N *nicsim_d2n_alloc(
-    struct nicsim_params *params, uint64_t timestamp) {
+volatile union SimbricksProtoNetD2N *SimbricksNicIfD2NAlloc(
+    struct SimbricksNicIfParams *params, uint64_t timestamp) {
   volatile union SimbricksProtoNetD2N *msg =
       (volatile union SimbricksProtoNetD2N *)(d2n_queue + d2n_pos * D2N_ELEN);
 
