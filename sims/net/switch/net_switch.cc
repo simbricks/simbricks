@@ -45,7 +45,7 @@ static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
 struct MAC {
   const volatile uint8_t *data;
 
-  MAC(const volatile uint8_t *data) : data(data) {
+  explicit MAC(const volatile uint8_t *data) : data(data) {
   }
 
   bool operator==(const MAC &other) const {

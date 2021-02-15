@@ -71,7 +71,7 @@ class logger : public std::ostream {
   std::stringstream ss;
 
  public:
-  logger(const std::string &label_);
+  explicit logger(const std::string &label_);
   logger &operator<<(char c);
   logger &operator<<(int32_t c);
   logger &operator<<(uint8_t i);
@@ -113,8 +113,7 @@ class queue_base {
     friend class queue_base;
 
    public:
-    enum state
-    {
+    enum state {
       DESC_EMPTY,
       DESC_FETCHING,
       DESC_PREPARING,
@@ -146,7 +145,7 @@ class queue_base {
     virtual void data_written(uint64_t addr, size_t len);
 
    public:
-    desc_ctx(queue_base &queue_);
+    explicit desc_ctx(queue_base &queue_);
     virtual ~desc_ctx();
 
     virtual void prepare();
@@ -309,7 +308,7 @@ class host_mem_cache {
     bool failed;
   };
 
-  host_mem_cache(i40e_bm &dev);
+  explicit host_mem_cache(i40e_bm &dev);
   void reset();
   void reg_updated(uint64_t addr);
 
@@ -323,7 +322,7 @@ class lan_queue_base : public queue_base {
    public:
     lan_queue_base &lq;
 
-    qctx_fetch(lan_queue_base &lq_);
+    explicit qctx_fetch(lan_queue_base &lq_);
     virtual void done();
   };
 
@@ -365,7 +364,7 @@ class lan_queue_tx : public lan_queue_base {
    public:
     i40e_tx_desc *d;
 
-    tx_desc_ctx(lan_queue_tx &queue_);
+    explicit tx_desc_ctx(lan_queue_tx &queue_);
 
     virtual void prepare();
     virtual void process();
@@ -416,7 +415,7 @@ class lan_queue_rx : public lan_queue_base {
     virtual void data_written(uint64_t addr, size_t len);
 
    public:
-    rx_desc_ctx(lan_queue_rx &queue_);
+    explicit rx_desc_ctx(lan_queue_rx &queue_);
     virtual void process();
     void packet_received(const void *data, size_t len, bool last);
   };
@@ -450,7 +449,7 @@ class rss_key_cache {
   void build();
 
  public:
-  rss_key_cache(const uint32_t (&key_)[key_len / 4]);
+  explicit rss_key_cache(const uint32_t (&key_)[key_len / 4]);
   void set_dirty();
   uint32_t hash_ipv4(uint32_t sip, uint32_t dip, uint16_t sp, uint16_t dp);
 };
@@ -487,7 +486,7 @@ class shadow_ram {
   logger log;
 
  public:
-  shadow_ram(i40e_bm &dev);
+  explicit shadow_ram(i40e_bm &dev);
   void reg_updated();
   uint16_t read(uint16_t addr);
   void write(uint16_t addr, uint16_t val);

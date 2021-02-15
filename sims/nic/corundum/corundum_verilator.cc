@@ -591,7 +591,7 @@ class EthernetTx {
   size_t packet_len;
 
  public:
-  EthernetTx(Vinterface &top_) : top(top_), packet_len(0) {
+  explicit EthernetTx(Vinterface &top_) : top(top_), packet_len(0) {
   }
 
   void packet_done() {
@@ -654,7 +654,7 @@ class EthernetRx {
   size_t packet_off;
 
  public:
-  EthernetRx(Vinterface &top_)
+  explicit EthernetRx(Vinterface &top_)
       : top(top_), fifo_pos_rd(0), fifo_pos_wr(0), packet_off(0) {
     for (size_t i = 0; i < FIFO_SIZE; i++) fifo_lens[i] = 0;
   }

@@ -92,7 +92,7 @@ class gem5_parser : public log_parser {
                    char *msg, size_t msg_len);
 
  public:
-  gem5_parser(sym_map &syms_);
+  explicit gem5_parser(sym_map &syms_);
   virtual ~gem5_parser();
 };
 

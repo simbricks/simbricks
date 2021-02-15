@@ -238,7 +238,7 @@ class EventRing : public DescRing {
 
 class CplRing : public DescRing {
  public:
-  CplRing(EventRing *eventRing);
+  explicit CplRing(EventRing *eventRing);
   ~CplRing();
 
   void dmaDone(DMAOp *op) override;
@@ -256,7 +256,7 @@ class CplRing : public DescRing {
 
 class TxRing : public DescRing {
  public:
-  TxRing(CplRing *cplRing);
+  explicit TxRing(CplRing *cplRing);
   ~TxRing();
 
   void setHeadPtr(ptr_t ptr) override;
@@ -268,7 +268,7 @@ class TxRing : public DescRing {
 
 class RxRing : public DescRing {
  public:
-  RxRing(CplRing *cplRing);
+  explicit RxRing(CplRing *cplRing);
   ~RxRing();
 
   void dmaDone(DMAOp *op) override;

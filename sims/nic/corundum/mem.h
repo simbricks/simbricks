@@ -91,7 +91,7 @@ class MemReader {
   size_t cur_off;
 
  public:
-  MemReader(MemReadPort &p_) : p(p_), cur(0), cur_off(0) {
+  explicit MemReader(MemReadPort &p_) : p(p_), cur(0), cur_off(0) {
   }
 
   void step();
@@ -107,7 +107,7 @@ class MemWriter {
   size_t cur_off;
 
  public:
-  MemWriter(MemWritePort &p_) : p(p_), cur(0), cur_off(0) {
+  explicit MemWriter(MemWritePort &p_) : p(p_), cur(0), cur_off(0) {
   }
 
   void step();

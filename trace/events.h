@@ -30,7 +30,7 @@ class event {
  public:
   uint64_t ts;
 
-  event(uint64_t ts_) : ts(ts_) {
+  explicit event(uint64_t ts_) : ts(ts_) {
   }
 
   virtual ~event() {
