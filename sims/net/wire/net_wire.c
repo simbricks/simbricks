@@ -53,8 +53,7 @@ static void sigusr1_handler(int dummy) {
   fprintf(stderr, "main_time = %lu\n", cur_ts);
 }
 
-static void move_pkt(struct SimbricksNetIf *from,
-                     struct SimbricksNetIf *to) {
+static void move_pkt(struct SimbricksNetIf *from, struct SimbricksNetIf *to) {
   volatile union SimbricksProtoNetD2N *msg_from =
       SimbricksNetIfD2NPoll(from, cur_ts);
   volatile union SimbricksProtoNetN2D *msg_to;
@@ -88,8 +87,8 @@ static void move_pkt(struct SimbricksNetIf *from,
       memcpy((void *)rx->data, (void *)tx->data, tx->len);
 
       // WMB();
-      rx->own_type = SIMBRICKS_PROTO_NET_N2D_MSG_RECV |
-          SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+      rx->own_type =
+          SIMBRICKS_PROTO_NET_N2D_MSG_RECV | SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
     } else {
       fprintf(stderr, "move_pkt: dropping packet\n");
     }
@@ -141,7 +140,7 @@ int main(int argc, char *argv[]) {
   }
 
   assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
-      sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
+         sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
 
   sync_a = sync_b = 1;
   if (SimbricksNetIfInit(&nsif_a, argv[1], &sync_a) != 0) {
@@ -154,12 +153,12 @@ int main(int argc, char *argv[]) {
   printf("start polling\n");
   while (!exiting) {
     if (SimbricksNetIfN2DSync(&nsif_a, cur_ts, eth_latency, sync_period,
-        sync_mode) != 0) {
+                              sync_mode) != 0) {
       fprintf(stderr, "SimbricksNetIfN2DSync(nsif_a) failed\n");
       abort();
     }
     if (SimbricksNetIfN2DSync(&nsif_b, cur_ts, eth_latency, sync_period,
-        sync_mode) != 0) {
+                              sync_mode) != 0) {
       fprintf(stderr, "SimbricksNetIfN2DSync(nsif_a) failed\n");
       abort();
     }
@@ -175,7 +174,7 @@ int main(int argc, char *argv[]) {
 
     if (sync_a && sync_b)
       cur_ts = SimbricksNetIfAdvanceTime(ts_a <= ts_b ? ts_a : ts_b,
-                                   sync_period, sync_mode);
+                                         sync_period, sync_mode);
     else if (sync_a)
       cur_ts = SimbricksNetIfAdvanceTime(ts_a, sync_period, sync_mode);
     else if (sync_b)

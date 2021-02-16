@@ -585,8 +585,8 @@ class i40e_bm : public nicbm::Runner::Device {
   void SetupIntro(struct SimbricksProtoPcieDevIntro &di) override;
   void RegRead(uint8_t bar, uint64_t addr, void *dest, size_t len) override;
   virtual uint32_t RegRead32(uint8_t bar, uint64_t addr);
-  void RegWrite(uint8_t bar, uint64_t addr, const void *src, size_t len)
-      override;
+  void RegWrite(uint8_t bar, uint64_t addr, const void *src,
+                size_t len) override;
   virtual void RegWrite32(uint8_t bar, uint64_t addr, uint32_t val);
   void DmaComplete(nicbm::DMAOp &op) override;
   void EthRx(uint8_t port, const void *data, size_t len) override;

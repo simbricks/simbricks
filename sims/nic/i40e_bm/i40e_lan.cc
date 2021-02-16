@@ -169,8 +169,8 @@ void lan_queue_base::enable() {
   qctx_fetch *qf = new qctx_fetch(*this);
   qf->write_ = false;
   qf->dma_addr_ = ((fpm_basereg & I40E_GLHMC_LANTXBASE_FPMLANTXBASE_MASK) >>
-                  I40E_GLHMC_LANTXBASE_FPMLANTXBASE_SHIFT) *
-                 512;
+                   I40E_GLHMC_LANTXBASE_FPMLANTXBASE_SHIFT) *
+                  512;
   qf->dma_addr_ += ctx_size * idx;
   qf->len_ = ctx_size;
   qf->data_ = ctx;

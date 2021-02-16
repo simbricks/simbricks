@@ -179,7 +179,7 @@ class SimpleDevice : public Runner::Device {
   }
 
   void RegWrite(uint8_t bar, uint64_t addr, const void *src,
-                        size_t len) override {
+                size_t len) override {
     assert(len == sizeof(TReg));
     TReg r;
     memcpy(&r, src, sizeof(r));

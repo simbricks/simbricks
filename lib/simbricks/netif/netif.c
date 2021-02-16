@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <simbricks/netif/netif.h>
+#include "lib/simbricks/netif/netif.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,13 +31,14 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "lib/simbricks/netif/internal.h"
 #include <simbricks/proto/base.h>
+
+#include "lib/simbricks/netif/internal.h"
 
 static uint64_t current_epoch = 0;
 
 int SimbricksNetIfInit(struct SimbricksNetIf *nsif, const char *eth_socket_path,
-                int *sync_eth) {
+                       int *sync_eth) {
   struct SimbricksProtoNetDevIntro di;
   struct SimbricksProtoNetNetIntro ni;
   int cfd, shm_fd;
@@ -94,7 +95,7 @@ volatile union SimbricksProtoNetD2N *SimbricksNetIfD2NPoll(
     struct SimbricksNetIf *nsif, uint64_t timestamp) {
   volatile union SimbricksProtoNetD2N *msg =
       (volatile union SimbricksProtoNetD2N *)(nsif->d2n_queue +
-                                             nsif->d2n_pos * nsif->d2n_elen);
+                                              nsif->d2n_pos * nsif->d2n_elen);
 
   /* message not ready */
   if ((msg->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) !=
@@ -111,7 +112,7 @@ volatile union SimbricksProtoNetD2N *SimbricksNetIfD2NPoll(
 }
 
 void SimbricksNetIfD2NDone(struct SimbricksNetIf *nsif,
-                     volatile union SimbricksProtoNetD2N *msg) {
+                           volatile union SimbricksProtoNetD2N *msg) {
   msg->dummy.own_type =
       (msg->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK) |
       SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
@@ -121,7 +122,7 @@ volatile union SimbricksProtoNetN2D *SimbricksNetIfN2DAlloc(
     struct SimbricksNetIf *nsif, uint64_t timestamp, uint64_t latency) {
   volatile union SimbricksProtoNetN2D *msg =
       (volatile union SimbricksProtoNetN2D *)(nsif->n2d_queue +
-                                             nsif->n2d_pos * nsif->n2d_elen);
+                                              nsif->n2d_pos * nsif->n2d_elen);
 
   if ((msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) !=
       SIMBRICKS_PROTO_NET_N2D_OWN_NET) {
@@ -136,7 +137,8 @@ volatile union SimbricksProtoNetN2D *SimbricksNetIfN2DAlloc(
 }
 
 int SimbricksNetIfN2DSync(struct SimbricksNetIf *nsif, uint64_t timestamp,
-                    uint64_t latency, uint64_t sync_delay, int sync_mode) {
+                          uint64_t latency, uint64_t sync_delay,
+                          int sync_mode) {
   volatile union SimbricksProtoNetN2D *msg;
   volatile struct SimbricksProtoNetN2DSync *sync;
   int do_sync;
@@ -167,14 +169,14 @@ int SimbricksNetIfN2DSync(struct SimbricksNetIf *nsif, uint64_t timestamp,
 
   sync = &msg->sync;
   // WMB();
-  sync->own_type = SIMBRICKS_PROTO_NET_N2D_MSG_SYNC |
-      SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+  sync->own_type =
+      SIMBRICKS_PROTO_NET_N2D_MSG_SYNC | SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
 
   return 0;
 }
 
 void SimbricksNetIfAdvanceEpoch(uint64_t timestamp, uint64_t sync_delay,
-                          int sync_mode) {
+                                int sync_mode) {
   if (sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER) {
     if (timestamp - current_epoch >= sync_delay) {
       current_epoch = timestamp;
@@ -183,7 +185,7 @@ void SimbricksNetIfAdvanceEpoch(uint64_t timestamp, uint64_t sync_delay,
 }
 
 uint64_t SimbricksNetIfAdvanceTime(uint64_t timestamp, uint64_t sync_delay,
-                             int sync_mode) {
+                                   int sync_mode) {
   switch (sync_mode) {
     case SIMBRICKS_PROTO_SYNC_SIMBRICKS:
       return timestamp;

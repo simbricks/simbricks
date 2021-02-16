@@ -47,13 +47,13 @@ struct SimbricksNetIf {
 };
 
 int SimbricksNetIfInit(struct SimbricksNetIf *nsif, const char *eth_socket_path,
-                int *sync_eth);
+                       int *sync_eth);
 void SimbricksNetIfCleanup(struct SimbricksNetIf *nsif);
 
 volatile union SimbricksProtoNetD2N *SimbricksNetIfD2NPoll(
     struct SimbricksNetIf *nsif, uint64_t timestamp);
 void SimbricksNetIfD2NDone(struct SimbricksNetIf *nsif,
-                     volatile union SimbricksProtoNetD2N *msg);
+                           volatile union SimbricksProtoNetD2N *msg);
 static inline uint64_t SimbricksNetIfD2NTimestamp(struct SimbricksNetIf *nsif) {
   return nsif->d2n_timestamp;
 }
@@ -61,10 +61,10 @@ static inline uint64_t SimbricksNetIfD2NTimestamp(struct SimbricksNetIf *nsif) {
 volatile union SimbricksProtoNetN2D *SimbricksNetIfN2DAlloc(
     struct SimbricksNetIf *nsif, uint64_t timestamp, uint64_t latency);
 int SimbricksNetIfN2DSync(struct SimbricksNetIf *nsif, uint64_t timestamp,
-                    uint64_t latency, uint64_t sync_delay, int sync_mode);
+                          uint64_t latency, uint64_t sync_delay, int sync_mode);
 void SimbricksNetIfAdvanceEpoch(uint64_t timestamp, uint64_t sync_delay,
-                          int sync_mode);
+                                int sync_mode);
 uint64_t SimbricksNetIfAdvanceTime(uint64_t timestamp, uint64_t sync_delay,
-                             int sync_mode);
+                                   int sync_mode);
 
 #endif  // SIMBRICKS_NETIF_NETIF_H_

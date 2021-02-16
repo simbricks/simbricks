@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <simbricks/nicif/nicif.h>
+#include "lib/simbricks/nicif/nicif.h"
 
 #include <poll.h>
 #include <stdio.h>
@@ -31,8 +31,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "lib/simbricks/nicif/internal.h"
 #include <simbricks/proto/base.h>
+
+#include "lib/simbricks/nicif/internal.h"
 
 #define D2H_ELEN (9024 + 64)
 #define D2H_ENUM 1024
@@ -178,7 +179,7 @@ static int accept_conns(struct SimbricksProtoPcieDevIntro *di, int pci_lfd,
 }
 
 int SimbricksNicIfInit(struct SimbricksNicIfParams *params,
-                struct SimbricksProtoPcieDevIntro *di) {
+                       struct SimbricksProtoPcieDevIntro *di) {
   int pci_lfd = -1, eth_lfd = -1;
   void *shmptr;
   size_t shm_size;
@@ -279,9 +280,8 @@ int SimbricksNicIfSync(struct SimbricksNicIfParams *params,
       if (d2h == NULL) {
         ret = -1;
       } else {
-        d2h->sync.own_type =
-            SIMBRICKS_PROTO_PCIE_D2H_MSG_SYNC |
-            SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+        d2h->sync.own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_SYNC |
+                             SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
       }
     }
   }

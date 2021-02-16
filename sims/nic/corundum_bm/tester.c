@@ -120,8 +120,8 @@ volatile union SimbricksProtoPcieH2D *h2d_alloc() {
 volatile union SimbricksProtoPcieD2H *d2h_poll() {
   volatile union SimbricksProtoPcieD2H *msg;
 
-  msg = (volatile union SimbricksProtoPcieD2H *)
-      (d2h_queue + d2h_pos * d2h_elen);
+  msg =
+      (volatile union SimbricksProtoPcieD2H *)(d2h_queue + d2h_pos * d2h_elen);
   if ((msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_D2H_OWN_MASK) ==
       SIMBRICKS_PROTO_PCIE_D2H_OWN_DEV) {
     return NULL;
@@ -143,8 +143,8 @@ static void dev_read(uint64_t offset, uint16_t len) {
   read->offset = offset;
   read->len = len;
   read->bar = 0;
-  read->own_type = SIMBRICKS_PROTO_PCIE_H2D_MSG_READ |
-      SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV;
+  read->own_type =
+      SIMBRICKS_PROTO_PCIE_H2D_MSG_READ | SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV;
 
   volatile union SimbricksProtoPcieD2H *d2h_msg = NULL;
   while (d2h_msg == NULL) {

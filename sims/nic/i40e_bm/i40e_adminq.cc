@@ -391,7 +391,8 @@ void queue_admin_tx::admin_desc_ctx::process() {
 #endif
     struct i40e_aqc_query_vsi_bw_config_resp bwc;
     memset(&bwc, 0, sizeof(bwc));
-    for (size_t i = 0; i < 8; i++) bwc.qs_handles[i] = 0xffff;
+    for (size_t i = 0; i < 8; i++)
+      bwc.qs_handles[i] = 0xffff;
     desc_complete_indir(0, &bwc, sizeof(bwc));
   } else if (d->opcode == i40e_aqc_opc_query_vsi_ets_sla_config) {
 #ifdef DEBUG_ADMINQ
@@ -399,7 +400,8 @@ void queue_admin_tx::admin_desc_ctx::process() {
 #endif
     struct i40e_aqc_query_vsi_ets_sla_config_resp sla;
     memset(&sla, 0, sizeof(sla));
-    for (size_t i = 0; i < 8; i++) sla.share_credits[i] = 127;
+    for (size_t i = 0; i < 8; i++)
+      sla.share_credits[i] = 127;
     desc_complete_indir(0, &sla, sizeof(sla));
   } else if (d->opcode == i40e_aqc_opc_remove_macvlan) {
 #ifdef DEBUG_ADMINQ

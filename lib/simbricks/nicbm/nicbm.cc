@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <simbricks/nicbm/nicbm.h>
+#include "lib/simbricks/nicbm/nicbm.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -156,9 +156,8 @@ void Runner::MsiIssue(uint8_t vec) {
   intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSI;
 
   // WMB();
-  intr->own_type =
-      SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
-      SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  intr->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
+                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
 }
 
 void Runner::MsiXIssue(uint8_t vec) {
@@ -171,9 +170,8 @@ void Runner::MsiXIssue(uint8_t vec) {
   intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSIX;
 
   // WMB();
-  intr->own_type =
-      SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
-      SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  intr->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
+                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
 }
 
 void Runner::EventSchedule(TimedEvent &evt) {
@@ -223,9 +221,8 @@ void Runner::H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write) {
   wc->req_id = write->req_id;
 
   // WMB();
-  wc->own_type =
-      SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
-      SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  wc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
+                 SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
 }
 
 void Runner::H2DReadcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc) {
@@ -279,8 +276,8 @@ void Runner::EthSend(const void *data, size_t len) {
   send->port = 0;  // single port
   send->len = len;
   memcpy((void *)send->data, data, len);
-  send->own_type = SIMBRICKS_PROTO_NET_D2N_MSG_SEND |
-      SIMBRICKS_PROTO_NET_D2N_OWN_NET;
+  send->own_type =
+      SIMBRICKS_PROTO_NET_D2N_MSG_SEND | SIMBRICKS_PROTO_NET_D2N_OWN_NET;
 }
 
 void Runner::PollH2D() {
@@ -433,7 +430,7 @@ int Runner::RunMain(int argc, char *argv[]) {
   nsparams_.eth_latency = eth_latency;
   nsparams_.sync_delay = sync_period;
   assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
-      sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
+         sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
   nsparams_.sync_mode = sync_mode;
 
   if (SimbricksNicIfInit(&nsparams_, &dintro_)) {

@@ -94,8 +94,8 @@ static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
     memcpy((void *)rx->data, (void *)tx->data, tx->len);
 
     // WMB();
-    rx->own_type = SIMBRICKS_PROTO_NET_N2D_MSG_RECV |
-        SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+    rx->own_type =
+        SIMBRICKS_PROTO_NET_N2D_MSG_RECV | SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
   } else {
     fprintf(stderr, "forward_pkt: dropping packet\n");
   }
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
       case 'm':
         sync_mode = strtol(optarg, NULL, 0);
         assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
-            sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
+               sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
         break;
 
       default:
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
     // Sync all interfaces
     for (auto &nsif : nsifs) {
       if (SimbricksNetIfN2DSync(&nsif, cur_ts, eth_latency, sync_period,
-          sync_mode) != 0) {
+                                sync_mode) != 0) {
         fprintf(stderr, "SimbricksNetIfN2DSync failed\n");
         abort();
       }

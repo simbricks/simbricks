@@ -73,7 +73,8 @@ void MemWriter::step() {
     p.mem_addr[0] = p.mem_addr[1] = p.mem_addr[2] = 0;
     p.mem_be[0] = p.mem_be[1] = p.mem_be[2] = p.mem_be[3] = 0;
     p.mem_valid = 0;
-    for (size_t i = 0; i < data_byte_width / 4; i++) p.mem_data[i] = 0;
+    for (size_t i = 0; i < data_byte_width / 4; i++)
+      p.mem_data[i] = 0;
 
     /* put data bytes in the right places */
     size_t off = data_offset;

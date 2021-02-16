@@ -370,18 +370,16 @@ void pci_rwcomp_issue(MMIOOp *op) {
     wc->req_id = op->id;
 
     // WMB();
-    wc->own_type =
-        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
-        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    wc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
+                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   } else {
     rc = &msg->readcomp;
     memcpy((void *)rc->data, &op->value, op->len);
     rc->req_id = op->id;
 
     // WMB();
-    rc->own_type =
-        SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
-        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    rc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
+                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   }
 
   delete op;
@@ -499,9 +497,8 @@ static void h2d_read(MMIOInterface &mmio,
     rc->req_id = read->req_id;
 
     // WMB();
-    rc->own_type =
-        SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
-        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    rc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
+                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   } else {
     /*printf("read(bar=%u, off=%lu, len=%u) = %lu\n", read->bar, read->offset,
             read->len, val);*/
@@ -530,9 +527,8 @@ static void h2d_write(MMIOInterface &mmio,
     wc->req_id = write->req_id;
 
     // WMB();
-    wc->own_type =
-        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
-        SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    wc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
+                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
   } else {
     mmio.issueWrite(write->req_id, write->offset, write->len, val);
   }
@@ -608,8 +604,8 @@ class EthernetTx {
     send->timestamp = main_time + eth_latency;
 
     // WMB();
-    send->own_type = SIMBRICKS_PROTO_NET_D2N_MSG_SEND |
-        SIMBRICKS_PROTO_NET_D2N_OWN_NET;
+    send->own_type =
+        SIMBRICKS_PROTO_NET_D2N_MSG_SEND | SIMBRICKS_PROTO_NET_D2N_OWN_NET;
 
 #ifdef ETH_DEBUG
     std::cerr << main_time << " EthernetTx: packet len=" << std::hex
@@ -656,7 +652,8 @@ class EthernetRx {
  public:
   explicit EthernetRx(Vinterface &top_)
       : top(top_), fifo_pos_rd(0), fifo_pos_wr(0), packet_off(0) {
-    for (size_t i = 0; i < FIFO_SIZE; i++) fifo_lens[i] = 0;
+    for (size_t i = 0; i < FIFO_SIZE; i++)
+      fifo_lens[i] = 0;
   }
 
   void packet_received(const void *data, size_t len) {
@@ -771,9 +768,8 @@ void pci_msi_issue(uint8_t vec) {
   intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSI;
 
   // WMB();
-  intr->own_type =
-      SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
-      SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  intr->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
+                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
 }
 
 static void msi_step(Vinterface &top, PCICoordinator &coord) {
@@ -842,7 +838,7 @@ int main(int argc, char *argv[]) {
   nsparams.eth_latency = eth_latency;
   nsparams.sync_delay = sync_period;
   assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
-      sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
+         sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
   nsparams.sync_mode = sync_mode;
 
   if (SimbricksNicIfInit(&nsparams, &di)) {

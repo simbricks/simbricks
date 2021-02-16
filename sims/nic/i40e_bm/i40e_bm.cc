@@ -114,7 +114,7 @@ uint32_t i40e_bm::RegRead32(uint8_t bar, uint64_t addr) {
 }
 
 void i40e_bm::RegWrite(uint8_t bar, uint64_t addr, const void *src,
-                        size_t len) {
+                       size_t len) {
   const uint32_t *src_p = reinterpret_cast<const uint32_t *>(src);
 
   if (len == 4) {

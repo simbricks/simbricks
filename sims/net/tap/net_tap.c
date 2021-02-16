@@ -117,8 +117,8 @@ static void *rx_handler(void *arg) {
 #endif
 
     // WMB();
-    rx->own_type = SIMBRICKS_PROTO_NET_N2D_MSG_RECV |
-        SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+    rx->own_type =
+        SIMBRICKS_PROTO_NET_N2D_MSG_RECV | SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
   }
 }
 
