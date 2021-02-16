@@ -26,7 +26,9 @@ include mk/recipes.mk
 
 base_dir := $(d)./
 
-CPPLINT = cpplint
+CPPLINT ?= cpplint
+CLANG_TIDY ?= clang-tidy
+CLANG_FORMAT ?= clang-format
 CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
 CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
 CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir)
@@ -53,8 +55,21 @@ clean:
 distclean:
 	rm -rf $(CLEAN_ALL) $(DISTCLEAN_ALL)
 
-lint:
+lint-cpplint:
 	$(CPPLINT) --quiet --recursive .
+
+lint-clang-tidy:
+	./.clang-tidy-wrapper.sh $(CLANG_TIDY) -I$(base_dir) -I$(base_dir)lib \
+	    -I/usr/share/verilator/include
+
+clang-format:
+	$(CLANG_FORMAT) -i --style=file `cat .lint-files`
+
+lint-clang-format:
+	$(CLANG_FORMAT) --dry-run --style=file `cat .lint-files`
+
+lint: lint-cpplint lint-clang-format
+lint-all: lint lint-clang-tidy
 
 help:
 	@echo "Targets:"
@@ -64,8 +79,12 @@ help:
 	@echo "  documentation: build documentation in doc/build_"
 	@echo "  external: clone and build our tools in external repos "
 	@echo "            (qemu, gem5, ns-3)"
+	@echo "  lint: run quick format and style checks"
+	@echo "  lint-all: run slow & thorough format and style checks"
+	@echo "  clang-format: reformat source (use with caution)"
 
-.PHONY: all clean distclean lint help
+.PHONY: all clean distclean lint lint-all lint-cpplint lint-clang-tidy \
+    lint-clang-format clang-format help
 
 include mk/subdir_post.mk
 -include $(DEPS_ALL)

@@ -1,0 +1,14 @@
+sims/net/*/*.c
+sims/net/*/*.cc
+sims/nic/corundum/*.cc
+sims/nic/corundum/*.h
+sims/nic/corundum_bm/*.cc
+sims/nic/corundum_bm/*.c
+sims/nic/corundum_bm/*.h
+sims/nic/i40e_bm/*.cc
+sims/nic/i40e_bm/*.h
+lib/simbricks/*/*.c
+lib/simbricks/*/*.cc
+lib/simbricks/*/*.h
+trace/*.cc
+trace/*.h

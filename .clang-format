@@ -1,0 +1,24 @@
+---
+BasedOnStyle:  Google
+SortIncludes: true
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+DerivePointerAlignment: true
+PointerAlignment: Left
+ColumnLimit: 80
+ForEachMacros: ['list_for_every_entry','list_for_every_entry_safe']
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:           '^<simbricks/.*\.h>'
+    Priority:        2
+    SortPriority:    0
+  - Regex:           '^<.*\.h>'
+    Priority:        1
+    SortPriority:    0
+  - Regex:           '^<.*'
+    Priority:        2
+    SortPriority:    0
+  - Regex:           '.*'
+    Priority:        3
+    SortPriority:    0
