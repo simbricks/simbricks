@@ -191,7 +191,7 @@ class ExpEnv(object):
         self.qemu_path = self.repodir + '/qemu/build/x86_64-softmmu/qemu-system-x86_64'
         self.qemu_kernel_path = self.repodir + '/images/bzImage'
         self.gem5_path = self.repodir + '/gem5/build/X86/gem5.opt'
-        self.gem5_py_path = self.repodir + '/gem5/configs/cosim/cosim.py'
+        self.gem5_py_path = self.repodir + '/gem5/configs/simbricks/simbricks.py'
         self.gem5_kernel_path = self.repodir + '/images/vmlinux'
 
     def hdcopy_path(self, sim):

@@ -202,15 +202,15 @@ class Gem5Host(HostSim):
         if len(self.nics) > 0:
             assert len(self.nics) == 1
             nic = self.nics[0]
-            cmd += f'--cosim-pci={env.nic_pci_path(nic)} '
-            cmd += f'--cosim-shm={env.nic_shm_path(nic)} '
+            cmd += f'--simbricks-pci={env.nic_pci_path(nic)} '
+            cmd += f'--simbricks-shm={env.nic_shm_path(nic)} '
             if cpu_type == 'TimingSimpleCPU':
-                cmd += '--cosim-sync '
-                cmd += f'--cosim-sync_mode={self.sync_mode} '
-                cmd += f'--cosim-pci-lat={self.pci_latency} '
-                cmd += f'--cosim-sync-int={self.sync_period} '
+                cmd +=  '--simbricks-sync '
+                cmd += f'--simbricks-sync_mode={self.sync_mode} '
+                cmd += f'--simbricks-pci-lat={self.pci_latency} '
+                cmd += f'--simbricks-sync-int={self.sync_period} '
             if isinstance(nic, I40eNIC):
-                cmd += '--cosim-type=i40e '
+                cmd += '--simbricks-type=i40e '
         return cmd
 
 
