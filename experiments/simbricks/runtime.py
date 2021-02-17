@@ -27,7 +27,7 @@ import pathlib
 import shutil
 import re
 
-import modes.experiments as exp
+import simbricks.experiments as exp
 
 class Run(object):
     def __init__(self, experiment, index, env, outpath, prereq=None):

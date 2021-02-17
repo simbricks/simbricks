@@ -20,9 +20,9 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import modes.experiments as exp
-import modes.simulators as sim
-import modes.nodeconfig as node
+import simbricks.experiments as exp
+import simbricks.simulators as sim
+import simbricks.nodeconfig as node
 
 
 server_cores_configs = [1, 2, 4, 8]

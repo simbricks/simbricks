@@ -26,8 +26,8 @@ import os
 import importlib
 import pickle
 import fnmatch
-import modes.experiments as exp
-import modes.runtime as runtime
+import simbricks.experiments as exp
+import simbricks.runtime as runtime
 
 def mkdir_if_not_exists(path):
     if not os.path.exists(path):
