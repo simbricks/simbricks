@@ -147,8 +147,8 @@ class QemuHost(HostSim):
         if len(self.nics) > 0:
             assert len(self.nics) == 1
             cmd += f'-chardev socket,path={env.nic_pci_path(self.nics[0])},'
-            cmd += 'id=cosimcd '
-            cmd += f'-device cosim-pci,chardev=cosimcd'
+            cmd += 'id=simbrickscd '
+            cmd += f'-device simbricks-pci,chardev=simbrickscd'
             if self.sync:
                 cmd += ',sync=on'
                 cmd += f',sync-mode={self.sync_mode}'

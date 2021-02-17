@@ -45,7 +45,7 @@ $(d)qemu/ready: $(d)qemu
 	    --target-list=x86_64-softmmu \
 	    --disable-werror \
 	    --extra-cflags="-I$(abspath $(lib_dir))" \
-	    --enable-cosim-pci && \
+	    --enable-simbricks-pci && \
 	  $(MAKE)
 	touch $@
 
