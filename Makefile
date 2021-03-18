@@ -41,6 +41,7 @@ VFLAGS = +1364-2005ext+v \
 
 $(eval $(call subdir,lib))
 $(eval $(call subdir,sims))
+$(eval $(call subdir,dist))
 $(eval $(call subdir,doc))
 $(eval $(call subdir,images))
 $(eval $(call subdir,trace))
