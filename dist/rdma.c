@@ -33,11 +33,19 @@
 
 #define MSG_RXBUFS 16
 #define MSG_TXBUFS 16
+#define MAX_PEERS 32
+
+struct NetRdmaReportMsg {
+  uint32_t written_pos[MAX_PEERS];
+  uint32_t clean_pos[MAX_PEERS];
+  bool valid[MAX_PEERS];
+} __attribute__ ((packed));
 
 struct NetRdmaMsg {
   union {
     struct SimbricksProtoNetDevIntro dev;
     struct SimbricksProtoNetNetIntro net;
+    struct NetRdmaReportMsg report;
     struct NetRdmaMsg *next_free;
   };
   uint64_t id;
@@ -47,6 +55,7 @@ struct NetRdmaMsg {
   enum {
     kMsgDev,
     kMsgNet,
+    kMsgReport,
   } msg_type;
 } __attribute__ ((packed));
 
@@ -95,7 +104,7 @@ static int RdmMsgRxEnqueue(struct NetRdmaMsg *msg) {
   return 0;
 }
 
-static int RdmaMsgRx(struct NetRdmaMsg *msg) {
+static int RdmaMsgRxIntro(struct NetRdmaMsg *msg) {
   if (msg->id >= peer_num) {
     fprintf(stderr, "RdmMsgRx: invalid peer id in message (%lu)\n", msg->id);
     abort();
@@ -134,6 +143,30 @@ static int RdmaMsgRx(struct NetRdmaMsg *msg) {
     peer->ready = true;
   }
   return 0;
+}
+
+static int RdmaMsgRxReport(struct NetRdmaMsg *msg) {
+  for (size_t i = 0; i < MAX_PEERS && i < peer_num; i++) {
+    if (!msg->report.valid[i])
+      continue;
+
+    if (i >= peer_num) {
+      fprintf(stderr, "RdmaMsgRxReport: invalid ready peer number %zu\n", i);
+      abort();
+    }
+    PeerReport(&peers[i], msg->report.written_pos[i], msg->report.clean_pos[i]);
+  }
+  return 0;
+}
+
+static int RdmaMsgRx(struct NetRdmaMsg *msg) {
+  if (msg->msg_type == kMsgDev || msg->msg_type == kMsgNet)
+    return RdmaMsgRxIntro(msg);
+  else if (msg->msg_type == kMsgReport)
+    return RdmaMsgRxReport(msg);
+
+  fprintf(stderr, "RdmaMsgRx: unexpected message type = %u\n", msg->msg_type);
+  abort();
 }
 
 static int RdmaCommonInit() {
@@ -181,7 +214,9 @@ static int RdmaCommonInit() {
     perror("RdmMsgRxEnqueue: ibv_req_notify_cq failed");
     return 1;
   }
+#ifdef RDMA_DEBUG
   fprintf(stderr, "Enqueue rx buffers\n");
+#endif
   // post receive operations for all rx buffers
   for (int i = 0; i < MSG_RXBUFS; i++)
     if (RdmMsgRxEnqueue(&msgs[i]))
@@ -234,7 +269,9 @@ int RdmaListen(struct sockaddr_in *addr) {
     return 1;
   }
 
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaListen: listen done\n");
+#endif
   struct rdma_cm_event *event;
   if (rdma_get_cm_event(cm_channel, &event)) {
     perror("RdmaListen: rdma_get_cm_event failed");
@@ -247,7 +284,9 @@ int RdmaListen(struct sockaddr_in *addr) {
   cm_id = event->id;
   rdma_ack_cm_event(event);
 
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaListen: got conn request\n");
+#endif
 
   if (RdmaCommonInit())
     return 1;
@@ -258,7 +297,10 @@ int RdmaListen(struct sockaddr_in *addr) {
     return 1;
   }
 
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaListen: accept done\n");
+#endif
+
   if (rdma_get_cm_event(cm_channel, &event)) {
     perror("RdmaListen: rdma_get_cm_event failed");
     return 1;
@@ -268,7 +310,10 @@ int RdmaListen(struct sockaddr_in *addr) {
     return 1;
   }
   rdma_ack_cm_event(event);
+
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaListen: conn established\n");
+#endif
 
   if (RdmaCommonSetNonblock())
     return 1;
@@ -302,7 +347,10 @@ int RdmaConnect(struct sockaddr_in *addr) {
     return 1;
   }
   rdma_ack_cm_event(event);
+
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaConnect: address resolved\n");
+#endif
 
   if (rdma_resolve_route(cm_id, 5000)) {
     perror("RdmaConnect: rdma_resolve_route failed");
@@ -318,7 +366,10 @@ int RdmaConnect(struct sockaddr_in *addr) {
     return 1;
   }
   rdma_ack_cm_event(event);
+
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaConnect: route resolved\n");
+#endif
 
   if (RdmaCommonInit())
     return 1;
@@ -330,7 +381,10 @@ int RdmaConnect(struct sockaddr_in *addr) {
     return 1;
   }
 
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaConnect: connect issued\n");
+#endif
+
   if (rdma_get_cm_event(cm_channel, &event)) {
     perror("RdmaConnect: rdma_get_cm_event failed (connect)");
     return 1;
@@ -348,7 +402,9 @@ int RdmaConnect(struct sockaddr_in *addr) {
 }
 
 int RdmaEvent() {
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaEvent [pid=%d]\n", getpid());
+#endif
 
   struct ibv_cq *ecq;
   void *ectx;
@@ -371,10 +427,15 @@ int RdmaEvent() {
       perror("RdmaEvent: ibv_poll_cq failed");
       return 1;
     }
+
+#ifdef RDMA_DEBUG
     fprintf(stderr, "  n=%d\n", n);
+#endif
     for (int i = 0; i < n; i++) {
       if (wcs[i].opcode == IBV_WC_SEND) {
+#ifdef RDMA_DEBUG
         fprintf(stderr, "Send done\n", n);
+#endif
         if (wcs[i].status != IBV_WC_SUCCESS) {
           fprintf(stderr, "RdmaEvent: unsuccessful send (%u)\n", wcs[i].status);
           abort();
@@ -383,7 +444,9 @@ int RdmaEvent() {
         // need to free the send buffer again
         RdmaMsgFree(msgs + wcs[i].wr_id);
       } else if ((wcs[i].opcode & IBV_WC_RECV)) {
+#ifdef RDMA_DEBUG
         fprintf(stderr, "Recv done\n", n);
+#endif
 
         if (wcs[i].status != IBV_WC_SUCCESS) {
           fprintf(stderr, "RdmaEvent: unsuccessful recv (%u)\n", wcs[i].status);
@@ -404,7 +467,9 @@ int RdmaEvent() {
 }
 
 int RdmaPassIntro(struct Peer *peer) {
+#ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaPassIntro(%s)\n", peer->sock_path);
+#endif
 
   // device peers have sent us an SHM region, need to register this an as MR
   if (peer->is_dev) {
@@ -454,27 +519,32 @@ int RdmaPassIntro(struct Peer *peer) {
   sge.length = sizeof(*msg);
   sge.lkey = mr_msgs->lkey;
 
-  struct ibv_send_wr send_wr = { }; 
+  struct ibv_send_wr send_wr = { };
   send_wr.wr_id = msg - msgs;
   send_wr.opcode = IBV_WR_SEND;
   send_wr.send_flags = IBV_SEND_SIGNALED;
   send_wr.sg_list = &sge;
   send_wr.num_sge = 1;
-  
+
   struct ibv_send_wr *bad_send_wr;
   if (ibv_post_send(cm_id->qp, &send_wr, &bad_send_wr)) {
     perror("RdmaPassIntro: ibv_post_send failed");
     return 1;
   }
-  fprintf(stderr, "RdmaPassIntro: ibv_post_send done\n");
 
+#ifdef RDMA_DEBUG
+  fprintf(stderr, "RdmaPassIntro: ibv_post_send done\n");
+#endif
   return 0;
 }
 
 int RdmaPassEntry(struct Peer *peer) {
-  fprintf(stderr, "RdmaPassEntry(%s,%lu)\n", peer->sock_path, peer->local_pos);
-  fprintf(stderr, "  remote_base=%lx local_base=%lx\n", peer->remote_base,
+#ifdef RDMA_DEBUG
+  fprintf(stderr, "RdmaPassEntry(%s,%u)\n", peer->sock_path, peer->local_pos);
+  fprintf(stderr, "  remote_base=%lx local_base=%p\n", peer->remote_base,
           peer->local_base);
+#endif
+
   uint64_t pos = peer->local_pos * peer->local_elen;
   struct ibv_sge sge;
   sge.addr = (uintptr_t) (peer->local_base + pos);
@@ -494,5 +564,58 @@ int RdmaPassEntry(struct Peer *peer) {
     perror("RdmaPassEntry: ibv_post_send failed");
     return 1;
   }
+  return 0;
+}
+
+int RdmaPassReport() {
+  if (peer_num > MAX_PEERS) {
+    fprintf(stderr, "RdmaPassReport: peer_num (%zu) larger than max (%u)\n",
+            peer_num, MAX_PEERS);
+    abort();
+  }
+
+  struct NetRdmaMsg *msg = RdmaMsgAlloc();
+  if (!msg)
+    return 1;
+
+  msg->msg_type = kMsgReport;
+  for (size_t i = 0; i < MAX_PEERS; i++) {
+    if (i >= peer_num) {
+      msg->report.valid[i] = false;
+      continue;
+    }
+
+    struct Peer *peer = &peers[i];
+    msg->report.valid[i] = peer->ready;
+    if (!peer->ready)
+      continue;
+
+    peer->cleanup_pos_reported = peer->cleanup_pos_next;
+    msg->report.clean_pos[i] = peer->cleanup_pos_reported;
+    peer->local_pos_reported = peer->local_pos;
+    msg->report.written_pos[i] = peer->local_pos_reported;
+  }
+
+  struct ibv_sge sge;
+  sge.addr = (uintptr_t) msg;
+  sge.length = sizeof(*msg);
+  sge.lkey = mr_msgs->lkey;
+
+  struct ibv_send_wr send_wr = { };
+  send_wr.wr_id = msg - msgs;
+  send_wr.opcode = IBV_WR_SEND;
+  send_wr.send_flags = IBV_SEND_SIGNALED;
+  send_wr.sg_list = &sge;
+  send_wr.num_sge = 1;
+
+  struct ibv_send_wr *bad_send_wr;
+  if (ibv_post_send(cm_id->qp, &send_wr, &bad_send_wr)) {
+    perror("RdmaPassReport: ibv_post_send failed");
+    return 1;
+  }
+
+#ifdef RDMA_DEBUG
+  fprintf(stderr, "RdmaPassReport: ibv_post_send done\n");
+#endif
   return 0;
 }

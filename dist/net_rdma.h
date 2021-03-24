@@ -32,21 +32,44 @@
 #include <simbricks/proto/network.h>
 
 struct Peer {
-  struct SimbricksProtoNetDevIntro dev_intro;
-  struct SimbricksProtoNetNetIntro net_intro;
-  const char *sock_path;
-
   /* base address of the local queue we're polling.
      (d2n or n2d depending on is_dev). */
   uint8_t *local_base;
-  uint64_t local_elen;
-  uint64_t local_enum;
-  uint64_t local_pos;
+  uint32_t local_elen;
+  uint32_t local_enum;
+  uint32_t local_pos;
+  // last position reported to our peer
+  uint32_t local_pos_reported;
+  // last position cleaned
+  uint32_t local_pos_cleaned;
 
   // rkey and base address of the remote queue to write to
   uint64_t remote_rkey;
   uint64_t remote_base;
-  
+
+  /* For cleanup we poll the queue just to see when entries get freed. We need
+     to know up to where we can poll, i.e. what entries the peer has written to.
+     The peer communicates this position periodically and we store it in
+     `cleanup_pos_last`. `cleanup_pos_next` refers to the next entry we will
+     poll. Finally we need to report the freed positions to our peer again, so
+     the peer can mark these entries as unused in it's local queue, we again do
+     this periodically and keep track of the last communicated position in
+     `cleanup_pos_reported`. */
+  uint8_t *cleanup_base;
+  uint32_t cleanup_elen;
+  uint32_t cleanup_enum;
+  // next position to be cleaned up
+  uint32_t cleanup_pos_next;
+  // first entry not ready for cleanup yet
+  volatile uint32_t cleanup_pos_last;
+  // last cleanup position reported to peer
+  uint32_t cleanup_pos_reported;
+
+
+  struct SimbricksProtoNetDevIntro dev_intro;
+  struct SimbricksProtoNetNetIntro net_intro;
+  const char *sock_path;
+
   /* RDMA memory region for the shared memory of the queues on this end. Could
      be either our own global SHM region if this is a network peer, or the SHM
      region allocated by the device peer. */
@@ -78,11 +101,13 @@ extern int epfd;
 
 int PeerDevSendIntro(struct Peer *peer);
 int PeerNetSetupQueues(struct Peer *peer);
+int PeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos);
 
 int RdmaListen(struct sockaddr_in *addr);
 int RdmaConnect(struct sockaddr_in *addr);
 int RdmaPassIntro(struct Peer *peer);
 int RdmaPassEntry(struct Peer *peer);
+int RdmaPassReport();
 int RdmaEvent();
 
 #endif  // DIST_NET_RDMA_NET_RDMA_H_

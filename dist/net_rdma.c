@@ -40,6 +40,9 @@
 
 #include "dist/utils.h"
 
+static const uint64_t kPollReportThreshold = 128;
+static const uint64_t kCleanReportThreshold = 128;
+
 const char *shm_path = NULL;
 size_t shm_size = 256 * 1024 * 1024ULL;  // 256MB
 void *shm_base = NULL;
@@ -195,12 +198,18 @@ static int PeersInitDevs() {
 }
 
 int PeerDevSendIntro(struct Peer *peer) {
+#ifdef DEBUG
   fprintf(stderr, "PeerDevSendIntro(%s)\n", peer->sock_path);
+#endif
 
   struct SimbricksProtoNetDevIntro *di = &peer->dev_intro;
   peer->local_base = (void *) ((uintptr_t) peer->shm_base + di->d2n_offset);
   peer->local_elen = di->d2n_elen;
   peer->local_enum = di->d2n_nentries;
+
+  peer->cleanup_base = (void *) ((uintptr_t) peer->shm_base + di->n2d_offset);
+  peer->cleanup_elen = di->n2d_elen;
+  peer->cleanup_enum = di->n2d_nentries;
 
   struct SimbricksProtoNetNetIntro *ni = &peer->net_intro;
   ssize_t ret = send(peer->sock_fd, ni, sizeof(*ni), 0);
@@ -215,7 +224,9 @@ int PeerDevSendIntro(struct Peer *peer) {
 }
 
 int PeerNetSetupQueues(struct Peer *peer) {
+#ifdef DEBUG
   fprintf(stderr, "PeerNetSetupQueues(%s)\n", peer->sock_path);
+#endif
 
   struct SimbricksProtoNetDevIntro *di = &peer->dev_intro;
   if (ShmAlloc(di->d2n_elen * di->d2n_nentries, &di->d2n_offset)) {
@@ -233,6 +244,10 @@ int PeerNetSetupQueues(struct Peer *peer) {
   peer->local_elen = di->n2d_elen;
   peer->local_enum = di->n2d_nentries;
 
+  peer->cleanup_base = (void *) ((uintptr_t) shm_base + di->d2n_offset);
+  peer->cleanup_elen = di->d2n_elen;
+  peer->cleanup_enum = di->d2n_nentries;
+
   if (UxsocketSendFd(peer->sock_fd, di, sizeof(*di), peer->shm_fd)) {
     fprintf(stderr, "PeerNetSetupQueues: sending welcome message failed (%lu)",
             peer - peers);
@@ -241,9 +256,41 @@ int PeerNetSetupQueues(struct Peer *peer) {
   return 0;
 }
 
+int PeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
+  if (written_pos == peer->cleanup_pos_last &&
+      clean_pos == peer->local_pos_cleaned)
+    return 0;
+
+#ifdef DEBUG
+  fprintf(stderr, "PeerReport: peer %s written %u -> %u, cleaned %u -> %u\n",
+          peer->sock_path, peer->cleanup_pos_last, written_pos,
+          peer->local_pos_cleaned, clean_pos);
+#endif
+
+  peer->cleanup_pos_last = written_pos;
+  while (peer->local_pos_cleaned != clean_pos) {
+    void *entry =
+        (peer->local_base + peer->local_pos_cleaned * peer->local_elen);
+    if (peer->is_dev) {
+      struct SimbricksProtoNetD2NDummy *d2n = entry;
+      d2n->own_type = SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
+    } else {
+      struct SimbricksProtoNetN2DDummy *n2d = entry;
+      n2d->own_type = SIMBRICKS_PROTO_NET_N2D_OWN_NET;
+    }
+
+    peer->local_pos_cleaned += 1;
+    if (peer->local_pos_cleaned >= peer->local_enum)
+      peer->local_pos_cleaned -= peer->local_enum;
+  }
+
+  return 0;
+}
+
 static int PeerEvent(struct Peer *peer, uint32_t events) {
+#ifdef DEBUG
   fprintf(stderr, "PeerEvent(%s)\n", peer->sock_path);
-  fflush(stdout);
+#endif
 
   // disable peer if not an input event
   if (!(events & EPOLLIN)) {
@@ -293,32 +340,84 @@ static int PeerEvent(struct Peer *peer, uint32_t events) {
   return 0;
 }
 
+static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
+  // XXX: consider batching this to forward multiple entries at once if possible
+
+  void *entry = (peer->local_base + peer->local_pos * peer->local_elen);
+  bool ready;
+  if (peer->is_dev) {
+    struct SimbricksProtoNetD2NDummy *d2n = entry;
+    ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
+        SIMBRICKS_PROTO_NET_D2N_OWN_NET;
+  } else {
+    struct SimbricksProtoNetN2DDummy *n2d = entry;
+    ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
+        SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+  }
+
+  if (ready) {
+    RdmaPassEntry(peer);
+    peer->local_pos += 1;
+    if (peer->local_pos >= peer->local_enum)
+      peer->local_pos -= peer->local_enum;
+
+    uint64_t unreported = (peer->local_pos - peer->local_pos_reported) %
+                          peer->local_enum;
+    if (unreported >= kPollReportThreshold)
+      *report = true;
+  }
+}
+
+static inline void PollPeerCleanup(struct Peer *peer, bool *report) {
+  // XXX: could also be batched
+
+  if (peer->cleanup_pos_next == peer->cleanup_pos_last)
+    return;
+
+  void *entry =
+      (peer->cleanup_base + peer->cleanup_pos_next * peer->cleanup_elen);
+        bool ready;
+  if (peer->is_dev) {
+    struct SimbricksProtoNetN2DDummy *n2d = entry;
+    ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
+        SIMBRICKS_PROTO_NET_N2D_OWN_NET;
+  } else {
+    struct SimbricksProtoNetD2NDummy *d2n = entry;
+    ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
+        SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
+  }
+
+  if (ready) {
+#ifdef DEBUG
+    fprintf(stderr, "PollPeerCleanup: peer %s has clean entry at %u\n",
+            peer->sock_path, peer->cleanup_pos_next);
+#endif
+    peer->cleanup_pos_next += 1;
+    if (peer->cleanup_pos_next >= peer->cleanup_enum)
+      peer->cleanup_pos_next -= peer->cleanup_enum;
+
+    uint64_t unreported = (peer->cleanup_pos_next - peer->cleanup_pos_reported)
+                          % peer->cleanup_enum;
+    if (unreported >= kCleanReportThreshold)
+      *report = true;
+  }
+}
+
 static void *PollThread(void *data) {
   while (true) {
+    // poll queue for transferring entries
+    bool report = false;
     for (size_t i = 0; i < peer_num; i++) {
       struct Peer *peer = &peers[i];
       if (!peer->ready)
         continue;
 
-      void *entry = (peer->local_base + peer->local_pos * peer->local_elen);
-      bool ready;
-      if (peer->is_dev) {
-        struct SimbricksProtoNetD2NDummy *d2n = entry;
-        ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
-            SIMBRICKS_PROTO_NET_D2N_OWN_NET;
-      } else {
-        struct SimbricksProtoNetN2DDummy *n2d = entry;
-        ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
-            SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
-      }
-
-      if (ready) {
-        RdmaPassEntry(peer);
-        peer->local_pos += 1;
-        if (peer->local_pos >= peer->local_enum)
-          peer->local_pos -= peer->local_enum;
-      }
+      PollPeerTransfer(peer, &report);
+      PollPeerCleanup(peer, &report);
     }
+
+    if (report)
+      RdmaPassReport();
   }
   return NULL;
 }
@@ -349,7 +448,10 @@ int main(int argc, char *argv[]) {
   if (ParseArgs(argc, argv))
     return EXIT_FAILURE;
 
+#ifdef DEBUG
   fprintf(stderr, "pid=%d shm=%s\n", getpid(), shm_path);
+#endif
+
   if ((shm_fd = ShmCreate(shm_path, shm_size, &shm_base)) < 0)
     return EXIT_FAILURE;
 
