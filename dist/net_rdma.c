@@ -197,11 +197,8 @@ static int PeersInitDevs() {
 int PeerDevSendIntro(struct Peer *peer) {
   fprintf(stderr, "PeerDevSendIntro(%s)\n", peer->sock_path);
 
-  peer->shm_fd = shm_fd;
-  peer->shm_base = shm_base;
-
   struct SimbricksProtoNetDevIntro *di = &peer->dev_intro;
-  peer->local_base = (void *) ((uintptr_t) shm_base + di->d2n_offset);
+  peer->local_base = (void *) ((uintptr_t) peer->shm_base + di->d2n_offset);
   peer->local_elen = di->d2n_elen;
   peer->local_enum = di->d2n_nentries;
 
@@ -297,6 +294,32 @@ static int PeerEvent(struct Peer *peer, uint32_t events) {
 }
 
 static void *PollThread(void *data) {
+  while (true) {
+    for (size_t i = 0; i < peer_num; i++) {
+      struct Peer *peer = &peers[i];
+      if (!peer->ready)
+        continue;
+
+      void *entry = (peer->local_base + peer->local_pos * peer->local_elen);
+      bool ready;
+      if (peer->is_dev) {
+        struct SimbricksProtoNetD2NDummy *d2n = entry;
+        ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
+            SIMBRICKS_PROTO_NET_D2N_OWN_NET;
+      } else {
+        struct SimbricksProtoNetN2DDummy *n2d = entry;
+        ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
+            SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+      }
+
+      if (ready) {
+        RdmaPassEntry(peer);
+        peer->local_pos += 1;
+        if (peer->local_pos >= peer->local_enum)
+          peer->local_pos -= peer->local_enum;
+      }
+    }
+  }
   return NULL;
 }
 

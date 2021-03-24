@@ -38,7 +38,7 @@ struct Peer {
 
   /* base address of the local queue we're polling.
      (d2n or n2d depending on is_dev). */
-  void *local_base;
+  uint8_t *local_base;
   uint64_t local_elen;
   uint64_t local_enum;
   uint64_t local_pos;
@@ -82,6 +82,7 @@ int PeerNetSetupQueues(struct Peer *peer);
 int RdmaListen(struct sockaddr_in *addr);
 int RdmaConnect(struct sockaddr_in *addr);
 int RdmaPassIntro(struct Peer *peer);
+int RdmaPassEntry(struct Peer *peer);
 int RdmaEvent();
 
 #endif  // DIST_NET_RDMA_NET_RDMA_H_

@@ -164,14 +164,13 @@ static int RdmaCommonInit() {
     return 1;
   }
 
-  qp_attr.cap.max_send_wr = MSG_TXBUFS;
+  qp_attr.cap.max_send_wr = 1024;
   qp_attr.cap.max_send_sge = 1;
   qp_attr.cap.max_recv_wr = MSG_RXBUFS;
   qp_attr.cap.max_recv_sge = 1;
   qp_attr.send_cq = cq;
   qp_attr.recv_cq = cq;
   qp_attr.qp_type = IBV_QPT_RC;
-  qp_attr.sq_sig_all = 1;
 
   if (rdma_create_qp(cm_id, pd, &qp_attr)) {
     perror("RdmaCommonInit: rdma_create_qp failed");
@@ -469,5 +468,31 @@ int RdmaPassIntro(struct Peer *peer) {
   }
   fprintf(stderr, "RdmaPassIntro: ibv_post_send done\n");
 
+  return 0;
+}
+
+int RdmaPassEntry(struct Peer *peer) {
+  fprintf(stderr, "RdmaPassEntry(%s,%lu)\n", peer->sock_path, peer->local_pos);
+  fprintf(stderr, "  remote_base=%lx local_base=%lx\n", peer->remote_base,
+          peer->local_base);
+  uint64_t pos = peer->local_pos * peer->local_elen;
+  struct ibv_sge sge;
+  sge.addr = (uintptr_t) (peer->local_base + pos);
+  sge.length = peer->local_elen;
+  sge.lkey = peer->shm_mr->lkey;
+
+  struct ibv_send_wr send_wr = { };
+  send_wr.wr_id = -1ULL;
+  send_wr.opcode = IBV_WR_RDMA_WRITE;
+  send_wr.wr.rdma.remote_addr = peer->remote_base + pos;
+  send_wr.wr.rdma.rkey = peer->remote_rkey;
+  send_wr.sg_list = &sge;
+  send_wr.num_sge = 1;
+
+  struct ibv_send_wr *bad_send_wr;
+  if (ibv_post_send(cm_id->qp, &send_wr, &bad_send_wr)) {
+    perror("RdmaPassEntry: ibv_post_send failed");
+    return 1;
+  }
   return 0;
 }
