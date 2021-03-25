@@ -32,6 +32,7 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
+#define SENDQ_LEN (8 * 1024)
 #define MSG_RXBUFS 16
 #define MSG_TXBUFS 16
 #define MAX_PEERS 32
@@ -208,7 +209,7 @@ static int RdmaCommonInit() {
     return 1;
   }
 
-  qp_attr.cap.max_send_wr = 1024;
+  qp_attr.cap.max_send_wr = SENDQ_LEN;
   qp_attr.cap.max_send_sge = 1;
   qp_attr.cap.max_recv_wr = MSG_RXBUFS;
   qp_attr.cap.max_recv_sge = 1;
