@@ -106,7 +106,7 @@ int PeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos);
 int RdmaListen(struct sockaddr_in *addr);
 int RdmaConnect(struct sockaddr_in *addr);
 int RdmaPassIntro(struct Peer *peer);
-int RdmaPassEntry(struct Peer *peer);
+int RdmaPassEntry(struct Peer *peer, uint32_t n);
 int RdmaPassReport();
 int RdmaEvent();
 

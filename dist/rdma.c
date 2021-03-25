@@ -550,7 +550,7 @@ int RdmaPassIntro(struct Peer *peer) {
   return 0;
 }
 
-int RdmaPassEntry(struct Peer *peer) {
+int RdmaPassEntry(struct Peer *peer, uint32_t n) {
 #ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaPassEntry(%s,%u)\n", peer->sock_path, peer->local_pos);
   fprintf(stderr, "  remote_base=%lx local_base=%p\n", peer->remote_base,
@@ -560,7 +560,7 @@ int RdmaPassEntry(struct Peer *peer) {
   uint64_t pos = peer->local_pos * peer->local_elen;
   struct ibv_sge sge;
   sge.addr = (uintptr_t) (peer->local_base + pos);
-  sge.length = peer->local_elen;
+  sge.length = peer->local_elen * n;
   sge.lkey = peer->shm_mr->lkey;
 
   struct ibv_send_wr send_wr = { };

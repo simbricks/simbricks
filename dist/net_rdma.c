@@ -42,6 +42,7 @@
 
 static const uint64_t kPollReportThreshold = 128;
 static const uint64_t kCleanReportThreshold = 128;
+static const uint64_t kPollMax = 8;
 
 const char *shm_path = NULL;
 size_t shm_size = 256 * 1024 * 1024ULL;  // 256MB
@@ -343,21 +344,26 @@ static int PeerEvent(struct Peer *peer, uint32_t events) {
 static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
   // XXX: consider batching this to forward multiple entries at once if possible
 
-  void *entry = (peer->local_base + peer->local_pos * peer->local_elen);
-  bool ready;
-  if (peer->is_dev) {
-    struct SimbricksProtoNetD2NDummy *d2n = entry;
-    ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
-        SIMBRICKS_PROTO_NET_D2N_OWN_NET;
-  } else {
-    struct SimbricksProtoNetN2DDummy *n2d = entry;
-    ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
-        SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+  size_t n;
+  for (n = 0; n < kPollMax && peer->local_pos + n < peer->local_enum; n++) {
+    void *entry = (peer->local_base + (peer->local_pos + n) * peer->local_elen);
+    bool ready;
+    if (peer->is_dev) {
+      struct SimbricksProtoNetD2NDummy *d2n = entry;
+      ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
+          SIMBRICKS_PROTO_NET_D2N_OWN_NET;
+    } else {
+      struct SimbricksProtoNetN2DDummy *n2d = entry;
+      ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
+          SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+    }
+    if (!ready)
+      break;
   }
 
-  if (ready) {
-    RdmaPassEntry(peer);
-    peer->local_pos += 1;
+  if (n > 0) {
+    RdmaPassEntry(peer, n);
+    peer->local_pos += n;
     if (peer->local_pos >= peer->local_enum)
       peer->local_pos -= peer->local_enum;
 
