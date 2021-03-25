@@ -33,8 +33,8 @@
 #include <unistd.h>
 
 #define SENDQ_LEN (8 * 1024)
-#define MSG_RXBUFS 16
-#define MSG_TXBUFS 16
+#define MSG_RXBUFS 512
+#define MSG_TXBUFS 512
 #define MAX_PEERS 32
 
 struct NetRdmaReportMsg {
