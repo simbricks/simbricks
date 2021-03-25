@@ -25,6 +25,7 @@
 #include "dist/net_rdma.h"
 
 #include <fcntl.h>
+#include <pthread.h>
 #include <rdma/rdma_cma.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,19 +71,24 @@ static struct ibv_mr *mr_msgs;
 static struct ibv_qp_init_attr qp_attr = { };
 
 static struct NetRdmaMsg msgs[MSG_RXBUFS + MSG_TXBUFS];
+pthread_spinlock_t freelist_spin;
 static struct NetRdmaMsg *msgs_free = NULL;
 
 static struct NetRdmaMsg *RdmaMsgAlloc() {
+  pthread_spin_lock(&freelist_spin);
   struct NetRdmaMsg *msg = msgs_free;
   if (msg != NULL) {
     msgs_free = msg->next_free;
   }
+  pthread_spin_unlock(&freelist_spin);
   return msg;
 }
 
 static void RdmaMsgFree(struct NetRdmaMsg *msg) {
+  pthread_spin_lock(&freelist_spin);
   msg->next_free = msgs_free;
   msgs_free = msg;
+  pthread_spin_unlock(&freelist_spin);
 }
 
 static int RdmMsgRxEnqueue(struct NetRdmaMsg *msg) {
@@ -170,6 +176,11 @@ static int RdmaMsgRx(struct NetRdmaMsg *msg) {
 }
 
 static int RdmaCommonInit() {
+  if (pthread_spin_init(&freelist_spin, PTHREAD_PROCESS_PRIVATE)) {
+    perror("RdmaCommonInit: pthread_spin_init failed");
+    return 1;
+  }
+
   if (!(pd = ibv_alloc_pd(cm_id->verbs))) {
     perror("RdmaCommonInit: ibv_alloc_pd failed");
     return 1;
