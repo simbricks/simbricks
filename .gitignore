@@ -4,6 +4,7 @@
 *.ko
 .*.cmd
 *.pyc
+*.swp
 __pycache__/
 _vimrc_local.vim
 sims/nic/corundum/obj_dir
