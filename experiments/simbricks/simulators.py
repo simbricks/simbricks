@@ -76,7 +76,7 @@ class NICSim(Simulator):
 
     def basic_run_cmd(self, env, name, extra=None):
         cmd = '%s/%s %s %s %s %d 0 %d %d %d' % \
-            (env.repodir, name, env.nic_pci_path(self), env.nic_eth_path(self),
+            (env.repodir + '/sims/nic', name, env.nic_pci_path(self), env.nic_eth_path(self),
                     env.nic_shm_path(self), self.sync_mode, self.sync_period,
                     self.pci_latency, self.eth_latency)
 
@@ -240,13 +240,13 @@ class WireNet(NetSim):
     def run_cmd(self, env):
         assert len(self.nics) == 2
         return '%s/net_wire/net_wire %s %s %d %d %d' % \
-                (env.repodir, env.nic_eth_path(self.nics[0]),
+                (env.repodir + '/sims/net', env.nic_eth_path(self.nics[0]),
                         env.nic_eth_path(self.nics[1]),
                         self.sync_mode, self.sync_period, self.eth_latency)
 
 class SwitchNet(NetSim):
     def run_cmd(self, env):
-        cmd = env.repodir + '/net_switch/net_switch'
+        cmd = env.repodir  + '/sims/net' + '/switch/net_switch'
         cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency}'
         for n in self.nics:
             cmd += ' -s ' + env.nic_eth_path(n)
@@ -262,7 +262,7 @@ class NS3DumbbellNet(NetSim):
             else:
                 ports += '--CosimPortRight=' + env.nic_eth_path(n) + ' '
 
-        cmd = env.repodir + '/ns-3' + '/cosim-run.sh cosim cosim-dumbbell-example ' + ports + ' ' + self.opt
+        cmd = env.repodir  + '/sims/external' + '/ns-3' + '/cosim-run.sh cosim cosim-dumbbell-example ' + ports + ' ' + self.opt
         print(cmd)
 
         return cmd
@@ -273,7 +273,7 @@ class NS3BridgeNet(NetSim):
         for n in self.nics:
             ports += '--CosimPort=' + env.nic_eth_path(n) + ' '
 
-        cmd = env.repodir + '/ns-3' + '/cosim-run.sh cosim cosim-bridge-example ' + ports + ' ' + self.opt
+        cmd = env.repodir + '/sims/external' + '/ns-3' + '/cosim-run.sh cosim cosim-bridge-example ' + ports + ' ' + self.opt
         print(cmd)
 
         return cmd
@@ -290,7 +290,7 @@ class NS3SequencerNet(NetSim):
                 ports += '--EndhostSequencerPort=' + env.nic_eth_path(n) + ' '
             else:
                 raise Exception('Wrong NIC type')
-        cmd = env.repodir + '/ns-3' + '/cosim-run.sh sequencer sequencer-single-switch-example ' + ports + ' ' + self.opt
+        cmd = env.repodir + '/sims/external' + '/ns-3' + '/cosim-run.sh sequencer sequencer-single-switch-example ' + ports + ' ' + self.opt
         return cmd
 
 
