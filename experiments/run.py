@@ -24,6 +24,7 @@ import argparse
 import sys
 import os
 import importlib
+import importlib.util
 import pickle
 import fnmatch
 import simbricks.experiments as exp
