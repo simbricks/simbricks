@@ -15,33 +15,46 @@ Code structure:
     + `netsim_common/`: helper library for network simulations
     + `libnicbm/`: helper library for behavioral nic models
 
-# Building
- - `unzip`, `libpcap-dev`
- - External dependencies for qemu: `libglib2.0-dev libpixman-1-dev`
- - External dependencies for gem5: `scons`, `python-dev`, `libgoogle-perftools-dev`
+# Dependencies
 
-Then build everything with:
+ - Tested to work on Ubuntu 18.04
+ - Verilator (branch v4.010)
+ - unzip
+ - libpcap-dev
+ - libglib2.0-dev
+ - python (>= 3.7)
+ - libgoogle-perftools-dev
+ - libboost-iostreams-dev
+ - scons
+ - ninja-build
+ - libpixman-1-dev
+ - qemu
+
+# Building
+
+First, initialize all submodules:
+```
+git submodule init
+git submodule update
+```
+
+Then, build the project, all submodules, and experiment images:
 ```
 make -j`nproc` all external build-images
 ```
 
+Note: building system images requires KVM support (and KVM permissions).
+
 # Running
 
-We use the scripts in the `experiments/` directory. `make` in that directory
-should run all the experiments for the paper. This will take a while (>>1h).
-While simulations can be run in parallel, some of them use a lot of core, and we
-currently don't have jobserver integration, so blindly running make with a high
-`-j` parameter here is a bad idea. You can run individual experiment (see
-`experiments/*` for their names) with `make out/$NAME/1/ready`, which will
-result in log files in `out/$NAME/1/`. Start with one of the qemu simulations.
+A list of available simulations is listed in `experiments/pyexps`.
 
-To run the experiments multiple times which restore from the common check point,
-the script should be added to EXP_CP in experiments/makefile. There should be a 
-pair script has "-mck" as suffix to that experiment script to make the check point.
-(eg. gem5-timing-corundum-verilator-pair-cp.sh AND gem5-timing-corundum-verilator-pair-cp-mck.sh)
-
-The script doesn't need to restore from the common check point, should be added to 
-EXP_NCP in experiments/makefile
+To run one of the simulations:
+```
+cd experiments
+python3 run.py pyexps/EXP
+```
+where `EXP` is the name of the simulation file.
 
 ## Running Qemu
 
