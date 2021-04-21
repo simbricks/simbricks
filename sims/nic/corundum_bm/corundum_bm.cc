@@ -118,7 +118,7 @@ bool DescRing::empty() {
 }
 
 bool DescRing::full() {
-  return (this->_currHead - this->_tailPtr >= this->_size);
+  return (this->_currHead - this->_tailPtr >= (int)this->_size);
 }
 
 bool DescRing::updatePtr(ptr_t ptr, bool head) {
@@ -290,7 +290,7 @@ void TxRing::dmaDone(DMAOp *op) {
       delete op;
       break;
     default:
-      fprintf(stderr, "Unknown DMA type %u\n", op->type);
+      fprintf(stderr, "Unknown DMA type %d\n", op->type);
       abort();
   }
 }

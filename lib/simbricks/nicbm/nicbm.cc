@@ -78,13 +78,13 @@ void Runner::IssueDma(DMAOp &op) {
     // can directly issue
 #ifdef DEBUG_NICBM
     printf("nicbm: issuing dma op %p addr %lx len %zu pending %zu\n", &op,
-           op.dma_addr, op.len, dma_pending);
+           op.dma_addr_, op.len_, dma_pending_);
 #endif
     DmaDo(op);
   } else {
 #ifdef DEBUG_NICBM
     printf("nicbm: enqueuing dma op %p addr %lx len %zu pending %zu\n", &op,
-           op.dma_addr, op.len, dma_pending);
+           op.dma_addr_, op.len_, dma_pending_);
 #endif
     dma_queue_.push_back(&op);
   }
@@ -229,8 +229,8 @@ void Runner::H2DReadcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc) {
   DMAOp *op = (DMAOp *)(uintptr_t)rc->req_id;
 
 #ifdef DEBUG_NICBM
-  printf("nicbm: completed dma read op %p addr %lx len %zu\n", op, op->dma_addr,
-         op->len);
+  printf("nicbm: completed dma read op %p addr %lx len %zu\n", op, op->dma_addr_,
+         op->len_);
 #endif
 
   memcpy(op->data_, (void *)rc->data, op->len_);
@@ -245,7 +245,7 @@ void Runner::H2DWritecomp(volatile struct SimbricksProtoPcieH2DWritecomp *wc) {
 
 #ifdef DEBUG_NICBM
   printf("nicbm: completed dma write op %p addr %lx len %zu\n", op,
-         op->dma_addr, op->len);
+         op->dma_addr_, op->len_);
 #endif
 
   dev_.DmaComplete(*op);
