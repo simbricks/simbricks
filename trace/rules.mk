@@ -26,7 +26,8 @@ bin_trace_process := $(d)process
 
 OBJS := $(addprefix $(d), process.o sym_map.o log_parser.o gem5.o nicbm.o)
 
-$(bin_trace_process): $(OBJS) -lboost_iostreams
+$(bin_trace_process): $(OBJS) -lboost_iostreams -lboost_coroutine \
+	-lboost_context
 
 CLEAN := $(bin_trace_process) $(OBJS)
 ALL := $(bin_trace_process)

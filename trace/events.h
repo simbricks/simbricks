@@ -26,9 +26,12 @@
 
 #include <string>
 
+class log_parser;
+
 class event {
  public:
   uint64_t ts;
+  log_parser *source;
 
   explicit event(uint64_t ts_) : ts(ts_) {
   }

@@ -26,6 +26,7 @@
 
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 
@@ -73,7 +74,7 @@ class log_parser {
 
  public:
   const char *label;
-  event *cur_event;
+  std::shared_ptr<event> cur_event;
 
   log_parser();
   virtual ~log_parser();

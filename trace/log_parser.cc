@@ -33,7 +33,9 @@
 
 namespace bio = boost::iostreams;
 
-log_parser::log_parser() : inf(nullptr), gz_file(nullptr), gz_in(nullptr) {
+log_parser::log_parser() : inf(nullptr), gz_file(nullptr), gz_in(nullptr),
+    buf_len(0), buf_pos(0)
+{
   buf = new char[block_size];
 }
 
@@ -95,7 +97,7 @@ size_t log_parser::try_line() {
 }
 
 bool log_parser::next_event() {
-  cur_event = nullptr;
+  cur_event.reset();
 
   if (buf_len == 0 && !next_block()) {
     std::cerr << "escape 0" << std::endl;

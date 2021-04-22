@@ -24,18 +24,97 @@
 
 #include "trace/process.h"
 
+#include <boost/bind.hpp>
+#include <boost/coroutine2/all.hpp>
+#include <boost/foreach.hpp>
 #include <iostream>
+#include <memory>
 
 #include "trace/events.h"
 #include "trace/parser.h"
 
-struct log_parser_cmp {
-  bool operator()(const log_parser *l, const log_parser *r) const {
-    return l->cur_event->ts < r->cur_event->ts;
+template <typename T>
+struct event_pair_cmp {
+  bool operator()(const std::pair<T, std::shared_ptr<event>> l,
+                  const std::pair<T, std::shared_ptr<event>> r) const {
+    return l.second->ts < r.second->ts;
   }
 };
 
+typedef boost::coroutines2::asymmetric_coroutine<std::shared_ptr<event>> coro_t;
+
+void ReadEvents(coro_t::push_type &sink, log_parser &lp) {
+  while (lp.next_event() && lp.cur_event) {
+    lp.cur_event->source = &lp;
+    sink(lp.cur_event);
+  }
+}
+
+/** merge multiple event streams into one ordered by timestamp */
+void MergeEvents(coro_t::push_type &sink,
+                 std::set<coro_t::pull_type *> &all_parsers) {
+  typedef std::pair<coro_t::pull_type *, std::shared_ptr<event>> itpair_t;
+
+  // create set of pairs of source and next event, ordered by timestamp of next
+  // event.
+  std::set<itpair_t, event_pair_cmp<coro_t::pull_type *>> active;
+
+  // initially populate the set
+  for (auto p : all_parsers) {
+    if (*p) {
+      auto ev = p->get();
+      (*p)();
+      active.insert(std::make_pair(p, ev));
+    }
+  }
+
+  // iterate until there are no more active sources
+  while (!active.empty()) {
+    // grab event with lowest timestamp
+    auto i = active.begin();
+    itpair_t p = *i;
+    active.erase(i);
+
+    // emit event
+    sink(p.second);
+
+    // check if there is another event in the source, if so, re-enqueue
+    if (*p.first) {
+      auto ev = p.first->get();
+      (*p.first)();
+      active.insert(std::make_pair(p.first, ev));
+    }
+  }
+}
+
+void Printer(coro_t::pull_type &source) {
+  uint64_t ts_off = 0;
+  for (auto ev: source) {
+    std::shared_ptr<EHostCall> hc;
+    if ((hc = std::dynamic_pointer_cast<EHostCall>(ev)) &&
+        strcmp(ev->source->label, "C") &&
+        hc->fun == "__sys_sendto") {
+      std::cout << "---------- REQ START:" << ev->ts << std::endl;
+      ts_off = ev->ts;
+    }
+
+    std::cout << ev->source->label << " ";
+
+    ev->ts -= ts_off;
+    ev->ts /= 1000;
+    ev->dump(std::cout);
+  }
+}
+
+
+
 int main(int argc, char *argv[]) {
+  if (argc != 5) {
+    std::cerr << "Usage: process CLIENT_HLOG CLIENT_NLOG SERVER_HLOG "
+                  "SERVER_CLOG" << std::endl;
+    return 1;
+  }
+
   sym_map syms;
   syms.add_filter("entry_SYSCALL_64");
   syms.add_filter("__do_sys_gettimeofday");
@@ -74,36 +153,14 @@ int main(int argc, char *argv[]) {
   all_parsers.insert(&sh);
   all_parsers.insert(&sn);
 
-  std::set<log_parser *, log_parser_cmp> active_parsers;
+  std::cerr << "Opened all" << std::endl;
 
+  std::set<coro_t::pull_type *> sources;
   for (auto p : all_parsers) {
-    if (p->next_event() && p->cur_event)
-      active_parsers.insert(p);
+    sources.insert(new coro_t::pull_type(
+      boost::bind(ReadEvents, _1, boost::ref(*p))));
   }
 
-  uint64_t ts_off = 0;
-  while (!active_parsers.empty()) {
-    auto i = active_parsers.begin();
-    log_parser *p = *i;
-    active_parsers.erase(i);
-
-    EHostCall *hc;
-    event *ev = p->cur_event;
-    if (p == &ch && (hc = dynamic_cast<EHostCall *>(ev)) &&
-        hc->fun == "__sys_sendto") {
-      std::cout << "---------- REQ START:" << ev->ts << std::endl;
-      ts_off = ev->ts;
-    }
-
-    std::cout << p->label << " ";
-
-    ev->ts -= ts_off;
-    ev->ts /= 1000;
-    ev->dump(std::cout);
-
-    delete ev;
-
-    if (p->next_event() && p->cur_event)
-      active_parsers.insert(p);
-  }
+  coro_t::pull_type merged(boost::bind(MergeEvents, _1, boost::ref(sources)));
+  Printer(merged);
 }
