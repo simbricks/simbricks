@@ -25,7 +25,6 @@
 #include "trace/process.h"
 
 #include <boost/bind.hpp>
-#include <boost/coroutine2/all.hpp>
 #include <boost/foreach.hpp>
 #include <iostream>
 #include <memory>
@@ -40,15 +39,6 @@ struct event_pair_cmp {
     return l.second->ts < r.second->ts;
   }
 };
-
-typedef boost::coroutines2::asymmetric_coroutine<std::shared_ptr<event>> coro_t;
-
-void ReadEvents(coro_t::push_type &sink, log_parser &lp) {
-  while (lp.next_event() && lp.cur_event) {
-    lp.cur_event->source = &lp;
-    sink(lp.cur_event);
-  }
-}
 
 /** merge multiple event streams into one ordered by timestamp */
 void MergeEvents(coro_t::push_type &sink,
@@ -158,7 +148,7 @@ int main(int argc, char *argv[]) {
   std::set<coro_t::pull_type *> sources;
   for (auto p : all_parsers) {
     sources.insert(new coro_t::pull_type(
-      boost::bind(ReadEvents, _1, boost::ref(*p))));
+      boost::bind(&log_parser::read_coro, boost::ref(*p), _1)));
   }
 
   coro_t::pull_type merged(boost::bind(MergeEvents, _1, boost::ref(sources)));
