@@ -42,6 +42,21 @@ class event {
   virtual void dump(std::ostream &out) = 0;
 };
 
+class EHostInstr : public event {
+ public:
+  uint64_t pc;
+
+  EHostInstr(uint64_t ts_, uint64_t pc_) : event(ts_), pc(pc_) {
+  }
+
+  virtual ~EHostInstr() {
+  }
+
+  virtual void dump(std::ostream &out) {
+    out << ts << ": H.INSTR pc=" << std::hex << pc << std::dec << std::endl;
+  }
+};
+
 class EHostCall : public event {
  public:
   const std::string &fun;

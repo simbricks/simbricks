@@ -52,6 +52,8 @@ void gem5_parser::process_msg(uint64_t ts, char *comp_name,
     if (!p.consume_hex(addr) || p.consume_char('.'))
       return;
 
+    yield(std::make_shared<EHostInstr>(ts, addr));
+
     if (const std::string *s = syms.lookup(addr)) {
       yield(std::make_shared<EHostCall>(ts, *s));
     }

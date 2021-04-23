@@ -81,7 +81,10 @@ void Printer(coro_t::pull_type &source) {
   uint64_t ts_off = 0;
   for (auto ev: source) {
     std::shared_ptr<EHostCall> hc;
-    if ((hc = std::dynamic_pointer_cast<EHostCall>(ev)) &&
+    std::shared_ptr<EHostInstr> hi;
+    if ((hi = std::dynamic_pointer_cast<EHostInstr>(ev))) {
+      continue;
+    } else if ((hc = std::dynamic_pointer_cast<EHostCall>(ev)) &&
         strcmp(ev->source->label, "C") &&
         hc->fun == "__sys_sendto") {
       std::cout << "---------- REQ START:" << ev->ts << std::endl;
