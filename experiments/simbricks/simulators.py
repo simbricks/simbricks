@@ -223,16 +223,16 @@ class CorundumVerilatorNIC(NICSim):
         return 512
 
     def run_cmd(self, env):
-        return self.basic_run_cmd(env, 'sims/nic/corundum/corundum_verilator',
+        return self.basic_run_cmd(env, '/corundum/corundum_verilator',
             str(self.clock_freq))
 
 class CorundumBMNIC(NICSim):
     def run_cmd(self, env):
-        return self.basic_run_cmd(env, 'sims/nic/corundum_bm/corundum_bm')
+        return self.basic_run_cmd(env, '/corundum_bm/corundum_bm')
 
 class I40eNIC(NICSim):
     def run_cmd(self, env):
-        return self.basic_run_cmd(env, 'sims/nic/i40e_bm/i40e_bm')
+        return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
 
 
 
