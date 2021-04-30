@@ -239,15 +239,20 @@ class I40eNIC(NICSim):
 class WireNet(NetSim):
     def run_cmd(self, env):
         assert len(self.nics) == 2
-        return '%s/sims/net/wire/net_wire %s %s %d %d %d' % \
+        cmd = '%s/sims/net/wire/net_wire %s %s %d %d %d' % \
                 (env.repodir, env.nic_eth_path(self.nics[0]),
                         env.nic_eth_path(self.nics[1]),
                         self.sync_mode, self.sync_period, self.eth_latency)
+        if len(env.pcap_file) > 0:
+            cmd += ' ' + env.pcap_file
+        return cmd
 
 class SwitchNet(NetSim):
     def run_cmd(self, env):
         cmd = env.repodir + '/sims/net/switch/net_switch'
         cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency}'
+        if len(env.pcap_file) > 0:
+            cmd += ' -p ' + env.pcap_file
         for n in self.nics:
             cmd += ' -s ' + env.nic_eth_path(n)
         return cmd

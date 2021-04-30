@@ -23,6 +23,7 @@
  */
 
 #include <unistd.h>
+#include <pcap/pcap.h>
 
 #include <cassert>
 #include <climits>
@@ -40,6 +41,7 @@ extern "C" {
 
 static uint64_t sync_period = (500 * 1000ULL);  // 500ns
 static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
+static pcap_dumper_t *dumpfile = nullptr;
 
 /* MAC address type */
 struct MAC {
@@ -85,6 +87,18 @@ static void sigint_handler(int dummy) {
 static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
                         size_t port) {
   volatile union SimbricksProtoNetN2D *msg_to;
+  struct pcap_pkthdr ph;
+
+  // log to pcap file if initialized
+  if (dumpfile) {
+      memset(&ph, 0, sizeof(ph));
+      ph.ts.tv_sec = cur_ts / 1000000000000ULL;
+      ph.ts.tv_usec = (cur_ts % 1000000000000ULL) / 1000ULL;
+      ph.caplen = tx->len;
+      ph.len = tx->len;
+      pcap_dump((unsigned char *)dumpfile, &ph, (unsigned char *)tx->data);
+  }
+
   msg_to = SimbricksNetIfN2DAlloc(&nsifs[port], cur_ts, eth_latency);
   if (msg_to != NULL) {
     volatile struct SimbricksProtoNetN2DRecv *rx;
@@ -143,9 +157,10 @@ int main(int argc, char *argv[]) {
   int c;
   int bad_option = 0;
   int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
+  pcap_t *pc = nullptr;
 
   // Parse command line argument
-  while ((c = getopt(argc, argv, "s:S:E:m:")) != -1 && !bad_option) {
+  while ((c = getopt(argc, argv, "s:S:E:m:p:")) != -1 && !bad_option) {
     switch (c) {
       case 's': {
         struct SimbricksNetIf nsif;
@@ -170,6 +185,17 @@ int main(int argc, char *argv[]) {
         sync_mode = strtol(optarg, NULL, 0);
         assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
                sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
+        break;
+
+      case 'p':
+        pc = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, 65535,
+                                                  PCAP_TSTAMP_PRECISION_NANO);
+        if (pc == nullptr) {
+            perror("pcap_open_dead failed");
+            return EXIT_FAILURE;
+        }
+
+        dumpfile = pcap_dump_open(pc, optarg);
         break;
 
       default:
