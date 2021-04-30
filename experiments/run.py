@@ -52,6 +52,8 @@ parser.add_argument('--force', action='store_const', const=True, default=False,
 parser.add_argument('--verbose', action='store_const', const=True,
         default=False,
         help='Verbose output')
+parser.add_argument('--pcap', action='store_const', const=True, default=False,
+        help='Dump pcap file (if supported by simulator)')
 
 g_env = parser.add_argument_group('Environment')
 g_env.add_argument('--repo', metavar='DIR', type=str,
@@ -104,6 +106,9 @@ def add_exp(e, run, prereq, create_cp, restore_cp):
     env = exp.ExpEnv(args.repo, workdir, cpdir)
     env.create_cp = create_cp
     env.restore_cp = restore_cp
+    env.pcap_file = ''
+    if args.pcap:
+        env.pcap_file = workdir+'/pcap'
 
     run = runtime.Run(e, run, env, outpath, prereq)
     rt.add_run(run)
