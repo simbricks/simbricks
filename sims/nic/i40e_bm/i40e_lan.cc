@@ -430,7 +430,7 @@ void lan_queue_tx::do_writeback(uint32_t first_idx, uint32_t first_pos,
     dma->dma_addr_ = hwb_addr;
 
 #ifdef DEBUG_LAN
-    log << " hwb=" << *((uint32_t *)dma->data) << logger::endl;
+    log << " hwb=" << *((uint32_t *)dma->data_) << logger::endl;
 #endif
     runner->IssueDma(*dma);
   }
