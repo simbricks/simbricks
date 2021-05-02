@@ -620,6 +620,9 @@ class i40e_bm : public nicbm::Runner::Device {
 // places the tcp checksum in the packet (assuming ipv4)
 void xsum_tcp(void *tcphdr, size_t l4len);
 
+// places the udpp checksum in the packet (assuming ipv4)
+void xsum_udp(void *udpphdr, size_t l4len);
+
 // calculates the full ipv4 & tcp checksum without assuming any pseudo header
 // xsums
 void xsum_tcpip_tso(void *iphdr, uint8_t iplen, uint8_t l4len, uint16_t paylen);

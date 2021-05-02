@@ -591,6 +591,9 @@ bool lan_queue_tx::trigger_tx_packet() {
     if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_TCP) {
       uint16_t tcp_off = maclen + iplen;
       xsum_tcp(pktbuf + tcp_off, tso_len - tcp_off);
+    } else if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_UDP) {
+      uint16_t udp_off = maclen + iplen;
+      xsum_udp(pktbuf + udp_off, tso_len - udp_off);
     }
 
     runner->EthSend(pktbuf, tso_len);
