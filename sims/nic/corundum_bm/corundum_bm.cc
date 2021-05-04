@@ -34,6 +34,7 @@
 #include <cassert>
 
 // #define DEBUG 1
+// #define ARMED_MODE
 
 static nicbm::Runner *runner;
 
@@ -170,7 +171,9 @@ void EventRing::dmaDone(DMAOp *op) {
 
 void EventRing::issueEvent(unsigned type, unsigned source) {
   assert(type == EVENT_TYPE_TX_CPL || type == EVENT_TYPE_RX_CPL);
+#ifdef ARMED_MODE
   if (this->armed) {
+#endif
     if (full()) {
       fprintf(stderr, "Event ring is rull\n");
       return;
@@ -195,7 +198,9 @@ void EventRing::issueEvent(unsigned type, unsigned source) {
     runner->IssueDma(*op);
     this->_currHead++;
     this->armed = false;
+#ifdef ARMED_MODE
   }
+#endif
 }
 
 CplRing::CplRing(EventRing *eventRing) : eventRing(eventRing) {
