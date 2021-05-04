@@ -430,7 +430,7 @@ void lan_queue_tx::do_writeback(uint32_t first_idx, uint32_t first_pos,
     dma->dma_addr_ = hwb_addr;
 
 #ifdef DEBUG_LAN
-    log << " hwb=" << *((uint32_t *)dma->data) << logger::endl;
+    log << " hwb=" << *((uint32_t *)dma->data_) << logger::endl;
 #endif
     runner->IssueDma(*dma);
   }
@@ -591,6 +591,9 @@ bool lan_queue_tx::trigger_tx_packet() {
     if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_TCP) {
       uint16_t tcp_off = maclen + iplen;
       xsum_tcp(pktbuf + tcp_off, tso_len - tcp_off);
+    } else if (l4t == I40E_TX_DESC_CMD_L4T_EOFT_UDP) {
+      uint16_t udp_off = maclen + iplen;
+      xsum_udp(pktbuf + udp_off, tso_len - udp_off);
     }
 
     runner->EthSend(pktbuf, tso_len);

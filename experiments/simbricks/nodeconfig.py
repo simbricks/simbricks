@@ -326,18 +326,20 @@ class IperfTCPClient(AppConfig):
 class IperfUDPClient(AppConfig):
     server_ip = '10.0.0.1'
     rate = '150m'
-    def run_cmds(self, node):
-        return ['sleep 1',
-                'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate,
-                'sleep 20']
+    is_last = False
 
-class IperfUDPClientLast(AppConfig):
-    server_ip = '10.0.0.1'
-    rate = '150m'
     def run_cmds(self, node):
-        return ['sleep 1',
-                'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate,
-                'sleep 0.5']               
+        cmds = ['sleep 1',
+                'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate]
+        
+        if self.is_last:
+            cmds.append('sleep 0.5')
+        else:
+            cmds.append('sleep infinity')
+        
+        return cmds
+
+             
 
 class IperfUDPClientSleep(AppConfig):
     server_ip = '10.0.0.1'

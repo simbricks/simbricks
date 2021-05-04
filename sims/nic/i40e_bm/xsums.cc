@@ -30,6 +30,14 @@ struct rte_tcp_hdr {
   uint16_t tcp_urp;  /**< TCP urgent pointer, if any. */
 } __attribute__((packed));
 
+/* from dpdk/lib/librte_net/rte_udp.h */
+struct rte_udp_hdr {
+  uint16_t src_port;
+  uint16_t dst_port;
+  uint16_t dgram_len;
+  uint16_t dgram_cksum;
+} __attribute__((packed));
+
 /* from dpdk/lib/librte_net/rte_ip.h */
 struct ipv4_hdr {
   uint8_t version_ihl;      /**< version and header length */
@@ -104,6 +112,14 @@ static inline uint16_t rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr) {
   psd_hdr.len = htons(
       (uint16_t)(ntohs(ipv4_hdr->total_length) - sizeof(struct ipv4_hdr)));
   return rte_raw_cksum(&psd_hdr, sizeof(psd_hdr));
+}
+
+void xsum_udp(void *udphdr, size_t l4_len) {
+  struct rte_udp_hdr *udph = reinterpret_cast<struct rte_udp_hdr *>(udphdr);
+  uint32_t cksum = rte_raw_cksum(udphdr, l4_len);
+  cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
+  cksum = (~cksum) & 0xffff;
+  udph->dgram_cksum = cksum;
 }
 
 void xsum_tcp(void *tcphdr, size_t l4_len) {

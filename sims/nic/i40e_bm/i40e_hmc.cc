@@ -135,7 +135,7 @@ void host_mem_cache::issue_mem_op(mem_op &op) {
 
 #ifdef DEBUG_HMC
   std::cerr << "hmc issue_mem_op: hmc_addr=" << addr
-            << " dma_addr=" << op.dma_addr << " len=" << op.len << std::endl;
+            << " dma_addr=" << op.dma_addr_ << " len=" << op.len_ << std::endl;
 #endif
   runner->IssueDma(op);
 }

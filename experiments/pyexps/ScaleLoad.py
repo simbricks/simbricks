@@ -25,8 +25,8 @@ import simbricks.simulators as sim
 import simbricks.nodeconfig as node
 
 
-# iperf TCP_single test
-# naming convention following host-nic-net-app
+# iperf UDP Load Scalability test
+# naming convention following host-nic-net
 # host: gem5-timing
 # nic:  cv/cb/ib
 # net:  wire/switch/dumbbell/bridge
@@ -34,37 +34,33 @@ import simbricks.nodeconfig as node
 
 host_types = ['gt', 'qt', 'qemu']
 nic_types = ['cv','cb','ib']
-net_types = ['switch', 'bridge']
-app = ['UDPmicro']
+net_types = ['wire', 'sw', 'br']
+app = ['UDPs']
 
-total_rate = 1000 # Mbps
-num_client_max = 8
-num_client_step = 2
-num_client_types = [1, 3, 7, 15, 31]
-#for n in range(1, num_client_max + 1, num_client_step):
-#    num_client_types.append(n)
-#    print(n)
-
-
-
+rate_types = []
+rate_start = 0
+rate_end = 1000
+rate_step = 100
+for r in range(rate_start, rate_end + 1, rate_step):
+    rate = f'{r}m'
+    rate_types.append(rate)
+    
 
 experiments = []
 
-for n_client in num_client_types:
-
-    per_client_rate = int(total_rate/n_client)
-    rate = f'{per_client_rate}m'
-
+for rate in rate_types:
     for host_type in host_types:
         for nic_type in nic_types:
             for net_type in net_types:
 
-                e = exp.Experiment(host_type + '-' + nic_type + '-' + net_type + '-UDPmicro-' + f'{total_rate}' + f'-{n_client}')
+                e = exp.Experiment(host_type + '-' + nic_type + '-' + net_type + '-Load-' + rate )
                 # network
-                if net_type == 'switch':
+                if net_type == 'sw':
                     net = sim.SwitchNet()
-                elif net_type == 'bridge':
+                elif net_type == 'br':
                     net = sim.NS3BridgeNet()
+                elif net_type == 'wire':
+                    net = sim.WireNet()
                 else:
                     raise NameError(net_type)
                 e.add_network(net)
@@ -101,17 +97,17 @@ for n_client in num_client_types:
                 servers = sim.create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
                         nc_class, node.IperfUDPServer)
 
-                
-                clients = sim.create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
-                                                 nc_class, node.IperfUDPClient, ip_start=2)
+                if rate == '0m':
+                    clients = sim.create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
+                                                     nc_class, node.IperfUDPClientSleep, ip_start=2)
+                else:
+                    clients = sim.create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
+                                                     nc_class, node.IperfUDPClient, ip_start=2)
 
-                clients[n_client-1].node_config.app = node.IperfUDPClientLast()
-                clients[n_client-1].wait = True
-
-                for c in clients:
-                    c.node_config.app.server_ip = servers[0].node_config.ip
-                    c.node_config.app.rate = rate
-
+                clients[0].wait = True
+                clients[0].node_config.app.server_ip = servers[0].node_config.ip
+                clients[0].node_config.app.is_last = True
+                clients[0].node_config.app.rate = rate
 
                 print(e.name)
 

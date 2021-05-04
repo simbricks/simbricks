@@ -1,6 +1,6 @@
 #!/bin/bash
 
-qemupath=`pwd`/../qemu/
+qemupath=`pwd`/../sims/external/qemu/
 
 # add our qemu to $PATH
 export PATH="$qemupath:$qemupath/build/:$PATH"
