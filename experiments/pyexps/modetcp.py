@@ -33,7 +33,7 @@ import simbricks.nodeconfig as node
 # app: DCTCPm
 
 types_of_host = ['qemu', 'qt','gt']
-types_of_nic = ['cv','cb']
+types_of_nic = ['ib', 'cv','cb']
 types_of_net = ['switch']
 types_of_app = ['TCPm']
 
@@ -53,7 +53,7 @@ for mode in types_of_mode:
                 net.sync_mode = mode
                 #net.opt = link_rate_opt + link_latency_opt
 
-                e = exp.Experiment( f'modetcp-{mode}-' + h + '-' + c + '-' + 'switch' + f'-{num_pairs}')
+                e = exp.Experiment( f'mode-{mode}-' + h + '-' + c + '-' + 'switch' + f'-{num_pairs}')
                 e.add_network(net)
 
                 # host
@@ -82,6 +82,9 @@ for mode in types_of_mode:
                 elif c == 'cv':
                     nic_class = sim.CorundumVerilatorNIC
                     nc_class = node.CorundumLinuxNode
+                elif c == 'ib':
+                    nic_class = sim.I40eNIC
+                    nc_class = node.I40eDCTCPNode
                 else:
                     raise NameError(c)
 

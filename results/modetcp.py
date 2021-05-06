@@ -32,7 +32,7 @@ import json
 
 
 mode = ['0', '1']
-nics = ['cb', 'cv']
+nics = ['cb', 'cv', 'ib']
 num_client = ['1', '4']
 
 outdir = sys.argv[1]
@@ -54,7 +54,7 @@ for c in num_client:
     for n in nics:
         line = f'{n}'
         for m in mode:
-            path = '%s/modetcp-%s-gt-%s-switch-%s-1.json' % (outdir, m, n, c)
+            path = '%s/mode-%s-gt-%s-switch-%s-1.json' % (outdir, m, n, c)
             data = parse_sim_time(path)
             if 'simtime' in data:
                 t = data['simtime']
