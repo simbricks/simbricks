@@ -317,11 +317,18 @@ class IperfUDPServer(AppConfig):
 class IperfTCPClient(AppConfig):
     server_ip = '10.0.0.1'
     procs = 1
+    is_last = False
 
     def run_cmds(self, node):
-        return ['sleep 1',
+        
+        cmds = ['sleep 1',
                 'iperf -l 32M -w 32M  -c ' + self.server_ip + ' -i 1 -P ' +
                 str(self.procs)]
+        if self.is_last:
+            cmds.append('sleep 0.5')
+        else:
+            cmds.append('sleep 10')
+        return cmds
 
 class IperfUDPClient(AppConfig):
     server_ip = '10.0.0.1'
@@ -335,7 +342,7 @@ class IperfUDPClient(AppConfig):
         if self.is_last:
             cmds.append('sleep 0.5')
         else:
-            cmds.append('sleep infinity')
+            cmds.append('sleep 10')
         
         return cmds
 

@@ -34,13 +34,13 @@ import simbricks.nodeconfig as node
 
 host_types = ['gt', 'qt', 'qemu']
 nic_types = ['cv','cb','ib']
-net_types = ['switch', 'bridge']
-app = ['UDPmicro']
+net_types = ['sw', 'br']
+app = ['Host']
 
 total_rate = 1000 # Mbps
 num_client_max = 8
 num_client_step = 2
-num_client_types = [1, 3, 7, 15, 31]
+num_client_types = [1, 4, 9, 14, 20]
 #for n in range(1, num_client_max + 1, num_client_step):
 #    num_client_types.append(n)
 #    print(n)
@@ -59,11 +59,11 @@ for n_client in num_client_types:
         for nic_type in nic_types:
             for net_type in net_types:
 
-                e = exp.Experiment(host_type + '-' + nic_type + '-' + net_type + '-UDPmicro-' + f'{total_rate}' + f'-{n_client}')
+                e = exp.Experiment(host_type + '-' + nic_type + '-' + net_type + '-Host-' + f'{total_rate}m' + f'-{n_client}')
                 # network
-                if net_type == 'switch':
+                if net_type == 'sw':
                     net = sim.SwitchNet()
-                elif net_type == 'bridge':
+                elif net_type == 'br':
                     net = sim.NS3BridgeNet()
                 else:
                     raise NameError(net_type)
@@ -105,12 +105,13 @@ for n_client in num_client_types:
                 clients = sim.create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
                                                  nc_class, node.IperfUDPClient, ip_start=2)
 
-                clients[n_client-1].node_config.app = node.IperfUDPClientLast()
+                clients[n_client-1].node_config.app.is_last = True
                 clients[n_client-1].wait = True
 
                 for c in clients:
                     c.node_config.app.server_ip = servers[0].node_config.ip
                     c.node_config.app.rate = rate
+                    #c.wait = True
 
 
                 print(e.name)
