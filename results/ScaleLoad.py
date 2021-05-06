@@ -27,28 +27,28 @@ import shutil
 import json
 
 if len(sys.argv) != 2:
-    print('Usage: udp_scale.py OUTDIR')
+    print('Usage: python3 ScaleLoad.py OUTDIR')
     sys.exit(1)
 
 basedir = sys.argv[1] + '/'
-types_of_client = [1, 3, 7, 11, 15, 31]
-bw = 1000
 
-for cl in types_of_client:
-    log_path = '%sgt-ib-switch-UDPmicro-%d-%d-1.json' % (basedir, bw, cl)
+# FIXME: dropped 120 because it looks off
+types_of_bw = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
 
-    try:
+
+for bw in types_of_bw:
+    log_path = '%sgt-ib-sw-Load-%dm-1.json' % (basedir, bw)
+    if os.path.exists(log_path):
         log = open(log_path, 'r')
-    except:
-        diff_time = ''
-    else:
         exp_log = json.load(log)
         start_time = exp_log["start_time"]
         end_time = exp_log["end_time"]
         diff_time = (end_time - start_time)/60 #min
         diff_time = str(diff_time)
         log.close()
+    else:
+        diff_time = ''
 
-    print('%d\t%s' % (cl, diff_time))
+    print('%d\t%s' % (bw, diff_time))
 
 

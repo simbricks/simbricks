@@ -27,28 +27,28 @@ import shutil
 import json
 
 if len(sys.argv) != 2:
-    print('Usage: udp.py OUTDIR')
+    print('Usage: udp_scale.py OUTDIR')
     sys.exit(1)
 
 basedir = sys.argv[1] + '/'
+types_of_client = [1, 4, 9, 14, 20]
+bw = 1000
 
-# FIXME: dropped 120 because it looks off
-types_of_bw = [0, 20, 40, 60, 80, 100, 140, 200, 500, 800, 1000]
+for cl in types_of_client:
+    log_path = '%sgt-ib-sw-Host-%dm-%d-1.json' % (basedir, bw, cl)
 
-
-for bw in types_of_bw:
-    log_path = '%sgt-ib-wire-UDPs-%dm-1.json' % (basedir, bw)
-    if os.path.exists(log_path):
+    try:
         log = open(log_path, 'r')
+    except:
+        diff_time = ''
+    else:
         exp_log = json.load(log)
         start_time = exp_log["start_time"]
         end_time = exp_log["end_time"]
         diff_time = (end_time - start_time)/60 #min
         diff_time = str(diff_time)
-    else:
-        diff_time = ''
+        log.close()
 
-    print('%d\t%s' % (bw, diff_time))
+    print('%d\t%s' % (cl, diff_time))
 
-    log.close()
 
