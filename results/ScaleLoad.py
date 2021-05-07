@@ -25,7 +25,9 @@ import os
 import pathlib
 import shutil
 import json
+import math
 
+num_runs = 3
 if len(sys.argv) != 2:
     print('Usage: python3 ScaleLoad.py OUTDIR')
     sys.exit(1)
@@ -35,20 +37,39 @@ basedir = sys.argv[1] + '/'
 # FIXME: dropped 120 because it looks off
 types_of_bw = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
 
-
 for bw in types_of_bw:
-    log_path = '%sgt-ib-sw-Load-%dm-1.json' % (basedir, bw)
-    if os.path.exists(log_path):
-        log = open(log_path, 'r')
-        exp_log = json.load(log)
-        start_time = exp_log["start_time"]
-        end_time = exp_log["end_time"]
-        diff_time = (end_time - start_time)/60 #min
-        diff_time = str(diff_time)
-        log.close()
-    else:
-        diff_time = ''
+    total_time = 0
+    avg_time = 0
+    std = 0
+    all_time = []
+    for i in range(1, num_runs+1):
+        log_path = '%sgt-ib-sw-Load-%dm-%d.json' % (basedir, bw, i)
+        if os.path.exists(log_path):
+            log = open(log_path, 'r')
+            exp_log = json.load(log)
+            start_time = exp_log["start_time"]
+            end_time = exp_log["end_time"]
+            diff_time = (end_time - start_time)/60 #min
+            total_time += diff_time
+            all_time.append(diff_time)
+            diff_time = str(diff_time)
 
-    print('%d\t%s' % (bw, diff_time))
+            log.close()
+        else:
+            diff_time = ''
+
+        #print('%d\t%s' % (bw, diff_time))
+
+    avg_time = total_time/num_runs
+    #print('avg_time: ' + str(avg_time))
+    
+
+    for i in range(0, num_runs):
+        std += (all_time[i] - avg_time) * (all_time[i] - avg_time)
+    
+    std = std/num_runs
+    std = math.sqrt(std)
+    #print(str(std))
+    print('%d %s %f' % (bw, avg_time, std))
 
 
