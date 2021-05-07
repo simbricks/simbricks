@@ -31,7 +31,7 @@ import json
 #
 
 
-num_runs = 4
+num_runs = 8
 
 outdir = sys.argv[1]
 
@@ -50,7 +50,7 @@ total_time = 0
 
 for n in range (1, num_runs+1):
 
-    path = '%s/p-gt-ib-sw-Host-1000m-1-%s.json' % (outdir, n)
+    path = '%s/p8-gt-ib-sw-Host-1000m-1-%s.json' % (outdir, n)
     data = parse_sim_time(path)
     if 'simtime' in data:
         t = data['simtime']
