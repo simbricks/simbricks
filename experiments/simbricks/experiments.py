@@ -32,6 +32,7 @@ class Experiment(object):
     name = None
     timeout = None
     checkpoint = False
+    no_simbricks = False
 
     def __init__(self, name):
         self.name = name

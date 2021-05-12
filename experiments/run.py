@@ -94,7 +94,7 @@ elif args.runtime == 'slurm':
 else:
     rt = runtime.LocalSimpleRuntime(verbose=args.verbose)
 
-def add_exp(e, run, prereq, create_cp, restore_cp):
+def add_exp(e, run, prereq, create_cp, restore_cp, no_simbricks):
     outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
     if os.path.exists(outpath) and not args.force:
         print('skip %s run %d' % (e.name, run))
@@ -106,6 +106,7 @@ def add_exp(e, run, prereq, create_cp, restore_cp):
     env = exp.ExpEnv(args.repo, workdir, cpdir)
     env.create_cp = create_cp
     env.restore_cp = restore_cp
+    env.no_simbricks=no_simbricks
     env.pcap_file = ''
     if args.pcap:
         env.pcap_file = workdir+'/pcap'
@@ -138,13 +139,17 @@ if not args.pickled:
                 continue
 
         # if this is an experiment with a checkpoint we might have to create it
+        if e.no_simbricks:
+                no_simbricks = True
+        else:
+                no_simbricks = False
         if e.checkpoint:
-            prereq = add_exp(e, 0, None, True, False)
+            prereq = add_exp(e, 0, None, True, False, no_simbricks)
         else:
             prereq = None
 
         for run in range(args.firstrun, args.firstrun + args.runs):
-            add_exp(e, run, prereq, False, e.checkpoint)
+            add_exp(e, run, prereq, False, e.checkpoint, no_simbricks)
 else:
     # otherwise load pickled run object
     for path in args.experiments:
