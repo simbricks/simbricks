@@ -213,9 +213,12 @@ class SlurmRuntime(Runtime):
         with open(exp_script, 'w') as f:
             f.write('#!/bin/sh\n')
             f.write('#SBATCH -o %s -e %s\n' % (exp_log, exp_log))
-            f.write('#SBATCH -c %d\n' % (exp.resreq_cores(),))
+            #f.write('#SBATCH -c %d\n' % (exp.resreq_cores(),))
             f.write('#SBATCH --mem=%dM\n' % (exp.resreq_mem(),))
             f.write('#SBATCH --job-name="%s"\n' % (run.name(),))
+            f.write('#SBATCH --exclude=spyder[01-05],spyder16\n')
+            f.write('#SBATCH -c 32\n')
+            f.write('#SBATCH --nodes=1\n')
             if exp.timeout is not None:
                 h = int(exp.timeout / 3600)
                 m = int((exp.timeout % 3600) / 60)
