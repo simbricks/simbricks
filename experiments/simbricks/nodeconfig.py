@@ -356,6 +356,23 @@ class IperfUDPClientSleep(AppConfig):
                 'sleep 10'
                 ]
 
+
+class NoTraffic(AppConfig):
+    is_sleep = 1
+    is_server = 0
+    def run_cmds(self, node):
+        cmds = []
+        if (self.is_server):
+            cmds.append('sleep infinity')
+        else:
+            if (self.is_sleep):
+                cmds.append('sleep 10')
+                
+            else:
+                cmds.append('dd if=/dev/urandom of=/dev/null count=500000') 
+
+        return cmds
+
 class NetperfServer(AppConfig):
     def run_cmds(self, node):
         return ['netserver',
