@@ -45,8 +45,11 @@ class event {
 class EHostInstr : public event {
  public:
   uint64_t pc;
+  bool fMemR;
+  bool fMemW;
 
-  EHostInstr(uint64_t ts_, uint64_t pc_) : event(ts_), pc(pc_) {
+  EHostInstr(uint64_t ts_, uint64_t pc_) : event(ts_), pc(pc_), fMemR(false),
+      fMemW(false) {
   }
 
   virtual ~EHostInstr() {
@@ -54,6 +57,22 @@ class EHostInstr : public event {
 
   virtual void dump(std::ostream &out) {
     out << ts << ": H.INSTR pc=" << std::hex << pc << std::dec << std::endl;
+  }
+};
+
+class EHostHalt : public event {
+ public:
+  uint64_t pc;
+
+
+  EHostHalt(uint64_t ts_, uint64_t pc_) : event(ts_), pc(pc_) {
+  }
+
+  virtual ~EHostHalt() {
+  }
+
+  virtual void dump(std::ostream &out) {
+    out << ts << ": H.HALT pc=" << std::hex << pc << std::dec << std::endl;
   }
 };
 

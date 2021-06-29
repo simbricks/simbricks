@@ -28,6 +28,7 @@
 #include <boost/foreach.hpp>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 #include "trace/events.h"
 #include "trace/parser.h"
@@ -99,6 +100,58 @@ void Printer(coro_t::pull_type &source) {
   }
 }
 
+void Consumer(coro_t::pull_type &source) {
+  for (auto ev: source) {
+  }
+}
+
+struct InstStatsData {
+  const char *label;
+  uint64_t nInsts;
+  uint64_t tMin;
+  uint64_t tMax;
+  uint64_t tMean;
+  std::vector <uint64_t> tAll;
+};
+
+void InstStats(coro_t::push_type &sink, coro_t::pull_type &source,
+    struct InstStatsData &data) {
+  uint64_t last_ts = 0;
+  uint64_t first_ts = 0;
+  data.nInsts = 0;
+  for (auto ev: source) {
+    std::shared_ptr<EHostInstr> hi;
+    if ((hi = std::dynamic_pointer_cast<EHostInstr>(ev))) {
+      if (!last_ts) {
+        // first instruction
+        first_ts = hi->ts;
+        data.tMin = UINT64_MAX;
+        data.tMax = 0;
+      } else {
+        uint64_t lat = hi->ts - last_ts;
+
+        data.nInsts++;
+        data.tAll.push_back(lat);
+        if (lat < data.tMin)
+          data.tMin = lat;
+        if (lat > data.tMax)
+          data.tMax = lat;
+
+        /*if (lat > 4000)
+          std::cout << "ILAT: " << lat  << " " << std::hex << hi->pc <<
+              std::dec << "  " << hi->ts << std::endl;*/
+        }
+      last_ts = hi->ts;
+      //last_pc = hi->pc;
+    }
+    sink(ev);
+  }
+
+  if (data.nInsts != 0)
+    data.tMean = (last_ts - first_ts) / data.nInsts;
+  else
+    data.tMean = 0;
+}
 
 
 int main(int argc, char *argv[]) {
@@ -131,29 +184,58 @@ int main(int argc, char *argv[]) {
   std::cerr << "map loaded" << std::endl;
 
   std::set<log_parser *> all_parsers;
+
   gem5_parser ch(syms);
-  gem5_parser sh(syms);
-  nicbm_parser cn;
-  nicbm_parser sn;
   ch.open(argv[1]);
-  cn.open(argv[2]);
-  sh.open(argv[3]);
-  sn.open(argv[4]);
-  ch.label = cn.label = "C";
-  sh.label = sn.label = "S";
+  ch.label = "C";
   all_parsers.insert(&ch);
-  all_parsers.insert(&cn);
+
+  gem5_parser sh(syms);
+  sh.open(argv[3]);
+  sh.label = "S";
   all_parsers.insert(&sh);
+
+  nicbm_parser cn;
+  cn.open(argv[2]);
+  cn.label = "C";
+  all_parsers.insert(&cn);
+
+  nicbm_parser sn;
+  sn.open(argv[4]);
+  sn.label = "S";
   all_parsers.insert(&sn);
 
   std::cerr << "Opened all" << std::endl;
 
   std::set<coro_t::pull_type *> sources;
+  std::set<InstStatsData *> isds;
   for (auto p : all_parsers) {
-    sources.insert(new coro_t::pull_type(
-      boost::bind(&log_parser::read_coro, boost::ref(*p), _1)));
+    coro_t::pull_type *src = new coro_t::pull_type(
+      boost::bind(&log_parser::read_coro, boost::ref(*p), _1));
+      InstStatsData *isd = new InstStatsData;
+      isd->label = p->label;
+    coro_t::pull_type *istat = new coro_t::pull_type(
+      boost::bind(InstStats, _1, boost::ref(*src), boost::ref(*isd)));
+    sources.insert(istat);
+    isds.insert(isd);
   }
 
   coro_t::pull_type merged(boost::bind(MergeEvents, _1, boost::ref(sources)));
-  Printer(merged);
+  Consumer(merged);
+
+  std::cout << "Stats:" << std::endl;
+  for (auto isd : isds) {
+    if (!isd->nInsts)
+      continue;
+
+    std::sort(isd->tAll.begin(), isd->tAll.end());
+
+    std::cout << " - " << isd->label << std::endl;
+    std::cout << "    Instrs: " << isd->nInsts << std::endl;
+    std::cout << "    Mean instr time: " << isd->tMean << std::endl;
+    for (int i = 0; i <= 100; i += 1)
+      std::cout << "    P[" << i << "] instr time: " <<
+          isd->tAll[isd->tAll.size() * i / 100 - (i == 100 ? 1 : 0)] <<
+          std::endl;
+  }
 }

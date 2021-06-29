@@ -49,13 +49,34 @@ void gem5_parser::process_msg(uint64_t ts, char *comp_name,
       return;
 
     uint64_t addr;
-    if (!p.consume_hex(addr) || p.consume_char('.'))
+    if (!p.consume_hex(addr))
       return;
 
-    yield(std::make_shared<EHostInstr>(ts, addr));
+    if (!p.consume_char('.')) {
+      // instructions don't have a .X
 
-    if (const std::string *s = syms.lookup(addr)) {
-      yield(std::make_shared<EHostCall>(ts, *s));
+      /*if (prevInstr)
+        yield(prevInstr)*/
+      yield(std::make_shared<EHostInstr>(ts, addr));
+
+      if (const std::string *s = syms.lookup(addr)) {
+        yield(std::make_shared<EHostCall>(ts, *s));
+      }
+    } else {
+      // micro-op
+      if (!p.skip_until_after(" : ") || !p.skip_until_after(" : "))
+        return;
+
+      if (p.consume_str("halt")) {
+        yield(std::make_shared<EHostHalt>(ts, addr));
+      }
+      /*if (p.consume_str("MemRead")) {
+        if (prevInstr)
+          prevInstr->fMemR = true;
+      } else if (p.consume_str("MemWrite")) {
+        if (prevInstr)
+          prevInstr->fMemW = true;
+      }*/
     }
   } else if (comp_name_len == 18 &&
              !memcmp(comp_name, "system.pc.ethernet", 18)) {

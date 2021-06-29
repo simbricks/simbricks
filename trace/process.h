@@ -95,6 +95,7 @@ class log_parser {
 class gem5_parser : public log_parser {
  protected:
   sym_map &syms;
+  std::shared_ptr<EHostInstr> prevInstr;
 
   virtual void process_line(char *line, size_t len);
   void process_msg(uint64_t ts, char *comp_name, size_t comp_name_len,

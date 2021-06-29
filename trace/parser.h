@@ -114,4 +114,20 @@ class parser {
     pos = end + 1;
     return true;
   }
+
+  inline bool skip_until_after(const char *s) {
+    size_t s_len = strlen(s);
+    if (pos + s_len > buf_len)
+      return false;
+
+    size_t end = pos;
+    for (; end <= buf_len - s_len; end++) {
+      if (buf[end] == s[0] && !memcmp(buf + end, s, s_len)) {
+        pos = end + s_len;
+        return true;
+      }
+    }
+
+    return false;
+  }
 };
