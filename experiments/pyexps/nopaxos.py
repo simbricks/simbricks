@@ -28,7 +28,7 @@ host_configs = ['qemu', 'gt']
 seq_configs = ['swseq', 'ehseq']
 nic_configs = ['ib', 'cb', 'cv']
 proto_configs = ['vr', 'nopaxos']
-num_client_configs = [1, 2, 3, 4, 5, 6, 7, 8]
+num_client_configs = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12]
 experiments = []
 sync_period = 200
 

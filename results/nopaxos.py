@@ -31,7 +31,7 @@ if len(sys.argv) != 2:
 basedir = sys.argv[1] + '/'
 
 types_of_seq = ['ehseq', 'swseq']
-num_clients = [1, 2, 3, 4, 5, 6, 7, 8]
+num_clients = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12]
 
 
 
