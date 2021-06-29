@@ -41,7 +41,7 @@ for num_c in num_clients:
     line = [str(num_c)]
     for seq in types_of_seq:
         
-        path_pat = '%snopaxos-gt-cb-%s-%d-1.json' % (basedir, seq, num_c)
+        path_pat = '%snopaxos-gt-ib-%s-%d-1.json' % (basedir, seq, num_c)
         res = utils.parse_nopaxos.parse_nopaxos_run(num_c, seq, path_pat)
         #print(path_pat)
 
