@@ -66,6 +66,7 @@ class Experiment(object):
             if verbose:
                 print('preparing config tar:', path)
             host.node_config.make_tar(path)
+            await exec.send_file(path, verbose)
 
         # prepare all simulators in parallel
         sims = []

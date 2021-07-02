@@ -202,6 +202,8 @@ class Executor(object):
     async def await_file(self, path, delay=0.05, verbose=False):
         raise NotImplementedError("Please Implement this method")
 
+    async def send_file(self, path, verbose=False):
+        raise NotImplementedError("Please Implement this method")
 
     # runs the list of commands as strings sequentially
     async def run_cmdlist(self, label, cmds, verbose=True, host=None):
@@ -221,3 +223,7 @@ class LocalExecutor(Executor):
             print('await_file(%s)' % path)
         while not os.path.exists(path):
             await asyncio.sleep(delay)
+
+    async def send_file(self, path, verbose):
+        # locally we do not need to do anything
+        pass
