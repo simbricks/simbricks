@@ -195,17 +195,29 @@ class SimpleComponent(Component):
             raise Exception('Command Failed: ' + str(self.cmd_parts))
 
 
-# runs the list of commands as strings sequentially
-async def run_cmdlist(label, cmds, verbose=True):
-    i = 0
-    for cmd in cmds:
-        cmdC = SimpleComponent(label + '.' + str(i), shlex.split(cmd),
-                verbose=verbose)
-        await cmdC.start()
-        await cmdC.wait()
+class Executor(object):
+    def create_component(self, label, parts, **kwargs):
+        raise NotImplementedError("Please Implement this method")
 
-async def await_file(path, delay=0.05, verbose=False):
-    if verbose:
-        print('await_file(%s)' % path)
-    while not os.path.exists(path):
-        await asyncio.sleep(delay)
+    async def await_file(self, path, delay=0.05, verbose=False):
+        raise NotImplementedError("Please Implement this method")
+
+
+    # runs the list of commands as strings sequentially
+    async def run_cmdlist(self, label, cmds, verbose=True, host=None):
+        i = 0
+        for cmd in cmds:
+            cmdC = self.create_component(label + '.' + str(i), shlex.split(cmd),
+                    verbose=verbose)
+            await cmdC.start()
+            await cmdC.wait()
+
+class LocalExecutor(Executor):
+    def create_component(self, label, parts, **kwargs):
+        return SimpleComponent(label, parts, **kwargs)
+
+    async def await_file(self, path, delay=0.05, verbose=False):
+        if verbose:
+            print('await_file(%s)' % path)
+        while not os.path.exists(path):
+            await asyncio.sleep(delay)

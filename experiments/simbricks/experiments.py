@@ -59,7 +59,7 @@ class Experiment(object):
                 raise Exception('Duplicate net name')
         self.networks.append(sim)
 
-    async def prepare(self, env, verbose=False):
+    async def prepare(self, env, verbose=False, exec=exectools.LocalExecutor()):
         # generate config tars
         for host in self.hosts:
             path = env.cfgtar_path(host)
@@ -71,11 +71,11 @@ class Experiment(object):
         sims = []
         for sim in self.hosts + self.nics + self.networks:
             prep_cmds = [pc for pc in sim.prep_cmds(env)]
-            sims.append(exectools.run_cmdlist('prepare_' + self.name, prep_cmds,
+            sims.append(exec.run_cmdlist('prepare_' + self.name, prep_cmds,
                 verbose=verbose))
         await asyncio.wait(sims)
 
-    async def run(self, env, verbose=False):
+    async def run(self, env, verbose=False, exec=exectools.LocalExecutor()):
         running = []
         sockets = []
         out = ExpOutput(self)
@@ -87,8 +87,9 @@ class Experiment(object):
             for nic in self.nics:
                 if verbose:
                     print('start NIC:', nic.run_cmd(env))
-                sc = exectools.SimpleComponent(nic.full_name(),
-                        shlex.split(nic.run_cmd(env)), verbose=verbose, canfail=True)
+                sc = exec.create_component(nic.full_name(),
+                        shlex.split(nic.run_cmd(env)), verbose=verbose,
+                        canfail=True)
                 await sc.start()
                 running.append((nic, sc))
 
@@ -100,7 +101,7 @@ class Experiment(object):
                 print('%s: waiting for sockets' % self.name)
 
             for s in sockets:
-                await exectools.await_file(s, verbose=verbose)
+                await exec.await_file(s, verbose=verbose)
             await asyncio.sleep(0.5)
 
 
@@ -109,8 +110,9 @@ class Experiment(object):
                 if verbose:
                     print('start Net:', net.run_cmd(env))
 
-                sc = exectools.SimpleComponent(net.full_name(),
-                        shlex.split(net.run_cmd(env)), verbose=verbose, canfail=True)
+                sc = exec.create_component(net.full_name(),
+                        shlex.split(net.run_cmd(env)), verbose=verbose,
+                        canfail=True)
                 await sc.start()
                 running.append((net, sc))
 
@@ -120,8 +122,9 @@ class Experiment(object):
                 if verbose:
                     print('start Host:', host.run_cmd(env))
 
-                sc = exectools.SimpleComponent(host.full_name(),
-                        shlex.split(host.run_cmd(env)), verbose=verbose, canfail=True)
+                sc = exec.create_component(host.full_name(),
+                        shlex.split(host.run_cmd(env)), verbose=verbose,
+                        canfail=True)
                 await sc.start()
                 running.append((host,sc))
 
