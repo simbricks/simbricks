@@ -23,6 +23,8 @@
 import asyncio
 import shlex
 import os
+import pathlib
+import shutil
 import signal
 
 class HostConfig(object):
@@ -205,6 +207,12 @@ class Executor(object):
     async def send_file(self, path, verbose=False):
         raise NotImplementedError("Please Implement this method")
 
+    async def mkdir(self, path, verbose=False):
+        raise NotImplementedError("Please Implement this method")
+
+    async def rmtree(self, path, verbose=False):
+        raise NotImplementedError("Please Implement this method")
+
     # runs the list of commands as strings sequentially
     async def run_cmdlist(self, label, cmds, verbose=True, host=None):
         i = 0
@@ -227,3 +235,9 @@ class LocalExecutor(Executor):
     async def send_file(self, path, verbose):
         # locally we do not need to do anything
         pass
+
+    async def mkdir(self, path, verbose=False):
+        pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+
+    async def rmtree(self, path, verbose=False):
+        shutil.rmtree(path, ignore_errors=True)
