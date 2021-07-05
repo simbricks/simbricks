@@ -159,7 +159,7 @@ class Experiment(object):
                 await sc.wait()
 
             for sock in sockets:
-                os.remove(sock)
+                await exec.rmtree(sock)
 
             for sim,sc in running:
                 out.add_sim(sim, sc)
