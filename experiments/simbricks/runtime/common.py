@@ -20,6 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import simbricks.exectools as exectools
 import shutil
 import pathlib
 
@@ -35,13 +36,18 @@ class Run(object):
     def name(self):
         return self.experiment.name + '.' + str(self.index)
 
-    def prep_dirs(self):
+    async def prep_dirs(self, exec=exectools.LocalExecutor()):
         shutil.rmtree(self.env.workdir, ignore_errors=True)
+        await exec.rmtree(self.env.workdir)
+
         if self.env.create_cp:
             shutil.rmtree(self.env.cpdir, ignore_errors=True)
+            await exec.rmtree(self.env.cpdir)
 
         pathlib.Path(self.env.workdir).mkdir(parents=True, exist_ok=True)
+        await exec.mkdir(self.env.workdir)
         pathlib.Path(self.env.cpdir).mkdir(parents=True, exist_ok=True)
+        await exec.mkdir(self.env.cpdir)
 
 class Runtime(object):
     def add_run(self, run):

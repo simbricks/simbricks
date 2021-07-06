@@ -36,7 +36,7 @@ class LocalSimpleRuntime(Runtime):
         self.runnable.append(run)
 
     async def do_run(self, run):
-        run.prep_dirs()
+        await run.prep_dirs()
         await run.experiment.prepare(run.env, verbose=self.verbose)
         run.output = await run.experiment.run(run.env, verbose=self.verbose)
         self.complete.append(run)
@@ -73,8 +73,8 @@ class LocalParallelRuntime(Runtime):
 
     async def do_run(self, run):
         ''' actually starts a run '''
-        run.prep_dirs()
 
+        await run.prep_dirs()
         await run.experiment.prepare(run.env, verbose=self.verbose)
         print('starting run ', run.name())
         run.output = await run.experiment.run(run.env, verbose=self.verbose)
