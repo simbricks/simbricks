@@ -25,8 +25,10 @@ import sys
 import os
 import importlib
 import importlib.util
+import json
 import pickle
 import fnmatch
+import simbricks.exectools as exectools
 import simbricks.experiments as exp
 import simbricks.runtime as runtime
 
@@ -64,6 +66,8 @@ g_env.add_argument('--outdir', metavar='DIR',  type=str,
         default='./out/', help='Output directory base')
 g_env.add_argument('--cpdir', metavar='DIR',  type=str,
         default='./out/', help='Checkpoint directory base')
+g_env.add_argument('--hosts', metavar='JSON_FILE', type=str,
+        default=None, help='List of hosts to use (json)')
 
 g_par = parser.add_argument_group('Parallel Runtime')
 g_par.add_argument('--parallel', dest='runtime', action='store_const',
@@ -85,14 +89,42 @@ g_slurm.add_argument('--slurmdir', metavar='DIR',  type=str,
 
 args = parser.parse_args()
 
+
+def load_executors(path):
+    """ Load hosts list from json file and return list of executors. """
+    with open(path, 'r') as f:
+        hosts = json.load(f)
+
+        exs = []
+        for h in hosts:
+            if h['type'] == 'local':
+                exs.append(exectools.LocalExecutor())
+            elif h['type'] == 'remote':
+                exs.append(exectools.RemoteExecutor(h['host'], h['workdir']))
+            else:
+                raise RuntimeError('invalid host type "' + h['type'] + '"')
+    return exs
+
+if args.hosts is None:
+    executors = [exectools.LocalExecutor()]
+else:
+    executors = load_executors(args.hosts)
+
+def warn_multi_exec():
+    if len(executors) > 1:
+        print('Warning: multiple hosts specified, only using first one for now',
+                file=sys.stderr)
+
 # initialize runtime
 if args.runtime == 'parallel':
+    warn_multi_exec()
     rt = runtime.LocalParallelRuntime(cores=args.cores, mem=args.mem,
-            verbose=args.verbose)
+            verbose=args.verbose, exec=executors[0])
 elif args.runtime == 'slurm':
     rt = runtime.SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
 else:
-    rt = runtime.LocalSimpleRuntime(verbose=args.verbose)
+    warn_multi_exec()
+    rt = runtime.LocalSimpleRuntime(verbose=args.verbose, exec=executors[0])
 
 def add_exp(e, run, prereq, create_cp, restore_cp, no_simbricks):
     outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
