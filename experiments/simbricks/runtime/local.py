@@ -25,20 +25,24 @@ import pathlib
 
 from simbricks.runtime.common import *
 import simbricks.experiments as exp
+import simbricks.exectools as exectools
 
 class LocalSimpleRuntime(Runtime):
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, exec=exectools.LocalExecutor()):
         self.runnable = []
         self.complete = []
         self.verbose = verbose
+        self.exec = exec
 
     def add_run(self, run):
         self.runnable.append(run)
 
     async def do_run(self, run):
-        await run.prep_dirs()
-        await run.experiment.prepare(run.env, verbose=self.verbose)
-        run.output = await run.experiment.run(run.env, verbose=self.verbose)
+        await run.prep_dirs(self.exec)
+        await run.experiment.prepare(run.env, verbose=self.verbose,
+                exec=self.exec)
+        run.output = await run.experiment.run(run.env, verbose=self.verbose,
+                exec=self.exec)
         self.complete.append(run)
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
@@ -51,13 +55,15 @@ class LocalSimpleRuntime(Runtime):
 
 
 class LocalParallelRuntime(Runtime):
-    def __init__(self, cores, mem=None, verbose=False):
+    def __init__(self, cores, mem=None, verbose=False,
+            exec=exectools.LocalExecutor()):
         self.runs_noprereq = []
         self.runs_prereq = []
         self.complete = set()
         self.cores = cores
         self.mem = mem
         self.verbose = verbose
+        self.exec = exec
 
     def add_run(self, run):
         if run.experiment.resreq_cores() > self.cores:
@@ -73,11 +79,12 @@ class LocalParallelRuntime(Runtime):
 
     async def do_run(self, run):
         ''' actually starts a run '''
-
-        await run.prep_dirs()
-        await run.experiment.prepare(run.env, verbose=self.verbose)
+        await run.prep_dirs(exec=self.exec)
+        await run.experiment.prepare(run.env, verbose=self.verbose,
+                exec=self.exec)
         print('starting run ', run.name())
-        run.output = await run.experiment.run(run.env, verbose=self.verbose)
+        run.output = await run.experiment.run(run.env, verbose=self.verbose,
+                exec=self.exec)
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
         with open(run.outpath, 'w') as f:
