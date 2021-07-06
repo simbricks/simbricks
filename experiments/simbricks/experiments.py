@@ -255,9 +255,3 @@ class ExpOutput(object):
 
     def dumps(self):
         return json.dumps(self.__dict__)
-
-
-
-def run_exp_local(exp, env, verbose=False):
-    asyncio.run(exp.prepare(env, verbose=verbose))
-    return asyncio.run(exp.run(env, verbose=verbose))

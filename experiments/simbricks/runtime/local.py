@@ -35,16 +35,19 @@ class LocalSimpleRuntime(Runtime):
     def add_run(self, run):
         self.runnable.append(run)
 
+    async def do_run(self, run):
+        run.prep_dirs()
+        await run.experiment.prepare(run.env, verbose=self.verbose)
+        run.output = await run.experiment.run(run.env, verbose=self.verbose)
+        self.complete.append(run)
+
+        pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
+        with open(run.outpath, 'w') as f:
+            f.write(run.output.dumps())
+
     def start(self):
         for run in self.runnable:
-            run.prep_dirs()
-            run.output = exp.run_exp_local(run.experiment, run.env,
-                    verbose=self.verbose)
-            self.complete.append(run)
-
-            pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
-            with open(run.outpath, 'w') as f:
-                f.write(run.output.dumps())
+            asyncio.run(self.do_run(run))
 
 
 class LocalParallelRuntime(Runtime):
