@@ -59,114 +59,6 @@ class Experiment(object):
                 raise Exception('Duplicate net name')
         self.networks.append(sim)
 
-    async def prepare(self, env, verbose=False, exec=exectools.LocalExecutor()):
-        # generate config tars
-        for host in self.hosts:
-            path = env.cfgtar_path(host)
-            if verbose:
-                print('preparing config tar:', path)
-            host.node_config.make_tar(path)
-            await exec.send_file(path, verbose)
-
-        # prepare all simulators in parallel
-        sims = []
-        for sim in self.hosts + self.nics + self.networks:
-            prep_cmds = [pc for pc in sim.prep_cmds(env)]
-            sims.append(exec.run_cmdlist('prepare_' + self.name, prep_cmds,
-                verbose=verbose))
-        await asyncio.wait(sims)
-
-    async def run(self, env, verbose=False, exec=exectools.LocalExecutor()):
-        running = []
-        sockets = []
-        out = ExpOutput(self)
-        try:
-            out.set_start()
-
-            if verbose:
-                print('%s: starting NICS' % self.name)
-            for nic in self.nics:
-                if verbose:
-                    print('start NIC:', nic.run_cmd(env))
-                sc = exec.create_component(nic.full_name(),
-                        shlex.split(nic.run_cmd(env)), verbose=verbose,
-                        canfail=True)
-                await sc.start()
-                running.append((nic, sc))
-
-                sockets.append(env.nic_pci_path(nic))
-                sockets.append(env.nic_eth_path(nic))
-                sockets.append(env.nic_shm_path(nic))
-
-            if verbose:
-                print('%s: waiting for sockets' % self.name)
-
-            for s in sockets:
-                await exec.await_file(s, verbose=verbose)
-            await asyncio.sleep(0.5)
-
-
-            # start networks
-            for net in self.networks:
-                if verbose:
-                    print('start Net:', net.run_cmd(env))
-
-                sc = exec.create_component(net.full_name(),
-                        shlex.split(net.run_cmd(env)), verbose=verbose,
-                        canfail=True)
-                await sc.start()
-                running.append((net, sc))
-
-            # start hosts
-            wait_hosts = []
-            for host in self.hosts:
-                if verbose:
-                    print('start Host:', host.run_cmd(env))
-
-                sc = exec.create_component(host.full_name(),
-                        shlex.split(host.run_cmd(env)), verbose=verbose,
-                        canfail=True)
-                await sc.start()
-                running.append((host,sc))
-
-                if host.wait:
-                    wait_hosts.append(sc)
-
-                if host.sleep > 0:
-                    await asyncio.sleep(host.sleep)
-
-            if verbose:
-                print('%s: waiting for hosts to terminate' % self.name)
-            for sc in wait_hosts:
-                await sc.wait()
-            # wait for necessary hosts to terminate
-        except:
-            out.set_failed()
-            traceback.print_exc()
-
-        finally:
-            out.set_end()
-
-            # shut things back down
-            if verbose:
-                print('%s: cleaning up' % self.name)
-            scs = []
-            for _,sc in running:
-                scs.append(sc.int_term_kill())
-            await asyncio.wait(scs)
-
-            for _,sc in running:
-                await sc.wait()
-
-            for sock in sockets:
-                await exec.rmtree(sock)
-
-            for sim,sc in running:
-                out.add_sim(sim, sc)
-        return out
-
-
-
     def resreq_mem(self):
         mem = 0
         for h in self.hosts:
@@ -186,6 +78,185 @@ class Experiment(object):
         for n in self.networks:
             cores += n.resreq_cores()
         return cores
+
+
+class ExperimentBaseRunner(object):
+    def __init__(self, exp, env, verbose):
+        self.exp = exp
+        self.env = env
+        self.verbose = verbose
+        self.out = ExpOutput(exp)
+        self.running = []
+        self.sockets = []
+        self.wait_hosts = []
+
+    def sim_executor(self, sim):
+        raise NotImplementedError("Please implement this method")
+
+    async def before_nics(self):
+        pass
+
+    async def before_nets(self):
+        pass
+
+    async def before_hosts(self):
+        pass
+
+    async def before_wait(self):
+        pass
+
+    async def before_cleanup(self):
+        pass
+
+    async def after_cleanup(self):
+        pass
+
+
+    async def prepare(self):
+        # generate config tars
+        for host in self.exp.hosts:
+            path = self.env.cfgtar_path(host)
+            if self.verbose:
+                print('preparing config tar:', path)
+            host.node_config.make_tar(path)
+            await self.sim_executor(host).send_file(path, self.verbose)
+
+        # prepare all simulators in parallel
+        sims = []
+        for sim in self.exp.hosts + self.exp.nics + self.exp.networks:
+            prep_cmds = [pc for pc in sim.prep_cmds(self.env)]
+            exec = self.sim_executor(sim)
+            sims.append(exec.run_cmdlist('prepare_' + self.exp.name, prep_cmds,
+                verbose=self.verbose))
+        await asyncio.wait(sims)
+
+    async def run_nics(self):
+        """ Start all NIC simulators. """
+        if self.verbose:
+            print('%s: starting NICS' % self.exp.name)
+        for nic in self.exp.nics:
+            if self.verbose:
+                print('start NIC:', nic.run_cmd(self.env))
+            exec = self.sim_executor(nic)
+            sc = exec.create_component(nic.full_name(),
+                    shlex.split(nic.run_cmd(self.env)), verbose=self.verbose,
+                    canfail=True)
+            await sc.start()
+            self.running.append((nic, sc))
+
+            self.sockets.append((exec, self.env.nic_pci_path(nic)))
+            self.sockets.append((exec, self.env.nic_eth_path(nic)))
+            self.sockets.append((exec, self.env.nic_shm_path(nic)))
+
+        # Wait till all NIC sockets exist
+        if self.verbose:
+            print('%s: waiting for sockets' % self.exp.name)
+        for (exec, s) in self.sockets:
+            await exec.await_file(s, verbose=self.verbose)
+
+        # just a bit of a safety delay
+        await asyncio.sleep(0.5)
+
+    async def run_nets(self):
+        """ Start all network simulators (typically one). """
+        if self.verbose:
+            print('%s: starting networks' % self.exp.name)
+        for net in self.exp.networks:
+            if self.verbose:
+                print('start Net:', net.run_cmd(self.env))
+
+            exec = self.sim_executor(net)
+            sc = exec.create_component(net.full_name(),
+                    shlex.split(net.run_cmd(self.env)), verbose=self.verbose,
+                    canfail=True)
+            await sc.start()
+            self.running.append((net, sc))
+
+    async def run_hosts(self):
+        """ Start all host simulators. """
+        if self.verbose:
+            print('%s: starting hosts' % self.exp.name)
+        for host in self.exp.hosts:
+            if self.verbose:
+                print('start Host:', host.run_cmd(self.env))
+
+            exec = self.sim_executor(host)
+            sc = exec.create_component(host.full_name(),
+                    shlex.split(host.run_cmd(self.env)), verbose=self.verbose,
+                    canfail=True)
+            await sc.start()
+            self.running.append((host,sc))
+
+            if host.wait:
+                self.wait_hosts.append(sc)
+
+            if host.sleep > 0:
+                await asyncio.sleep(host.sleep)
+
+    async def wait_for_hosts(self):
+        """ Wait for hosts to terminate (the ones marked to wait on). """
+        if self.verbose:
+            print('%s: waiting for hosts to terminate' % self.exp.name)
+        for sc in self.wait_hosts:
+            await sc.wait()
+
+    async def run(self):
+        try:
+            self.out.set_start()
+
+            await self.before_nics()
+            await self.run_nics()
+
+            await self.before_nets()
+            await self.run_nets()
+
+            await self.before_hosts()
+            await self.run_hosts()
+
+            await self.before_wait()
+            await self.wait_for_hosts()
+        except:
+            self.out.set_failed()
+            traceback.print_exc()
+
+        finally:
+            self.out.set_end()
+
+            # shut things back down
+            if self.verbose:
+                print('%s: cleaning up' % self.exp.name)
+
+            await self.before_cleanup()
+
+            # "interrupt, terminate, kill" all processes
+            scs = []
+            for _,sc in self.running:
+                scs.append(sc.int_term_kill())
+            await asyncio.wait(scs)
+
+            # wait for all processes to terminate
+            for _,sc in self.running:
+                await sc.wait()
+
+            # remove all sockets
+            for (exec,sock) in self.sockets:
+                await exec.rmtree(sock)
+
+            # add all simulator components to the output
+            for sim,sc in self.running:
+                self.out.add_sim(sim, sc)
+
+            await self.after_cleanup()
+        return self.out
+
+class ExperimentSimpleRunner(ExperimentBaseRunner):
+    """ Simple experiment runner with just one executor. """
+    def __init__(self, exec, *args, **kwargs):
+        self.exec = exec
+        super().__init__(*args, **kwargs)
+
+    def sim_executor(self, sim):
+        return self.exec
 
 class ExpEnv(object):
     def __init__(self, repo_path, workdir, cpdir):

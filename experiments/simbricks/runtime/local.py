@@ -38,11 +38,11 @@ class LocalSimpleRuntime(Runtime):
         self.runnable.append(run)
 
     async def do_run(self, run):
+        runner = exp.ExperimentSimpleRunner(self.exec, run.experiment, run.env,
+            self.verbose)
         await run.prep_dirs(self.exec)
-        await run.experiment.prepare(run.env, verbose=self.verbose,
-                exec=self.exec)
-        run.output = await run.experiment.run(run.env, verbose=self.verbose,
-                exec=self.exec)
+        await runner.prepare()
+        run.output = await runner.run()
         self.complete.append(run)
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
@@ -79,12 +79,12 @@ class LocalParallelRuntime(Runtime):
 
     async def do_run(self, run):
         ''' actually starts a run '''
+        runner = exp.ExperimentSimpleRunner(self.exec, run.experiment, run.env,
+            self.verbose)
         await run.prep_dirs(exec=self.exec)
-        await run.experiment.prepare(run.env, verbose=self.verbose,
-                exec=self.exec)
+        await runner.prepare()
         print('starting run ', run.name())
-        run.output = await run.experiment.run(run.env, verbose=self.verbose,
-                exec=self.exec)
+        run.output = await runner.run()
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
         with open(run.outpath, 'w') as f:
