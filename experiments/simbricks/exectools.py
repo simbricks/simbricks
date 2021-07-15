@@ -255,6 +255,8 @@ class SimpleRemoteComponent(SimpleComponent):
         await self._kill_cmd('KILL')
 
 class Executor(object):
+    ip = None
+
     def create_component(self, label, parts, **kwargs):
         raise NotImplementedError("Please Implement this method")
 

@@ -98,11 +98,13 @@ def load_executors(path):
         exs = []
         for h in hosts:
             if h['type'] == 'local':
-                exs.append(exectools.LocalExecutor())
+                ex = exectools.LocalExecutor()
             elif h['type'] == 'remote':
-                exs.append(exectools.RemoteExecutor(h['host'], h['workdir']))
+                ex = exectools.RemoteExecutor(h['host'], h['workdir'])
             else:
                 raise RuntimeError('invalid host type "' + h['type'] + '"')
+            ex.ip = h['ip']
+            exs.append(ex)
     return exs
 
 if args.hosts is None:
