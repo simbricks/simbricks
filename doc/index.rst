@@ -31,7 +31,6 @@ SimBricks
 
    user
    devel
-   api
 
 Indices and tables
 ==================

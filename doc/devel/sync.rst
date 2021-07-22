@@ -22,5 +22,6 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ###################################
-Simbricks Troubleshooting
+Synchronization
 ###################################
+
