@@ -24,12 +24,16 @@
 
 #pragma once
 
+#include <boost/coroutine2/all.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 
 #include "trace/events.h"
+
+typedef boost::coroutines2::asymmetric_coroutine<std::shared_ptr<event>> coro_t;
 
 class sym_map {
  protected:
@@ -67,25 +71,31 @@ class log_parser {
   size_t buf_len;
   size_t buf_pos;
 
+  coro_t::push_type *sink;
+  bool got_event;
+
   bool next_block();
   size_t try_line();
   virtual void process_line(char *line, size_t len) = 0;
 
+  bool next_event();
+  void yield(std::shared_ptr<event> ev);
+
  public:
   const char *label;
-  event *cur_event;
 
   log_parser();
   virtual ~log_parser();
   void open(const char *path);
   void open_gz(const char *path);
 
-  bool next_event();
+  void read_coro(coro_t::push_type &sink_);
 };
 
 class gem5_parser : public log_parser {
  protected:
   sym_map &syms;
+  std::shared_ptr<EHostInstr> prevInstr;
 
   virtual void process_line(char *line, size_t len);
   void process_msg(uint64_t ts, char *comp_name, size_t comp_name_len,

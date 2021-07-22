@@ -26,9 +26,12 @@
 
 #include <string>
 
+class log_parser;
+
 class event {
  public:
   uint64_t ts;
+  log_parser *source;
 
   explicit event(uint64_t ts_) : ts(ts_) {
   }
@@ -37,6 +40,40 @@ class event {
   }
 
   virtual void dump(std::ostream &out) = 0;
+};
+
+class EHostInstr : public event {
+ public:
+  uint64_t pc;
+  bool fMemR;
+  bool fMemW;
+
+  EHostInstr(uint64_t ts_, uint64_t pc_) : event(ts_), pc(pc_), fMemR(false),
+      fMemW(false) {
+  }
+
+  virtual ~EHostInstr() {
+  }
+
+  virtual void dump(std::ostream &out) {
+    out << ts << ": H.INSTR pc=" << std::hex << pc << std::dec << std::endl;
+  }
+};
+
+class EHostHalt : public event {
+ public:
+  uint64_t pc;
+
+
+  EHostHalt(uint64_t ts_, uint64_t pc_) : event(ts_), pc(pc_) {
+  }
+
+  virtual ~EHostHalt() {
+  }
+
+  virtual void dump(std::ostream &out) {
+    out << ts << ": H.HALT pc=" << std::hex << pc << std::dec << std::endl;
+  }
 };
 
 class EHostCall : public event {

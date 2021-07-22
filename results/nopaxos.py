@@ -31,7 +31,7 @@ if len(sys.argv) != 2:
 basedir = sys.argv[1] + '/'
 
 types_of_seq = ['ehseq', 'swseq']
-num_clients = [1, 2, 3, 4, 5, 6, 7, 8]
+num_clients = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12]
 
 
 
@@ -41,7 +41,7 @@ for num_c in num_clients:
     line = [str(num_c)]
     for seq in types_of_seq:
         
-        path_pat = '%snopaxos-gt-cb-%s-%d-1.json' % (basedir, seq, num_c)
+        path_pat = '%snopaxos-gt-ib-%s-%d-1.json' % (basedir, seq, num_c)
         res = utils.parse_nopaxos.parse_nopaxos_run(num_c, seq, path_pat)
         #print(path_pat)
 

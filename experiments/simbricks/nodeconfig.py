@@ -416,7 +416,7 @@ class NOPaxosClient(AppConfig):
         for ip in self.server_ips:
             cmds.append('ping -c 1 ' + ip)
         cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
-                '-m nopaxos -n 2000')
+                '-m nopaxos -n 40000')
         if self.is_last:
             cmds.append('sleep 1')
         else:

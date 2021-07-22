@@ -197,10 +197,11 @@ class Gem5Host(HostSim):
             f'--num-cpus={self.node_config.cores} '
             '--ddio-enabled --ddio-way-part=8 --mem-type=DDR4_2400_16x4 ')
 
-
         if (env.no_simbricks):
             cmd += '--no-simbricks '
 
+        if env.create_cp:
+            cmd += '--max-checkpoints=1 '
 
         if env.restore_cp:
             cmd += '-r 0 '

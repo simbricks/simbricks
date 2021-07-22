@@ -49,11 +49,34 @@ void gem5_parser::process_msg(uint64_t ts, char *comp_name,
       return;
 
     uint64_t addr;
-    if (!p.consume_hex(addr) || p.consume_char('.'))
+    if (!p.consume_hex(addr))
       return;
 
-    if (const std::string *s = syms.lookup(addr)) {
-      cur_event = new EHostCall(ts, *s);
+    if (!p.consume_char('.')) {
+      // instructions don't have a .X
+
+      /*if (prevInstr)
+        yield(prevInstr)*/
+      yield(std::make_shared<EHostInstr>(ts, addr));
+
+      if (const std::string *s = syms.lookup(addr)) {
+        yield(std::make_shared<EHostCall>(ts, *s));
+      }
+    } else {
+      // micro-op
+      if (!p.skip_until_after(" : ") || !p.skip_until_after(" : "))
+        return;
+
+      if (p.consume_str("halt")) {
+        yield(std::make_shared<EHostHalt>(ts, addr));
+      }
+      /*if (p.consume_str("MemRead")) {
+        if (prevInstr)
+          prevInstr->fMemR = true;
+      } else if (p.consume_str("MemWrite")) {
+        if (prevInstr)
+          prevInstr->fMemW = true;
+      }*/
     }
   } else if (comp_name_len == 18 &&
              !memcmp(comp_name, "system.pc.ethernet", 18)) {
@@ -70,40 +93,40 @@ void gem5_parser::process_msg(uint64_t ts, char *comp_name,
     uint64_t size = 0;
     if (p.consume_str("received ")) {
       if (p.consume_str("MSI-X intr vec ") && p.consume_dec(id)) {
-        cur_event = new EHostMsiX(ts, id);
+        yield(std::make_shared<EHostMsiX>(ts, id));
       } else if (p.consume_str("DMA read id ") && p.consume_dec(id) &&
                  p.consume_str(" addr ") && p.consume_hex(addr) &&
                  p.consume_str(" size ") && p.consume_dec(size)) {
         // cosim: received DMA read id 94113551511792 addr 23697ad60
         //          size 20
-        cur_event = new EHostDmaR(ts, id, addr, size);
+        yield(std::make_shared<EHostDmaR>(ts, id, addr, size));
       } else if (p.consume_str("DMA write id ") && p.consume_dec(id) &&
                  p.consume_str(" addr ") && p.consume_hex(addr) &&
                  p.consume_str(" size ") && p.consume_dec(size)) {
         // cosim: received DMA write id 94113551528032 addr 236972000
         //          size 4
-        cur_event = new EHostDmaW(ts, id, addr, size);
+        yield(std::make_shared<EHostDmaW>(ts, id, addr, size));
       } else if (p.consume_str("read completion id ") && p.consume_dec(id)) {
         // cosim: received read completion id 94583743418112
-        cur_event = new EHostMmioC(ts, id);
+        yield(std::make_shared<EHostMmioC>(ts, id));
       } else if (p.consume_str("write completion id ") && p.consume_dec(id)) {
         // cosim: received write completion id 94583743418736
-        cur_event = new EHostMmioC(ts, id);
+        yield(std::make_shared<EHostMmioC>(ts, id));
       }
     } else if (p.consume_str("sending ")) {
       if (p.consume_str("read addr ") && p.consume_hex(addr) &&
           p.consume_str(" size ") && p.consume_dec(size) &&
           p.consume_str(" id ") && p.consume_dec(id)) {
         // cosim: sending read addr c012a500 size 4 id 94583743418112
-        cur_event = new EHostMmioR(ts, id, addr, size);
+        yield(std::make_shared<EHostMmioR>(ts, id, addr, size));
       } else if (p.consume_str("write addr ") && p.consume_hex(addr) &&
                  p.consume_str(" size ") && p.consume_dec(size) &&
                  p.consume_str(" id ") && p.consume_dec(id)) {
         // cosim: sending write addr c0108000 size 4 id 94584005188256
-        cur_event = new EHostMmioW(ts, id, addr, size);
+        yield(std::make_shared<EHostMmioW>(ts, id, addr, size));
       }
     } else if (p.consume_str("completed DMA id ") && p.consume_dec(id)) {
-      cur_event = new EHostDmaC(ts, id);
+      yield(std::make_shared<EHostDmaC>(ts, id));
     }
   }
 
