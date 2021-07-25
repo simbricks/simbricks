@@ -264,6 +264,13 @@ class SwitchNet(NetSim):
             cmd += ' -s ' + env.nic_eth_path(n)
         return cmd
 
+class TofinoNet(NetSim):
+    def run_cmd(self, env):
+        cmd = env.repodir + '/sims/tofino/tofino'
+        cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency}'
+        for n in self.nics:
+            cmd += ' -s ' + env.nic_eth_path(n)
+        return cmd
 
 class NS3DumbbellNet(NetSim):
     def run_cmd(self, env):
