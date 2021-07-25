@@ -22,9 +22,14 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,external))
-$(eval $(call subdir,net))
-$(eval $(call subdir,nic))
-$(eval $(call subdir,tofino))
+bin_tofino = $(d)tofino
 
+OBJS := $(d)tofino.o
+
+$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
+
+$(bin_tofino): $(OBJS) $(lib_netif)
+
+CLEAN := $(bin_tofino) $(OBJS)
+ALL := $(bin_tofino)
 include mk/subdir_post.mk

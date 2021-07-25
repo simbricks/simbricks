@@ -13,6 +13,7 @@ sims/nic/i40e_bm/i40e_bm
 sims/net/wire/net_wire
 sims/net/tap/net_tap
 sims/net/switch/net_switch
+sims/tofino/tofino
 doc/doxygen
 doc/_build
 images/kernel/kheaders/
