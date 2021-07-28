@@ -20,7 +20,36 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.runtime.common import (Run, Runtime)
-from simbricks.runtime.local import (LocalSimpleRuntime, LocalParallelRuntime)
-from simbricks.runtime.slurm import SlurmRuntime
-from simbricks.runtime.distributed import DistributedSimpleRuntime
+import asyncio
+import pathlib
+
+from simbricks.runtime.common import *
+import simbricks.experiments as exp
+import simbricks.exectools as exectools
+
+class DistributedSimpleRuntime(Runtime):
+    def __init__(self, execs, verbose=False):
+        self.runnable = []
+        self.complete = []
+        self.verbose = verbose
+        self.execs = execs
+
+    def add_run(self, run):
+        self.runnable.append(run)
+
+    async def do_run(self, run):
+        runner = exp.ExperimentDistributedRunner(self.execs, run.experiment,
+            run.env, self.verbose)
+        for exec in self.execs:
+            await run.prep_dirs(exec)
+        await runner.prepare()
+        run.output = await runner.run()
+        self.complete.append(run)
+
+        pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
+        with open(run.outpath, 'w') as f:
+            f.write(run.output.dumps())
+
+    def start(self):
+        for run in self.runnable:
+            asyncio.run(self.do_run(run))

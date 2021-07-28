@@ -86,6 +86,10 @@ g_slurm.add_argument('--slurm', dest='runtime', action='store_const',
 g_slurm.add_argument('--slurmdir', metavar='DIR',  type=str,
         default='./slurm/', help='Slurm communication directory')
 
+g_dist = parser.add_argument_group('Distributed Runtime')
+g_par.add_argument('--dist', dest='runtime', action='store_const',
+        const='dist', default='sequential',
+        help='Use sequential distributed runtime instead of local')
 
 args = parser.parse_args()
 
@@ -124,6 +128,8 @@ if args.runtime == 'parallel':
             verbose=args.verbose, exec=executors[0])
 elif args.runtime == 'slurm':
     rt = runtime.SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
+elif args.runtime == 'dist':
+    rt = runtime.DistributedSimpleRuntime(executors, verbose=args.verbose)
 else:
     warn_multi_exec()
     rt = runtime.LocalSimpleRuntime(verbose=args.verbose, exec=executors[0])

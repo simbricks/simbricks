@@ -25,6 +25,7 @@ import asyncio
 import simbricks.exectools as exectools
 import shlex
 import time
+import itertools
 import json
 import traceback
 
@@ -59,25 +60,57 @@ class Experiment(object):
                 raise Exception('Duplicate net name')
         self.networks.append(sim)
 
+    def all_simulators(self):
+        """ All simulators used in experiment. """
+        return itertools.chain(self.hosts, self.nics, self.networks)
+
     def resreq_mem(self):
         mem = 0
-        for h in self.hosts:
-            mem += h.resreq_mem()
-        for n in self.nics:
-            mem += n.resreq_mem()
-        for n in self.networks:
-            mem += n.resreq_mem()
+        for s in self.all_simulators():
+            mem += s.resreq_mem()
         return mem
 
     def resreq_cores(self):
         cores = 0
-        for h in self.hosts:
-            cores += h.resreq_cores()
-        for n in self.nics:
-            cores += n.resreq_cores()
-        for n in self.networks:
-            cores += n.resreq_cores()
+        for s in self.all_simulators():
+            cores += s.resreq_cores()
         return cores
+
+class DistributedExperiment(Experiment):
+    num_hosts = 1
+    host_mapping = None
+    proxies_listen = None
+    proxies_connect = None
+
+    def __init__(self, name, num_hosts):
+        self.num_hosts = num_hosts
+        self.host_mapping = {}
+        self.proxies_listen = []
+        self.proxies_connect = []
+        super().__init__(name)
+
+    def add_proxy(self, proxy):
+        if proxy.listen:
+            self.proxies_listen.append(proxy)
+        else:
+            self.proxies_connect.append(proxy)
+
+    def all_simulators(self):
+        return itertools.chain(super().all_simulators(),
+                self.proxies_listen, self.proxies_connect)
+
+    def assign_sim_host(self, sim, host):
+        """ Assign host ID (< self.num_hosts) for a simulator. """
+        assert(host >= 0 and host < self.num_hosts)
+        self.host_mapping[sim] = host
+
+
+    def all_sims_assigned(self):
+        """ Check if all simulators are assigned to a host. """
+        for s in self.all_simulators():
+            if s not in self.host_mapping:
+                return False
+        return True
 
 
 class ExperimentBaseRunner(object):
@@ -249,6 +282,7 @@ class ExperimentBaseRunner(object):
             await self.after_cleanup()
         return self.out
 
+
 class ExperimentSimpleRunner(ExperimentBaseRunner):
     """ Simple experiment runner with just one executor. """
     def __init__(self, exec, *args, **kwargs):
@@ -257,6 +291,75 @@ class ExperimentSimpleRunner(ExperimentBaseRunner):
 
     def sim_executor(self, sim):
         return self.exec
+
+
+class ExperimentDistributedRunner(ExperimentBaseRunner):
+    """ Simple experiment runner with just one executor. """
+    def __init__(self, execs, *args, **kwargs):
+        self.execs = execs
+        super().__init__(*args, **kwargs)
+        assert self.exp.num_hosts <= len(execs)
+
+    def sim_executor(self, sim):
+        h_id = self.exp.host_mapping[sim]
+        return self.execs[h_id]
+
+    async def prepare(self):
+        # make sure all simulators are assigned to an executor
+        assert(self.exp.all_sims_assigned())
+
+        # set IP addresses for proxies based on assigned executors
+        for p in itertools.chain(
+                self.exp.proxies_listen, self.exp.proxies_connect):
+            exec = self.sim_executor(p)
+            p.ip = exec.ip
+
+        await super().prepare()
+
+    async def run_proxies_listeners(self):
+        """ Start all listening proxies. """
+        if self.verbose:
+            print('%s: starting listening proxies' % self.exp.name)
+        for proxy in self.exp.proxies_listen:
+            if self.verbose:
+                print('start listening proxy:', proxy.run_cmd(self.env))
+
+            exec = self.sim_executor(proxy)
+            sc = exec.create_component(proxy.full_name(),
+                    shlex.split(proxy.run_cmd(self.env)), verbose=self.verbose,
+                    canfail=True)
+            await sc.start()
+            self.running.append((proxy, sc))
+
+            await asyncio.sleep(0.5)
+
+    async def run_proxies_connecters(self):
+        """ Start all connecting proxies. """
+        if self.verbose:
+            print('%s: starting connecting proxies' % self.exp.name)
+        for proxy in self.exp.proxies_connect:
+            if self.verbose:
+                print('start connecting proxy:', proxy.run_cmd(self.env))
+
+            exec = self.sim_executor(proxy)
+            sc = exec.create_component(proxy.full_name(),
+                    shlex.split(proxy.run_cmd(self.env)), verbose=self.verbose,
+                    canfail=True)
+            await sc.start()
+            self.running.append((proxy, sc))
+
+            await asyncio.sleep(0.5)
+
+    async def wait_proxy_sockets(self):
+        # TODO
+        pass
+
+    async def before_nets(self):
+        await self.run_proxies_listeners()
+        await self.run_proxies_connecters()
+        await self.wait_proxy_sockets()
+        await super().before_nets()
+
 
 class ExpEnv(object):
     def __init__(self, repo_path, workdir, cpdir):
@@ -290,6 +393,9 @@ class ExpEnv(object):
 
     def nic_shm_path(self, sim):
         return '%s/nic.shm.%s' % (self.workdir, sim.name)
+
+    def proxy_shm_path(self, sim):
+        return '%s/proxy.shm.%s' % (self.workdir, sim.name)
 
     def gem5_outdir(self, sim):
         return '%s/gem5-out.%s' % (self.workdir, sim.name)
