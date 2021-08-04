@@ -77,6 +77,7 @@ struct Peer {
   void *shm_base;
   size_t shm_size;
 
+  int listen_fd;
   int sock_fd;
   int shm_fd;
 

@@ -165,21 +165,19 @@ static int PeersInitNets() {
     if (peer->is_dev)
       continue;
 
-    int lfd;
-    if ((lfd = UxsocketInit(peer->sock_path)) < 0) {
+#ifdef DEBUG
+    fprintf(stderr, "  Creating socket %s %zu\n", peer->sock_path, i);
+#endif
+    if ((peer->listen_fd = UxsocketInit(peer->sock_path)) < 0) {
       perror("PeersInitNets: unix socket init failed");
-      return 1;
-    }
-    if ((peer->sock_fd = accept(lfd, NULL, NULL)) < 0) {
-      perror("PeersInitNets: accept failed");
       return 1;
     }
 
     struct epoll_event epev;
     epev.events = EPOLLIN;
     epev.data.ptr = peer;
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, peer->sock_fd, &epev)) {
-      perror("PeersInitNets: epoll_ctl failed");
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, peer->listen_fd, &epev)) {
+      perror("PeersInitNets: epoll_ctl accept failed");
       return 1;
     }
   }
@@ -272,6 +270,17 @@ int PeerNetSetupQueues(struct Peer *peer) {
   peer->cleanup_elen = di->d2n_elen;
   peer->cleanup_enum = di->d2n_nentries;
 
+  if (peer->sock_fd == -1) {
+    /* We can receive the welcome message from our peer before our local
+       connection to the simulator is established. In this case we hold the
+       message till the connection is established and send it then. */
+#ifdef DEBUG
+    fprintf(stderr, "PeerNetSetupQueues: socket not ready yet, delaying "
+        "send\n");
+#endif
+    return 0;
+  }
+
   if (UxsocketSendFd(peer->sock_fd, di, sizeof(*di), peer->shm_fd)) {
     fprintf(stderr, "PeerNetSetupQueues: sending welcome message failed (%lu)",
             peer - peers);
@@ -311,6 +320,48 @@ int PeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
   return 0;
 }
 
+static int PeerAcceptEvent(struct Peer *peer) {
+#ifdef DEBUG
+  fprintf(stderr, "PeerAcceptEvent(%s)\n", peer->sock_path);
+#endif
+  assert(!peer->is_dev);
+
+  if ((peer->sock_fd = accept(peer->listen_fd, NULL, NULL)) < 0) {
+    perror("PeersInitNets: accept failed");
+    return 1;
+  }
+
+#ifdef DEBUG
+  fprintf(stderr, "Accepted %zu\n", peer - peers);
+#endif
+
+  close(peer->listen_fd);
+
+  struct epoll_event epev;
+  epev.events = EPOLLIN;
+  epev.data.ptr = peer;
+  if (epoll_ctl(epfd, EPOLL_CTL_ADD, peer->sock_fd, &epev)) {
+    perror("PeersInitNets: epoll_ctl failed");
+    return 1;
+  }
+
+  /* we may have already received the welcome message from our remote peer. In
+     that case, send it now. */
+  if (peer->intro_valid_remote) {
+#ifdef DEBUG
+    fprintf(stderr, "PeerAcceptEvent(%s): sending welcome message\n",
+        peer->sock_path);
+#endif
+    if (UxsocketSendFd(peer->sock_fd, &peer->dev_intro, sizeof(peer->dev_intro),
+                       peer->shm_fd)) {
+      fprintf(stderr, "PeerAcceptEvent: sending welcome message failed (%lu)",
+              peer - peers);
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static int PeerEvent(struct Peer *peer, uint32_t events) {
 #ifdef DEBUG
   fprintf(stderr, "PeerEvent(%s)\n", peer->sock_path);
@@ -322,6 +373,11 @@ static int PeerEvent(struct Peer *peer, uint32_t events) {
             peer->sock_path);
     peer->ready = false;
     return 1;
+  }
+
+  // if peer is network and not yet connected, this is an accept event
+  if (!peer->is_dev && peer->sock_fd == -1) {
+    return PeerAcceptEvent(peer);
   }
 
   // if we already have the intro, this is not expected
