@@ -58,6 +58,10 @@ struct sockaddr_in addr;
 int epfd = -1;
 
 static int ShmAlloc(size_t size, uint64_t *off) {
+#ifdef DEBUG
+  fprintf(stderr, "ShmAlloc(%zu)\n", size);
+#endif
+
   if (shm_alloc_off + size > shm_size) {
     fprintf(stderr, "ShmAlloc: alloc of %zu bytes failed\n", size);
     return 1;
@@ -152,6 +156,10 @@ static int ParseArgs(int argc, char *argv[]) {
 }
 
 static int PeersInitNets() {
+#ifdef DEBUG
+  fprintf(stderr, "Creating net listening sockets\n");
+#endif
+
   for (size_t i = 0; i < peer_num; i++) {
     struct Peer *peer = &peers[i];
     if (peer->is_dev)
@@ -175,14 +183,26 @@ static int PeersInitNets() {
       return 1;
     }
   }
+
+#ifdef DEBUG
+  fprintf(stderr, "PeerInitNets done\n");
+#endif
   return 0;
 }
 
 static int PeersInitDevs() {
+#ifdef DEBUG
+  fprintf(stderr, "Connecting to device sockets\n");
+#endif
+
   for (size_t i = 0; i < peer_num; i++) {
     struct Peer *peer = &peers[i];
     if (!peer->is_dev)
       continue;
+
+#ifdef DEBUG
+    fprintf(stderr, "  Connecting to socket %s %zu\n", peer->sock_path, i);
+#endif
 
     if ((peer->sock_fd = UxsocketConnect(peer->sock_path)) < 0)
       return 1;
@@ -225,11 +245,14 @@ int PeerDevSendIntro(struct Peer *peer) {
 }
 
 int PeerNetSetupQueues(struct Peer *peer) {
+  struct SimbricksProtoNetDevIntro *di = &peer->dev_intro;
+
 #ifdef DEBUG
   fprintf(stderr, "PeerNetSetupQueues(%s)\n", peer->sock_path);
+  fprintf(stderr, "  d2n_el=%lu d2n_n=%lu n2d_el=%lu n2d_n=%lu\n", di->d2n_elen,
+      di->d2n_nentries, di->n2d_elen, di->n2d_nentries);
 #endif
 
-  struct SimbricksProtoNetDevIntro *di = &peer->dev_intro;
   if (ShmAlloc(di->d2n_elen * di->d2n_nentries, &di->d2n_offset)) {
     fprintf(stderr, "PeerNetSetupQueues: ShmAlloc d2n failed");
     return 1;
@@ -335,7 +358,9 @@ static int PeerEvent(struct Peer *peer, uint32_t events) {
     return 1;
 
   if (peer->intro_valid_remote) {
-    printf("PeerEvent(%s): marking peer as ready\n", peer->sock_path);
+#ifdef DEBUG
+    fprintf(stderr, "PeerEvent(%s): marking peer as ready\n", peer->sock_path);
+#endif
     peer->ready = true;
   }
   return 0;
