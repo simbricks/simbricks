@@ -234,7 +234,7 @@ int PeerNetSetupQueues(struct Peer *peer) {
     fprintf(stderr, "PeerNetSetupQueues: ShmAlloc d2n failed");
     return 1;
   }
-  if (ShmAlloc(di->d2n_elen * di->n2d_nentries, &di->n2d_offset)) {
+  if (ShmAlloc(di->n2d_elen * di->n2d_nentries, &di->n2d_offset)) {
     fprintf(stderr, "PeerNetSetupQueues: ShmAlloc n2d failed");
     return 1;
   }
