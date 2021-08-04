@@ -573,6 +573,5 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  IOLoop();
-  return EXIT_SUCCESS;
+  return IOLoop();
 }
