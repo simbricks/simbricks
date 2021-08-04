@@ -232,15 +232,17 @@ static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport) {
 int main(int argc, char *argv[]) {
   int c;
   int bad_option = 0;
+  int sync_eth = 1;
   int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
   pcap_t *pc = nullptr;
 
   // Parse command line argument
-  while ((c = getopt(argc, argv, "s:S:E:m:p:")) != -1 && !bad_option) {
+  while ((c = getopt(argc, argv, "s:uS:E:m:p:")) != -1 && !bad_option) {
     switch (c) {
       case 's': {
         struct SimbricksNetIf nsif;
-        int sync = 1;
+        int sync = sync_eth;
+        fprintf(stderr, "Switch connecting to: %s\n", optarg);
         if (SimbricksNetIfInit(&nsif, optarg, &sync) != 0) {
           fprintf(stderr, "connecting to %s failed\n", optarg);
           return EXIT_FAILURE;
@@ -248,6 +250,10 @@ int main(int argc, char *argv[]) {
         nsifs.push_back(nsif);
         break;
       }
+
+      case 'u':
+        sync_eth = 0;
+        break;
 
       case 'S':
         sync_period = strtoull(optarg, NULL, 0) * 1000ULL;
