@@ -43,10 +43,26 @@ extern "C" {
 };
 
 //#define NETSWITCH_DEBUG
+#define NETSWITCH_STAT
 
 static uint64_t sync_period = (500 * 1000ULL);  // 500ns
 static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
 static pcap_dumper_t *dumpfile = nullptr;
+
+#ifdef NETSWITCH_STAT
+#endif
+
+#ifdef NETSWITCH_STAT
+static uint64_t d2n_poll_total = 0;
+static uint64_t d2n_poll_suc = 0;
+static uint64_t d2n_poll_sync = 0;
+
+static uint64_t s_d2n_poll_total = 0;
+static uint64_t s_d2n_poll_suc = 0;
+static uint64_t s_d2n_poll_sync = 0;
+
+static int stat_flag = 0;
+#endif
 
 /* MAC address type */
 struct MAC {
@@ -88,6 +104,16 @@ static std::unordered_map<MAC, int> mac_table;
 static void sigint_handler(int dummy) {
   exiting = 1;
 }
+
+static void sigusr1_handler(int dummy) {
+  fprintf(stderr, "main_time = %lu\n", cur_ts);
+}
+
+#ifdef NETSWITCH_STAT
+static void sigusr2_handler(int dummy) {
+  stat_flag = 1;
+}
+#endif
 
 static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
                         size_t port) {
@@ -148,9 +174,23 @@ static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
 static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport) {
   volatile union SimbricksProtoNetD2N *msg_from =
       SimbricksNetIfD2NPoll(nsif, cur_ts);
+#ifdef NETSWITCH_STAT
+  d2n_poll_total += 1;
+  if (stat_flag){
+    s_d2n_poll_total += 1;
+  }
+#endif
+
   if (msg_from == NULL) {
     return;
   }
+
+#ifdef NETSWITCH_STAT
+  d2n_poll_suc += 1;
+  if (stat_flag){
+    s_d2n_poll_suc += 1;
+  }
+#endif
 
   uint8_t type = msg_from->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK;
   if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SEND) {
@@ -176,6 +216,12 @@ static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport) {
       }
     }
   } else if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SYNC) {
+#ifdef NETSWITCH_STAT
+    d2n_poll_sync += 1;
+    if (stat_flag){
+      s_d2n_poll_sync += 1;
+    }
+#endif
   } else {
     fprintf(stderr, "switch_pkt: unsupported type=%u\n", type);
     abort();
@@ -244,6 +290,12 @@ int main(int argc, char *argv[]) {
 
   signal(SIGINT, sigint_handler);
   signal(SIGTERM, sigint_handler);
+  signal(SIGUSR1, sigusr1_handler);
+
+#ifdef NETSWITCH_STAT
+  signal(SIGUSR2, sigusr2_handler);
+#endif
+
 
   printf("start polling\n");
   while (!exiting) {
@@ -276,6 +328,20 @@ int main(int argc, char *argv[]) {
       cur_ts = SimbricksNetIfAdvanceTime(min_ts, sync_period, sync_mode);
     }
   }
+
+#ifdef NETSWITCH_STAT
+  fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
+          "d2n_poll_total", d2n_poll_total, "d2n_poll_suc", d2n_poll_suc,
+          (double)d2n_poll_suc / d2n_poll_total);
+  fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "d2n_poll_sync",
+          d2n_poll_sync, (double)d2n_poll_sync / d2n_poll_suc);
+
+  fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
+          "s_d2n_poll_total", s_d2n_poll_total, "s_d2n_poll_suc", s_d2n_poll_suc,
+          (double)s_d2n_poll_suc / s_d2n_poll_total);
+  fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "s_d2n_poll_sync",
+          s_d2n_poll_sync, (double)s_d2n_poll_sync / s_d2n_poll_suc);
+#endif
 
   return 0;
 }
