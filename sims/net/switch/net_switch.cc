@@ -24,6 +24,9 @@
 
 #include <unistd.h>
 #include <pcap/pcap.h>
+#include <linux/ip.h>
+#include <linux/if_ether.h>
+#include <arpa/inet.h>
 
 #include <cassert>
 #include <climits>
@@ -38,6 +41,8 @@ extern "C" {
 #include <simbricks/netif/netif.h>
 #include <simbricks/proto/base.h>
 };
+
+//#define NETSWITCH_DEBUG
 
 static uint64_t sync_period = (500 * 1000ULL);  // 500ns
 static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
@@ -89,6 +94,7 @@ static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
   volatile union SimbricksProtoNetN2D *msg_to;
   struct pcap_pkthdr ph;
 
+
   // log to pcap file if initialized
   if (dumpfile) {
       memset(&ph, 0, sizeof(ph));
@@ -98,6 +104,30 @@ static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
       ph.len = tx->len;
       pcap_dump((unsigned char *)dumpfile, &ph, (unsigned char *)tx->data);
   }
+  // print sending tick: [packet type] source_IP -> dest_IP len:
+  
+#ifdef NETSWITCH_DEBUG
+  uint16_t eth_proto;
+  struct ethhdr *hdr;
+  struct iphdr *iph;
+  hdr = (struct ethhdr*)tx->data; 
+  eth_proto = ntohs(hdr->h_proto);
+  iph = (struct iphdr *)(hdr + 1);
+  fprintf(stderr, "%20lu: ", cur_ts);
+  if (eth_proto == ETH_P_IP){
+    fprintf(stderr, "[ IP] ");
+    
+  } 
+  else if(eth_proto == ETH_P_ARP){
+    fprintf(stderr, "[ARP] ");
+  } 
+  else{
+    fprintf(stderr, "unkwon eth type\n");
+  }
+
+  fprintf(stderr, "%8X -> %8X len: %lu\n ", iph->saddr, iph->daddr, iph->tot_len + sizeof(struct ethhdr));
+#endif
+
 
   msg_to = SimbricksNetIfN2DAlloc(&nsifs[port], cur_ts, eth_latency);
   if (msg_to != NULL) {
