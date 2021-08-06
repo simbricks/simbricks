@@ -36,6 +36,9 @@ class NetProxy(SimProxy):
     # List of tuples (nic, with_listener)
     nics = None
 
+    # Shared memory size in GB
+    shm_size = 2048
+
 class NetProxyListener(NetProxy):
     def __init__(self):
         self.listen = True
@@ -65,7 +68,8 @@ class RDMANetProxyListener(NetProxyListener):
 
     def run_cmd(self, env):
         cmd = (f'{env.repodir}/dist/net_rdma -l '
-            f'-s {env.proxy_shm_path(self)} ')
+            f'-s {env.proxy_shm_path(self)} '
+            f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
             cmd += '-d ' if local else '-n '
             cmd += env.nic_eth_path(nic) + ' '
@@ -78,7 +82,8 @@ class RDMANetProxyConnecter(NetProxyConnecter):
 
     def run_cmd(self, env):
         cmd = (f'{env.repodir}/dist/net_rdma '
-            f'-s {env.proxy_shm_path(self)} ')
+            f'-s {env.proxy_shm_path(self)} '
+            f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
             cmd += '-n ' if local else '-d '
             cmd += env.nic_eth_path(nic) + ' '
