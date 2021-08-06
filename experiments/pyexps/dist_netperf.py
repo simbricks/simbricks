@@ -41,6 +41,7 @@ for host_type in host_types:
             # host
             if host_type == 'qemu':
                 host_class = sim.QemuHost
+                net.sync = False
             elif host_type == 'qt':
                 def qemu_timing():
                     h = sim.QemuHost()
