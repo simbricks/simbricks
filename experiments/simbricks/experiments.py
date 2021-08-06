@@ -24,6 +24,7 @@ import os
 import asyncio
 from collections import defaultdict
 import simbricks.exectools as exectools
+import simbricks.proxy
 import shlex
 import time
 import itertools
@@ -328,6 +329,18 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
 
         await super().prepare()
 
+    def add_proxy_sockets(self, exec, proxy):
+        # add shared memory region for proxy
+        self.sockets.append((exec, self.env.proxy_shm_path(proxy)))
+
+        # add each listening unix socket
+        for (nic, local) in proxy.nics:
+            add = False
+            if (isinstance(proxy, simbricks.proxy.NetProxyConnecter) and local) \
+                or (isinstance(proxy, simbricks.proxy.NetProxyListener) \
+                    and not local):
+                self.sockets.append((exec, self.env.nic_eth_path(nic)))
+
     async def run_proxies_listeners(self):
         """ Start all listening proxies. """
         if self.verbose:
@@ -341,9 +354,10 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
                     shlex.split(proxy.run_cmd(self.env)), verbose=self.verbose,
                     canfail=True)
             await sc.start()
-            self.running.append((proxy, sc))
 
-            await asyncio.sleep(0.5)
+            self.running.append((proxy, sc))
+            self.add_proxy_sockets(exec, proxy)
+        await asyncio.sleep(10)
 
     async def run_proxies_connecters(self):
         """ Start all connecting proxies. """
@@ -358,9 +372,10 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
                     shlex.split(proxy.run_cmd(self.env)), verbose=self.verbose,
                     canfail=True)
             await sc.start()
-            self.running.append((proxy, sc))
 
-            await asyncio.sleep(0.5)
+            self.running.append((proxy, sc))
+            self.add_proxy_sockets(exec, proxy)
+        await asyncio.sleep(10)
 
     async def wait_proxy_sockets(self):
         # TODO
