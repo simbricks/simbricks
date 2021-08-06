@@ -285,8 +285,10 @@ class ExperimentBaseRunner(object):
                 await sc.wait()
 
             # remove all sockets
+            scs = []
             for (exec,sock) in self.sockets:
-                await exec.rmtree(sock)
+                scs.append(exec.rmtree(sock))
+            await asyncio.wait(scs)
 
             # add all simulator components to the output
             for sim,sc in self.running:
