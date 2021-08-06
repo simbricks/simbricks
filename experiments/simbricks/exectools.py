@@ -309,7 +309,10 @@ class LocalExecutor(Executor):
         pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
     async def rmtree(self, path, verbose=False):
-        shutil.rmtree(path, ignore_errors=True)
+        if os.path.isdir(path):
+            shutil.rmtree(path, ignore_errors=True)
+        elif os.path.exists(path):
+            os.unlink(path)
 
 class RemoteExecutor(Executor):
     def __init__(self, host_name, workdir):
