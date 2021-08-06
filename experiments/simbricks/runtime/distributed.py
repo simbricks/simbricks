@@ -26,6 +26,7 @@ import pathlib
 from simbricks.runtime.common import *
 import simbricks.experiments as exp
 import simbricks.exectools as exectools
+import simbricks.proxy as proxy
 
 class DistributedSimpleRuntime(Runtime):
     def __init__(self, execs, verbose=False):
@@ -35,6 +36,9 @@ class DistributedSimpleRuntime(Runtime):
         self.execs = execs
 
     def add_run(self, run):
+        if not isinstance(run.experiment, exp.DistributedExperiment):
+            raise RuntimeError('Only distributed experiments supported')
+
         self.runnable.append(run)
 
     async def do_run(self, run):
@@ -53,3 +57,55 @@ class DistributedSimpleRuntime(Runtime):
     def start(self):
         for run in self.runnable:
             asyncio.run(self.do_run(run))
+
+def auto_dist(e, execs):
+    """ Converts an Experiment into a DistributedExperiment. Assigns network to
+        executor zero, and then round-robin assignment of hosts to executors,
+        while also assigning all nics for a host to the same executor.
+    """
+
+    if len(execs) < 2:
+        raise RuntimeError('auto_dist needs at least two hosts')
+    elif len(execs) > 2:
+        print('Warning: currently auto_dist only uses the first two hosts')
+
+    # Create the distributed experiment
+    de = exp.DistributedExperiment(e.name, 2)
+    de.timeout = e.timeout
+    de.checkpoint = e.checkpoint
+    de.no_simbricks = e.no_simbricks
+    de.metadata = e.metadata.copy()
+
+    # create listening proxy on host 0
+    lp = proxy.RDMANetProxyListener()
+    lp.name = 'listener'
+    de.add_proxy(lp)
+    de.assign_sim_host(lp, 0)
+
+    # assign networks to first host
+    for net in e.networks:
+        de.add_network(net)
+        de.assign_sim_host(net, 0)
+
+    # create connecting proxy on host 1
+    cp = proxy.RDMANetProxyConnecter(lp)
+    cp.name = 'connecter'
+    de.add_proxy(cp)
+    de.assign_sim_host(cp, 1)
+
+    # round-robin assignment for hosts
+    k = 0
+    for h in e.hosts:
+        de.add_host(h)
+        de.assign_sim_host(h, k)
+        for nic in h.nics:
+            de.assign_sim_host(nic, k)
+
+            if k != 0:
+                cp.add_nic(nic)
+        k = (k + 1) % 2
+
+    for nic in e.nics:
+        de.add_nic(nic)
+
+    return de

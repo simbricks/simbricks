@@ -90,7 +90,9 @@ g_dist = parser.add_argument_group('Distributed Runtime')
 g_par.add_argument('--dist', dest='runtime', action='store_const',
         const='dist', default='sequential',
         help='Use sequential distributed runtime instead of local')
-
+g_par.add_argument('--auto-dist', action='store_const', const=True,
+        default=False,
+        help='Automatically distribute non-distributed experiments')
 args = parser.parse_args()
 
 
@@ -168,6 +170,8 @@ if not args.pickled:
         experiments += mod.experiments
 
     for e in experiments:
+        if args.auto_dist and not isinstance(e, exp.DistributedExperiment):
+            e = runtime.auto_dist(e, executors)
         # apply filter if any specified
         if (args.filter) and (len(args.filter) > 0):
             match = False

@@ -23,4 +23,4 @@
 from simbricks.runtime.common import (Run, Runtime)
 from simbricks.runtime.local import (LocalSimpleRuntime, LocalParallelRuntime)
 from simbricks.runtime.slurm import SlurmRuntime
-from simbricks.runtime.distributed import DistributedSimpleRuntime
+from simbricks.runtime.distributed import (DistributedSimpleRuntime, auto_dist)
