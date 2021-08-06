@@ -107,6 +107,11 @@ int shm_create(const char *path, size_t size, void **addr) {
   int fd;
   void *p;
 
+#ifdef SHM_ROUND_UP
+  if (size % SHM_ROUND_UP != 0)
+    size += SHM_ROUND_UP - (size % SHM_ROUND_UP);
+#endif
+
   if ((fd = open(path, O_CREAT | O_RDWR, 0666)) == -1) {
     perror("util_create_shmsiszed: open failed");
     goto error_out;
