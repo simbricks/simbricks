@@ -281,21 +281,25 @@ class Executor(object):
             await cmdC.start()
             await cmdC.wait()
 
-    async def await_files(self, paths, delay=0.05, verbose=False):
+    async def await_files(self, paths, *args, **kwargs):
         xs = []
         for p in paths:
-            xs.append(self.await_file(p, delay=delay, verbose=verbose))
+            xs.append(self.await_file(p, *args, **kwargs))
         await asyncio.wait(xs)
 
 class LocalExecutor(Executor):
     def create_component(self, label, parts, **kwargs):
         return SimpleComponent(label, parts, **kwargs)
 
-    async def await_file(self, path, delay=0.05, verbose=False):
+    async def await_file(self, path, delay=0.05, verbose=False, timeout=30):
         if verbose:
             print('await_file(%s)' % path)
+        t = 0
         while not os.path.exists(path):
+            if t >= timeout:
+                raise TimeoutError()
             await asyncio.sleep(delay)
+            t += delay
 
     async def send_file(self, path, verbose):
         # locally we do not need to do anything
@@ -316,13 +320,19 @@ class RemoteExecutor(Executor):
         return SimpleRemoteComponent(self.host_name, label, parts,
                 cwd=self.cwd, **kwargs)
 
-    async def await_file(self, path, delay=0.05, verbose=False):
-        loop_cmd = 'while [ ! -e %s ] ; do sleep %f ; done' % (path, delay)
+    async def await_file(self, path, delay=0.05, verbose=False, timeout=30):
+        to_its = timeout / delay
+        loop_cmd = ('i=0 ; while [ ! -e %s ] ; do '
+                    'if [ $i -ge %u ] ; then exit 1 ; fi ; '
+                    'sleep %f ; '
+                    'i=$(($i+1)) ; done; exit 0') % (path, to_its, delay)
         parts = ['/bin/sh', '-c', loop_cmd]
         sc = self.create_component("%s.await_file('%s')" % (self.host_name,
                 path), parts, canfail=False, verbose=verbose)
         await sc.start()
         await sc.wait()
+
+    # TODO: Implement opitimized await_files()
 
     async def send_file(self, path, verbose):
         parts = [
