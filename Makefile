@@ -29,14 +29,14 @@ base_dir := $(d)./
 CPPLINT ?= cpplint
 CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
-CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
-CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC
-CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir)
+CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC $(EXTRA_CFLAGS)
+CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC $(EXTRA_CXXFLAGS)
+CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir) $(EXTRA_CPPFLAGS)
 
 VERILATOR = verilator
 VFLAGS = +1364-2005ext+v \
     -Wno-WIDTH -Wno-PINMISSING -Wno-LITENDIAN -Wno-IMPLICIT -Wno-SELRANGE \
-    -Wno-CASEINCOMPLETE -Wno-UNSIGNED
+    -Wno-CASEINCOMPLETE -Wno-UNSIGNED $(EXTRA_VFLAGS)
 
 
 $(eval $(call subdir,lib))
