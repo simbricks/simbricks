@@ -378,8 +378,20 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
         await asyncio.sleep(10)
 
     async def wait_proxy_sockets(self):
-        # TODO
-        pass
+        """ Make sure all sockets exist. """
+        paths = {}
+        for proxy in itertools.chain(
+                    self.exp.proxies_connect, self.exp.proxies_listen):
+            for (nic, local) in proxy.nics:
+                if local:
+                    continue
+                exec = self.sim_executor(proxy)
+                if exec not in paths:
+                    paths[exec] = []
+                paths[exec].append(self.env.nic_eth_path(nic))
+
+        for (exec, paths) in paths.items():
+            await exec.await_files(paths, verbose=self.verbose)
 
     async def before_nets(self):
         await self.run_proxies_listeners()
