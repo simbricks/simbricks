@@ -281,6 +281,12 @@ class Executor(object):
             await cmdC.start()
             await cmdC.wait()
 
+    async def await_files(self, paths, delay=0.05, verbose=False):
+        xs = []
+        for p in paths:
+            xs.append(self.await_file(p, delay=delay, verbose=verbose))
+        await asyncio.wait(xs)
+
 class LocalExecutor(Executor):
     def create_component(self, label, parts, **kwargs):
         return SimpleComponent(label, parts, **kwargs)
