@@ -29,5 +29,9 @@ OBJS := $(addprefix $(d), net_rdma.o rdma.o utils.o)
 $(bin_net_rdma): $(OBJS) -lrdmacm -libverbs -lpthread
 
 CLEAN := $(bin_net_rdma) $(OBJS)
-#ALL := $(bin_net_rdma)
+
+ifeq ($(ENABLE_DIST),y)
+ALL := $(bin_net_rdma)
+endif
+
 include mk/subdir_post.mk
