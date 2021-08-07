@@ -107,7 +107,6 @@ static int ParseArgs(int argc, char *argv[]) {
   int c;
 
   while ((c = getopt(argc, argv, opts)) != -1) {
-
     switch (c) {
       case 'l':
         mode_listen = true;

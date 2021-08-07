@@ -42,7 +42,7 @@ struct NetRdmaReportMsg {
   uint32_t written_pos[MAX_PEERS];
   uint32_t clean_pos[MAX_PEERS];
   bool valid[MAX_PEERS];
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct NetRdmaMsg {
   union {
@@ -60,7 +60,7 @@ struct NetRdmaMsg {
     kMsgNet,
     kMsgReport,
   } msg_type;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 static struct rdma_event_channel *cm_channel;
 static struct rdma_conn_param conn_param = { };

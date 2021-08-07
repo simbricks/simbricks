@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef DIST_NET_RDMA_NET_RDMA_H_
-#define DIST_NET_RDMA_NET_RDMA_H_
+#ifndef DIST_NET_RDMA_H_
+#define DIST_NET_RDMA_H_
 
 #include <arpa/inet.h>
 #include <stdbool.h>
@@ -111,4 +111,4 @@ int RdmaPassEntry(struct Peer *peer, uint32_t n);
 int RdmaPassReport();
 int RdmaEvent();
 
-#endif  // DIST_NET_RDMA_NET_RDMA_H_
+#endif  // DIST_NET_RDMA_H_

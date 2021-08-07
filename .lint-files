@@ -1,3 +1,5 @@
+dist/*.c
+dist/*.h
 sims/net/*/*.c
 sims/net/*/*.cc
 sims/nic/corundum/*.cc
