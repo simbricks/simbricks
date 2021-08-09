@@ -25,6 +25,9 @@
 #ifndef SIMBRICKS_NICIF_NICIF_H_
 #define SIMBRICKS_NICIF_NICIF_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <simbricks/proto/network.h>
 #include <simbricks/proto/pcie.h>
 
@@ -42,31 +45,65 @@ struct SimbricksNicIfParams {
   int sync_mode;
 };
 
-int SimbricksNicIfInit(struct SimbricksNicIfParams *params,
-                       struct SimbricksProtoPcieDevIntro *di);
-void SimbricksNicIfCleanup(void);
+struct SimbricksNicIf {
+  uint8_t *d2h_queue;
+  size_t d2h_pos;
+  size_t d2h_off; /* offset in shm region */
 
-int SimbricksNicIfSync(struct SimbricksNicIfParams *params, uint64_t timestamp);
-void SimbricksNicIfAdvanceEpoch(struct SimbricksNicIfParams *params,
+  uint8_t *h2d_queue;
+  size_t h2d_pos;
+  size_t h2d_off; /* offset in shm region */
+
+  uint8_t *d2n_queue;
+  size_t d2n_pos;
+  size_t d2n_off; /* offset in shm region */
+
+  uint8_t *n2d_queue;
+  size_t n2d_pos;
+  size_t n2d_off; /* offset in shm region */
+
+  uint64_t pci_last_rx_time;
+  uint64_t pci_last_tx_time;
+  uint64_t eth_last_rx_time;
+  uint64_t eth_last_tx_time;
+  uint64_t current_epoch;
+
+  struct SimbricksNicIfParams params;
+
+  int shm_fd;
+  int pci_cfd;
+  int eth_cfd;
+};
+
+int SimbricksNicIfInit(struct SimbricksNicIf *nicif,
+                       struct SimbricksNicIfParams *params,
+                       struct SimbricksProtoPcieDevIntro *di);
+void SimbricksNicIfCleanup(struct SimbricksNicIf *nicif);
+
+int SimbricksNicIfSync(struct SimbricksNicIf *nicif,
+                       uint64_t timestamp);
+void SimbricksNicIfAdvanceEpoch(struct SimbricksNicIf *nicif,
                                 uint64_t timestamp);
-uint64_t SimbricksNicIfAdvanceTime(struct SimbricksNicIfParams *params,
+uint64_t SimbricksNicIfAdvanceTime(struct SimbricksNicIf *nicif,
                                    uint64_t timestamp);
-uint64_t SimbricksNicIfNextTimestamp(struct SimbricksNicIfParams *params);
+uint64_t SimbricksNicIfNextTimestamp(struct SimbricksNicIf *nicif);
 
 volatile union SimbricksProtoPcieH2D *SimbricksNicIfH2DPoll(
-    struct SimbricksNicIfParams *params, uint64_t timestamp);
-void SimbricksNicIfH2DDone(volatile union SimbricksProtoPcieH2D *msg);
-void SimbricksNicIfH2DNext(void);
+    struct SimbricksNicIf *nicif, uint64_t timestamp);
+void SimbricksNicIfH2DDone(struct SimbricksNicIf *nicif,
+                           volatile union SimbricksProtoPcieH2D *msg);
+void SimbricksNicIfH2DNext(struct SimbricksNicIf *nicif);
 
 volatile union SimbricksProtoPcieD2H *SimbricksNicIfD2HAlloc(
-    struct SimbricksNicIfParams *params, uint64_t timestamp);
+    struct SimbricksNicIf *nicif, uint64_t timestamp);
 
 volatile union SimbricksProtoNetN2D *SimbricksNicIfN2DPoll(
-    struct SimbricksNicIfParams *params, uint64_t timestamp);
-void SimbricksNicIfN2DDone(volatile union SimbricksProtoNetN2D *msg);
-void SimbricksNicIfN2DNext(void);
+    struct SimbricksNicIf *nicif, uint64_t timestamp);
+void SimbricksNicIfN2DDone(struct SimbricksNicIf *nicif,
+                           volatile union SimbricksProtoNetN2D *msg);
+void SimbricksNicIfN2DNext(struct SimbricksNicIf *nicif);
 
 volatile union SimbricksProtoNetD2N *SimbricksNicIfD2NAlloc(
-    struct SimbricksNicIfParams *params, uint64_t timestamp);
+    struct SimbricksNicIf *nicif, uint64_t timestamp);
 
 #endif  // SIMBRICKS_NICIF_NICIF_H_

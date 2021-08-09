@@ -122,7 +122,7 @@ class Runner {
   std::deque<DMAOp *> dma_queue_;
   size_t dma_pending_;
   uint64_t mac_addr_;
-  struct SimbricksNicIfParams nsparams_;
+  struct SimbricksNicIf nicif_;
   struct SimbricksProtoPcieDevIntro dintro_;
 
   volatile union SimbricksProtoPcieD2H *D2HAlloc();
