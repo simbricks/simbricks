@@ -39,6 +39,7 @@
 
 extern "C" {
 #include <simbricks/netif/netif.h>
+#include <simbricks/nicif/nicif.h>
 #include <simbricks/proto/base.h>
 };
 
@@ -94,6 +95,7 @@ struct hash<MAC> {
 };
 }  // namespace std
 
+
 /** Abstract base switch port */
 class Port {
  public:
@@ -115,6 +117,7 @@ class Port {
   virtual void RxDone() = 0;
   virtual bool TxPacket(const void *data, size_t len, uint64_t cur_ts) = 0;
 };
+
 
 /** Normal network switch port (conneting to a NIC) */
 class NetPort : public Port {
@@ -203,6 +206,114 @@ class NetPort : public Port {
     return true;
   }
 };
+
+
+/** Hosting network switch port (connected to another network) */
+class NetHostPort : public Port {
+ protected:
+  struct SimbricksNicIf nicif_;
+  volatile union SimbricksProtoNetN2D *rx_;
+  int sync_;
+
+ public:
+  NetHostPort() : rx_(nullptr), sync_(0) {
+    memset(&nicif_, 0, sizeof(nicif_));
+  }
+
+  NetHostPort(const NetHostPort &other) : nicif_(other.nicif_), rx_(other.rx_),
+      sync_(other.sync_) {}
+
+  virtual bool Connect(const char *path, int sync) override {
+    sync_ = sync;
+    std::string shm_path = path;
+    shm_path += "-shm";
+    struct SimbricksNicIfParams params = {
+      .pci_socket_path = nullptr,
+      .eth_socket_path = path,
+      .shm_path = shm_path.c_str(),
+
+      .pci_latency = 0,
+      .eth_latency = eth_latency,
+      .sync_delay = sync_period,
+
+      .sync_pci = 0,
+      .sync_eth = sync,
+      .sync_mode = sync_mode,
+    };
+    struct SimbricksProtoPcieDevIntro di;
+    int ret = SimbricksNicIfInit(&nicif_, &params, &di);
+    sync_ = params.sync_eth;
+    return ret == 0;
+  }
+
+  virtual bool IsSync() override {
+    return sync_;
+  }
+
+  virtual void Sync(uint64_t cur_ts) override {
+    if (SimbricksNicIfSync(&nicif_, cur_ts) != 0) {
+      fprintf(stderr, "SimbricksNicIfSync failed\n");
+      abort();
+    }
+  }
+
+  virtual void AdvanceEpoch(uint64_t cur_ts) override {
+    SimbricksNicIfAdvanceEpoch(&nicif_, cur_ts);
+  }
+
+  virtual uint64_t NextTimestamp() override {
+    return SimbricksNicIfNextTimestamp(&nicif_);
+  }
+
+  virtual enum RxPollState RxPacket(
+      const void *& data, size_t &len, uint64_t cur_ts) override {
+    assert(rx_ == nullptr);
+
+    rx_ = SimbricksNicIfN2DPoll(&nicif_, cur_ts);
+    if (!rx_)
+      return kRxPollFail;
+
+    uint8_t type = rx_->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_MSG_MASK;
+    if (type == SIMBRICKS_PROTO_NET_N2D_MSG_RECV) {
+      data = (const void *)rx_->recv.data;
+      len = rx_->recv.len;
+      return kRxPollSuccess;
+    } else if (type == SIMBRICKS_PROTO_NET_N2D_MSG_SYNC) {
+      return kRxPollSync;
+    } else {
+      fprintf(stderr, "switch_pkt: unsupported type=%u\n", type);
+      abort();
+    }
+  }
+
+  virtual void RxDone() override {
+    assert(rx_ != nullptr);
+
+    SimbricksNicIfN2DDone(&nicif_, rx_);
+    SimbricksNicIfN2DNext(&nicif_);
+    rx_ = nullptr;
+  }
+
+  virtual bool TxPacket(
+      const void *data, size_t len, uint64_t cur_ts) override {
+    volatile union SimbricksProtoNetD2N *msg_to =
+      SimbricksNicIfD2NAlloc(&nicif_, cur_ts);
+    if (!msg_to)
+      return false;
+
+    volatile struct SimbricksProtoNetD2NSend *rx;
+    rx = &msg_to->send;
+    rx->len = len;
+    rx->port = 0;
+    memcpy((void *)rx->data, data, len);
+
+    // WMB();
+    rx->own_type =
+        SIMBRICKS_PROTO_NET_D2N_MSG_SEND | SIMBRICKS_PROTO_NET_D2N_OWN_NET;
+    return true;
+  }
+};
+
 
 /* Global variables */
 static uint64_t cur_ts = 0;
@@ -331,13 +442,24 @@ int main(int argc, char *argv[]) {
   pcap_t *pc = nullptr;
 
   // Parse command line argument
-  while ((c = getopt(argc, argv, "s:uS:E:m:p:")) != -1 && !bad_option) {
+  while ((c = getopt(argc, argv, "s:h:uS:E:m:p:")) != -1 && !bad_option) {
     switch (c) {
       case 's': {
         NetPort *port = new NetPort;
         fprintf(stderr, "Switch connecting to: %s\n", optarg);
         if (!port->Connect(optarg, sync_eth)) {
           fprintf(stderr, "connecting to %s failed\n", optarg);
+          return EXIT_FAILURE;
+        }
+        ports.push_back(port);
+        break;
+      }
+
+      case 'h': {
+        NetHostPort *port = new NetHostPort;
+        fprintf(stderr, "Switch listening on: %s\n", optarg);
+        if (!port->Connect(optarg, sync_eth)) {
+          fprintf(stderr, "listening on %s failed\n", optarg);
           return EXIT_FAILURE;
         }
         ports.push_back(port);
