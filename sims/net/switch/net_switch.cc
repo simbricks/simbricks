@@ -94,32 +94,53 @@ struct hash<MAC> {
 };
 }  // namespace std
 
+/** Abstract base switch port */
 class Port {
+ public:
+  enum RxPollState {
+    kRxPollSuccess = 0,
+    kRxPollFail = 1,
+    kRxPollSync = 2,
+  };
+
+  virtual ~Port() = default;
+
+  virtual bool Connect(const char *path, int sync) = 0;
+  virtual bool IsSync() = 0;
+  virtual void Sync(uint64_t cur_ts) = 0;
+  virtual void AdvanceEpoch(uint64_t cur_ts) = 0;
+  virtual uint64_t NextTimestamp() = 0;
+  virtual enum RxPollState RxPacket(
+      const void *& data, size_t &len, uint64_t cur_ts) = 0;
+  virtual void RxDone() = 0;
+  virtual bool TxPacket(const void *data, size_t len, uint64_t cur_ts) = 0;
+};
+
+/** Normal network switch port (conneting to a NIC) */
+class NetPort : public Port {
  protected:
   struct SimbricksNetIf netif_;
   volatile union SimbricksProtoNetD2N *rx_;
   int sync_;
 
  public:
-  Port() : rx_(nullptr), sync_(0) {
+  NetPort() : rx_(nullptr), sync_(0) {
     memset(&netif_, 0, sizeof(netif_));
   }
 
-  Port(const Port &other) : netif_(other.netif_), rx_(other.rx_),
+  NetPort(const NetPort &other) : netif_(other.netif_), rx_(other.rx_),
       sync_(other.sync_) {}
 
-  virtual ~Port() = default;
-
-  virtual bool Connect(const char *path, int sync) {
+  virtual bool Connect(const char *path, int sync) override {
     sync_ = sync;
     return SimbricksNetIfInit(&netif_, path, &sync_) == 0;
   }
 
-  virtual bool IsSync() {
+  virtual bool IsSync() override {
     return sync_;
   }
 
-  virtual void Sync(uint64_t cur_ts) {
+  virtual void Sync(uint64_t cur_ts) override {
     if (SimbricksNetIfN2DSync(&netif_, cur_ts, eth_latency, sync_period,
                               sync_mode) != 0) {
       fprintf(stderr, "SimbricksNetIfN2DSync failed\n");
@@ -127,22 +148,16 @@ class Port {
     }
   }
 
-  virtual void AdvanceEpoch(uint64_t cur_ts) {
+  virtual void AdvanceEpoch(uint64_t cur_ts) override {
     SimbricksNetIfAdvanceEpoch(cur_ts, sync_period, sync_mode);
   }
 
-  virtual uint64_t NextTimestamp() {
+  virtual uint64_t NextTimestamp() override {
     return SimbricksNetIfD2NTimestamp(&netif_);
   }
 
-  enum RxPollState {
-    kRxPollSuccess = 0,
-    kRxPollFail = 1,
-    kRxPollSync = 2,
-  };
-
   virtual enum RxPollState RxPacket(
-      const void *& data, size_t &len, uint64_t cur_ts) {
+      const void *& data, size_t &len, uint64_t cur_ts) override {
     assert(rx_ == nullptr);
 
     rx_ = SimbricksNetIfD2NPoll(&netif_, cur_ts);
@@ -162,14 +177,15 @@ class Port {
     }
   }
 
-  virtual void RxDone() {
+  virtual void RxDone() override {
     assert(rx_ != nullptr);
 
     SimbricksNetIfD2NDone(&netif_, rx_);
     rx_ = nullptr;
   }
 
-  virtual bool TxPacket(const void *data, size_t len, uint64_t cur_ts) {
+  virtual bool TxPacket(
+      const void *data, size_t len, uint64_t cur_ts) override {
     volatile union SimbricksProtoNetN2D *msg_to =
       SimbricksNetIfN2DAlloc(&netif_, cur_ts, eth_latency);
     if (!msg_to)
@@ -193,7 +209,7 @@ static uint64_t cur_ts = 0;
 static int exiting = 0;
 static const uint8_t bcast[6] = {0xFF};
 static const MAC bcast_addr(bcast);
-static std::vector<Port> ports;
+static std::vector<Port *> ports;
 static std::unordered_map<MAC, int> mac_table;
 
 static void sigint_handler(int dummy) {
@@ -212,7 +228,7 @@ static void sigusr2_handler(int dummy) {
 
 static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id) {
   struct pcap_pkthdr ph;
-  Port &dest_port = ports[port_id];
+  Port &dest_port = *ports[port_id];
 
   // log to pcap file if initialized
   if (dumpfile) {
@@ -318,9 +334,9 @@ int main(int argc, char *argv[]) {
   while ((c = getopt(argc, argv, "s:uS:E:m:p:")) != -1 && !bad_option) {
     switch (c) {
       case 's': {
-        Port port;
+        NetPort *port = new NetPort;
         fprintf(stderr, "Switch connecting to: %s\n", optarg);
-        if (!port.Connect(optarg, sync_eth)) {
+        if (!port->Connect(optarg, sync_eth)) {
           fprintf(stderr, "connecting to %s failed\n", optarg);
           return EXIT_FAILURE;
         }
@@ -383,17 +399,17 @@ int main(int argc, char *argv[]) {
   printf("start polling\n");
   while (!exiting) {
     // Sync all interfaces
-    for (auto &port : ports)
-      port.Sync(cur_ts);
-    for (auto &port : ports)
-      port.AdvanceEpoch(cur_ts);
+    for (auto port : ports)
+      port->Sync(cur_ts);
+    for (auto port : ports)
+      port->AdvanceEpoch(cur_ts);
 
     // Switch packets
     uint64_t min_ts;
     do {
       min_ts = ULLONG_MAX;
       for (size_t port_i = 0; port_i < ports.size(); port_i++) {
-        auto &port = ports.at(port_i);
+        auto &port = *ports[port_i];
         switch_pkt(port, port_i);
         if (port.IsSync()) {
           uint64_t ts = port.NextTimestamp();
