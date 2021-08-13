@@ -409,8 +409,9 @@ static void switch_pkt(Port &port, size_t iport) {
       mac_table[src] = iport;
     }
     // L2 forwarding
-    if (mac_table.count(dst) > 0) {
-      size_t eport = mac_table.at(dst);
+    auto i = mac_table.find(dst);
+    if (i != mac_table.end()) {
+      size_t eport = i->second;
       forward_pkt(pkt_data, pkt_len, eport);
     } else {
       // Broadcast
