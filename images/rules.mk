@@ -30,8 +30,7 @@ BASE_IMAGE := $(d)output-base/base
 NOPAXOS_IMAGE := $(d)output-nopaxos/nopaxos
 MTCP_IMAGE := $(d)output-mtcp/mtcp
 TAS_IMAGE := $(d)output-tas/tas
-IMAGES := $(UBUNTU_IMAGE) $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MTCP_IMAGE) \
-    $(TAS_IMAGE)
+IMAGES := $(UBUNTU_IMAGE) $(BASE_IMAGE) $(NOPAXOS_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
 img_dir := $(d)
