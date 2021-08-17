@@ -57,6 +57,11 @@ struct sockaddr_in addr;
 
 int epfd = -1;
 
+const char *ib_devname = NULL;
+bool ib_connect = false;
+uint8_t ib_port = 1;
+int ib_sgid_idx = -1;
+
 static int ShmAlloc(size_t size, uint64_t *off) {
 #ifdef DEBUG
   fprintf(stderr, "ShmAlloc(%zu)\n", size);
@@ -103,7 +108,7 @@ static bool AddPeer(const char *path, bool dev) {
 }
 
 static int ParseArgs(int argc, char *argv[]) {
-  const char *opts = "ld:n:s:S:";
+  const char *opts = "ld:n:s:S:D:ip:g:";
   int c;
 
   while ((c = getopt(argc, argv, opts)) != -1) {
@@ -131,6 +136,22 @@ static int ParseArgs(int argc, char *argv[]) {
 
       case 'S':
         shm_size = strtoull(optarg, NULL, 10) * 1024 * 1024;
+        break;
+
+      case 'D':
+        ib_devname = optarg;
+        break;
+
+      case 'i':
+        ib_connect = true;
+        break;
+
+      case 'p':
+        ib_port = strtoull(optarg, NULL, 10);
+        break;
+
+      case 'g':
+        ib_sgid_idx = strtoull(optarg, NULL, 10);
         break;
 
       default:

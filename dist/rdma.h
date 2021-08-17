@@ -36,4 +36,10 @@ int RdmaCMConnect(struct sockaddr_in *addr);
 struct ibv_qp *RdmaCMCreateQP(struct ibv_pd *pd,
                               struct ibv_qp_init_attr *attr);
 
+int RdmaIBListen(struct sockaddr_in *addr);
+int RdmaIBConnect(struct sockaddr_in *addr);
+struct ibv_qp *RdmaIBCreateQP(struct ibv_pd *pd,
+                              struct ibv_qp_init_attr *attr);
+
 #endif  // DIST_RDMA_H_
+

@@ -220,8 +220,14 @@ int RdmaCommonInit(struct ibv_context *ctx) {
   qp_attr.send_cq = cq;
   qp_attr.recv_cq = cq;
   qp_attr.qp_type = IBV_QPT_RC;
-  if (!(qp = RdmaCMCreateQP(pd, &qp_attr))) {
-    fprintf(stderr, "RdmaCommonInit: RdmaCMCreateQP failed\n");
+
+  if (!ib_connect)
+    qp = RdmaCMCreateQP(pd, &qp_attr);
+  else
+    qp = RdmaIBCreateQP(pd, &qp_attr);
+
+  if (!qp) {
+    fprintf(stderr, "RdmaCommonInit: RdmaCreateQP failed\n");
     return 1;
   }
 
@@ -263,7 +269,14 @@ static int RdmaCommonSetNonblock() {
 }
 
 int RdmaListen(struct sockaddr_in *addr) {
-  if (RdmaCMListen(addr))
+  int ret;
+
+  if (!ib_connect)
+    ret = RdmaCMListen(addr);
+  else
+    ret = RdmaIBListen(addr);
+
+  if (ret)
     return 1;
 
   if (RdmaCommonSetNonblock())
@@ -273,7 +286,14 @@ int RdmaListen(struct sockaddr_in *addr) {
 }
 
 int RdmaConnect(struct sockaddr_in *addr) {
-  if (RdmaCMConnect(addr))
+  int ret;
+
+  if (!ib_connect)
+    ret = RdmaCMConnect(addr);
+  else
+    ret = RdmaIBConnect(addr);
+
+  if (ret)
     return 1;
 
   if (RdmaCommonSetNonblock())

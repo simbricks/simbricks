@@ -99,6 +99,10 @@ extern void *shm_base;
 extern size_t peer_num;
 extern struct Peer *peers;
 extern int epfd;
+extern const char *ib_devname;
+extern bool ib_connect;
+extern uint8_t ib_port;
+extern int ib_sgid_idx;
 
 int PeerDevSendIntro(struct Peer *peer);
 int PeerNetSetupQueues(struct Peer *peer);
