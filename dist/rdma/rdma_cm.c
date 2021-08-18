@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "dist/rdma.h"
-#include "dist/net_rdma.h"
+#include "dist/rdma/rdma.h"
+#include "dist/rdma/net_rdma.h"
 
 #include <rdma/rdma_cma.h>
 #include <stdio.h>

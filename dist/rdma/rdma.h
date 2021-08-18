@@ -25,7 +25,7 @@
 #ifndef DIST_RDMA_H_
 #define DIST_RDMA_H_
 
-#include "dist/net_rdma.h"
+#include "dist/rdma/net_rdma.h"
 
 #include <infiniband/verbs.h>
 

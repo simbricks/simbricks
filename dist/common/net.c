@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "dist/net_rdma.h"
+#include "dist/common/net.h"
 
 #include <assert.h>
 #include <fcntl.h>
@@ -38,29 +38,30 @@
 
 #include <simbricks/proto/base.h>
 
-#include "dist/utils.h"
+#include "dist/common/utils.h"
 
 static const uint64_t kPollReportThreshold = 128;
 static const uint64_t kCleanReportThreshold = 128;
 static const uint64_t kPollMax = 8;
 
-const char *shm_path = NULL;
-size_t shm_size = 256 * 1024 * 1024ULL;  // 256MB
-void *shm_base = NULL;
+static size_t shm_size;
+void *shm_base;
 static int shm_fd = -1;
 static size_t shm_alloc_off = 0;
 
-bool mode_listen = false;
 size_t peer_num = 0;
 struct Peer *peers = NULL;
-struct sockaddr_in addr;
 
-int epfd = -1;
+static int epfd = -1;
 
-const char *ib_devname = NULL;
-bool ib_connect = false;
-uint8_t ib_port = 1;
-int ib_sgid_idx = -1;
+int NetInit(const char *shm_path_, size_t shm_size_, int epfd_) {
+  shm_size = shm_size_;
+  if ((shm_fd = ShmCreate(shm_path_, shm_size_, &shm_base)) < 0)
+    return 1;
+
+  epfd = epfd_;
+  return 0;
+}
 
 static int ShmAlloc(size_t size, uint64_t *off) {
 #ifdef DEBUG
@@ -77,20 +78,10 @@ static int ShmAlloc(size_t size, uint64_t *off) {
   return 0;
 }
 
-static void PrintUsage() {
-  fprintf(stderr,
-          "Usage: net_rdma [OPTIONS] IP PORT\n"
-          "    -l: Listen instead of connecting\n"
-          "    -d DEV-SOCKET: network socket of a device simulator\n"
-          "    -n NET-SOCKET: network socket of a network simulator\n"
-          "    -s SHM-PATH: shared memory region path\n"
-          "    -S SHM-SIZE: shared memory region size in MB (default 256)\n");
-}
-
-static bool AddPeer(const char *path, bool dev) {
+bool NetPeerAdd(const char *path, bool dev) {
   struct Peer *peer = realloc(peers, sizeof(*peers) * (peer_num + 1));
   if (!peer) {
-    perror("ParseArgs: realloc failed");
+    perror("NetPeerAdd: realloc failed");
     return false;
   }
   peers = peer;
@@ -98,7 +89,7 @@ static bool AddPeer(const char *path, bool dev) {
   peer_num++;
 
   if (!(peer->sock_path = strdup(path))) {
-    perror("ParseArgs: strdup failed");
+    perror("NetPeerAdd: strdup failed");
     return false;
   }
   peer->is_dev = dev;
@@ -107,73 +98,6 @@ static bool AddPeer(const char *path, bool dev) {
   return true;
 }
 
-static int ParseArgs(int argc, char *argv[]) {
-  const char *opts = "ld:n:s:S:D:ip:g:";
-  int c;
-
-  while ((c = getopt(argc, argv, opts)) != -1) {
-    switch (c) {
-      case 'l':
-        mode_listen = true;
-        break;
-
-      case 'd':
-        if (!AddPeer(optarg, true))
-          return 1;
-        break;
-
-      case 'n':
-        if (!AddPeer(optarg, false))
-          return 1;
-        break;
-
-      case 's':
-        if (!(shm_path = strdup(optarg))) {
-          perror("ParseArgs: strdup failed");
-          return 1;
-        }
-        break;
-
-      case 'S':
-        shm_size = strtoull(optarg, NULL, 10) * 1024 * 1024;
-        break;
-
-      case 'D':
-        ib_devname = optarg;
-        break;
-
-      case 'i':
-        ib_connect = true;
-        break;
-
-      case 'p':
-        ib_port = strtoull(optarg, NULL, 10);
-        break;
-
-      case 'g':
-        ib_sgid_idx = strtoull(optarg, NULL, 10);
-        break;
-
-      default:
-        PrintUsage();
-        return 1;
-    }
-  }
-
-  if (optind + 2  != argc) {
-    PrintUsage();
-    return 1;
-  }
-
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(strtoul(argv[optind + 1], NULL, 10));
-  if ((addr.sin_addr.s_addr = inet_addr(argv[optind])) == INADDR_NONE) {
-    PrintUsage();
-    return 1;
-  }
-
-  return 0;
-}
 
 static int PeersInitNets() {
 #ifdef DEBUG
@@ -236,7 +160,17 @@ static int PeersInitDevs() {
   return 0;
 }
 
-int PeerDevSendIntro(struct Peer *peer) {
+int NetConnect() {
+  if (PeersInitNets())
+    return 1;
+
+  if (PeersInitDevs())
+    return 1;
+
+  return 0;
+}
+
+int NetPeerSendDevIntro(struct Peer *peer) {
 #ifdef DEBUG
   fprintf(stderr, "PeerDevSendIntro(%s)\n", peer->sock_path);
 #endif
@@ -262,7 +196,7 @@ int PeerDevSendIntro(struct Peer *peer) {
   return 0;
 }
 
-int PeerNetSetupQueues(struct Peer *peer) {
+int NetPeerSetupNetQueues(struct Peer *peer) {
   struct SimbricksProtoNetDevIntro *di = &peer->dev_intro;
 
 #ifdef DEBUG
@@ -309,7 +243,7 @@ int PeerNetSetupQueues(struct Peer *peer) {
   return 0;
 }
 
-int PeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
+int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
   if (written_pos == peer->cleanup_pos_last &&
       clean_pos == peer->local_pos_cleaned)
     return 0;
@@ -382,7 +316,7 @@ static int PeerAcceptEvent(struct Peer *peer) {
   return 0;
 }
 
-static int PeerEvent(struct Peer *peer, uint32_t events) {
+int NetPeerEvent(struct Peer *peer, uint32_t events) {
 #ifdef DEBUG
   fprintf(stderr, "PeerEvent(%s)\n", peer->sock_path);
 #endif
@@ -429,8 +363,8 @@ static int PeerEvent(struct Peer *peer, uint32_t events) {
 
   peer->intro_valid_local = true;
 
-  // pass intro along via RDMA
-  if (RdmaPassIntro(peer))
+  // pass intro along
+  if (NetOpPassIntro(peer))
     return 1;
 
   if (peer->intro_valid_remote) {
@@ -463,7 +397,7 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
   }
 
   if (n > 0) {
-    RdmaPassEntry(peer, n);
+    NetOpPassEntries(peer, n);
     peer->local_pos += n;
     if (peer->local_pos >= peer->local_enum)
       peer->local_pos -= peer->local_enum;
@@ -510,88 +444,17 @@ static inline void PollPeerCleanup(struct Peer *peer, bool *report) {
   }
 }
 
-static void *PollThread(void *data) {
-  while (true) {
-    // poll queue for transferring entries
-    bool report = false;
-    for (size_t i = 0; i < peer_num; i++) {
-      struct Peer *peer = &peers[i];
-      if (!peer->ready)
-        continue;
+void NetPoll() {
+  bool report = false;
+  for (size_t i = 0; i < peer_num; i++) {
+    struct Peer *peer = &peers[i];
+    if (!peer->ready)
+      continue;
 
-      PollPeerTransfer(peer, &report);
-      PollPeerCleanup(peer, &report);
-    }
-
-    if (report)
-      RdmaPassReport();
-  }
-  return NULL;
-}
-
-static int IOLoop() {
-  while (1) {
-    const size_t kNumEvs = 8;
-    struct epoll_event evs[kNumEvs];
-    int n = epoll_wait(epfd, evs, kNumEvs, -1);
-    if (n < 0) {
-      perror("IOLoop: epoll_wait failed");
-      return 1;
-    }
-
-    for (int i = 0; i < n; i++) {
-      struct Peer *peer = evs[i].data.ptr;
-      if (peer && PeerEvent(peer, evs[i].events))
-        return 1;
-      else if (!peer && RdmaEvent())
-        return 1;
-    }
-
-    fflush(stdout);
-  }
-}
-
-int main(int argc, char *argv[]) {
-  if (ParseArgs(argc, argv))
-    return EXIT_FAILURE;
-
-#ifdef DEBUG
-  fprintf(stderr, "pid=%d shm=%s\n", getpid(), shm_path);
-#endif
-
-  if ((shm_fd = ShmCreate(shm_path, shm_size, &shm_base)) < 0)
-    return EXIT_FAILURE;
-
-  if ((epfd = epoll_create1(0)) < 0) {
-    perror("epoll_create1 failed");
-    return EXIT_FAILURE;
+    PollPeerTransfer(peer, &report);
+    PollPeerCleanup(peer, &report);
   }
 
-  if (mode_listen) {
-    if (RdmaListen(&addr))
-      return EXIT_FAILURE;
-  } else {
-    if (RdmaConnect(&addr))
-      return EXIT_FAILURE;
-  }
-  printf("RDMA connected\n");
-  fflush(stdout);
-
-  if (PeersInitNets())
-    return EXIT_FAILURE;
-  printf("Networks initialized\n");
-  fflush(stdout);
-
-  if (PeersInitDevs())
-    return EXIT_FAILURE;
-  printf("Devices initialized\n");
-  fflush(stdout);
-
-  pthread_t poll_thread;
-  if (pthread_create(&poll_thread, NULL, PollThread, NULL)) {
-    perror("pthread_create failed (poll thread)");
-    return EXIT_FAILURE;
-  }
-
-  return IOLoop();
+  if (report)
+    NetOpPassReport();
 }

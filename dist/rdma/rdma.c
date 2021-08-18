@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "dist/rdma.h"
-#include "dist/net_rdma.h"
+#include "dist/rdma/rdma.h"
+#include "dist/rdma/net_rdma.h"
 
 #include <fcntl.h>
 #include <infiniband/verbs.h>
@@ -137,13 +137,13 @@ static int RdmaMsgRxIntro(struct NetRdmaMsg *msg) {
   peer->intro_valid_remote = true;
   if (peer->is_dev) {
     peer->net_intro = msg->net;
-    if (PeerDevSendIntro(peer))
+    if (NetPeerSendDevIntro(peer))
       return 1;
   } else {
     peer->dev_intro = msg->dev;
-    if (PeerNetSetupQueues(peer))
+    if (NetPeerSetupNetQueues(peer))
       return 1;
-    if (peer->intro_valid_local && RdmaPassIntro(peer))
+    if (peer->intro_valid_local && NetOpPassIntro(peer))
       return 1;
   }
 
@@ -163,7 +163,8 @@ static int RdmaMsgRxReport(struct NetRdmaMsg *msg) {
       fprintf(stderr, "RdmaMsgRxReport: invalid ready peer number %zu\n", i);
       abort();
     }
-    PeerReport(&peers[i], msg->report.written_pos[i], msg->report.clean_pos[i]);
+    NetPeerReport(&peers[i], msg->report.written_pos[i],
+                  msg->report.clean_pos[i]);
   }
   return 0;
 }
@@ -369,17 +370,17 @@ int RdmaEvent() {
   return 0;
 }
 
-int RdmaPassIntro(struct Peer *peer) {
+int NetOpPassIntro(struct Peer *peer) {
 #ifdef RDMA_DEBUG
-  fprintf(stderr, "RdmaPassIntro(%s)\n", peer->sock_path);
+  fprintf(stderr, "NetOpPassIntro(%s)\n", peer->sock_path);
 #endif
 
   // device peers have sent us an SHM region, need to register this an as MR
   if (peer->is_dev) {
-    if (!(peer->shm_mr = ibv_reg_mr(pd, peer->shm_base, peer->shm_size,
-                                    IBV_ACCESS_LOCAL_WRITE |
-                                    IBV_ACCESS_REMOTE_WRITE))) {
-      perror("RdmaPassIntro: ibv_reg_mr shm failed");
+    if (!(peer->shm_opaque = ibv_reg_mr(pd, peer->shm_base, peer->shm_size,
+                                        IBV_ACCESS_LOCAL_WRITE |
+                                        IBV_ACCESS_REMOTE_WRITE))) {
+      perror("NetOpPassIntro: ibv_reg_mr shm failed");
       return 1;
     }
   } else {
@@ -387,11 +388,11 @@ int RdmaPassIntro(struct Peer *peer) {
        intro from our RDMA peer, so we can include the queue position. */
     if (!peer->intro_valid_remote) {
       fprintf(stderr,
-              "RdmaPassIntro: skipping because remote intro not received\n");
+              "NetOpPassIntro: skipping because remote intro not received\n");
       return 0;
     }
 
-    peer->shm_mr = mr_shm;
+    peer->shm_opaque = mr_shm;
     peer->shm_base = shm_base;
     peer->shm_size = shm_size;
   }
@@ -402,7 +403,8 @@ int RdmaPassIntro(struct Peer *peer) {
 
   msg->id = peer - peers;
   msg->base_addr = (uintptr_t) peer->shm_base;
-  msg->rkey = peer->shm_mr->rkey;
+  struct ibv_mr *mr = peer->shm_opaque;
+  msg->rkey = mr->rkey;
   if (peer->is_dev) {
     msg->msg_type = kMsgDev;
     /* this is a device peer, meaning the remote side will write to the
@@ -441,9 +443,10 @@ int RdmaPassIntro(struct Peer *peer) {
   return 0;
 }
 
-int RdmaPassEntry(struct Peer *peer, uint32_t n) {
+int NetOpPassEntries(struct Peer *peer, size_t n) {
 #ifdef RDMA_DEBUG
-  fprintf(stderr, "RdmaPassEntry(%s,%u)\n", peer->sock_path, peer->local_pos);
+  fprintf(stderr, "NetOpPassEntries(%s,%u)\n", peer->sock_path,
+          peer->local_pos);
   fprintf(stderr, "  remote_base=%lx local_base=%p\n", peer->remote_base,
           peer->local_base);
 #endif
@@ -457,7 +460,8 @@ int RdmaPassEntry(struct Peer *peer, uint32_t n) {
     struct ibv_sge sge;
     sge.addr = (uintptr_t) (peer->local_base + pos);
     sge.length = peer->local_elen * n;
-    sge.lkey = peer->shm_mr->lkey;
+    struct ibv_mr *mr = peer->shm_opaque;
+    sge.lkey = mr->lkey;
 
     struct ibv_send_wr send_wr = { };
     send_wr.wr_id = -1ULL;
@@ -474,7 +478,7 @@ int RdmaPassEntry(struct Peer *peer, uint32_t n) {
     if (ret == 0) {
       break;
     } else if (ret != ENOMEM) {
-      fprintf(stderr, "RdmaPassEntry: ibv_post_send failed %d (%s)\n", ret,
+      fprintf(stderr, "NetOpPassEntries: ibv_post_send failed %d (%s)\n", ret,
               strerror(ret));
       return 1;
     }
@@ -482,9 +486,9 @@ int RdmaPassEntry(struct Peer *peer, uint32_t n) {
   return 0;
 }
 
-int RdmaPassReport() {
+int NetOpPassReport() {
   if (peer_num > MAX_PEERS) {
-    fprintf(stderr, "RdmaPassReport: peer_num (%zu) larger than max (%u)\n",
+    fprintf(stderr, "NetOpPassReport: peer_num (%zu) larger than max (%u)\n",
             peer_num, MAX_PEERS);
     abort();
   }
@@ -531,7 +535,7 @@ int RdmaPassReport() {
     if (ret == 0) {
       break;
     } else if (ret != ENOMEM) {
-      fprintf(stderr, "RdmaPassReport: ibv_post_send failed %u (%s)", ret,
+      fprintf(stderr, "NetOpPassReport: ibv_post_send failed %u (%s)", ret,
               strerror(ret));
       return 1;
     }

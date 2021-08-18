@@ -31,6 +31,6 @@ experiments/build
 experiments/out
 experiments/local-config.sh
 experiments/slurm
-dist/net_rdma
+dist/rdma/net_rdma
 trace/process
 mk/local.mk

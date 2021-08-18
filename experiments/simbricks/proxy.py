@@ -67,7 +67,7 @@ class RDMANetProxyListener(NetProxyListener):
         super().__init__()
 
     def run_cmd(self, env):
-        cmd = (f'{env.repodir}/dist/net_rdma -l '
+        cmd = (f'{env.repodir}/dist/rdma/net_rdma -l '
             f'-s {env.proxy_shm_path(self)} '
             f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
@@ -81,7 +81,7 @@ class RDMANetProxyConnecter(NetProxyConnecter):
         super().__init__(listener)
 
     def run_cmd(self, env):
-        cmd = (f'{env.repodir}/dist/net_rdma '
+        cmd = (f'{env.repodir}/dist/rdma/net_rdma '
             f'-s {env.proxy_shm_path(self)} '
             f'-S {self.shm_size} ')
         for (nic, local) in self.nics:

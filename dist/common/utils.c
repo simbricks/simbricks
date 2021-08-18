@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "dist/utils.h"
+#include "dist/common/utils.h"
 
 #include <fcntl.h>
 #include <pthread.h>

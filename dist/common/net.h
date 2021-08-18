@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef DIST_NET_RDMA_H_
-#define DIST_NET_RDMA_H_
+#ifndef DIST_COMMON_NET_H_
+#define DIST_COMMON_NET_H_
 
 #include <arpa/inet.h>
 #include <stdbool.h>
@@ -70,10 +70,8 @@ struct Peer {
   struct SimbricksProtoNetNetIntro net_intro;
   const char *sock_path;
 
-  /* RDMA memory region for the shared memory of the queues on this end. Could
-     be either our own global SHM region if this is a network peer, or the SHM
-     region allocated by the device peer. */
-  struct ibv_mr *shm_mr;
+  // opaque value, e.g. to be used by rdma proxy for memory region
+  void *shm_opaque;
   void *shm_base;
   size_t shm_size;
 
@@ -91,28 +89,23 @@ struct Peer {
   volatile bool ready;
 };
 
-// configuration variables
-extern bool mode_listen;
-extern const char *shm_path;
-extern size_t shm_size;
 extern void *shm_base;
 extern size_t peer_num;
 extern struct Peer *peers;
-extern int epfd;
-extern const char *ib_devname;
-extern bool ib_connect;
-extern uint8_t ib_port;
-extern int ib_sgid_idx;
 
-int PeerDevSendIntro(struct Peer *peer);
-int PeerNetSetupQueues(struct Peer *peer);
-int PeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos);
+int NetInit(const char *shm_path_, size_t shm_size_, int epfd_);
+bool NetPeerAdd(const char *path, bool dev);
+struct Peer *NetPeerLookup(uint32_t id);
+int NetConnect(void);
+void NetPoll(void);
+int NetPeerSendDevIntro(struct Peer *peer);
+int NetPeerSetupNetQueues(struct Peer *peer);
+int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos);
+int NetPeerEvent(struct Peer *peer, uint32_t events);
 
-int RdmaListen(struct sockaddr_in *addr);
-int RdmaConnect(struct sockaddr_in *addr);
-int RdmaPassIntro(struct Peer *peer);
-int RdmaPassEntry(struct Peer *peer, uint32_t n);
-int RdmaPassReport();
-int RdmaEvent();
+// To be implemented in proxy implementation
+int NetOpPassIntro(struct Peer *peer);
+int NetOpPassEntries(struct Peer *peer, size_t n);
+int NetOpPassReport();
 
 #endif  // DIST_NET_RDMA_H_

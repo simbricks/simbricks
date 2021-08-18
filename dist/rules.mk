@@ -22,9 +22,10 @@
 
 include mk/subdir_pre.mk
 
-bin_net_rdma := $(d)net_rdma
+bin_net_rdma := $(d)rdma/net_rdma
 
-OBJS := $(addprefix $(d), net_rdma.o rdma.o rdma_cm.o rdma_ib.o utils.o)
+OBJS := $(addprefix $(d), rdma/net_rdma.o rdma/rdma.o rdma/rdma_cm.o \
+	rdma/rdma_ib.o common/net.o common/utils.o)
 
 $(bin_net_rdma): $(OBJS) -lrdmacm -libverbs -lpthread
 
