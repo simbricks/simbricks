@@ -23,16 +23,21 @@
 include mk/subdir_pre.mk
 
 bin_net_rdma := $(d)rdma/net_rdma
+bin_net_sockets := $(d)sockets/net_sockets
 
-OBJS := $(addprefix $(d), rdma/net_rdma.o rdma/rdma.o rdma/rdma_cm.o \
-	rdma/rdma_ib.o common/net.o common/utils.o)
+COMMON_OBJS := $(addprefix $(d)common/, net.o utils.o)
+RDMA_OBJS := $(addprefix $(d)rdma/, net_rdma.o rdma.o rdma_cm.o rdma_ib.o)
+SOCKETS_OBJS := $(addprefix $(d)sockets/, net_sockets.o)
 
-$(bin_net_rdma): $(OBJS) -lrdmacm -libverbs -lpthread
+$(bin_net_rdma): $(RDMA_OBJS) $(COMMON_OBJS) -lrdmacm -libverbs -lpthread
+$(bin_net_sockets): $(SOCKETS_OBJS) $(COMMON_OBJS) -lpthread
 
-CLEAN := $(bin_net_rdma) $(OBJS)
+CLEAN := $(bin_net_rdma) $(bin_net_sockets) \
+	$(RDMA_OBJS) $(SOCKETS_OBJS) $(COMMON_OBJS)
+ALL := $(bin_net_sockets)
 
 ifeq ($(ENABLE_DIST),y)
-ALL := $(bin_net_rdma)
+ALL += $(bin_net_rdma)
 endif
 
 include mk/subdir_post.mk
