@@ -160,16 +160,6 @@ int NetConnect() {
   return 0;
 }
 
-int NetConnect() {
-  if (PeersInitNets())
-    return 1;
-
-  if (PeersInitDevs())
-    return 1;
-
-  return 0;
-}
-
 int NetPeerSendDevIntro(struct Peer *peer) {
 #ifdef DEBUG
   fprintf(stderr, "PeerDevSendIntro(%s)\n", peer->sock_path);
@@ -457,4 +447,34 @@ void NetPoll() {
 
   if (report)
     NetOpPassReport();
+}
+
+void NetEntryReceived(struct Peer *peer, uint32_t pos, void *data)
+{
+  uint64_t off = (uint64_t) pos * peer->cleanup_elen;
+  void *entry = peer->cleanup_base + off;
+
+  if (peer->is_dev) {
+    struct SimbricksProtoNetD2NDummy *d2n = entry;
+    // first copy data after header
+    memcpy(d2n + 1, (uint8_t *) data + sizeof(*d2n),
+           peer->cleanup_elen - sizeof(*d2n));
+    // then copy header except for last byte
+    memcpy(entry, data, sizeof(*d2n) - 1);
+    // WMB()
+    // now copy last byte
+    struct SimbricksProtoNetD2NDummy *src_d2n = data;
+    d2n->own_type = src_d2n->own_type;
+  } else {
+    struct SimbricksProtoNetN2DDummy *n2d = entry;
+    // first copy data after header
+    memcpy(n2d + 1, (uint8_t *) data + sizeof(*n2d),
+           peer->cleanup_elen - sizeof(*n2d));
+    // then copy header except for last byte
+    memcpy(entry, data, sizeof(*n2d) - 1);
+    // WMB()
+    // now copy last byte
+    struct SimbricksProtoNetN2DDummy *src_n2d = data;
+    n2d->own_type = src_n2d->own_type;
+  }
 }

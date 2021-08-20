@@ -103,6 +103,7 @@ int NetPeerSendDevIntro(struct Peer *peer);
 int NetPeerSetupNetQueues(struct Peer *peer);
 int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos);
 int NetPeerEvent(struct Peer *peer, uint32_t events);
+void NetEntryReceived(struct Peer *peer, uint32_t pos, void *data);
 
 // To be implemented in proxy implementation
 int NetOpPassIntro(struct Peer *peer);
