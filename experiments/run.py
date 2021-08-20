@@ -87,10 +87,10 @@ g_slurm.add_argument('--slurmdir', metavar='DIR',  type=str,
         default='./slurm/', help='Slurm communication directory')
 
 g_dist = parser.add_argument_group('Distributed Runtime')
-g_par.add_argument('--dist', dest='runtime', action='store_const',
+g_dist.add_argument('--dist', dest='runtime', action='store_const',
         const='dist', default='sequential',
         help='Use sequential distributed runtime instead of local')
-g_par.add_argument('--auto-dist', action='store_const', const=True,
+g_dist.add_argument('--auto-dist', action='store_const', const=True,
         default=False,
         help='Automatically distribute non-distributed experiments')
 args = parser.parse_args()
