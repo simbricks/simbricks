@@ -84,17 +84,33 @@ static void sigusr2_handler(int dummy) {
 
 volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   volatile union SimbricksProtoPcieD2H *msg;
+  bool first = true;
   while ((msg = SimbricksNicIfD2HAlloc(&nicif_, main_time)) == NULL) {
-    fprintf(stderr, "D2HAlloc: no entry available\n");
+    if (first) {
+      fprintf(stderr, "D2HAlloc: warning waiting for entry\n");
+      first = false;
+    }
   }
+
+  if (!first)
+    fprintf(stderr, "D2HAlloc: entry successfully allocated\n");
+
   return msg;
 }
 
 volatile union SimbricksProtoNetD2N *Runner::D2NAlloc() {
   volatile union SimbricksProtoNetD2N *msg;
+  bool first = true;
   while ((msg = SimbricksNicIfD2NAlloc(&nicif_, main_time)) == NULL) {
-    fprintf(stderr, "D2NAlloc: no entry available\n");
+    if (first) {
+      fprintf(stderr, "D2NAlloc: warning waiting for entry\n");
+      first = false;
+    }
   }
+
+  if (!first)
+    fprintf(stderr, "D2NAlloc: entry successfully allocated\n");
+
   return msg;
 }
 
