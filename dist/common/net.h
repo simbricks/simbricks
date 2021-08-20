@@ -96,6 +96,7 @@ extern struct Peer *peers;
 int NetInit(const char *shm_path_, size_t shm_size_, int epfd_);
 bool NetPeerAdd(const char *path, bool dev);
 struct Peer *NetPeerLookup(uint32_t id);
+int NetListen(void);
 int NetConnect(void);
 void NetPoll(void);
 int NetPeerSendDevIntro(struct Peer *peer);

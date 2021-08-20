@@ -99,7 +99,7 @@ bool NetPeerAdd(const char *path, bool dev) {
 }
 
 
-static int PeersInitNets() {
+int NetListen() {
 #ifdef DEBUG
   fprintf(stderr, "Creating net listening sockets\n");
 #endif
@@ -132,7 +132,7 @@ static int PeersInitNets() {
   return 0;
 }
 
-static int PeersInitDevs() {
+int NetConnect() {
 #ifdef DEBUG
   fprintf(stderr, "Connecting to device sockets\n");
 #endif

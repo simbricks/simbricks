@@ -176,6 +176,9 @@ int main(int argc, char *argv[]) {
   if (NetInit(shm_path, shm_size, epfd))
     return EXIT_FAILURE;
 
+  if (NetListen())
+    return EXIT_FAILURE;
+
   if (mode_listen) {
     if (RdmaListen(&addr))
       return EXIT_FAILURE;
