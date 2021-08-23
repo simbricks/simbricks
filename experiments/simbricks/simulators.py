@@ -204,7 +204,7 @@ class Gem5Host(HostSim):
             cmd += '--max-checkpoints=1 '
 
         if env.restore_cp:
-            cmd += '-r 0 '
+            cmd += '-r 1 '
 
         if len(self.nics) > 0:
             assert len(self.nics) == 1
