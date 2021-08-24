@@ -80,9 +80,12 @@ static void switch_to_dev(size_t port) {
     static const int BUFFER_SIZE = 2048;
     char buf[BUFFER_SIZE];
     volatile union SimbricksProtoNetN2D *msg_to;
+    struct sockaddr_ll addr;
+    socklen_t addr_len;
 
-    ssize_t n = recv(tofino_fds.at(port), buf, BUFFER_SIZE, 0);
-    if (n <= 0) {
+    ssize_t n = recvfrom(tofino_fds.at(port), buf, BUFFER_SIZE, 0,
+            (struct sockaddr*)&addr, &addr_len);
+    if (n <= 0 || addr.sll_pkttype == PACKET_OUTGOING) {
         return;
     }
 
