@@ -87,7 +87,8 @@ volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   bool first = true;
   while ((msg = SimbricksNicIfD2HAlloc(&nicif_, main_time)) == NULL) {
     if (first) {
-      fprintf(stderr, "D2HAlloc: warning waiting for entry\n");
+      fprintf(stderr, "D2HAlloc: warning waiting for entry (%zu)\n",
+              nicif_.d2h_pos);
       first = false;
     }
   }
@@ -103,7 +104,8 @@ volatile union SimbricksProtoNetD2N *Runner::D2NAlloc() {
   bool first = true;
   while ((msg = SimbricksNicIfD2NAlloc(&nicif_, main_time)) == NULL) {
     if (first) {
-      fprintf(stderr, "D2NAlloc: warning waiting for entry\n");
+      fprintf(stderr, "D2NAlloc: warning waiting for entry (%zu)\n",
+              nicif_.d2n_pos);
       first = false;
     }
   }
