@@ -45,7 +45,7 @@
 //#define SOCK_DEBUG
 
 #define MAX_PEERS 32
-#define RXBUF_SIZE (128 * 1024)
+#define RXBUF_SIZE (1024 * 1024)
 #define TXBUF_SIZE (128 * 1024)
 #define TXBUF_NUM 16
 
@@ -93,7 +93,7 @@ static int epfd = -1;
 static int sockfd = -1;
 static int msg_id = 0;
 
-static uint8_t rx_buffer[RXBUF_SIZE];
+static uint8_t *rx_buffer;
 static size_t rx_buf_pos = 0;
 
 static struct SockMsg *tx_msgs_free = NULL;
@@ -181,6 +181,11 @@ static void SockMsgFree(struct SockMsg *msg) {
 static int SockAllocInit() {
   if (pthread_spin_init(&freelist_spin, PTHREAD_PROCESS_PRIVATE)) {
     perror("SockAllocInit: pthread_spin_init failed");
+    return 1;
+  }
+
+  if ((rx_buffer = calloc(1, RXBUF_SIZE)) == NULL) {
+    perror("SockAllocInit rxbuf calloc failed");
     return 1;
   }
 
