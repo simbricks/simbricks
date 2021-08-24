@@ -52,7 +52,9 @@ class NetProxy(SimProxy):
         return 10
 
 class NetProxyListener(NetProxy):
+    port = 12345
     connecter = None
+    listen = True
 
     def __init__(self):
         super().__init__()
@@ -103,6 +105,20 @@ class NetProxyListener(NetProxy):
             if not local:
                 socks.append(env.n2n_eth_path(net_l, net_c))
         return socks
+
+    def run_cmd_base(self, env):
+        cmd = (f'-s {env.proxy_shm_path(self)} '
+            f'-S {self.shm_size} ')
+        for (nic, local) in self.nics:
+            cmd += '-d ' if local else '-n '
+            cmd += env.nic_eth_path(nic) + ' '
+
+        for ((net_c, net_l), local) in self.n2ns:
+            cmd += '-d ' if local else '-n '
+            cmd += env.n2n_eth_path(net_l, net_c) + ' '
+
+        cmd += f' 0.0.0.0 {self.port}'
+        return cmd
 
 class NetProxyConnecter(NetProxy):
     listener = None
@@ -157,36 +173,8 @@ class NetProxyConnecter(NetProxy):
                 socks.append(env.n2n_eth_path(net_l, net_c))
         return socks
 
-
-class RDMANetProxyListener(NetProxyListener):
-    port = 12345
-
-    def __init__(self):
-        super().__init__()
-        self.listen = True
-
-    def run_cmd(self, env):
-        cmd = (f'{env.repodir}/dist/rdma/net_rdma -l '
-            f'-s {env.proxy_shm_path(self)} '
-            f'-S {self.shm_size} ')
-        for (nic, local) in self.nics:
-            cmd += '-d ' if local else '-n '
-            cmd += env.nic_eth_path(nic) + ' '
-
-        for ((net_c, net_l), local) in self.n2ns:
-            cmd += '-d ' if local else '-n '
-            cmd += env.n2n_eth_path(net_l, net_c) + ' '
-
-        cmd += f' 0.0.0.0 {self.port}'
-        return cmd
-
-class RDMANetProxyConnecter(NetProxyConnecter):
-    def __init__(self, listener):
-        super().__init__(listener)
-
-    def run_cmd(self, env):
-        cmd = (f'{env.repodir}/dist/rdma/net_rdma '
-            f'-s {env.proxy_shm_path(self)} '
+    def run_cmd_base(self, env):
+        cmd = (f'-s {env.proxy_shm_path(self)} '
             f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
             cmd += '-n ' if local else '-d '
@@ -197,4 +185,42 @@ class RDMANetProxyConnecter(NetProxyConnecter):
             cmd += env.n2n_eth_path(net_l, net_c) + ' '
 
         cmd += f' {self.listener.ip} {self.listener.port}'
+        return cmd
+
+
+class RDMANetProxyListener(NetProxyListener):
+    def __init__(self):
+        super().__init__()
+
+    def run_cmd(self, env):
+        cmd = f'{env.repodir}/dist/rdma/net_rdma -l '
+        cmd += super().run_cmd_base(env)
+        return cmd
+
+class RDMANetProxyConnecter(NetProxyConnecter):
+    def __init__(self, listener):
+        super().__init__(listener)
+
+    def run_cmd(self, env):
+        cmd = f'{env.repodir}/dist/rdma/net_rdma '
+        cmd += super().run_cmd_base(env)
+        return cmd
+
+
+class SocketsNetProxyListener(NetProxyListener):
+    def __init__(self):
+        super().__init__()
+
+    def run_cmd(self, env):
+        cmd = f'{env.repodir}/dist/sockets/net_sockets -l '
+        cmd += super().run_cmd_base(env)
+        return cmd
+
+class SocketsNetProxyConnecter(NetProxyConnecter):
+    def __init__(self, listener):
+        super().__init__(listener)
+
+    def run_cmd(self, env):
+        cmd = f'{env.repodir}/dist/sockets/net_sockets '
+        cmd += super().run_cmd_base(env)
         return cmd
