@@ -515,26 +515,28 @@ void NetEntryReceived(struct Peer *peer, uint32_t pos, void *data)
   void *entry = peer->cleanup_base + off;
 
   if (peer->is_dev) {
-    struct SimbricksProtoNetD2NDummy *d2n = entry;
+    volatile struct SimbricksProtoNetD2NDummy *d2n = entry;
     // first copy data after header
-    memcpy(d2n + 1, (uint8_t *) data + sizeof(*d2n),
+    memcpy((void *) (d2n + 1), (uint8_t *) data + sizeof(*d2n),
            peer->cleanup_elen - sizeof(*d2n));
     // then copy header except for last byte
-    memcpy(entry, data, sizeof(*d2n) - 1);
+    memcpy((void *) d2n, data, sizeof(*d2n) - 1);
     // WMB()
     // now copy last byte
-    struct SimbricksProtoNetD2NDummy *src_d2n = data;
+    volatile struct SimbricksProtoNetD2NDummy *src_d2n = data;
+    asm volatile("sfence" ::: "memory");
     d2n->own_type = src_d2n->own_type;
   } else {
-    struct SimbricksProtoNetN2DDummy *n2d = entry;
+    volatile struct SimbricksProtoNetN2DDummy *n2d = entry;
     // first copy data after header
-    memcpy(n2d + 1, (uint8_t *) data + sizeof(*n2d),
+    memcpy((void *) (n2d + 1), (uint8_t *) data + sizeof(*n2d),
            peer->cleanup_elen - sizeof(*n2d));
     // then copy header except for last byte
-    memcpy(entry, data, sizeof(*n2d) - 1);
+    memcpy((void *) n2d, data, sizeof(*n2d) - 1);
     // WMB()
     // now copy last byte
-    struct SimbricksProtoNetN2DDummy *src_n2d = data;
+    volatile struct SimbricksProtoNetN2DDummy *src_n2d = data;
+    asm volatile("sfence" ::: "memory");
     n2d->own_type = src_n2d->own_type;
   }
 }
