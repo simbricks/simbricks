@@ -39,6 +39,9 @@ class NetProxy(SimProxy):
     # List of tuples (nic, with_listener)
     nics = None
 
+    # List of tuples ((netL,netC), with_listener)
+    n2ns = None
+
     # Shared memory size in GB
     shm_size = 2048
 
@@ -55,6 +58,7 @@ class NetProxyListener(NetProxy):
         super().__init__()
         self.listen = True
         self.nics = []
+        self.n2ns = []
 
     def add_nic(self, nic):
         self.nics.append((nic, True))
@@ -62,11 +66,21 @@ class NetProxyListener(NetProxy):
         # the network this nic connects to now also depends on the peer
         nic.network.extra_deps.append(self.connecter)
 
+    # add net2net connection with listening network on the listener side
+    def add_n2n(self, net_c, net_l):
+        self.n2ns.append(((net_c, net_l), True))
+
+        # the connecting network depends on our peer
+        net_c.extra_deps.append(self.connecter)
+
     def dependencies(self):
         deps = []
         for (nic, local) in self.nics:
             if local:
                 deps.append(nic)
+        for ((net_c, net_l), local) in self.n2ns:
+            if local:
+                deps.append(net_l)
         return deps
 
     def sockets_cleanup(self, env):
@@ -74,6 +88,9 @@ class NetProxyListener(NetProxy):
         for (nic, local) in self.nics:
             if not local:
                 socks.append(env.nic_eth_path(nic))
+        for ((net_c, net_l), local) in self.n2ns:
+            if not local:
+                socks.append(env.n2n_eth_path(net_l, net_c))
         return []
 
     # sockets to wait for indicating the simulator is ready
@@ -82,6 +99,9 @@ class NetProxyListener(NetProxy):
         for (nic, local) in self.nics:
             if not local:
                 socks.append(env.nic_eth_path(nic))
+        for ((net_c, net_l), local) in self.n2ns:
+            if not local:
+                socks.append(env.n2n_eth_path(net_l, net_c))
         return socks
 
 class NetProxyConnecter(NetProxy):
@@ -92,6 +112,7 @@ class NetProxyConnecter(NetProxy):
         self.listener = listener
         listener.connecter = self
         self.nics = listener.nics
+        self.n2ns = listener.n2ns
 
     def add_nic(self, nic):
         self.nics.append((nic, False))
@@ -99,11 +120,20 @@ class NetProxyConnecter(NetProxy):
         # the network this nic connects to now also depends on the proxy
         nic.network.extra_deps.append(self.listener)
 
+    # add net2net connection with listening network on the connection side
+    def add_n2n(self, net_c, net_l):
+        self.n2ns.append(((net_c, net_l), False))
+        # the connecting network depends on our peer
+        net_c.extra_deps.append(self.listener)
+
     def dependencies(self):
         deps = [self.listener]
         for (nic, local) in self.nics:
             if not local:
                 deps.append(nic)
+        for ((net_c, net_l), local) in self.n2ns:
+            if not local:
+                deps.append(net_l)
         return deps
 
     def sockets_cleanup(self, env):
@@ -111,6 +141,9 @@ class NetProxyConnecter(NetProxy):
         for (nic, local) in self.nics:
             if local:
                 socks.append(env.nic_eth_path(nic))
+        for ((net_c, net_l), local) in self.n2ns:
+            if local:
+                socks.append(env.n2n_eth_path(net_l, net_c))
         return []
 
     # sockets to wait for indicating the simulator is ready
@@ -119,6 +152,9 @@ class NetProxyConnecter(NetProxy):
         for (nic, local) in self.nics:
             if local:
                 socks.append(env.nic_eth_path(nic))
+        for ((net_c, net_l), local) in self.n2ns:
+            if local:
+                socks.append(env.n2n_eth_path(net_l, net_c))
         return socks
 
 
@@ -136,6 +172,11 @@ class RDMANetProxyListener(NetProxyListener):
         for (nic, local) in self.nics:
             cmd += '-d ' if local else '-n '
             cmd += env.nic_eth_path(nic) + ' '
+
+        for ((net_c, net_l), local) in self.n2ns:
+            cmd += '-d ' if local else '-n '
+            cmd += env.n2n_eth_path(net_l, net_c) + ' '
+
         cmd += f' 0.0.0.0 {self.port}'
         return cmd
 
@@ -150,5 +191,10 @@ class RDMANetProxyConnecter(NetProxyConnecter):
         for (nic, local) in self.nics:
             cmd += '-n ' if local else '-d '
             cmd += env.nic_eth_path(nic) + ' '
+
+        for ((net_c, net_l), local) in self.n2ns:
+            cmd += '-n ' if local else '-d '
+            cmd += env.n2n_eth_path(net_l, net_c) + ' '
+
         cmd += f' {self.listener.ip} {self.listener.port}'
         return cmd
