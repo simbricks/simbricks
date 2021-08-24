@@ -34,6 +34,7 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <net/ethernet.h>
 #include <linux/if_packet.h>
 #include <vector>
 
@@ -44,7 +45,6 @@ extern "C" {
 
 static uint64_t sync_period = (500 * 1000ULL);
 static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
-static const int ETHER_TYPE = 0x0800;
 static uint64_t cur_ts = 0;
 static int exiting = 0;
 static std::vector<struct SimbricksNetIf> nsifs;
@@ -153,14 +153,14 @@ int main(int argc, char *argv[]) {
 
     // Create sockets for Tofino model interfaces
     for (size_t port = 0; port < nsifs.size(); port++) {
-        int fd = socket(PF_PACKET, SOCK_RAW, htons(ETHER_TYPE));
+        int fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
         if (fd == -1) {
             fprintf(stderr, "Failed to create raw socket\n");
             abort();
         }
 
         char ifname[16];
-        sprintf(ifname, "veth%ld", port*2);
+        sprintf(ifname, "veth%ld", port*2+1);
         struct ifreq ifopts;
         memset(&ifopts, 0, sizeof(ifopts));
         strcpy(ifopts.ifr_name, ifname);
