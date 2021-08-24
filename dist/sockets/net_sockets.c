@@ -363,7 +363,7 @@ static int SockMsgRxEntries(struct SockMsg *msg) {
 
   uint32_t len = entries->num_entries * peer->cleanup_elen;
 
-  if (len + sizeof(*msg) != msg->msg_len) {
+  if (len + offsetof(struct SockMsg, entries.data) != msg->msg_len) {
     fprintf(stderr, "SockMsgRxEntries: invalid message length (m=%u l=%u)\n",
             msg->msg_len, len);
     abort();
@@ -533,7 +533,7 @@ int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
   }
   fprintf(stderr, "\n");*/
 #endif
-  msg->msg_len = sizeof(*msg) + len;
+  msg->msg_len = offsetof(struct SockMsg, entries.data) + len;
 
   int ret = SockSend(msg);
   SockMsgFree(msg);
