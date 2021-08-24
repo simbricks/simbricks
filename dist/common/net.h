@@ -41,7 +41,7 @@ struct Peer {
   // last position reported to our peer
   uint32_t local_pos_reported;
   // last position cleaned
-  uint32_t local_pos_cleaned;
+  volatile uint32_t local_pos_cleaned;
 
   // rkey and base address of the remote queue to write to
   uint64_t remote_rkey;
