@@ -89,6 +89,7 @@ bool NetPeerAdd(const char *path, bool dev) {
   peer += peer_num;
   peer_num++;
 
+  memset(peer, 0, sizeof(*peer));
   if (!(peer->sock_path = strdup(path))) {
     perror("NetPeerAdd: strdup failed");
     return false;
