@@ -236,9 +236,39 @@ int NetPeerSetupNetQueues(struct Peer *peer) {
 }
 
 int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
+  uint32_t pos = peer->local_pos_cleaned;
   if (written_pos == peer->cleanup_pos_last &&
-      clean_pos == peer->local_pos_cleaned)
+      clean_pos == pos)
     return 0;
+
+  // make sure there are not suddenly fewer entries to be cleaned up
+  uint32_t n_before = (peer->cleanup_pos_reported <= peer->cleanup_pos_last ?
+      peer->cleanup_pos_last - peer->cleanup_pos_reported :
+      peer->cleanup_enum - peer->cleanup_pos_reported + peer->cleanup_pos_last);
+  uint32_t n_after = (peer->cleanup_pos_reported <= written_pos ?
+      written_pos - peer->cleanup_pos_reported :
+      peer->cleanup_enum - peer->cleanup_pos_reported + written_pos);
+  if (n_before > n_after) {
+    fprintf(stderr, "PeerReport: BUG fewer entries to clean up after report: "
+          "peer %s written %u -> %u, cleaned %u -> %u\n",
+          peer->sock_path, peer->cleanup_pos_last, written_pos,
+          peer->local_pos_cleaned, clean_pos);
+    abort();
+  }
+
+  // make sure clean pos is between l_p_c and l_p_r
+  if (((peer->local_pos_cleaned <= peer->local_pos_reported) &&
+          (clean_pos < peer->local_pos_cleaned ||
+            clean_pos > peer->local_pos_reported)) ||
+      ((peer->local_pos_cleaned > peer->local_pos_reported) &&
+          (clean_pos > peer->local_pos_reported &&
+           clean_pos < peer->local_pos_cleaned))) {
+    fprintf(stderr, "PeerReport: BUG invalid last clean position report: "
+          "peer %s written %u -> %u, cleaned %u -> %u (lpr=%u)\n",
+          peer->sock_path, peer->cleanup_pos_last, written_pos,
+          peer->local_pos_cleaned, clean_pos, peer->local_pos_reported);
+    abort();
+  }
 
 #ifdef DEBUG
   fprintf(stderr, "PeerReport: peer %s written %u -> %u, cleaned %u -> %u\n",
@@ -247,9 +277,8 @@ int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
 #endif
 
   peer->cleanup_pos_last = written_pos;
-  while (peer->local_pos_cleaned != clean_pos) {
-    void *entry =
-        (peer->local_base + peer->local_pos_cleaned * peer->local_elen);
+  while (pos != clean_pos) {
+    void *entry = (peer->local_base + pos * peer->local_elen);
     if (peer->is_dev) {
       struct SimbricksProtoNetD2NDummy *d2n = entry;
       d2n->own_type = SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
@@ -258,10 +287,11 @@ int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
       n2d->own_type = SIMBRICKS_PROTO_NET_N2D_OWN_NET;
     }
 
-    peer->local_pos_cleaned += 1;
-    if (peer->local_pos_cleaned >= peer->local_enum)
-      peer->local_pos_cleaned -= peer->local_enum;
+    pos += 1;
+    if (pos >= peer->local_enum)
+      pos -= peer->local_enum;
   }
+  peer->local_pos_cleaned = pos;
 
   return 0;
 }
@@ -458,6 +488,18 @@ void NetPoll() {
 
 void NetEntryReceived(struct Peer *peer, uint32_t pos, void *data)
 {
+  // validate position for debugging:
+  if ((peer->cleanup_pos_reported <= peer->cleanup_pos_last &&
+        (pos >= peer->cleanup_pos_reported && pos < peer->cleanup_pos_last)) ||
+      (peer->cleanup_pos_reported > peer->cleanup_pos_last &&
+        (pos >= peer->cleanup_pos_reported ||
+         pos < peer->cleanup_pos_last))) {
+    fprintf(stderr, "NetEntryReceived: BUG position %u is in window to be "
+            "cleaned %u -> %u", pos, peer->cleanup_pos_reported,
+            peer->cleanup_pos_last);
+    abort();
+  }
+
   uint64_t off = (uint64_t) pos * peer->cleanup_elen;
   void *entry = peer->cleanup_base + off;
 
