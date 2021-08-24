@@ -43,6 +43,7 @@
 static const uint64_t kPollReportThreshold = 128;
 static const uint64_t kCleanReportThreshold = 128;
 static const uint64_t kPollMax = 8;
+static const uint64_t kCleanupMax = 16;
 
 static size_t shm_size;
 void *shm_base;
@@ -400,33 +401,38 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
 }
 
 static inline void PollPeerCleanup(struct Peer *peer, bool *report) {
-  // XXX: could also be batched
-
   if (peer->cleanup_pos_next == peer->cleanup_pos_last)
     return;
 
-  void *entry =
-      (peer->cleanup_base + peer->cleanup_pos_next * peer->cleanup_elen);
-        bool ready;
-  if (peer->is_dev) {
-    struct SimbricksProtoNetN2DDummy *n2d = entry;
-    ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
-        SIMBRICKS_PROTO_NET_N2D_OWN_NET;
-  } else {
-    struct SimbricksProtoNetD2NDummy *d2n = entry;
-    ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
-        SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
-  }
+  bool ready;
+  uint64_t cnt = 0;
+  do {
+    void *entry =
+        (peer->cleanup_base + peer->cleanup_pos_next * peer->cleanup_elen);
+    if (peer->is_dev) {
+      struct SimbricksProtoNetN2DDummy *n2d = entry;
+      ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
+          SIMBRICKS_PROTO_NET_N2D_OWN_NET;
+    } else {
+      struct SimbricksProtoNetD2NDummy *d2n = entry;
+      ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
+          SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
+    }
 
-  if (ready) {
-#ifdef DEBUG
+    if (!ready)
+      break;
+
+  #ifdef DEBUG
     fprintf(stderr, "PollPeerCleanup: peer %s has clean entry at %u\n",
             peer->sock_path, peer->cleanup_pos_next);
 #endif
     peer->cleanup_pos_next += 1;
     if (peer->cleanup_pos_next >= peer->cleanup_enum)
       peer->cleanup_pos_next -= peer->cleanup_enum;
+  } while (++cnt <= kCleanupMax &&
+           peer->cleanup_pos_next != peer->cleanup_pos_last);
 
+  if (cnt > 0) {
     uint64_t unreported = (peer->cleanup_pos_next - peer->cleanup_pos_reported)
                           % peer->cleanup_enum;
     if (unreported >= kCleanReportThreshold)
