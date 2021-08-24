@@ -401,8 +401,18 @@ int NetPeerEvent(struct Peer *peer, uint32_t events) {
 static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
   // XXX: consider batching this to forward multiple entries at once if possible
 
-  size_t n;
+  uint32_t n;
   for (n = 0; n < kPollMax && peer->local_pos + n < peer->local_enum; n++) {
+    // stop if we would pass the cleanup position
+    if ((peer->local_pos + n + 1) % peer->local_enum ==
+        peer->local_pos_cleaned) {
+#ifdef DEBUG
+      fprintf(stderr, "PollPeerTransfer: waiting for cleanup (%u %u)\n",
+              pos, peer->local_pos_cleaned);
+#endif
+      break;
+    }
+
     void *entry = (peer->local_base + (peer->local_pos + n) * peer->local_elen);
     bool ready;
     if (peer->is_dev) {
@@ -420,9 +430,10 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
 
   if (n > 0) {
     NetOpPassEntries(peer, peer->local_pos, n);
-    peer->local_pos += n;
-    if (peer->local_pos >= peer->local_enum)
-      peer->local_pos -= peer->local_enum;
+    uint32_t newpos = peer->local_pos + n;
+    peer->local_pos = (newpos < peer->local_enum ?
+                       newpos :
+                       newpos - peer->local_enum);
 
     uint64_t unreported = (peer->local_pos - peer->local_pos_reported) %
                           peer->local_enum;
