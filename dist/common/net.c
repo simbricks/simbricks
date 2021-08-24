@@ -97,6 +97,7 @@ bool NetPeerAdd(const char *path, bool dev) {
   peer->is_dev = dev;
   peer->sock_fd = -1;
   peer->shm_fd = -1;
+  peer->last_sent_pos = -1;
   return true;
 }
 
