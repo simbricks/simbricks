@@ -41,10 +41,10 @@
 #define H2D_ELEN (9024 + 64)
 #define H2D_ENUM 1024
 
-#define D2N_ELEN (9024 + 64)
+#define D2N_ELEN (1536 + 64)
 #define D2N_ENUM 8192
 
-#define N2D_ELEN (9024 + 64)
+#define N2D_ELEN (1536 + 64)
 #define N2D_ENUM 8192
 
 
