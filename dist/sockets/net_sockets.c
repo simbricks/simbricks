@@ -606,6 +606,9 @@ static int IOLoop() {
     struct epoll_event evs[kNumEvs];
     int n = epoll_wait(epfd, evs, kNumEvs, -1);
     if (n < 0) {
+      if (errno == EINTR)
+        continue;
+
       perror("IOLoop: epoll_wait failed");
       return 1;
     }
