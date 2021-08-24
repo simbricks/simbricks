@@ -138,18 +138,40 @@ class NetSim(Simulator):
 
     def __init__(self):
         self.nics = []
+        self.net_listen = []
+        self.net_connect = []
+        super().__init__()
 
     def full_name(self):
         return 'net.' + self.name
+
+    # Connect this netwrok to the listening peer `net`
+    def connect_network(self, net):
+        net.net_listen.append(self)
+        self.net_connect.append(net)
 
     def connect_sockets(self, env):
         sockets = []
         for n in self.nics:
             sockets.append((n, env.nic_eth_path(n)))
+        for n in self.net_connect:
+            sockets.append((n, env.n2n_eth_path(n, self)))
         return sockets
 
+    def listen_sockets(self, env):
+        listens = []
+        for net in self.net_listen:
+            listens.append((net, env.n2n_eth_path(self, net)))
+        return listens
+
     def dependencies(self):
-        return self.nics
+        return self.nics + self.net_connect
+
+    def sockets_cleanup(self, env):
+        return [s for (_,s) in self.listen_sockets(env)]
+
+    def sockets_wait(self, env):
+        return [s for (_,s) in self.listen_sockets(env)]
 
 
 class QemuHost(HostSim):

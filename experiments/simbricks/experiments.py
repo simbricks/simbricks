@@ -341,6 +341,9 @@ class ExpEnv(object):
     def nic_shm_path(self, sim):
         return '%s/nic.shm.%s' % (self.workdir, sim.name)
 
+    def n2n_eth_path(self, sim_l, sim_c):
+        return '%s/n2n.eth.%s.%s' % (self.workdir, sim_l.name, sim_c.name)
+
     def proxy_shm_path(self, sim):
         return '%s/proxy.shm.%s' % (self.workdir, sim.name)
 
