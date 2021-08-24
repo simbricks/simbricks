@@ -58,7 +58,7 @@ class DistributedSimpleRuntime(Runtime):
         for run in self.runnable:
             asyncio.run(self.do_run(run))
 
-def auto_dist(e, execs):
+def auto_dist(e, execs, proxy_type='sockets'):
     """ Converts an Experiment into a DistributedExperiment. Assigns network to
         executor zero, and then round-robin assignment of hosts to executors,
         while also assigning all nics for a host to the same executor.
@@ -69,6 +69,15 @@ def auto_dist(e, execs):
     elif len(execs) > 2:
         print('Warning: currently auto_dist only uses the first two hosts')
 
+    if proxy_type == 'sockets':
+        proxy_listener_c = proxy.SocketsNetProxyListener
+        proxy_connecter_c = proxy.SocketsNetProxyConnecter
+    elif proxy_type == 'rdma':
+        proxy_listener_c = proxy.RDMANetProxyListener
+        proxy_connecter_c = proxy.RDMANetProxyConnecter
+    else:
+        raise RuntimeError('Unknown proxy type specified')
+
     # Create the distributed experiment
     de = exp.DistributedExperiment(e.name, 2)
     de.timeout = e.timeout
@@ -77,7 +86,7 @@ def auto_dist(e, execs):
     de.metadata = e.metadata.copy()
 
     # create listening proxy on host 0
-    lp = proxy.RDMANetProxyListener()
+    lp = proxy_listener_c()
     lp.name = 'listener'
     de.add_proxy(lp)
     de.assign_sim_host(lp, 0)
@@ -88,7 +97,7 @@ def auto_dist(e, execs):
         de.assign_sim_host(net, 0)
 
     # create connecting proxy on host 1
-    cp = proxy.RDMANetProxyConnecter(lp)
+    cp = proxy_connecter_c(lp)
     cp.name = 'connecter'
     de.add_proxy(cp)
     de.assign_sim_host(cp, 1)

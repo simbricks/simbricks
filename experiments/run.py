@@ -93,6 +93,9 @@ g_dist.add_argument('--dist', dest='runtime', action='store_const',
 g_dist.add_argument('--auto-dist', action='store_const', const=True,
         default=False,
         help='Automatically distribute non-distributed experiments')
+g_dist.add_argument('--proxy-type', metavar='TYPE', type=str,
+        default='sockets',
+        help='Proxy type to use (sockets,rdma) for auto distribution')
 args = parser.parse_args()
 
 
@@ -171,7 +174,7 @@ if not args.pickled:
 
     for e in experiments:
         if args.auto_dist and not isinstance(e, exp.DistributedExperiment):
-            e = runtime.auto_dist(e, executors)
+            e = runtime.auto_dist(e, executors, args.proxy_type)
         # apply filter if any specified
         if (args.filter) and (len(args.filter) > 0):
             match = False
