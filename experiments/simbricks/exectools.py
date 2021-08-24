@@ -324,6 +324,9 @@ class RemoteExecutor(Executor):
                 cwd=self.cwd, **kwargs)
 
     async def await_file(self, path, delay=0.05, verbose=False, timeout=30):
+        if verbose:
+            print('%s.await_file(%s) started' % (self.host_name, path))
+
         to_its = timeout / delay
         loop_cmd = ('i=0 ; while [ ! -e %s ] ; do '
                     'if [ $i -ge %u ] ; then exit 1 ; fi ; '
