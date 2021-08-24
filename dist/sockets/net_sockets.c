@@ -499,6 +499,13 @@ int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
     abort();
   }
 
+  if ((peer->last_sent_pos + 1) % peer->local_enum != pos) {
+    fprintf(stderr, "NetOpPassEntries: entry sent repeatedly: p=%u n=%u\n",
+            pos, n);
+    abort();
+  }
+  peer->last_sent_pos = pos + n - 1;
+
   struct SockMsg *msg = SockMsgAlloc();
   if (!msg)
     return 1;
