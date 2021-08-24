@@ -22,6 +22,7 @@
 
 import os
 import asyncio
+import simbricks.utils.graphlib as graphlib
 from collections import defaultdict
 import simbricks.exectools as exectools
 import simbricks.proxy
@@ -123,19 +124,58 @@ class ExperimentBaseRunner(object):
         self.out = ExpOutput(exp)
         self.running = []
         self.sockets = []
-        self.wait_hosts = []
+        self.wait_sims = []
 
     def sim_executor(self, sim):
         raise NotImplementedError("Please implement this method")
 
-    async def before_nics(self):
-        pass
+    def sim_graph(self):
+        sims = self.exp.all_simulators()
+        graph = {}
+        for sim in sims:
+            deps = sim.dependencies() + sim.extra_deps
+            graph[sim] = set()
+            for d in deps:
+                graph[sim].add(d)
+        return graph
 
-    async def before_nets(self):
-        pass
+    async def start_sim(self, sim):
+        """ Start a simulator and wait for it to be ready. """
 
-    async def before_hosts(self):
-        pass
+        name = sim.full_name()
+        if self.verbose:
+            print('%s: starting %s' % (self.exp.name, name))
+
+        # run simulator
+        exec = self.sim_executor(sim)
+        sc = exec.create_component(name,
+                    shlex.split(sim.run_cmd(self.env)), verbose=self.verbose,
+                    canfail=True)
+        await sc.start()
+        self.running.append((sim, sc))
+
+        # add sockets for cleanup
+        for s in sim.sockets_cleanup(self.env):
+            self.sockets.append((exec, s))
+
+        # Wait till sockets exist
+        wait_socks = sim.sockets_wait(self.env)
+        if wait_socks:
+            if self.verbose:
+                print('%s: waiting for sockets %s' % (self.exp.name, name))
+
+            await exec.await_files(wait_socks, verbose=self.verbose)
+
+        # add time delay if required
+        delay = sim.start_delay()
+        if delay > 0:
+            await asyncio.sleep(delay)
+
+        if sim.wait_terminate():
+            self.wait_sims.append(sc)
+
+        if self.verbose:
+            print('%s: started %s' % (self.exp.name, name))
 
     async def before_wait(self):
         pass
@@ -160,107 +200,43 @@ class ExperimentBaseRunner(object):
 
         # prepare all simulators in parallel
         sims = []
-        for sim in self.exp.hosts + self.exp.nics + self.exp.networks:
+        for sim in self.exp.all_simulators():
             prep_cmds = [pc for pc in sim.prep_cmds(self.env)]
             exec = self.sim_executor(sim)
             sims.append(exec.run_cmdlist('prepare_' + self.exp.name, prep_cmds,
                 verbose=self.verbose))
         await asyncio.wait(sims)
 
-    async def run_nics(self):
-        """ Start all NIC simulators. """
-        if self.verbose:
-            print('%s: starting NICS' % self.exp.name)
-        starts = []
-        for nic in self.exp.nics:
-            if self.verbose:
-                print('start NIC:', nic.run_cmd(self.env))
-            exec = self.sim_executor(nic)
-            sc = exec.create_component(nic.full_name(),
-                    shlex.split(nic.run_cmd(self.env)), verbose=self.verbose,
-                    canfail=True)
-            starts.append(sc.start())
-            self.running.append((nic, sc))
-
-            self.sockets.append((exec, self.env.nic_pci_path(nic)))
-            self.sockets.append((exec, self.env.nic_eth_path(nic)))
-            self.sockets.append((exec, self.env.nic_shm_path(nic)))
-        await asyncio.wait(starts)
-
-        # Wait till all NIC sockets exist
-        if self.verbose:
-            print('%s: waiting for sockets' % self.exp.name)
-        byexec = defaultdict(lambda: [])
-        for (exec, s) in self.sockets:
-            byexec[exec].append(s)
-        for (exec, ss) in byexec.items():
-            await exec.await_files(ss, verbose=self.verbose)
-
-        # just a bit of a safety delay
-        await asyncio.sleep(0.5)
-
-    async def run_nets(self):
-        """ Start all network simulators (typically one). """
-        if self.verbose:
-            print('%s: starting networks' % self.exp.name)
-        starts = []
-        for net in self.exp.networks:
-            if self.verbose:
-                print('start Net:', net.run_cmd(self.env))
-
-            exec = self.sim_executor(net)
-            sc = exec.create_component(net.full_name(),
-                    shlex.split(net.run_cmd(self.env)), verbose=self.verbose,
-                    canfail=True)
-            starts.append(sc.start())
-            self.running.append((net, sc))
-        await asyncio.wait(starts)
-
-    async def run_hosts(self):
-        """ Start all host simulators. """
-        if self.verbose:
-            print('%s: starting hosts' % self.exp.name)
-        starts = []
-        for host in self.exp.hosts:
-            if self.verbose:
-                print('start Host:', host.run_cmd(self.env))
-
-            exec = self.sim_executor(host)
-            sc = exec.create_component(host.full_name(),
-                    shlex.split(host.run_cmd(self.env)), verbose=self.verbose,
-                    canfail=True)
-            starts.append(sc.start())
-            self.running.append((host,sc))
-
-            if host.wait:
-                self.wait_hosts.append(sc)
-
-            if host.sleep > 0:
-                await asyncio.sleep(host.sleep)
-        await asyncio.wait(starts)
-
-    async def wait_for_hosts(self):
-        """ Wait for hosts to terminate (the ones marked to wait on). """
+    async def wait_for_sims(self):
+        """ Wait for simulators to terminate (the ones marked to wait on). """
         if self.verbose:
             print('%s: waiting for hosts to terminate' % self.exp.name)
-        for sc in self.wait_hosts:
+        for sc in self.wait_sims:
             await sc.wait()
 
     async def run(self):
         try:
             self.out.set_start()
 
-            await self.before_nics()
-            await self.run_nics()
+            graph = self.sim_graph()
+            ts = graphlib.TopologicalSorter(graph)
+            ts.prepare()
+            while ts.is_active():
+                # start ready simulators in parallel
+                starts = []
+                sims = []
+                for sim in ts.get_ready():
+                    starts.append(self.start_sim(sim))
+                    sims.append(sim)
 
-            await self.before_nets()
-            await self.run_nets()
+                # wait for starts to complete
+                await asyncio.wait(starts)
 
-            await self.before_hosts()
-            await self.run_hosts()
+                for sim in sims:
+                    ts.done(sim)
 
             await self.before_wait()
-            await self.wait_for_hosts()
+            await self.wait_for_sims()
         except:
             self.out.set_failed()
             traceback.print_exc()
@@ -330,76 +306,6 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
             p.ip = exec.ip
 
         await super().prepare()
-
-    def add_proxy_sockets(self, exec, proxy):
-        # add shared memory region for proxy
-        self.sockets.append((exec, self.env.proxy_shm_path(proxy)))
-
-        # add each listening unix socket
-        for (nic, local) in proxy.nics:
-            add = False
-            if (isinstance(proxy, simbricks.proxy.NetProxyConnecter) and local) \
-                or (isinstance(proxy, simbricks.proxy.NetProxyListener) \
-                    and not local):
-                self.sockets.append((exec, self.env.nic_eth_path(nic)))
-
-    async def run_proxies_listeners(self):
-        """ Start all listening proxies. """
-        if self.verbose:
-            print('%s: starting listening proxies' % self.exp.name)
-        for proxy in self.exp.proxies_listen:
-            if self.verbose:
-                print('start listening proxy:', proxy.run_cmd(self.env))
-
-            exec = self.sim_executor(proxy)
-            sc = exec.create_component(proxy.full_name(),
-                    shlex.split(proxy.run_cmd(self.env)), verbose=self.verbose,
-                    canfail=True)
-            await sc.start()
-
-            self.running.append((proxy, sc))
-            self.add_proxy_sockets(exec, proxy)
-        await asyncio.sleep(10)
-
-    async def run_proxies_connecters(self):
-        """ Start all connecting proxies. """
-        if self.verbose:
-            print('%s: starting connecting proxies' % self.exp.name)
-        for proxy in self.exp.proxies_connect:
-            if self.verbose:
-                print('start connecting proxy:', proxy.run_cmd(self.env))
-
-            exec = self.sim_executor(proxy)
-            sc = exec.create_component(proxy.full_name(),
-                    shlex.split(proxy.run_cmd(self.env)), verbose=self.verbose,
-                    canfail=True)
-            await sc.start()
-
-            self.running.append((proxy, sc))
-            self.add_proxy_sockets(exec, proxy)
-        await asyncio.sleep(10)
-
-    async def wait_proxy_sockets(self):
-        """ Make sure all sockets exist. """
-        paths = {}
-        for proxy in itertools.chain(
-                    self.exp.proxies_connect, self.exp.proxies_listen):
-            for (nic, local) in proxy.nics:
-                if local:
-                    continue
-                exec = self.sim_executor(proxy)
-                if exec not in paths:
-                    paths[exec] = []
-                paths[exec].append(self.env.nic_eth_path(nic))
-
-        for (exec, paths) in paths.items():
-            await exec.await_files(paths, verbose=self.verbose)
-
-    async def before_nets(self):
-        await self.run_proxies_listeners()
-        await self.run_proxies_connecters()
-        await self.wait_proxy_sockets()
-        await super().before_nets()
 
 
 class ExpEnv(object):

@@ -28,6 +28,9 @@ class SimProxy(Simulator):
     ip = ''
     listen = False
 
+    def __init__(self):
+        super().__init__()
+
     def full_name(self):
         return 'proxy.' + self.name
 
@@ -39,32 +42,92 @@ class NetProxy(SimProxy):
     # Shared memory size in GB
     shm_size = 2048
 
-class NetProxyListener(NetProxy):
     def __init__(self):
+        super().__init__()
+
+    def start_delay(self):
+        return 10
+
+class NetProxyListener(NetProxy):
+    connecter = None
+
+    def __init__(self):
+        super().__init__()
         self.listen = True
         self.nics = []
-        super().__init__()
 
     def add_nic(self, nic):
         self.nics.append((nic, True))
+
+        # the network this nic connects to now also depends on the peer
+        nic.network.extra_deps.append(self.connecter)
+
+    def dependencies(self):
+        deps = []
+        for (nic, local) in self.nics:
+            if local:
+                deps.append(nic)
+        return deps
+
+    def sockets_cleanup(self, env):
+        socks = []
+        for (nic, local) in self.nics:
+            if not local:
+                socks.append(env.nic_eth_path(nic))
+        return []
+
+    # sockets to wait for indicating the simulator is ready
+    def sockets_wait(self, env):
+        socks = []
+        for (nic, local) in self.nics:
+            if not local:
+                socks.append(env.nic_eth_path(nic))
+        return socks
 
 class NetProxyConnecter(NetProxy):
     listener = None
 
     def __init__(self, listener):
-        self.listener = listener
-        self.nics = listener.nics
         super().__init__()
+        self.listener = listener
+        listener.connecter = self
+        self.nics = listener.nics
 
     def add_nic(self, nic):
         self.nics.append((nic, False))
+
+        # the network this nic connects to now also depends on the proxy
+        nic.network.extra_deps.append(self.listener)
+
+    def dependencies(self):
+        deps = [self.listener]
+        for (nic, local) in self.nics:
+            if not local:
+                deps.append(nic)
+        return deps
+
+    def sockets_cleanup(self, env):
+        socks = []
+        for (nic, local) in self.nics:
+            if local:
+                socks.append(env.nic_eth_path(nic))
+        return []
+
+    # sockets to wait for indicating the simulator is ready
+    def sockets_wait(self, env):
+        socks = []
+        for (nic, local) in self.nics:
+            if local:
+                socks.append(env.nic_eth_path(nic))
+        return socks
+
 
 class RDMANetProxyListener(NetProxyListener):
     port = 12345
 
     def __init__(self):
-        self.listen = True
         super().__init__()
+        self.listen = True
 
     def run_cmd(self, env):
         cmd = (f'{env.repodir}/dist/rdma/net_rdma -l '
