@@ -443,10 +443,10 @@ int NetOpPassIntro(struct Peer *peer) {
   return 0;
 }
 
-int NetOpPassEntries(struct Peer *peer, size_t n) {
+int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
 #ifdef RDMA_DEBUG
   fprintf(stderr, "NetOpPassEntries(%s,%u)\n", peer->sock_path,
-          peer->local_pos);
+          pos);
   fprintf(stderr, "  remote_base=%lx local_base=%p\n", peer->remote_base,
           peer->local_base);
 #endif
@@ -456,9 +456,9 @@ int NetOpPassEntries(struct Peer *peer, size_t n) {
     last_signaled = 0;
 
   while (1) {
-    uint64_t pos = peer->local_pos * peer->local_elen;
+    uint64_t abs_pos = pos * peer->local_elen;
     struct ibv_sge sge;
-    sge.addr = (uintptr_t) (peer->local_base + pos);
+    sge.addr = (uintptr_t) (peer->local_base + abs_pos);
     sge.length = peer->local_elen * n;
     struct ibv_mr *mr = peer->shm_opaque;
     sge.lkey = mr->lkey;
@@ -468,7 +468,7 @@ int NetOpPassEntries(struct Peer *peer, size_t n) {
     send_wr.opcode = IBV_WR_RDMA_WRITE;
     if (triggerSig)
       send_wr.send_flags = IBV_SEND_SIGNALED;
-    send_wr.wr.rdma.remote_addr = peer->remote_base + pos;
+    send_wr.wr.rdma.remote_addr = peer->remote_base + abs_pos;
     send_wr.wr.rdma.rkey = peer->remote_rkey;
     send_wr.sg_list = &sge;
     send_wr.num_sge = 1;

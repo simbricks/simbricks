@@ -487,14 +487,14 @@ int NetOpPassIntro(struct Peer *peer) {
   return ret;
 }
 
-int NetOpPassEntries(struct Peer *peer, size_t n) {
+int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
 #ifdef SOCK_DEBUG
   fprintf(stderr, "NetOpPassEntires(%s, n=%zu, pos=%u)\n", peer->sock_path, n,
-          peer->local_pos);
+          pos);
 #endif
   if (n * peer->local_elen > TXBUF_SIZE) {
     fprintf(stderr,
-            "NetOpPassEntries: tx buffer too small (%u) for n (%zu) entries\n",
+            "NetOpPassEntries: tx buffer too small (%u) for n (%u) entries\n",
             TXBUF_SIZE, n);
     abort();
   }
@@ -506,11 +506,11 @@ int NetOpPassEntries(struct Peer *peer, size_t n) {
   msg->id = peer - peers;
   msg->msg_type = kMsgEntries;
   msg->entries.num_entries = n;
-  msg->entries.pos = peer->local_pos;
+  msg->entries.pos = pos;
 
-  uint64_t pos = peer->local_pos * peer->local_elen;
+  uint64_t abs_pos = pos * peer->local_elen;
   uint32_t len = n * peer->local_elen;
-  memcpy(msg->entries.data, peer->local_base + pos, len);
+  memcpy(msg->entries.data, peer->local_base + abs_pos, len);
 #ifdef SOCK_DEBUG
   /*fprintf(stderr, "  data: ");
   {

@@ -387,7 +387,7 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
   }
 
   if (n > 0) {
-    NetOpPassEntries(peer, n);
+    NetOpPassEntries(peer, peer->local_pos, n);
     peer->local_pos += n;
     if (peer->local_pos >= peer->local_enum)
       peer->local_pos -= peer->local_enum;

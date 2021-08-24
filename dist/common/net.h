@@ -107,7 +107,7 @@ void NetEntryReceived(struct Peer *peer, uint32_t pos, void *data);
 
 // To be implemented in proxy implementation
 int NetOpPassIntro(struct Peer *peer);
-int NetOpPassEntries(struct Peer *peer, size_t n);
+int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n);
 int NetOpPassReport();
 
 #endif  // DIST_NET_RDMA_H_
