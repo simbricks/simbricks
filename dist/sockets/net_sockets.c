@@ -218,6 +218,18 @@ static int SockInitCommon() {
     return 1;
   }
 
+  // increase buffer size
+  int n = 1024 * 1024;
+  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &n, sizeof(n))) {
+    perror("SockInitCommon: setsockopt rxbuf failed");
+    return 1;
+  }
+  n = 1024 * 1024;
+  if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &n, sizeof(n))) {
+    perror("SockInitCommon: setsockopt txbuf failed");
+    return 1;
+  }
+
   // add to epoll
   struct epoll_event epev;
   epev.events = EPOLLIN;
