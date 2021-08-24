@@ -66,8 +66,8 @@ struct Peer {
   uint32_t cleanup_pos_reported;
 
 
-  struct SimbricksProtoNetDevIntro dev_intro;
-  struct SimbricksProtoNetNetIntro net_intro;
+  struct SimbricksProtoNetDevIntro dev_intro __attribute__ ((aligned (8)));
+  struct SimbricksProtoNetNetIntro net_intro __attribute__ ((aligned (8)));
   const char *sock_path;
 
   // opaque value, e.g. to be used by rdma proxy for memory region
