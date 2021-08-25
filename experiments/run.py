@@ -68,6 +68,8 @@ g_env.add_argument('--cpdir', metavar='DIR',  type=str,
         default='./out/', help='Checkpoint directory base')
 g_env.add_argument('--hosts', metavar='JSON_FILE', type=str,
         default=None, help='List of hosts to use (json)')
+g_env.add_argument('--shmdir', metavar='DIR',  type=str,
+        default=None, help='Shared memory directory base (workdir if not set)')
 
 g_par = parser.add_argument_group('Parallel Runtime')
 g_par.add_argument('--parallel', dest='runtime', action='store_const',
@@ -147,6 +149,8 @@ def add_exp(e, run, prereq, create_cp, restore_cp, no_simbricks):
 
     workdir = '%s/%s/%d' % (args.workdir, e.name, run)
     cpdir = '%s/%s/%d' % (args.cpdir, e.name, 0)
+    if args.shmdir is not None:
+        shmdir = '%s/%s/%d' % (args.shmdir, e.name, run)
 
     env = exp.ExpEnv(args.repo, workdir, cpdir)
     env.create_cp = create_cp
@@ -155,6 +159,8 @@ def add_exp(e, run, prereq, create_cp, restore_cp, no_simbricks):
     env.pcap_file = ''
     if args.pcap:
         env.pcap_file = workdir+'/pcap'
+    if args.shmdir is not None:
+        env.shm_base = os.path.abspath(shmdir)
 
     run = runtime.Run(e, run, env, outpath, prereq)
     rt.add_run(run)

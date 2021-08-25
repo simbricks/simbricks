@@ -48,6 +48,8 @@ class Run(object):
         await exec.mkdir(self.env.workdir)
         pathlib.Path(self.env.cpdir).mkdir(parents=True, exist_ok=True)
         await exec.mkdir(self.env.cpdir)
+        pathlib.Path(self.env.shm_base).mkdir(parents=True, exist_ok=True)
+        await exec.mkdir(self.env.shm_base)
 
 class Runtime(object):
     def add_run(self, run):

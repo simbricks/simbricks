@@ -313,6 +313,7 @@ class ExpEnv(object):
         self.repodir = os.path.abspath(repo_path)
         self.workdir = os.path.abspath(workdir)
         self.cpdir = os.path.abspath(cpdir)
+        self.shm_base = self.workdir
         self.qemu_img_path = self.repodir + '/sims/external/qemu/build/qemu-img'
         self.qemu_path = self.repodir + '/sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64'
         self.qemu_kernel_path = self.repodir + '/images/bzImage'
@@ -339,13 +340,13 @@ class ExpEnv(object):
         return '%s/nic.eth.%s' % (self.workdir, sim.name)
 
     def nic_shm_path(self, sim):
-        return '%s/nic.shm.%s' % (self.workdir, sim.name)
+        return '%s/nic.shm.%s' % (self.shm_base, sim.name)
 
     def n2n_eth_path(self, sim_l, sim_c):
         return '%s/n2n.eth.%s.%s' % (self.workdir, sim_l.name, sim_c.name)
 
     def proxy_shm_path(self, sim):
-        return '%s/proxy.shm.%s' % (self.workdir, sim.name)
+        return '%s/proxy.shm.%s' % (self.shm_base, sim.name)
 
     def gem5_outdir(self, sim):
         return '%s/gem5-out.%s' % (self.workdir, sim.name)
