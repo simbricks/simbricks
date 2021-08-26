@@ -39,6 +39,8 @@ class Run(object):
     async def prep_dirs(self, exec=exectools.LocalExecutor()):
         shutil.rmtree(self.env.workdir, ignore_errors=True)
         await exec.rmtree(self.env.workdir)
+        shutil.rmtree(self.env.shm_base, ignore_errors=True)
+        await exec.rmtree(self.env.shm_base)
 
         if self.env.create_cp:
             shutil.rmtree(self.env.cpdir, ignore_errors=True)
