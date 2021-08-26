@@ -36,10 +36,10 @@
 #include "lib/simbricks/nicif/internal.h"
 
 #define D2H_ELEN (9024 + 64)
-#define D2H_ENUM 1024
+#define D2H_ENUM 8192
 
 #define H2D_ELEN (9024 + 64)
-#define H2D_ENUM 1024
+#define H2D_ENUM 8192
 
 #define D2N_ELEN (1536 + 64)
 #define D2N_ENUM 8192
