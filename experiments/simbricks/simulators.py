@@ -98,6 +98,7 @@ class NICSim(Simulator):
     name = ''
 
     sync_mode = 0
+    start_tick = 0
     sync_period = 500
     pci_latency = 500
     eth_latency = 500
@@ -110,10 +111,10 @@ class NICSim(Simulator):
         net.nics.append(self)
 
     def basic_run_cmd(self, env, name, extra=None):
-        cmd = '%s/%s %s %s %s %d 0 %d %d %d' % \
+        cmd = '%s/%s %s %s %s %d %d %d %d %d' % \
             (env.repodir + '/sims/nic', name, env.nic_pci_path(self), env.nic_eth_path(self),
-                    env.nic_shm_path(self), self.sync_mode, self.sync_period,
-                    self.pci_latency, self.eth_latency)
+                    env.nic_shm_path(self), self.sync_mode, self.start_tick,
+                    self.sync_period, self.pci_latency, self.eth_latency)
 
         if extra is not None:
             cmd += ' ' + extra
