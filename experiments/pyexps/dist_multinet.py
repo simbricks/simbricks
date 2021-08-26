@@ -27,9 +27,9 @@ import simbricks.nodeconfig as node
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4]
-n_clients = 30
+n_clients = 10
 experiments = []
-separate_net = True
+separate_net = False
 separate_server = True
 
 for host_type in host_types:
@@ -107,6 +107,9 @@ for host_type in host_types:
                 e.assign_sim_host(cp, 0)
 
                 lp.add_n2n(switch_top, switch)
+
+            for c in clients + servers:
+                c.nics[0].start_tick = 580000000000
 
         # add to experiments
         experiments.append(e)
