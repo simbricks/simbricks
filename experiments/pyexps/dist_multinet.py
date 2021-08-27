@@ -27,15 +27,16 @@ import simbricks.nodeconfig as node
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4]
-n_clients = 10
+n_clients = [1, 10, 20, 30, 40, 50]
 experiments = []
 separate_net = False
 separate_server = True
 
 for host_type in host_types:
-    for n in n_nets:
+  for n in n_nets:
+    for n_client in n_clients:
         nh = n if not separate_net else n + 1
-        e = exp.DistributedExperiment(f'dist_multinet-{host_type}-{n}', nh)
+        e = exp.DistributedExperiment(f'dist_multinet-{host_type}-{n}-{n_client}', nh)
 
         # host
         if host_type == 'qemu':
@@ -71,11 +72,11 @@ for host_type in host_types:
             switch_top.connect_network(switch)
 
             # create servers and clients
-            m = n_clients
+            m = n_client
             if i == 0 or separate_server:
                 servers = sim.create_basic_hosts(e, 1, 'server_%d' % (i,),
                         switch, sim.I40eNIC, host_class, node.I40eLinuxNode,
-                        node.NetperfServer, ip_start = i * (n_clients + 1) + 1)
+                        node.NetperfServer, ip_start = i * (n_client + 1) + 1)
                 if not separate_server:
                     m = m - 1
 
@@ -84,7 +85,7 @@ for host_type in host_types:
 
             clients = sim.create_basic_hosts(e, m, 'client_%d' % (i,),
                     switch, sim.I40eNIC, host_class, node.I40eLinuxNode,
-                    node.NetperfClient, ip_start = i * (n_clients + 1) + 2)
+                    node.NetperfClient, ip_start = i * (n_client + 1) + 2)
 
             for c in clients:
                 c.wait = True
