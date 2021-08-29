@@ -527,3 +527,16 @@ class HTTPCMtcp(HTTPC):
         ]
 
 
+class MemcachedServer(AppConfig):
+    def run_cmds(self, node):
+        return ['memcached -u root -t 1 -c 4096']
+
+class MemcachedClient(AppConfig):
+    server_ips = ['10.0.0.1']
+    threads = 1
+    concurrency = 1
+    throughput = '1k'
+    def run_cmds(self, node):
+        servers = [ip + ':11211' for ip in self.server_ips]
+        servers = ','.join(servers)
+        return [f'memaslap --binary --time 10s --server={servers} --thread={self.threads} --concurrency={self.concurrency} --tps={self.throughput}']
