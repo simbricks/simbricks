@@ -86,6 +86,13 @@
     {
       "type": "shell",
       "inline": ["sudo mv /tmp/m5 /sbin/m5"]
+    },
+    {
+      "execute_command": "echo '{{ user `ssh_password` }}' | {{.Vars}} sudo -E -S bash '{{.Path}}'",
+      "scripts": [
+        "scripts/install-base.sh"
+      ],
+      "type": "shell"
     }
   ],
   "variables": {
