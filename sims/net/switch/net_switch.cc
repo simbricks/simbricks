@@ -144,11 +144,8 @@ class NetPort : public Port {
   }
 
   virtual void Sync(uint64_t cur_ts) override {
-    if (SimbricksNetIfN2DSync(&netif_, cur_ts, eth_latency, sync_period,
-                              sync_mode) != 0) {
-      fprintf(stderr, "SimbricksNetIfN2DSync failed\n");
-      abort();
-    }
+    while (SimbricksNetIfN2DSync(&netif_, cur_ts, eth_latency, sync_period,
+                              sync_mode));
   }
 
   virtual void AdvanceEpoch(uint64_t cur_ts) override {
@@ -191,9 +188,12 @@ class NetPort : public Port {
       const void *data, size_t len, uint64_t cur_ts) override {
     volatile union SimbricksProtoNetN2D *msg_to =
       SimbricksNetIfN2DAlloc(&netif_, cur_ts, eth_latency);
-    if (!msg_to)
+    if (!msg_to && !sync_) {
       return false;
-
+    } else if (!msg_to && sync_) {
+      while (!msg_to)
+        msg_to = SimbricksNetIfN2DAlloc(&netif_, cur_ts, eth_latency);
+    }
     volatile struct SimbricksProtoNetN2DRecv *rx;
     rx = &msg_to->recv;
     rx->len = len;
@@ -251,10 +251,7 @@ class NetHostPort : public Port {
   }
 
   virtual void Sync(uint64_t cur_ts) override {
-    if (SimbricksNicIfSync(&nicif_, cur_ts) != 0) {
-      fprintf(stderr, "SimbricksNicIfSync failed\n");
-      abort();
-    }
+    while (SimbricksNicIfSync(&nicif_, cur_ts));
   }
 
   virtual void AdvanceEpoch(uint64_t cur_ts) override {
@@ -298,8 +295,12 @@ class NetHostPort : public Port {
       const void *data, size_t len, uint64_t cur_ts) override {
     volatile union SimbricksProtoNetD2N *msg_to =
       SimbricksNicIfD2NAlloc(&nicif_, cur_ts);
-    if (!msg_to)
+    if (!msg_to && !sync_) {
       return false;
+    } else if (!msg_to && sync_) {
+      while (!msg_to)
+        msg_to = SimbricksNicIfD2NAlloc(&nicif_, cur_ts);
+    }
 
     volatile struct SimbricksProtoNetD2NSend *rx;
     rx = &msg_to->send;
