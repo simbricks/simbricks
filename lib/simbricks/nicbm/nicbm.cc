@@ -24,6 +24,7 @@
 
 #include "lib/simbricks/nicbm/nicbm.h"
 
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -474,7 +475,18 @@ void Runner::EventTrigger() {
 Runner::Runner(Device &dev) : dev_(dev), events_(EventCmp()) {
   // mac_addr = lrand48() & ~(3ULL << 46);
   dma_pending_ = 0;
-  srand48(time(NULL) ^ getpid());
+
+  uint32_t hnhash = time(NULL) ^ getpid();
+  char hostname[HOST_NAME_MAX];
+  memset(hostname, 0, sizeof(hostname));
+  if (gethostname(hostname, HOST_NAME_MAX)) {
+    fprintf(stderr, "Runner::Runner: warning getting hostname failed\n");
+  }
+  for (size_t i = 0; i < sizeof(hostname) / sizeof(uint32_t); i++) {
+    hnhash ^= ((uint32_t *) hostname)[i];
+  }
+  srand48(hnhash);
+
   mac_addr_ = lrand48();
   mac_addr_ <<= 16;
   mac_addr_ ^= lrand48();
