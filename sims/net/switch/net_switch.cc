@@ -413,7 +413,8 @@ static void switch_pkt(Port &port, size_t iport) {
     auto i = mac_table.find(dst);
     if (i != mac_table.end()) {
       size_t eport = i->second;
-      forward_pkt(pkt_data, pkt_len, eport);
+      if (eport != iport)
+        forward_pkt(pkt_data, pkt_len, eport);
     } else {
       // Broadcast
       for (size_t eport = 0; eport < ports.size(); eport++) {
