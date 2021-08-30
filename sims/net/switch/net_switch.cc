@@ -338,7 +338,8 @@ static void sigusr2_handler(int dummy) {
 }
 #endif
 
-static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id) {
+static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id,
+                        size_t iport_id) {
   struct pcap_pkthdr ph;
   Port &dest_port = *ports[port_id];
 
@@ -360,19 +361,23 @@ static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id) {
   hdr = (struct ethhdr*)pkt_data;
   eth_proto = ntohs(hdr->h_proto);
   iph = (struct iphdr *)(hdr + 1);
-  fprintf(stderr, "%20lu: ", cur_ts);
+  uint64_t dmac = (*(uint64_t *) hdr->h_dest) & 0xFFFFFFFFFFULL;
+  uint64_t smac = (*(uint64_t *) hdr->h_source) & 0xFFFFFFFFFFULL;
+  fprintf(stderr, "%20lu: [P %zu -> %zu] %lx -> %lx ", cur_ts, iport_id,
+          port_id, smac, dmac);
   if (eth_proto == ETH_P_IP){
     fprintf(stderr, "[ IP] ");
-    
+    fprintf(stderr, "%8X -> %8X len: %lu\n", iph->saddr, iph->daddr,
+            ntohs(iph->tot_len) + sizeof(struct ethhdr));
   } 
   else if(eth_proto == ETH_P_ARP){
-    fprintf(stderr, "[ARP] ");
+    fprintf(stderr, "[ARP] %8X -> %8X\n",
+            *(uint32_t *) ((uint8_t *) pkt_data + 28),
+            *(uint32_t *) ((uint8_t *) pkt_data + 38) );
   } 
   else{
-    fprintf(stderr, "unkwon eth type\n");
+    fprintf(stderr, "unknown eth type\n");
   }
-
-  fprintf(stderr, "%8X -> %8X len: %lu\n ", iph->saddr, iph->daddr, iph->tot_len + sizeof(struct ethhdr));
 #endif
 
   if (!dest_port.TxPacket(pkt_data, pkt_len, cur_ts))
@@ -414,13 +419,13 @@ static void switch_pkt(Port &port, size_t iport) {
     if (i != mac_table.end()) {
       size_t eport = i->second;
       if (eport != iport)
-        forward_pkt(pkt_data, pkt_len, eport);
+        forward_pkt(pkt_data, pkt_len, eport, iport);
     } else {
       // Broadcast
       for (size_t eport = 0; eport < ports.size(); eport++) {
         if (eport != iport) {
           // Do not forward to ingress port
-          forward_pkt(pkt_data, pkt_len, eport);
+          forward_pkt(pkt_data, pkt_len, eport, iport);
         }
       }
     }
