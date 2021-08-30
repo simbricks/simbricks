@@ -24,7 +24,7 @@
 
 #include "lib/simbricks/nicbm/nicbm.h"
 
-#include <limits.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -476,20 +476,15 @@ Runner::Runner(Device &dev) : dev_(dev), events_(EventCmp()) {
   // mac_addr = lrand48() & ~(3ULL << 46);
   dma_pending_ = 0;
 
-  uint32_t hnhash = time(NULL) ^ getpid();
-  char hostname[HOST_NAME_MAX];
-  memset(hostname, 0, sizeof(hostname));
-  if (gethostname(hostname, HOST_NAME_MAX)) {
-    fprintf(stderr, "Runner::Runner: warning getting hostname failed\n");
+  int rfd;
+  if ((rfd = open("/dev/urandom", O_RDONLY)) < 0) {
+    perror("Runner::Runner: opening urandom failed");
+    abort();
   }
-  for (size_t i = 0; i < sizeof(hostname) / sizeof(uint32_t); i++) {
-    hnhash ^= ((uint32_t *) hostname)[i];
+  if (read(rfd, &mac_addr_, 6) != 6) {
+    perror("Runner::Runner: reading urandom failed");
   }
-  srand48(hnhash);
-
-  mac_addr_ = lrand48();
-  mac_addr_ <<= 16;
-  mac_addr_ ^= lrand48();
+  close(rfd);
   mac_addr_ &= ~3ULL;
 
   std::cerr << std::hex << mac_addr_ << std::endl;
