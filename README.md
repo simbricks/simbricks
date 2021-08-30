@@ -25,6 +25,7 @@ Code structure:
  - python (>= 3.7)
  - libgoogle-perftools-dev
  - libboost-iostreams-dev
+ - libboost-coroutine-dev
  - scons
  - ninja-build
  - libpixman-1-dev
