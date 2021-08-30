@@ -28,10 +28,10 @@ import simbricks.proxy as proxy
 import simbricks.nodeconfig as node
 
 host_types = ['qemu', 'gem5', 'qt']
-n_nets = [1, 2, 3, 4]
+n_nets = [1, 2, 3, 4, 8, 16, 32]
 n_hosts = [2, 10, 20, 30, 40, 50]
 experiments = []
-separate_net = False
+separate_net = True
 
 def select_servers(i, j, racks, n, n_host):
     nc = int(n_host / 2)
