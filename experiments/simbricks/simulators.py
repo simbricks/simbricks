@@ -440,7 +440,7 @@ class NS3SequencerNet(NetSim):
 
 
 def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
-        nc_class, app_class, ip_start=1):
+        nc_class, app_class, ip_start=1, ip_prefix=24):
     hosts = []
     for i in range(0, num):
         nic = nic_class()
@@ -451,7 +451,9 @@ def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
         host.name = '%s.%d' % (name_prefix, i)
 
         node_config = nc_class()
-        node_config.ip = '10.0.0.%d' % (ip_start + i)
+        node_config.prefix = ip_prefix
+        ip = ip_start + i
+        node_config.ip = '10.0.%d.%d' % (int(ip / 256), ip % 256)
         node_config.app = app_class()
         host.set_config(node_config)
 
