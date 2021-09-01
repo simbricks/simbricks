@@ -177,6 +177,7 @@ class NetSim(Simulator):
 
 class QemuHost(HostSim):
     sync = False
+    cpu_freq = '4GHz'
 
     def __init__(self):
         super().__init__()
