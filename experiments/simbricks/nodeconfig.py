@@ -253,7 +253,7 @@ class I40eDCTCPNode(NodeConfig):
             'ethtool -K eth0 tso off',
             'ip link set eth0 txqueuelen 13888',
             f'ip link set dev eth0 mtu {self.mtu} up',
-            f'ip addr add {self.ip}/24 dev eth0',
+            f'ip addr add {self.ip}/{self.prefix} dev eth0',
         ]
 
 class CorundumDCTCPNode(NodeConfig):
@@ -278,7 +278,7 @@ class CorundumDCTCPNode(NodeConfig):
         return super().prepare_post_cp() + [
             'insmod mqnic.ko',
             'ip link set dev eth0 up',
-            f'ip addr add {self.ip}/24 dev eth0',
+            f'ip addr add {self.ip}/{self.prefix} dev eth0',
         ]
 
 class DctcpServer(AppConfig):
@@ -539,4 +539,4 @@ class MemcachedClient(AppConfig):
     def run_cmds(self, node):
         servers = [ip + ':11211' for ip in self.server_ips]
         servers = ','.join(servers)
-        return [f'memaslap --binary --time 10s --server={servers} --thread={self.threads} --concurrency={self.concurrency} --tps={self.throughput}']
+        return [f'memaslap --binary --time 10s --server={servers} --thread={self.threads} --concurrency={self.concurrency} --tps={self.throughput} --verbose']
