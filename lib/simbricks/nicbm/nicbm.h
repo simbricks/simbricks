@@ -63,6 +63,8 @@ class Runner {
  public:
   class Device {
    protected:
+    friend class Runner;
+    Runner *runner_;
     bool int_intx_en_;
     bool int_msi_en_;
     bool int_msix_en_;

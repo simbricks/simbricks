@@ -475,6 +475,7 @@ void Runner::EventTrigger() {
 Runner::Runner(Device &dev) : dev_(dev), events_(EventCmp()) {
   // mac_addr = lrand48() & ~(3ULL << 46);
   dma_pending_ = 0;
+  dev_.runner_ = this;
 
   int rfd;
   if ((rfd = open("/dev/urandom", O_RDONLY)) < 0) {
