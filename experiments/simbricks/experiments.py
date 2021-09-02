@@ -146,10 +146,16 @@ class ExperimentBaseRunner(object):
         if self.verbose:
             print('%s: starting %s' % (self.exp.name, name))
 
+        run_cmd = sim.run_cmd(self.env)
+        if run_cmd is None:
+            if self.verbose:
+                print('%s: started dummy %s' % (self.exp.name, name))
+            return
+
         # run simulator
         exec = self.sim_executor(sim)
         sc = exec.create_component(name,
-                    shlex.split(sim.run_cmd(self.env)), verbose=self.verbose,
+                    shlex.split(run_cmd), verbose=self.verbose,
                     canfail=True)
         await sc.start()
         self.running.append((sim, sc))
