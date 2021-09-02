@@ -92,6 +92,7 @@ volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
               nicif_.d2h_pos);
       first = false;
     }
+    YieldPoll();
   }
 
   if (!first)
@@ -109,6 +110,7 @@ volatile union SimbricksProtoNetD2N *Runner::D2NAlloc() {
               nicif_.d2n_pos);
       first = false;
     }
+    YieldPoll();
   }
 
   if (!first)
@@ -472,6 +474,13 @@ void Runner::EventTrigger() {
   dev_.Timed(*ev);
 }
 
+void Runner::YieldPoll() {
+}
+
+int Runner::NicIfInit(struct SimbricksNicIfParams &nsparams) {
+  return SimbricksNicIfInit(&nicif_, &nsparams, &dintro_);
+}
+
 Runner::Runner(Device &dev) : dev_(dev), events_(EventCmp()) {
   // mac_addr = lrand48() & ~(3ULL << 46);
   dma_pending_ = 0;
@@ -539,7 +548,7 @@ int Runner::RunMain(int argc, char *argv[]) {
          sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
   nsparams.sync_mode = sync_mode;
 
-  if (SimbricksNicIfInit(&nicif_, &nsparams, &dintro_)) {
+  if (NicIfInit(nsparams)) {
     return EXIT_FAILURE;
   }
   fprintf(stderr, "sync_pci=%d sync_eth=%d\n", nsparams.sync_pci,
@@ -553,7 +562,12 @@ int Runner::RunMain(int argc, char *argv[]) {
     }
     SimbricksNicIfAdvanceEpoch(&nicif_, main_time);
 
+    bool first = true;
     do {
+      if (!first)
+        YieldPoll();
+      first = false;
+
       PollH2D();
       PollN2D();
       EventTrigger();
@@ -571,6 +585,8 @@ int Runner::RunMain(int argc, char *argv[]) {
         next_ts = ev_ts;
     } while (next_ts <= main_time && !exiting);
     main_time = SimbricksNicIfAdvanceTime(&nicif_, next_ts);
+
+    YieldPoll();
   }
 
   fprintf(stderr, "exit main_time: %lu\n", main_time);

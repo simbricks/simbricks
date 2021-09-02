@@ -147,6 +147,9 @@ class Runner {
   void DmaDo(DMAOp &op);
   void DmaTrigger();
 
+  virtual void YieldPoll();
+  virtual int NicIfInit(struct SimbricksNicIfParams &nsparams);
+
  public:
   explicit Runner(Device &dev_);
 
