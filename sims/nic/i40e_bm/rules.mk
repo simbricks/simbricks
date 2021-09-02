@@ -29,7 +29,7 @@ OBJS := $(addprefix $(d),i40e_bm.o i40e_queues.o i40e_adminq.o i40e_hmc.o \
 
 $(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
-$(bin_i40e_bm): $(OBJS) $(lib_nicbm) $(lib_nicif)
+$(bin_i40e_bm): $(OBJS) $(lib_nicbm) $(lib_nicif) -lboost_fiber -lboost_context -lpthread
 
 CLEAN := $(bin_i40e_bm) $(OBJS)
 ALL := $(bin_i40e_bm)
