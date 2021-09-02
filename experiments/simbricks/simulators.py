@@ -38,7 +38,7 @@ class Simulator(object):
         return []
 
     def run_cmd(self, env):
-        pass
+        return None
 
     # Other simulators this one depends on
     def dependencies(self):
@@ -110,14 +110,20 @@ class NICSim(Simulator):
         self.network = net
         net.nics.append(self)
 
-    def basic_run_cmd(self, env, name, extra=None):
-        cmd = '%s/%s %s %s %s %d %d %d %d %d' % \
-            (env.repodir + '/sims/nic', name, env.nic_pci_path(self), env.nic_eth_path(self),
+    def basic_args(self, env, extra=None):
+        cmd = '%s %s %s %d %d %d %d %d' % \
+            (env.nic_pci_path(self), env.nic_eth_path(self),
                     env.nic_shm_path(self), self.sync_mode, self.start_tick,
                     self.sync_period, self.pci_latency, self.eth_latency)
 
         if extra is not None:
             cmd += ' ' + extra
+        return cmd
+
+    def basic_run_cmd(self, env, name, extra=None):
+        cmd = '%s/%s %s' % \
+            (env.repodir + '/sims/nic', name,
+             self.basic_args(env, extra))
         return cmd
 
     def full_name(self):
@@ -331,6 +337,57 @@ class I40eNIC(NICSim):
     def run_cmd(self, env):
         return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
 
+class MultiSubNIC(NICSim):
+    name = ''
+    multinic = None
+
+    def __init__(self, mn):
+        self.multinic = mn
+        super().__init__()
+
+    def full_name(self):
+        return self.multinic.full_name() + '.' + self.name
+
+    def dependencies(self):
+        return super().dependencies() + [self.multinic]
+
+    def start_delay(self):
+        return 0
+
+class I40eMultiNIC(Simulator):
+    def __init__(self):
+        self.subnics = []
+        super().__init__()
+
+    def create_subnic(self):
+        sn = MultiSubNIC(self)
+        self.subnics.append(sn)
+        return sn
+
+    def full_name(self):
+        return 'multinic.' + self.name
+
+    def run_cmd(self, env):
+        args = ''
+        first = True
+        for sn in self.subnics:
+            if not first:
+                args += ' -- '
+            first = False
+            args += sn.basic_args(env)
+        return '%s/sims/nic/i40e_bm/i40e_bm %s' % (env.repodir, args)
+
+    def sockets_cleanup(self, env):
+        ss = []
+        for sn in self.subnics:
+            ss += sn.sockets_cleanup(env)
+        return ss
+
+    def sockets_wait(self, env):
+        ss = []
+        for sn in self.subnics:
+            ss += sn.sockets_wait(env)
+        return ss
 
 
 class WireNet(NetSim):
@@ -459,6 +516,36 @@ def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
 
         host.add_nic(nic)
         e.add_nic(nic)
+        e.add_host(host)
+
+        hosts.append(host)
+
+    return hosts
+
+def create_multinic_hosts(e, num, name_prefix, net, host_class,
+        nc_class, app_class, ip_start=1, ip_prefix=24):
+    hosts = []
+
+    mn = I40eMultiNIC()
+    mn.name = name_prefix
+    e.add_nic(mn)
+
+    for i in range(0, num):
+        nic = mn.create_subnic()
+        #nic.name = '%s.%d' % (name_prefix, i)
+        nic.set_network(net)
+
+        host = host_class()
+        host.name = '%s.%d' % (name_prefix, i)
+
+        node_config = nc_class()
+        node_config.prefix = ip_prefix
+        ip = ip_start + i
+        node_config.ip = '10.0.%d.%d' % (int(ip / 256), ip % 256)
+        node_config.app = app_class()
+        host.set_config(node_config)
+
+        host.add_nic(nic)
         e.add_host(host)
 
         hosts.append(host)
