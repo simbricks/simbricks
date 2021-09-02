@@ -24,7 +24,7 @@ include mk/subdir_pre.mk
 
 lib_nicbm := $(d)libnicbm.a
 
-OBJS := $(addprefix $(d),nicbm.o)
+OBJS := $(addprefix $(d),nicbm.o multinic.o)
 
 $(lib_nicbm): $(OBJS)
 
