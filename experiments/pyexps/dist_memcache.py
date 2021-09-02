@@ -97,22 +97,22 @@ for host_type in host_types:
 
             # create servers and clients
             m = int(n_host / 2)
-            servers = sim.create_basic_hosts(e, m, 'server_%d' % (i,),
-                    switch, sim.I40eNIC, host_class, node.I40eLinuxNode,
+            servers = sim.create_multinic_hosts(e, m, 'server_%d' % (i,),
+                    switch, host_class, node.I40eLinuxNode,
                     node.MemcachedServer, ip_start = i * n_host + 1,
                     ip_prefix=16)
             for s in servers:
                 e.assign_sim_host(s, h_i)
-                e.assign_sim_host(s.nics[0], h_i)
+                e.assign_sim_host(s.nics[0].multinic, h_i)
 
-            clients = sim.create_basic_hosts(e, m, 'client_%d' % (i,),
-                    switch, sim.I40eNIC, host_class, node.I40eLinuxNode,
+            clients = sim.create_multinic_hosts(e, m, 'client_%d' % (i,),
+                    switch, host_class, node.I40eLinuxNode,
                     node.MemcachedClient, ip_start = i * n_host + 1 + m,
                     ip_prefix=16)
             for c in clients:
                 c.wait = True
                 e.assign_sim_host(c, h_i)
-                e.assign_sim_host(c.nics[0], h_i)
+                e.assign_sim_host(c.nics[0].multinic, h_i)
 
             racks.append((servers, clients))
 
