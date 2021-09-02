@@ -34,10 +34,8 @@
 
 namespace i40e {
 
-nicbm::Runner *runner;
-
 i40e_bm::i40e_bm()
-    : log("i40e"),
+    : log("i40e", runner_),
       pf_atq(*this, regs.pf_atqba, regs.pf_atqlen, regs.pf_atqh, regs.pf_atqt),
       hmc(*this),
       shram(*this),
@@ -246,7 +244,7 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr) {
         break;
 
       case I40E_GLVFGEN_TIMER:
-        val = runner->TimePs() / 1000000;
+        val = runner_->TimePs() / 1000000;
         break;
 
       case I40E_PFINT_LNKLST0:
@@ -660,12 +658,12 @@ void i40e_bm::Timed(nicbm::TimedEvent &ev) {
   iev.armed = false;
 
   if (int_msix_en_) {
-    runner->MsiXIssue(iev.vec);
+    runner_->MsiXIssue(iev.vec);
   } else if (iev.vec > 0) {
     log << "timed_event: MSI-X disabled, but vec != 0" << logger::endl;
     abort();
   } else {
-    runner->MsiIssue(0);
+    runner_->MsiIssue(0);
   }
 }
 
@@ -688,7 +686,7 @@ void i40e_bm::SignalInterrupt(uint16_t vec, uint8_t itr) {
     abort();
   }
 
-  uint64_t curtime = runner->TimePs();
+  uint64_t curtime = runner_->TimePs();
   uint64_t newtime = curtime + mindelay;
   if (iev.armed && iev.time_ <= newtime) {
     // already armed and this is not scheduled sooner
@@ -699,7 +697,7 @@ void i40e_bm::SignalInterrupt(uint16_t vec, uint8_t itr) {
     return;
   } else if (iev.armed) {
     // need to reschedule
-    runner->EventCancel(iev);
+    runner_->EventCancel(iev);
   }
 
   iev.armed = true;
@@ -710,7 +708,7 @@ void i40e_bm::SignalInterrupt(uint16_t vec, uint8_t itr) {
       << " (itr " << itr << ")" << logger::endl;
 #endif
 
-  runner->EventSchedule(iev);
+  runner_->EventSchedule(iev);
 }
 
 void i40e_bm::reset(bool indicate_done) {
@@ -729,7 +727,7 @@ void i40e_bm::reset(bool indicate_done) {
   for (uint16_t i = 0; i < NUM_PFINTS; i++) {
     intevs[i].vec = i;
     if (intevs[i].armed) {
-      runner->EventCancel(intevs[i]);
+      runner_->EventCancel(intevs[i]);
       intevs[i].armed = false;
     }
     intevs[i].time_ = 0;
@@ -755,7 +753,7 @@ void i40e_bm::reset(bool indicate_done) {
   regs.glrpb_plw = 0x0846;
 }
 
-shadow_ram::shadow_ram(i40e_bm &dev_) : dev(dev_), log("sram") {
+shadow_ram::shadow_ram(i40e_bm &dev_) : dev(dev_), log("sram", dev_.runner_) {
 }
 
 void shadow_ram::reg_updated() {
@@ -828,6 +826,6 @@ int_ev::int_ev() {
 
 int main(int argc, char *argv[]) {
   i40e::i40e_bm dev;
-  i40e::runner = new nicbm::Runner(dev);
-  return i40e::runner->RunMain(argc, argv);
+  nicbm::Runner r(dev);
+  return r.RunMain(argc, argv);
 }

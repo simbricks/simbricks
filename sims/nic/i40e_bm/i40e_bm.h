@@ -68,10 +68,11 @@ class logger : public std::ostream {
 
  protected:
   std::string label;
+  nicbm::Runner *runner;
   std::stringstream ss;
 
  public:
-  explicit logger(const std::string &label_);
+  explicit logger(const std::string &label_, nicbm::Runner *runner_);
   logger &operator<<(char c);
   logger &operator<<(int32_t c);
   logger &operator<<(uint8_t i);
@@ -203,6 +204,7 @@ class queue_base {
   logger log;
 
  protected:
+  i40e_bm &dev;
   desc_ctx *desc_ctxs[MAX_ACTIVE_DESCS];
   uint32_t active_first_pos;
   uint32_t active_first_idx;
@@ -243,7 +245,7 @@ class queue_base {
 
  public:
   queue_base(const std::string &qname_, uint32_t &reg_head_,
-             uint32_t &reg_tail_);
+             uint32_t &reg_tail_, i40e_bm &dev_);
   virtual void reset();
   void reg_updated();
   bool is_enabled();
@@ -275,7 +277,6 @@ class queue_admin_tx : public queue_base {
     virtual void process();
   };
 
-  i40e_bm &dev;
   uint64_t &reg_base;
   uint32_t &reg_len;
 

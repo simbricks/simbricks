@@ -35,10 +35,9 @@
 
 namespace i40e {
 
-extern nicbm::Runner *runner;
-
 lan::lan(i40e_bm &dev_, size_t num_qs_)
-    : dev(dev_), log("lan"), rss_kc(dev_.regs.pfqf_hkey), num_qs(num_qs_) {
+    : dev(dev_), log("lan", dev_.runner_), rss_kc(dev_.regs.pfqf_hkey),
+      num_qs(num_qs_) {
   rxqs = new lan_queue_rx *[num_qs];
   txqs = new lan_queue_tx *[num_qs];
 
@@ -141,7 +140,8 @@ lan_queue_base::lan_queue_base(lan &lanmgr_, const std::string &qtype,
                                uint32_t &reg_tail_, size_t idx_,
                                uint32_t &reg_ena_, uint32_t &fpm_basereg_,
                                uint32_t &reg_intqctl_, uint16_t ctx_size_)
-    : queue_base(qtype + std::to_string(idx_), reg_dummy_head, reg_tail_),
+    : queue_base(qtype + std::to_string(idx_), reg_dummy_head, reg_tail_,
+                 lanmgr_.dev),
       lanmgr(lanmgr_),
       enabling(false),
       idx(idx_),
@@ -432,7 +432,7 @@ void lan_queue_tx::do_writeback(uint32_t first_idx, uint32_t first_pos,
 #ifdef DEBUG_LAN
     log << " hwb=" << *((uint32_t *)dma->data_) << logger::endl;
 #endif
-    runner->IssueDma(*dma);
+    dev.runner_->IssueDma(*dma);
   }
 }
 
@@ -596,7 +596,7 @@ bool lan_queue_tx::trigger_tx_packet() {
       xsum_udp(pktbuf + udp_off, tso_len - udp_off);
     }
 
-    runner->EthSend(pktbuf, tso_len);
+    dev.runner_->EthSend(pktbuf, tso_len);
   } else {
 #ifdef DEBUG_LAN
     log << "    tso packet off=" << tso_off << " len=" << tso_len
@@ -613,7 +613,7 @@ bool lan_queue_tx::trigger_tx_packet() {
 
     xsum_tcpip_tso(pktbuf + maclen, iplen, l4len, tso_paylen);
 
-    runner->EthSend(pktbuf, tso_len);
+    dev.runner_->EthSend(pktbuf, tso_len);
 
     tso_postupdate_header(pktbuf + maclen, iplen, l4len, tso_paylen);
 

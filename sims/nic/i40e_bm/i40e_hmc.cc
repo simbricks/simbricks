@@ -33,8 +33,6 @@
 
 namespace i40e {
 
-extern nicbm::Runner *runner;
-
 host_mem_cache::host_mem_cache(i40e_bm &dev_) : dev(dev_) {
   reset();
 }
@@ -137,6 +135,6 @@ void host_mem_cache::issue_mem_op(mem_op &op) {
   std::cerr << "hmc issue_mem_op: hmc_addr=" << addr
             << " dma_addr=" << op.dma_addr_ << " len=" << op.len_ << std::endl;
 #endif
-  runner->IssueDma(op);
+  dev.runner_->IssueDma(op);
 }
 }  // namespace i40e

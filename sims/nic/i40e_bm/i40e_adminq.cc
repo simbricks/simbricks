@@ -33,13 +33,10 @@
 
 namespace i40e {
 
-extern nicbm::Runner *runner;
-
 queue_admin_tx::queue_admin_tx(i40e_bm &dev_, uint64_t &reg_base_,
                                uint32_t &reg_len_, uint32_t &reg_head_,
                                uint32_t &reg_tail_)
-    : queue_base("atx", reg_head_, reg_tail_),
-      dev(dev_),
+    : queue_base("atx", reg_head_, reg_tail_, dev_),
       reg_base(reg_base_),
       reg_len(reg_len_) {
   desc_len = 32;
@@ -226,7 +223,7 @@ void queue_admin_tx::admin_desc_ctx::process() {
         reinterpret_cast<struct i40e_aqc_mac_address_read *>(d->params.raw);
 
     struct i40e_aqc_mac_address_read_data ard;
-    uint64_t mac = runner->GetMacAddr();
+    uint64_t mac = dev.runner_->GetMacAddr();
 #ifdef DEBUG_ADMINQ
     queue.log << "    mac = " << mac << logger::endl;
 #endif

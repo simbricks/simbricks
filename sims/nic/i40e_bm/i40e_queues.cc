@@ -34,12 +34,11 @@
 
 namespace i40e {
 
-extern nicbm::Runner *runner;
-
 queue_base::queue_base(const std::string &qname_, uint32_t &reg_head_,
-                       uint32_t &reg_tail_)
+                       uint32_t &reg_tail_, i40e_bm &dev_)
     : qname(qname_),
-      log(qname_),
+      log(qname_, dev_.runner_),
+      dev(dev_),
       active_first_pos(0),
       active_first_idx(0),
       active_cnt(0),
@@ -104,7 +103,7 @@ void queue_base::trigger_fetch() {
 #ifdef DEBUG_QUEUES
   log << "    dma = " << dma << logger::endl;
 #endif
-  runner->IssueDma(*dma);
+  dev.runner_->IssueDma(*dma);
 }
 
 void queue_base::trigger_process() {
@@ -230,7 +229,7 @@ void queue_base::do_writeback(uint32_t first_idx, uint32_t first_pos,
     memcpy(buf + i * desc_len, ctx.desc, desc_len);
   }
 
-  runner->IssueDma(*dma);
+  dev.runner_->IssueDma(*dma);
 }
 
 void queue_base::writeback_done(uint32_t first_pos, uint32_t cnt) {
@@ -335,7 +334,7 @@ void queue_base::desc_ctx::data_fetch(uint64_t addr, size_t data_len) {
             << " len=" << data_len << logger::endl;
   queue.log << "  dma = " << dma << " data=" << data << logger::endl;
 #endif
-  runner->IssueDma(*dma);
+  queue.dev.runner_->IssueDma(*dma);
 }
 
 void queue_base::desc_ctx::data_fetched(uint64_t addr, size_t len) {
@@ -353,7 +352,7 @@ void queue_base::desc_ctx::data_write(uint64_t addr, size_t data_len,
   data_dma->dma_addr_ = addr;
   memcpy(data_dma->data_, buf, data_len);
 
-  runner->IssueDma(*data_dma);
+  queue.dev.runner_->IssueDma(*data_dma);
 }
 
 void queue_base::desc_ctx::data_written(uint64_t addr, size_t len) {
@@ -410,7 +409,7 @@ void queue_base::dma_data_fetch::done() {
     ctx.queue.log << "  dma_fetch: next part of multi part dma" << logger::endl;
 #endif
     len_ = std::min(total_len - part_offset, MAX_DMA_SIZE);
-    runner->IssueDma(*this);
+    ctx.queue.dev.runner_->IssueDma(*this);
     return;
   }
   ctx.data_fetched(dma_addr_ - part_offset, total_len);
