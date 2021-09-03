@@ -559,6 +559,7 @@ int Runner::RunMain(int argc, char *argv[]) {
   while (!exiting) {
     while (SimbricksNicIfSync(&nicif_, main_time)) {
       fprintf(stderr, "warn: SimbricksNicIfSync failed (t=%lu)\n", main_time);
+      YieldPoll();
     }
     SimbricksNicIfAdvanceEpoch(&nicif_, main_time);
 
