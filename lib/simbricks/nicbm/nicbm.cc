@@ -35,6 +35,7 @@
 #include <cassert>
 #include <ctime>
 #include <iostream>
+#include <vector>
 
 extern "C" {
 #include <simbricks/proto/base.h>
@@ -48,7 +49,7 @@ namespace nicbm {
 
 static volatile int exiting = 0;
 
-static uint64_t main_time = 0;
+static std::vector<Runner *> runners;
 
 #ifdef  STAT_NICBM
 static uint64_t h2d_poll_total = 0;
@@ -74,7 +75,8 @@ static void sigint_handler(int dummy) {
 }
 
 static void sigusr1_handler(int dummy) {
-  fprintf(stderr, "main_time = %lu\n", main_time);
+  for (Runner *r: runners)
+    fprintf(stderr, "[%p] main_time = %lu\n", r, r->TimePs());
 }
 
 #ifdef STAT_NICBM
@@ -86,7 +88,7 @@ static void sigusr2_handler(int dummy) {
 volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   volatile union SimbricksProtoPcieD2H *msg;
   bool first = true;
-  while ((msg = SimbricksNicIfD2HAlloc(&nicif_, main_time)) == NULL) {
+  while ((msg = SimbricksNicIfD2HAlloc(&nicif_, main_time_)) == NULL) {
     if (first) {
       fprintf(stderr, "D2HAlloc: warning waiting for entry (%zu)\n",
               nicif_.d2h_pos);
@@ -104,7 +106,7 @@ volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
 volatile union SimbricksProtoNetD2N *Runner::D2NAlloc() {
   volatile union SimbricksProtoNetD2N *msg;
   bool first = true;
-  while ((msg = SimbricksNicIfD2NAlloc(&nicif_, main_time)) == NULL) {
+  while ((msg = SimbricksNicIfD2NAlloc(&nicif_, main_time_)) == NULL) {
     if (first) {
       fprintf(stderr, "D2NAlloc: warning waiting for entry (%zu)\n",
               nicif_.d2n_pos);
@@ -339,7 +341,7 @@ void Runner::EthSend(const void *data, size_t len) {
 
 void Runner::PollH2D() {
   volatile union SimbricksProtoPcieH2D *msg =
-      SimbricksNicIfH2DPoll(&nicif_, main_time);
+      SimbricksNicIfH2DPoll(&nicif_, main_time_);
   uint8_t type;
 
 #ifdef STAT_NICBM
@@ -400,7 +402,7 @@ void Runner::PollH2D() {
 
 void Runner::PollN2D() {
   volatile union SimbricksProtoNetN2D *msg =
-      SimbricksNicIfN2DPoll(&nicif_, main_time);
+      SimbricksNicIfN2DPoll(&nicif_, main_time_);
   uint8_t t;
 
 #ifdef STAT_NICBM
@@ -444,7 +446,7 @@ void Runner::PollN2D() {
 }
 
 uint64_t Runner::TimePs() const {
-  return main_time;
+  return main_time_;
 }
 
 uint64_t Runner::GetMacAddr() const {
@@ -467,7 +469,7 @@ void Runner::EventTrigger() {
   TimedEvent *ev = *it;
 
   // event is in the future
-  if (ev->time_ > main_time)
+  if (ev->time_ > main_time_)
     return;
 
   events_.erase(it);
@@ -481,8 +483,9 @@ int Runner::NicIfInit(struct SimbricksNicIfParams &nsparams) {
   return SimbricksNicIfInit(&nicif_, &nsparams, &dintro_);
 }
 
-Runner::Runner(Device &dev) : dev_(dev), events_(EventCmp()) {
+Runner::Runner(Device &dev) : main_time_(0), dev_(dev), events_(EventCmp()) {
   // mac_addr = lrand48() & ~(3ULL << 46);
+  runners.push_back(this);
   dma_pending_ = 0;
   dev_.runner_ = this;
 
@@ -518,7 +521,7 @@ int Runner::RunMain(int argc, char *argv[]) {
   if (argc >= 5)
     sync_mode = strtol(argv[4], NULL, 0);
   if (argc >= 6)
-    main_time = strtoull(argv[5], NULL, 0);
+    main_time_ = strtoull(argv[5], NULL, 0);
   if (argc >= 7)
     sync_period = strtoull(argv[6], NULL, 0) * 1000ULL;
   if (argc >= 8)
@@ -557,11 +560,11 @@ int Runner::RunMain(int argc, char *argv[]) {
   bool is_sync = nsparams.sync_pci || nsparams.sync_eth;
 
   while (!exiting) {
-    while (SimbricksNicIfSync(&nicif_, main_time)) {
-      fprintf(stderr, "warn: SimbricksNicIfSync failed (t=%lu)\n", main_time);
+    while (SimbricksNicIfSync(&nicif_, main_time_)) {
+      fprintf(stderr, "warn: SimbricksNicIfSync failed (t=%lu)\n", main_time_);
       YieldPoll();
     }
-    SimbricksNicIfAdvanceEpoch(&nicif_, main_time);
+    SimbricksNicIfAdvanceEpoch(&nicif_, main_time_);
 
     bool first = true;
     do {
@@ -575,22 +578,22 @@ int Runner::RunMain(int argc, char *argv[]) {
 
       if (is_sync) {
         next_ts = SimbricksNicIfNextTimestamp(&nicif_);
-        if (next_ts > main_time + max_step)
-          next_ts = main_time + max_step;
+        if (next_ts > main_time_ + max_step)
+          next_ts = main_time_ + max_step;
       } else {
-        next_ts = main_time + max_step;
+        next_ts = main_time_ + max_step;
       }
 
       uint64_t ev_ts;
       if (EventNext(ev_ts) && ev_ts < next_ts)
         next_ts = ev_ts;
-    } while (next_ts <= main_time && !exiting);
-    main_time = SimbricksNicIfAdvanceTime(&nicif_, next_ts);
+    } while (next_ts <= main_time_ && !exiting);
+    main_time_ = SimbricksNicIfAdvanceTime(&nicif_, next_ts);
 
     YieldPoll();
   }
 
-  fprintf(stderr, "exit main_time: %lu\n", main_time);
+  fprintf(stderr, "exit main_time: %lu\n", main_time_);
 #ifdef STAT_NICBM
   fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
           "h2d_poll_total", h2d_poll_total, "h2d_poll_suc", h2d_poll_suc,
