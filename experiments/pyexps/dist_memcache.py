@@ -29,9 +29,11 @@ import simbricks.nodeconfig as node
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4, 8, 16, 32]
-n_hosts = [2, 10, 20, 30, 40, 50]
+n_hosts = [2, 10, 20, 30, 35, 40, 50, 60, 70, 80]
 experiments = []
 separate_net = True
+
+nets_per_host = 2
 
 def select_servers(i, j, racks, n, n_host):
     nc = int(n_host / 2)
@@ -58,7 +60,10 @@ for host_type in host_types:
     for n_host in n_hosts:
         random.seed(n + 1000 * n_host)
 
-        nh = n if not separate_net else n + 1
+        nh = math.ceil(n / nets_per_host)
+        if separate_net:
+            nh += 1
+
         e = exp.DistributedExperiment(f'dist_memcache-{host_type}-{n}-{n_host}', nh)
 
         # host
@@ -85,7 +90,10 @@ for host_type in host_types:
 
         racks = []
         for i in range(0, n):
-            h_i = i if not separate_net else i + 1
+            h_i = int(i / nets_per_host)
+            if separate_net:
+                h_i += 1
+
             switch = sim.SwitchNet()
             switch.name = 'switch_%d' % (i,)
             if host_type == 'qemu':
