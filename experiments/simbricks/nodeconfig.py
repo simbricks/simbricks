@@ -320,7 +320,7 @@ class IperfTCPClient(AppConfig):
     is_last = False
 
     def run_cmds(self, node):
-        
+
         cmds = ['sleep 1',
                 'iperf -l 32M -w 32M  -c ' + self.server_ip + ' -i 1 -P ' +
                 str(self.procs)]
@@ -338,15 +338,15 @@ class IperfUDPClient(AppConfig):
     def run_cmds(self, node):
         cmds = ['sleep 1',
                 'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate]
-        
+
         if self.is_last:
             cmds.append('sleep 0.5')
         else:
             cmds.append('sleep 10')
-        
+
         return cmds
 
-             
+
 
 class IperfUDPClientSleep(AppConfig):
     server_ip = '10.0.0.1'
@@ -367,9 +367,9 @@ class NoTraffic(AppConfig):
         else:
             if (self.is_sleep):
                 cmds.append('sleep 10')
-                
+
             else:
-                cmds.append('dd if=/dev/urandom of=/dev/null count=500000') 
+                cmds.append('dd if=/dev/urandom of=/dev/null count=500000')
 
         return cmds
 
@@ -398,7 +398,7 @@ class VRClient(AppConfig):
         for ip in self.server_ips:
             cmds.append('ping -c 1 ' + ip)
         cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
-                '-m vr -n 2000')
+                '-m vr -u 2 -h ' + node.ip)
         return cmds
 
 class NOPaxosReplica(AppConfig):
@@ -410,13 +410,17 @@ class NOPaxosReplica(AppConfig):
 class NOPaxosClient(AppConfig):
     server_ips = []
     is_last = False
+    use_ehseq = False
 
     def run_cmds(self, node):
         cmds = []
         for ip in self.server_ips:
             cmds.append('ping -c 1 ' + ip)
-        cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
-                '-m nopaxos -n 40000')
+        cmd = '/root/nopaxos/bench/client -c /root/nopaxos.config ' + \
+                '-m nopaxos -u 2 -h ' + node.ip
+        if self.use_ehseq:
+            cmd += ' -e'
+        cmds.append(cmd)
         if self.is_last:
             cmds.append('sleep 1')
         else:
@@ -425,7 +429,7 @@ class NOPaxosClient(AppConfig):
 
 class NOPaxosSequencer(AppConfig):
     def run_cmds(self, node):
-        return ['/root/nopaxos/sequencer/sequencer -c /root/sequencer.config']
+        return ['/root/nopaxos/sequencer/sequencer -c /root/nopaxos.config -m nopaxos']
 
 
 class RPCServer(AppConfig):

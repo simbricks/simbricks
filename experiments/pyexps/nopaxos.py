@@ -103,6 +103,9 @@ for proto_config in proto_configs:
                     for c in clients:
                         c.sleep = 5
                         c.node_config.app.server_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
+                        if seq_config == 'ehseq':
+                            c.node_config.app.server_ips.append('10.0.0.100')
+                            c.node_config.app.use_ehseq = True
                         c.node_config.disk_image = 'nopaxos'
                         c.nics[0].sync_period = sync_period
                         c.sync_period = sync_period

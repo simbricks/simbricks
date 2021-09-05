@@ -54,14 +54,8 @@
       "direction": "upload"
     },
     {
-      "type": "file",
-      "source": "sequencer.config",
-      "destination": "/tmp/sequencer.config",
-      "direction": "upload"
-    },
-    {
       "type": "shell",
-      "inline": ["sudo mv /tmp/nopaxos.config /root/nopaxos.config; sudo mv /tmp/sequencer.config /root/sequencer.config"]
+      "inline": ["sudo mv /tmp/nopaxos.config /root/nopaxos.config"]
     }
   ],
   "variables": {
