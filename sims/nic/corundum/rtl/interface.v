@@ -59,7 +59,7 @@ module interface #
     // Number of outstanding operations (receive completion queue)
     parameter RX_CPL_QUEUE_OP_TABLE_SIZE = 32,
     // Event queue index width
-    parameter EVENT_QUEUE_INDEX_WIDTH = 5,   /* this one is not explicitly set */
+    parameter EVENT_QUEUE_INDEX_WIDTH = 1,   /* this one is not explicitly set */
     // Transmit queue index width
     parameter TX_QUEUE_INDEX_WIDTH = 8,
     // Receive queue index width
