@@ -660,7 +660,9 @@ class EthernetRx {
 
   void packet_received(const void *data, size_t len) {
     if (fifo_lens[fifo_pos_wr] != 0) {
+#ifdef ETH_DEBUG
       std::cerr << "EthernetRx: dropping packet" << std::endl;
+#endif
       return;
     }
 
@@ -685,7 +687,9 @@ class EthernetRx {
       // we have data to send
       if (packet_off != 0 && !top.rx_axis_tready) {
         // no ready signal, can't advance
-        std::cerr << "eth rx: no ready" << std::endl;
+#ifdef ETH_DEBUG
+        std::cerr << "eth rx: no ready " << fifo_pos_rd << " " << packet_off << std::endl;
+#endif
       } else if (packet_off == fifo_lens[fifo_pos_rd]) {
         // done with packet
 #ifdef ETH_DEBUG
