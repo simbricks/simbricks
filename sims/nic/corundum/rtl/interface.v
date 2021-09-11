@@ -135,7 +135,7 @@ module interface #
     // DMA RAM pipeline stages
     parameter RAM_PIPELINE = 2,
     // Width of AXI stream interfaces in bits
-    parameter AXIS_DATA_WIDTH = 64,
+    parameter AXIS_DATA_WIDTH = 512,
     // AXI stream tkeep signal width (words per cycle)
     parameter AXIS_KEEP_WIDTH = AXIS_DATA_WIDTH/8,
     // Max transmit packet size

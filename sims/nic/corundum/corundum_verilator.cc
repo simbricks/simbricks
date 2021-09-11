@@ -622,11 +622,12 @@ class EthernetTx {
     top.tx_axis_tready = 1;
 
     if (top.tx_axis_tvalid) {
-      /* iterate over all 8 bytes */
-      for (size_t i = 0; i < 8; i++) {
-        if ((top.tx_axis_tkeep & (1 << i)) != 0) {
+      /* iterate over all bytes on the bus */
+      uint8_t *txbus = (uint8_t *) &top.tx_axis_tdata;
+      for (size_t i = 0; i < sizeof(top.tx_axis_tdata); i++) {
+        if ((top.tx_axis_tkeep & (1ULL << i)) != 0) {
           assert(packet_len < 2048);
-          packet_buf[packet_len++] = (top.tx_axis_tdata >> (i * 8));
+          packet_buf[packet_len++] = txbus[i];
         }
       }
 
@@ -705,12 +706,12 @@ class EthernetRx {
           std::cout << "rx from " << fifo_pos_rd << std::endl;
 #endif
         top.rx_axis_tkeep = 0;
-        top.rx_axis_tdata = 0;
+        uint8_t *rdata = (uint8_t *) &top.rx_axis_tdata;
         size_t i;
-        for (i = 0; i < 8 && packet_off < fifo_lens[fifo_pos_rd]; i++) {
-          top.rx_axis_tdata |= ((uint64_t)fifo_bufs[fifo_pos_rd][packet_off])
-                               << (i * 8);
-          top.rx_axis_tkeep |= (1 << i);
+        for (i = 0; i < sizeof(top.rx_axis_tdata) &&
+                    packet_off < fifo_lens[fifo_pos_rd]; i++) {
+          rdata[i] = fifo_bufs[fifo_pos_rd][packet_off];
+          top.rx_axis_tkeep |= (1ULL << i);
           packet_off++;
         }
         top.rx_axis_tvalid = 1;
