@@ -138,7 +138,8 @@ for host_type in host_types:
                 lp.add_n2n(switch_top, switch)
 
             for c in clients + servers:
-                c.nics[0].start_tick = 580000000000
+                if host_type == 'qt':
+                    c.nics[0].start_tick = 580000000000
                 c.extra_deps.append(switch_top)
 
         all_servers = []
