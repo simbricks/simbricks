@@ -77,7 +77,7 @@ for host_type in host_types:
             host_class = qemu_timing
         elif host_type == 'gem5':
             host_class = sim.Gem5Host
-            e.checkpoint = True
+            e.checkpoint = False
         else:
             raise NameError(host_type)
 
