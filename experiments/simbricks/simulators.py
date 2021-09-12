@@ -303,7 +303,9 @@ class Gem5Host(HostSim):
                 cmd += f'--simbricks-sync_mode={self.sync_mode} '
                 cmd += f'--simbricks-pci-lat={self.pci_latency} '
                 cmd += f'--simbricks-sync-int={self.sync_period} '
-            if isinstance(nic, I40eNIC):
+            if isinstance(nic, I40eNIC) or \
+                    (isinstance(nic, MultiSubNIC) and \
+                     isinstance(nic.multinic, I40eMultiNIC)):
                 cmd += '--simbricks-type=i40e '
         return cmd
 
