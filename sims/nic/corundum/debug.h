@@ -32,4 +32,6 @@
 // #define MEM_DEBUG 1
 // #define MMIO_DEBUG 1
 
+extern uint64_t main_time;
+
 #endif  // DEBUG_H_
