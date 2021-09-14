@@ -550,7 +550,8 @@ int main(int argc, char *argv[]) {
         break;
       case 'n':
         my_num = strtol(optarg, NULL, 0);
-        assert(my_num > 255);
+        fprintf(stderr, "my_num is: %d\n", my_num);
+        assert(my_num < 255);
         break;
 
       default:
