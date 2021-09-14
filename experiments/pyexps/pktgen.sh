@@ -4,13 +4,15 @@ SIMBRICKS_DIR="/DS/endhost-networking/work/sim/hejing/simbricks"
 RUN_DIR="/tmp/hejing-work/pktgen"
 NUM_HOST=$1
 ALL_PIDS=""
+PKTGEN_PIDS=""
 # -inst num
 run_pktgen(){
     echo "starting host $1"
     PKTGEN_EXE=/DS/endhost-networking/work/sim/hejing/simbricks/sims/net/pktgen/pktgen
-    $PKTGEN_EXE -m 0 -S 500 -E 500 -h $RUN_DIR/eth.$1 &
+    $PKTGEN_EXE -m 0 -S 500 -E 500 -n $1 -h $RUN_DIR/eth.$1 &
     pid=$!
     ALL_PIDS="$ALL_PIDS $pid"
+    PKTGEN_PIDS="$PKTGEN_PIDS $pid"
     return $pid
 }
 
@@ -50,6 +52,7 @@ sighandler(){
 }
 
 trap "sighandler" SIGINT
+date
 rm -rf $RUN_DIR
 mkdir -p $RUN_DIR
 r=0
@@ -61,3 +64,12 @@ done
 
 sleep 2
 run_switch $1
+SWITCH_PID=$!
+
+for p in $PKTGEN_PIDS ; do
+    wait $p
+done
+
+echo "kill switch"
+kill -9 $SWITCH_PID
+date
