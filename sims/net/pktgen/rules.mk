@@ -22,9 +22,14 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,wire))
-$(eval $(call subdir,tap))
-$(eval $(call subdir,switch))
-$(eval $(call subdir,pktgen))
+bin_pktgen := $(d)pktgen
 
+OBJS := $(d)pktgen.o
+
+$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
+
+$(bin_pktgen): $(OBJS) $(lib_netif) $(lib_nicif) -lpcap
+
+CLEAN := $(bin_pktgen) $(OBJS)
+ALL := $(bin_pktgen)
 include mk/subdir_post.mk
