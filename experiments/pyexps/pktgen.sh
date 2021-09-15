@@ -144,6 +144,67 @@ run_switch_chain(){
     return
 }
 
+
+# - number of hosts
+# - number of layers should >= 2
+run_switch_hierarchy(){
+    echo "Starting switch hierarchy"
+    SWITCH_EXE=/DS/endhost-networking/work/sim/hejing/simbricks/sims/net/switch/net_switch
+    
+    
+    layer=1
+    #leave switch
+    iface=0
+    
+    while [ $iface -lt $1 ]
+    do
+        $SWITCH_EXE -m 0 -S 500 -E 500 \
+        -h $RUN_DIR/s${layer}.$iface -s $RUN_DIR/eth.${iface}> $RUN_DIR/s${layer}.${iface}.log &
+            
+        pid=$!
+        ALL_PIDS="$ALL_PIDS $pid"
+        SWITCH_PIDS="$SWITCH_PIDS $pid"
+        ((iface++))
+    done 
+
+    ((layer++))
+    sleep 2
+    #node switch
+    while [ $layer -lt $2 ]
+    do
+        iface=0
+        layer_dec=$(($layer-1))
+        while [ $iface -lt $1 ]
+        do
+            $SWITCH_EXE -m 0 -S 500 -E 500 \
+            -s $RUN_DIR/s${layer_dec}.$iface -h  $RUN_DIR/s${layer}.$iface > $RUN_DIR/s${layer}.${iface}.log &
+            
+            pid=$!
+            ALL_PIDS="$ALL_PIDS $pid"
+            SWITCH_PIDS="$SWITCH_PIDS $pid"
+            ((iface++))
+        done
+
+        ((layer++))
+        sleep 2
+    done
+    #root switch
+    args=""
+    iface=0
+    layer_dec=$(($layer-1))
+    while [ $iface -lt $1 ]
+    do
+        args="$args -s $RUN_DIR/s${layer_dec}.$iface"
+        ((iface++))
+    done
+    $SWITCH_EXE -m 0 -S 500 -E 500 \
+    $args > $RUN_DIR/root_switch.log &
+
+    pid=$!
+    ALL_PIDS="$ALL_PIDS $pid"
+    SWITCH_PIDS="$SWITCH_PIDS $pid"
+}
+
 cleanup() {
     echo "Cleaning up"
 
@@ -175,9 +236,10 @@ done
 
 sleep 2
 #run_switch $1
-#run_switch_dumbbell $1
-run_switch_chain $1 $2
 #SWITCH_PID=$!
+#run_switch_dumbbell $1
+#run_switch_chain $1 $2
+run_switch_hierarchy $1 $2
 
 for p in $PKTGEN_PIDS ; do
     wait $p
