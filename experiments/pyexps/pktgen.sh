@@ -36,7 +36,7 @@ run_switch(){
     return $pid
 }
 
-
+# - number of hosts
 run_switch_dumbbell(){
     echo "Starting switch dumbbell"
     SWITCH_EXE=/DS/endhost-networking/work/sim/hejing/simbricks/sims/net/switch/net_switch
@@ -78,6 +78,72 @@ run_switch_dumbbell(){
     return $pid
 }
 
+# - number of hosts
+# - number of middle switch
+run_switch_chain(){
+    echo "Starting switch chain"
+    SWITCH_EXE=/DS/endhost-networking/work/sim/hejing/simbricks/sims/net/switch/net_switch
+    args_0=""
+    args_1=""
+    iface=0
+    half=$(($1/2))
+    while [ $iface -lt $half ]
+    do
+        args_0="$args_0 -s $RUN_DIR/eth.$iface"
+        #((iface+=2))
+        ((iface+=1))
+    done
+
+    #iface=1
+
+    #num_inc=$(($1+1))
+    #while [ $iface -lt $num_inc ]
+    while [ $iface -lt $1 ]
+    do
+        args_1="$args_1 -s $RUN_DIR/eth.$iface"
+        #((iface+=2))
+        ((iface+=1))
+    done
+
+    nswitch=0
+    nums_dec=$(($2-1))
+    
+    while [ $nswitch -lt $2 ]
+    do
+        pswitch=$(($nswitch-1))
+        #the first 
+        if [ $nswitch -eq 0 ]
+        then
+            $SWITCH_EXE -m 0 -S 500 -E 500 \
+            $args_0 -h $RUN_DIR/s0eth > $RUN_DIR/switch_${nswitch}.log &
+
+            pid=$!
+            ALL_PIDS="$ALL_PIDS $pid"
+            SWITCH_PIDS="$SWITCH_PIDS $pid"
+            sleep 1
+        #the last
+        elif [ $nswitch -eq $nums_dec ]      
+        then
+            $SWITCH_EXE -m 0 -S 500 -E 500 \
+            $args_1 -s $RUN_DIR/s${pswitch}eth > $RUN_DIR/switch_${nswitch}.log &
+            pid=$!
+            ALL_PIDS="$ALL_PIDS $pid"
+            SWITCH_PIDS="$SWITCH_PIDS $pid"
+        else
+            $SWITCH_EXE -m 0 -S 500 -E 500 \
+            -s $RUN_DIR/s${pswitch}eth -h $RUN_DIR/s${nswitch}eth > $RUN_DIR/switch_${nswitch}.log &
+            pid=$!
+            ALL_PIDS="$ALL_PIDS $pid"
+            SWITCH_PIDS="$SWITCH_PIDS $pid"
+            sleep 1
+        fi
+
+        ((nswitch++))
+    done
+
+    return
+}
+
 cleanup() {
     echo "Cleaning up"
 
@@ -95,7 +161,9 @@ sighandler(){
 }
 
 trap "sighandler" SIGINT
-date
+
+echo -n "start: "
+date +%s
 rm -rf $RUN_DIR
 mkdir -p $RUN_DIR
 r=0
@@ -107,7 +175,8 @@ done
 
 sleep 2
 #run_switch $1
-run_switch_dumbbell $1
+#run_switch_dumbbell $1
+run_switch_chain $1 $2
 #SWITCH_PID=$!
 
 for p in $PKTGEN_PIDS ; do
@@ -120,4 +189,5 @@ echo "Pktgen Done, kill switch"
 for p in $SWITCH_PIDS ; do
     kill -9 $p
 done
-date
+echo -n "end: "
+date +%s
