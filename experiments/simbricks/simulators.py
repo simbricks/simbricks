@@ -42,7 +42,7 @@ class HostSim(Simulator):
     name = ''
     wait = False
     sleep = 0
-    cpu_freq = '8GHz'
+    cpu_freq = '2GHz'
 
     sync_mode = 0
     sync_period = 500

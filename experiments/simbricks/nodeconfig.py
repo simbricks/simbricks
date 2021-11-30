@@ -322,7 +322,7 @@ class IperfTCPClient(AppConfig):
     def run_cmds(self, node):
         
         cmds = ['sleep 1',
-                'iperf -l 32M -w 32M  -c ' + self.server_ip + ' -i 1 -P ' +
+                'iperf -l 32M -w 32M  -c ' + self.server_ip + ' -i 1 -t 1 -P ' +
                 str(self.procs)]
         if self.is_last:
             cmds.append('sleep 0.5')
