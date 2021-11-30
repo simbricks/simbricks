@@ -37,20 +37,23 @@
 #include <unordered_map>
 #include <vector>
 
+#include <ctime>
+#include <fstream>
+#include <iterator>
+
 extern "C" {
 #include <simbricks/netif/netif.h>
 #include <simbricks/proto/base.h>
 };
 
 //#define NETSWITCH_DEBUG
-#define NETSWITCH_STAT
+//#define NETSWITCH_STAT
+#define NETSWITCH_BLOCK_LOGGING
 
 static uint64_t sync_period = (500 * 1000ULL);  // 500ns
 static uint64_t eth_latency = (500 * 1000ULL);  // 500ns
 static pcap_dumper_t *dumpfile = nullptr;
 
-#ifdef NETSWITCH_STAT
-#endif
 
 #ifdef NETSWITCH_STAT
 static uint64_t d2n_poll_total = 0;
@@ -62,6 +65,12 @@ static uint64_t s_d2n_poll_suc = 0;
 static uint64_t s_d2n_poll_sync = 0;
 
 static int stat_flag = 0;
+#endif
+
+#ifdef NETSWITCH_BLOCK_LOGGING
+static bool working_flag = false;
+// #define SYNC_IDLE
+int64_t rdtsc_cycle() { return __builtin_ia32_rdtsc(); }
 #endif
 
 /* MAC address type */
@@ -171,7 +180,8 @@ static void forward_pkt(volatile struct SimbricksProtoNetD2NSend *tx,
   }
 }
 
-static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport) {
+static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport,
+    std::vector<int64_t> *block_logging) {
   volatile union SimbricksProtoNetD2N *msg_from =
       SimbricksNetIfD2NPoll(nsif, cur_ts);
 #ifdef NETSWITCH_STAT
@@ -182,6 +192,12 @@ static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport) {
 #endif
 
   if (msg_from == NULL) {
+#ifdef NETSWITCH_BLOCK_LOGGING
+    if (working_flag) {
+      block_logging->push_back(rdtsc_cycle());
+      working_flag = false;
+    }
+#endif
     return;
   }
 
@@ -194,6 +210,12 @@ static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport) {
 
   uint8_t type = msg_from->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK;
   if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SEND) {
+#ifdef NETSWITCH_BLOCK_LOGGING
+    if (!working_flag) {
+      block_logging->push_back(rdtsc_cycle());
+      working_flag = true;
+    }
+#endif
     volatile struct SimbricksProtoNetD2NSend *tx;
     tx = &msg_from->send;
     // Get MAC addresses
@@ -216,6 +238,19 @@ static void switch_pkt(struct SimbricksNetIf *nsif, size_t iport) {
       }
     }
   } else if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SYNC) {
+#ifdef NETSWITCH_BLOCK_LOGGING
+#ifdef SYNC_IDLE
+    if (working_flag) {
+      block_logging->push_back(rdtsc_cycle());
+      working_flag = false;
+    }
+#else
+    if (!working_flag) {
+      block_logging->push_back(rdtsc_cycle());
+      working_flag = true;
+    }
+#endif
+#endif
 #ifdef NETSWITCH_STAT
     d2n_poll_sync += 1;
     if (stat_flag){
@@ -304,6 +339,7 @@ int main(int argc, char *argv[]) {
 
 
   printf("start polling\n");
+  std::vector<int64_t> block_logging = {rdtsc_cycle()};
   while (!exiting) {
     // Sync all interfaces
     for (auto &nsif : nsifs) {
@@ -321,7 +357,7 @@ int main(int argc, char *argv[]) {
       min_ts = ULLONG_MAX;
       for (size_t port = 0; port < nsifs.size(); port++) {
         auto &nsif = nsifs.at(port);
-        switch_pkt(&nsif, port);
+        switch_pkt(&nsif, port, &block_logging);
         if (nsif.sync) {
           uint64_t ts = SimbricksNetIfD2NTimestamp(&nsif);
           min_ts = ts < min_ts ? ts : min_ts;
@@ -348,6 +384,11 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "s_d2n_poll_sync",
           s_d2n_poll_sync, (double)s_d2n_poll_sync / s_d2n_poll_suc);
 #endif
+
+  std::ofstream output_file("./net_switch_block_logging.txt");
+  output_file << "CLOCKS_PER_SEC: " << CLOCKS_PER_SEC << '\n';
+  output_file << "Total clocks: " << std::clock() << '\n';
+  std::copy(block_logging.begin(), block_logging.end(), std::ostream_iterator<int64_t>(output_file, "\n"));
 
   return 0;
 }
