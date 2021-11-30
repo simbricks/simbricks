@@ -35,13 +35,18 @@
 #include <ctime>
 #include <iostream>
 
+#include <fstream>
+#include <iterator>
+#include <chrono>
+
 extern "C" {
 #include <simbricks/proto/base.h>
 }
 
 //#define DEBUG_NICBM 1
-#define STAT_NICBM 1
+// #define STAT_NICBM 1
 #define DMA_MAX_PENDING 64
+#define NICBM_BLOCK_LOGGING
 
 namespace nicbm {
 
@@ -66,6 +71,11 @@ static uint64_t s_n2d_poll_total = 0;
 static uint64_t s_n2d_poll_suc = 0;
 static uint64_t s_n2d_poll_sync = 0;
 static int stat_flag = 0;
+#endif
+
+#ifdef NICBM_BLOCK_LOGGING
+static bool working_flag_host = false;
+static bool working_flag_net = false;
 #endif
 
 static void sigint_handler(int dummy) {
@@ -316,7 +326,14 @@ void Runner::EthSend(const void *data, size_t len) {
       SIMBRICKS_PROTO_NET_D2N_MSG_SEND | SIMBRICKS_PROTO_NET_D2N_OWN_NET;
 }
 
-void Runner::PollH2D() {
+int64_t rdtsc_cycle() { return __builtin_ia32_rdtsc(); }
+
+int64_t get_time() {
+  using namespace std::chrono;
+  return duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
+}
+
+void Runner::PollH2D(std::vector<int64_t> *block_logging) {
   volatile union SimbricksProtoPcieH2D *msg =
       SimbricksNicIfH2DPoll(&nsparams_, main_time);
   uint8_t type;
@@ -326,6 +343,13 @@ void Runner::PollH2D() {
   if (stat_flag){
     s_h2d_poll_total += 1;
   }
+#endif
+
+#ifdef NICBM_BLOCK_LOGGING
+    if (working_flag_host != SimbricksNicIfH2DPollStatus()) {
+      block_logging->push_back(rdtsc_cycle());
+      working_flag_host = !working_flag_host;
+    }
 #endif
 
   if (msg == NULL)
@@ -377,7 +401,7 @@ void Runner::PollH2D() {
   SimbricksNicIfH2DNext();
 }
 
-void Runner::PollN2D() {
+void Runner::PollN2D(std::vector<int64_t> *block_logging) {
   volatile union SimbricksProtoNetN2D *msg =
       SimbricksNicIfN2DPoll(&nsparams_, main_time);
   uint8_t t;
@@ -387,6 +411,13 @@ void Runner::PollN2D() {
   if (stat_flag){
     s_n2d_poll_total += 1;
   }
+#endif
+
+#ifdef NICBM_BLOCK_LOGGING
+    if (working_flag_net != SimbricksNicIfN2DPollStatus()) {
+      block_logging->push_back(rdtsc_cycle());
+      working_flag_net = !working_flag_net;
+    }
 #endif
 
   if (msg == NULL)
@@ -520,6 +551,9 @@ int Runner::RunMain(int argc, char *argv[]) {
 
   bool is_sync = nsparams_.sync_pci || nsparams_.sync_eth;
 
+  std::vector<int64_t> host_block_logging = {rdtsc_cycle()};
+  std::vector<int64_t> net_block_logging = {rdtsc_cycle()};
+
   while (!exiting) {
     while (SimbricksNicIfSync(&nsparams_, main_time)) {
       fprintf(stderr, "warn: SimbricksNicIfSync failed (t=%lu)\n", main_time);
@@ -527,8 +561,8 @@ int Runner::RunMain(int argc, char *argv[]) {
     SimbricksNicIfAdvanceEpoch(&nsparams_, main_time);
 
     do {
-      PollH2D();
-      PollN2D();
+      PollH2D(&host_block_logging);
+      PollN2D(&net_block_logging);
       EventTrigger();
 
       if (is_sync) {
@@ -586,6 +620,20 @@ int Runner::RunMain(int argc, char *argv[]) {
       s_h2d_poll_suc + s_n2d_poll_suc, "s_recv_sync", s_h2d_poll_sync + s_n2d_poll_sync,
       (double)(s_h2d_poll_sync + s_n2d_poll_sync) / (s_h2d_poll_suc + s_n2d_poll_suc));
 #endif
+
+  std::clock_t total = std::clock();
+
+  std::string file_name = std::string(nsparams_.pci_socket_path) + std::string("_nicbm_host_block_logging.txt");
+  std::ofstream output_file(file_name);
+  output_file << "CLOCKS_PER_SEC: " << CLOCKS_PER_SEC << '\n';
+  output_file << "Total clocks: " << total << '\n';
+  std::copy(host_block_logging.begin(), host_block_logging.end(), std::ostream_iterator<int64_t>(output_file, "\n"));
+
+  file_name = std::string(nsparams_.pci_socket_path) + std::string("_nicbm_net_block_logging.txt");
+  std::ofstream output_file1(file_name);
+  output_file1 << "CLOCKS_PER_SEC: " << CLOCKS_PER_SEC << '\n';
+  output_file1 << "Total clocks: " << total << '\n';
+  std::copy(net_block_logging.begin(), net_block_logging.end(), std::ostream_iterator<int64_t>(output_file1, "\n"));
 
   SimbricksNicIfCleanup();
   return 0;

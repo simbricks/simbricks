@@ -29,6 +29,7 @@
 #include <cstring>
 #include <deque>
 #include <set>
+#include <vector>
 
 extern "C" {
 #include <simbricks/nicif/nicif.h>
@@ -133,10 +134,10 @@ class Runner {
   void H2DReadcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc);
   void H2DWritecomp(volatile struct SimbricksProtoPcieH2DWritecomp *wc);
   void H2DDevctrl(volatile struct SimbricksProtoPcieH2DDevctrl *dc);
-  void PollH2D();
+  void PollH2D(std::vector<int64_t> *block_logging);
 
   void EthRecv(volatile struct SimbricksProtoNetN2DRecv *recv);
-  void PollN2D();
+  void PollN2D(std::vector<int64_t> *block_logging);
 
   bool EventNext(uint64_t &retval);
   void EventTrigger();

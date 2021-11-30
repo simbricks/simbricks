@@ -28,6 +28,10 @@
 #include <simbricks/proto/network.h>
 #include <simbricks/proto/pcie.h>
 
+#include <stdbool.h>
+bool SimbricksNicIfH2DPollStatus();
+bool SimbricksNicIfN2DPollStatus();
+
 struct SimbricksNicIfParams {
   const char *pci_socket_path;
   const char *eth_socket_path;

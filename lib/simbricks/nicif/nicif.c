@@ -74,6 +74,12 @@ static int shm_fd = -1;
 static int pci_cfd = -1;
 static int eth_cfd = -1;
 
+static bool pci_received = false;
+static bool eth_received = false;
+
+bool SimbricksNicIfH2DPollStatus() {return pci_received;}
+bool SimbricksNicIfN2DPollStatus() {return eth_received;}
+
 static int accept_pci(struct SimbricksProtoPcieDevIntro *di, int pci_lfd,
                       int *sync_pci) {
   if ((pci_cfd = accept(pci_lfd, NULL, NULL)) < 0) {
@@ -365,8 +371,11 @@ volatile union SimbricksProtoPcieH2D *SimbricksNicIfH2DPoll(
 
   /* message not ready */
   if ((msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_OWN_MASK) !=
-      SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV)
+      SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV) {
+    pci_received = false;
     return NULL;
+  }
+  pci_received = true;
 
   /* if in sync mode, wait till message is ready */
   pci_last_rx_time = msg->dummy.timestamp;
@@ -413,8 +422,11 @@ volatile union SimbricksProtoNetN2D *SimbricksNicIfN2DPoll(
 
   /* message not ready */
   if ((msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) !=
-      SIMBRICKS_PROTO_NET_N2D_OWN_DEV)
+      SIMBRICKS_PROTO_NET_N2D_OWN_DEV) {
+    eth_received = false;
     return NULL;
+  }
+  eth_received = true;
 
   /* if in sync mode, wait till message is ready */
   eth_last_rx_time = msg->dummy.timestamp;
