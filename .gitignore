@@ -34,3 +34,8 @@ experiments/slurm
 dist/net_rdma
 trace/process
 mk/local.mk
+
+.vscode
+*.log
+*.npy
+experiments/archived_logs

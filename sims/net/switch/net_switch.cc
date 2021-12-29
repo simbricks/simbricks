@@ -37,9 +37,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include <ctime>
-#include <fstream>
-#include <iterator>
+#include <unistd.h>
+#include <simbricks/proto/npy.hpp>
 
 extern "C" {
 #include <simbricks/netif/netif.h>
@@ -339,6 +338,8 @@ int main(int argc, char *argv[]) {
 
 
   printf("start polling\n");
+  // to reduce the overhead, replace 'block_logging' with statically allocated memory and
+  // employ another thread to log data into disks
   std::vector<int64_t> block_logging = {rdtsc_cycle()};
   while (!exiting) {
     // Sync all interfaces
@@ -385,10 +386,10 @@ int main(int argc, char *argv[]) {
           s_d2n_poll_sync, (double)s_d2n_poll_sync / s_d2n_poll_suc);
 #endif
 
-  std::ofstream output_file("./net_switch_block_logging.txt");
-  output_file << "CLOCKS_PER_SEC: " << CLOCKS_PER_SEC << '\n';
-  output_file << "Total clocks: " << std::clock() << '\n';
-  std::copy(block_logging.begin(), block_logging.end(), std::ostream_iterator<int64_t>(output_file, "\n"));
+  std::string pid = std::to_string(getpid());
+  std::string file_name = std::string("net_switch_block_logging_") + pid + std::string(".npy");
+  const long unsigned npy_shape[1] = {block_logging.size()};
+  npy::SaveArrayAsNumpy(file_name, false, 1, npy_shape, block_logging);
 
   return 0;
 }

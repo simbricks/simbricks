@@ -35,9 +35,8 @@
 #include <ctime>
 #include <iostream>
 
-#include <fstream>
-#include <iterator>
-#include <chrono>
+#include <unistd.h>
+#include <simbricks/proto/npy.hpp>
 
 extern "C" {
 #include <simbricks/proto/base.h>
@@ -328,11 +327,6 @@ void Runner::EthSend(const void *data, size_t len) {
 
 int64_t rdtsc_cycle() { return __builtin_ia32_rdtsc(); }
 
-int64_t get_time() {
-  using namespace std::chrono;
-  return duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
-}
-
 void Runner::PollH2D(std::vector<int64_t> *block_logging) {
   volatile union SimbricksProtoPcieH2D *msg =
       SimbricksNicIfH2DPoll(&nsparams_, main_time);
@@ -551,6 +545,8 @@ int Runner::RunMain(int argc, char *argv[]) {
 
   bool is_sync = nsparams_.sync_pci || nsparams_.sync_eth;
 
+  // to reduce the overhead, replace '*_block_logging' with statically allocated memory and
+  // employ another thread to log data into disks
   std::vector<int64_t> host_block_logging = {rdtsc_cycle()};
   std::vector<int64_t> net_block_logging = {rdtsc_cycle()};
 
@@ -621,19 +617,15 @@ int Runner::RunMain(int argc, char *argv[]) {
       (double)(s_h2d_poll_sync + s_n2d_poll_sync) / (s_h2d_poll_suc + s_n2d_poll_suc));
 #endif
 
-  std::clock_t total = std::clock();
+  std::string pid = std::to_string(getpid());
+  std::string file_name = std::string(nsparams_.pci_socket_path) + pid + std::string("_nicbm_host_block_logging.npy");
+  long unsigned npy_shape[1] = {host_block_logging.size()};
+  npy::SaveArrayAsNumpy(file_name, false, 1, npy_shape, host_block_logging);
 
-  std::string file_name = std::string(nsparams_.pci_socket_path) + std::string("_nicbm_host_block_logging.txt");
-  std::ofstream output_file(file_name);
-  output_file << "CLOCKS_PER_SEC: " << CLOCKS_PER_SEC << '\n';
-  output_file << "Total clocks: " << total << '\n';
-  std::copy(host_block_logging.begin(), host_block_logging.end(), std::ostream_iterator<int64_t>(output_file, "\n"));
-
-  file_name = std::string(nsparams_.pci_socket_path) + std::string("_nicbm_net_block_logging.txt");
+  file_name = std::string(nsparams_.pci_socket_path) + pid + std::string("_nicbm_net_block_logging.npy");
+  npy_shape[0] = net_block_logging.size();
   std::ofstream output_file1(file_name);
-  output_file1 << "CLOCKS_PER_SEC: " << CLOCKS_PER_SEC << '\n';
-  output_file1 << "Total clocks: " << total << '\n';
-  std::copy(net_block_logging.begin(), net_block_logging.end(), std::ostream_iterator<int64_t>(output_file1, "\n"));
+  npy::SaveArrayAsNumpy(file_name, false, 1, npy_shape, net_block_logging);
 
   SimbricksNicIfCleanup();
   return 0;
