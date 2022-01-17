@@ -444,7 +444,7 @@ class TofinoNet(NetSim):
     def run_cmd(self, env):
         cmd = env.repodir + '/sims/tofino/tofino'
         cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency}'
-        for (_,n) in self.connect_sockets():
+        for (_,n) in self.connect_sockets(env):
             cmd += ' -s ' + n
         return cmd
 
@@ -454,7 +454,7 @@ class NS3DumbbellNet(NetSim):
 
     def run_cmd(self, env):
         ports = ''
-        for (n,s) in self.connect_sockets():
+        for (n,s) in self.connect_sockets(env):
             if 'server' in n.name:
                 ports += '--CosimPortLeft=' + s + ' '
             else:
@@ -471,7 +471,7 @@ class NS3BridgeNet(NetSim):
 
     def run_cmd(self, env):
         ports = ''
-        for (_,n) in self.connect_sockets():
+        for (_,n) in self.connect_sockets(env):
             ports += '--CosimPort=' + n + ' '
 
         cmd = env.repodir + '/sims/external/ns-3' + '/cosim-run.sh cosim cosim-bridge-example ' + ports + ' ' + self.opt
@@ -485,7 +485,7 @@ class NS3SequencerNet(NetSim):
 
     def run_cmd(self, env):
         ports = ''
-        for (n,s) in self.connect_sockets():
+        for (n,s) in self.connect_sockets(env):
             if 'client' in n.name:
                 ports += '--ClientPort=' + s + ' '
             elif 'replica' in n.name:
