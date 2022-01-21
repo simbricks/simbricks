@@ -25,7 +25,7 @@ include mk/subdir_pre.mk
 QEMU_IMG := $(d)qemu/build/qemu-img
 QEMU := $(d)qemu/build/qemu-system-x86_64
 
-external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready
+external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready
 .PHONY: external
 
 $(d)gem5:
@@ -65,5 +65,13 @@ $(d)ns-3/ready: $(d)ns-3 $(lib_netif)
 	+cd $< && COSIM_PATH=$(abspath $(base_dir)) ./cosim-build.sh configure
 	touch $@
 
-DISTCLEAN := $(base_dir)gem5 $(base_dir)qemu $(base_dir)ns-3
+$(d)femu:
+	git clone git@github.com:simbricks/femu.git $@
+
+$(d)femu/ready: $(d)femu $(lib_nicif)
+	cd $< && make EXTRA_LDFLAGS=-L$(abspath $(lib_dir))/simbricks/nicif/ \
+	    EXTRA_CPPFLAGS=-I$(abspath $(lib_dir))
+	touch $@
+
+DISTCLEAN := $(base_dir)gem5 $(base_dir)qemu $(base_dir)ns-3 $(base_dir)femu
 include mk/subdir_post.mk
