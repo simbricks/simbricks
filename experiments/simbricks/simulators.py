@@ -326,6 +326,8 @@ class Gem5Host(HostSim):
                     (isinstance(dev, MultiSubNIC) and \
                      isinstance(dev.multinic, I40eMultiNIC)):
                 cmd += '--simbricks-type=i40e '
+            elif isinstance(dev, FEMUDev):
+                cmd += '--simbricks-type=femu '
         return cmd
 
 

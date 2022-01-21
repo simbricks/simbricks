@@ -24,26 +24,32 @@ import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
 
+experiments = []
 
-e = exp.Experiment('femutest')
-e.checkpoint = False
+for h in ['qk', 'gk']:
+    e = exp.Experiment('femutest-' + h)
+    e.checkpoint = False
 
-host = sim.QemuHost()
-host.name = 'host.0'
-node_config = node.LinuxFEMUNode()
-node_config.app = node.NVMEFsTest()
-node_config.cores = 1
+    if h == 'gk':
+        host = sim.Gem5Host()
+        host.cpu_type = 'X86KvmCPU'
+    elif h == 'qk':
+        host = sim.QemuHost()
+    host.name = 'host.0'
+    node_config = node.LinuxFEMUNode()
+    node_config.app = node.NVMEFsTest()
+    node_config.cores = 1
 
-node_config.app.is_sleep = 1
-host.set_config(node_config)
-e.add_host(host)
-host.wait = True
+    node_config.app.is_sleep = 1
+    host.set_config(node_config)
+    e.add_host(host)
+    host.wait = True
 
 
-femu = sim.FEMUDev()
-femu.name = 'femu0'
-e.add_pcidev(femu)
+    femu = sim.FEMUDev()
+    femu.name = 'femu0'
+    e.add_pcidev(femu)
 
-host.add_pcidev(femu)
+    host.add_pcidev(femu)
 
-experiments = [e]
+    experiments.append(e)
