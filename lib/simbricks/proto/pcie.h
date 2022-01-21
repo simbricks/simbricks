@@ -90,6 +90,8 @@ struct SimbricksProtoPcieDevIntro {
   uint8_t pci_subclass;
   /* PCI revision */
   uint8_t pci_revision;
+  /* PCI prog if */
+  uint8_t pci_progif;
 
   /* PCI number of MSI vectors */
   uint8_t pci_msi_nvecs;
