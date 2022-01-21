@@ -517,6 +517,17 @@ class NS3SequencerNet(NetSim):
         return cmd
 
 
+class FEMUDev(PCIDevSim):
+    def __init__(self):
+        super().__init__()
+
+    def run_cmd(self, env):
+        cmd = '%s%s %s %s' % \
+            (env.repodir, '/sims/external/femu/femu-simbricks',
+             env.dev_pci_path(self), env.dev_shm_path(self))
+        return cmd
+
+
 def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
         nc_class, app_class, ip_start=1, ip_prefix=24):
     hosts = []

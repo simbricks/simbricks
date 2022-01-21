@@ -281,6 +281,27 @@ class CorundumDCTCPNode(NodeConfig):
             f'ip addr add {self.ip}/{self.prefix} dev eth0',
         ]
 
+
+class LinuxFEMUNode(NodeConfig):
+    def __init__(self):
+        self.drivers = ['nvme']
+
+    def prepare_post_cp(self):
+        l = ['lspci -vvvv']
+        for d in self.drivers:
+            if d[0] == '/':
+                l.append('insmod ' + d)
+            else:
+                l.append('modprobe ' + d)
+        return super().prepare_post_cp() + l
+
+class NVMEFsTest(AppConfig):
+    def run_cmds(self, node):
+        return ['mount -t proc proc /proc',
+                'mkfs.ext3 /dev/nvme0n1',
+                'mount /dev/nvme0n1 /mnt',
+                'dd if=/dev/urandom of=/mnt/foo bs=1024 count=1024']
+
 class DctcpServer(AppConfig):
     def run_cmds(self, node):
         return ['iperf -s -w 1M -Z dctcp']
