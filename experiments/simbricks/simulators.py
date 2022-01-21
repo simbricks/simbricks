@@ -70,37 +70,56 @@ class HostSim(Simulator):
     pci_latency = 500
 
     def __init__(self):
-        self.nics = []
+        self.pcidevs = []
         super().__init__()
 
     def full_name(self):
         return 'host.' + self.name
 
-    def add_nic(self, nic):
-        nic.name = self.name + '.' + nic.name
-        self.nics.append(nic)
+    def add_nic(self, dev):
+        self.add_pcidev(dev)
+
+    def add_pcidev(self, dev):
+        dev.name = self.name + '.' + dev.name
+        self.pcidevs.append(dev)
 
     def set_config(self, nc):
         self.node_config = nc
 
     def dependencies(self):
         deps = []
-        for nic in self.nics:
-            deps.append(nic)
-            deps.append(nic.network)
+        for dev in self.pcidevs:
+            deps.append(dev)
+            if isinstance(dev, NICSim):
+                deps.append(dev.network)
         return deps
 
     def wait_terminate(self):
         return self.wait
 
-class NICSim(Simulator):
-    network = None
-    name = ''
 
+class PCIDevSim(Simulator):
+    name = ''
     sync_mode = 0
     start_tick = 0
     sync_period = 500
     pci_latency = 500
+
+    def __init__(self):
+        super().__init__()
+
+    def full_name(self):
+        return 'dev.' + self.name
+
+    def sockets_cleanup(self, env):
+        return [env.dev_pci_path(self), env.dev_shm_path(self)]
+
+    def sockets_wait(self, env):
+        return [env.dev_pci_path(self)]
+
+
+class NICSim(PCIDevSim):
+    network = None
     eth_latency = 500
 
     def __init__(self):
@@ -112,8 +131,8 @@ class NICSim(Simulator):
 
     def basic_args(self, env, extra=None):
         cmd = '%s %s %s %d %d %d %d %d' % \
-            (env.nic_pci_path(self), env.nic_eth_path(self),
-                    env.nic_shm_path(self), self.sync_mode, self.start_tick,
+            (env.dev_pci_path(self), env.nic_eth_path(self),
+                    env.dev_shm_path(self), self.sync_mode, self.start_tick,
                     self.sync_period, self.pci_latency, self.eth_latency)
 
         if extra is not None:
@@ -130,11 +149,10 @@ class NICSim(Simulator):
         return 'nic.' + self.name
 
     def sockets_cleanup(self, env):
-        return [env.nic_pci_path(self), env.nic_eth_path(self),
-                    env.nic_shm_path(self)]
+        return super().sockets_cleanup(env) + [env.nic_eth_path(self)]
 
     def sockets_wait(self, env):
-        return [env.nic_pci_path(self), env.nic_eth_path(self)]
+        return super().sockets_wait(env) + [env.nic_eth_path(self)]
 
 class NetSim(Simulator):
     name = ''
@@ -229,11 +247,11 @@ class QemuHost(HostSim):
         else:
             cmd += ' -cpu host -enable-kvm '
 
-        if len(self.nics) > 0:
-            assert len(self.nics) == 1
-            cmd += f'-chardev socket,path={env.nic_pci_path(self.nics[0])},'
-            cmd += 'id=simbrickscd '
-            cmd += f'-device simbricks-pci,chardev=simbrickscd'
+        di = 0
+        for dev in self.pcidevs:
+            cmd += f'-chardev socket,path={env.dev_pci_path(dev)},'
+            cmd += f'id=simbrickscd{di} '
+            cmd += f'-device simbricks-pci,chardev=simbrickscd{di}'
             if self.sync:
                 cmd += ',sync=on'
                 cmd += f',sync-mode={self.sync_mode}'
@@ -242,6 +260,7 @@ class QemuHost(HostSim):
             else:
                 cmd += ',sync=off'
             cmd += ' '
+            di += 1
 
         return cmd
 
@@ -293,19 +312,19 @@ class Gem5Host(HostSim):
         if env.restore_cp:
             cmd += '-r 1 '
 
-        if len(self.nics) > 0:
-            assert len(self.nics) == 1
-            nic = self.nics[0]
-            cmd += f'--simbricks-pci={env.nic_pci_path(nic)} '
-            cmd += f'--simbricks-shm={env.nic_shm_path(nic)} '
+        if len(self.pcidevs) > 0:
+            assert len(self.pcidevs) == 1 # our gem5 python script supports only 1
+            dev = self.pcidevs[0]
+            cmd += f'--simbricks-pci={env.dev_pci_path(dev)} '
+            cmd += f'--simbricks-shm={env.dev_shm_path(dev)} '
             if cpu_type == 'TimingSimpleCPU':
                 cmd +=  '--simbricks-sync '
                 cmd += f'--simbricks-sync_mode={self.sync_mode} '
                 cmd += f'--simbricks-pci-lat={self.pci_latency} '
                 cmd += f'--simbricks-sync-int={self.sync_period} '
-            if isinstance(nic, I40eNIC) or \
-                    (isinstance(nic, MultiSubNIC) and \
-                     isinstance(nic.multinic, I40eMultiNIC)):
+            if isinstance(dev, I40eNIC) or \
+                    (isinstance(dev, MultiSubNIC) and \
+                     isinstance(dev.multinic, I40eMultiNIC)):
                 cmd += '--simbricks-type=i40e '
         return cmd
 

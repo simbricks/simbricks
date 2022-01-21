@@ -41,7 +41,7 @@ class Experiment(object):
     def __init__(self, name):
         self.name = name
         self.hosts = []
-        self.nics = []
+        self.pcidevs = []
         self.networks = []
         self.metadata = {}
 
@@ -52,10 +52,13 @@ class Experiment(object):
         self.hosts.append(sim)
 
     def add_nic(self, sim):
-        for n in self.nics:
-            if n.name == sim.name:
-                raise Exception('Duplicate nic name')
-        self.nics.append(sim)
+        self.add_pcidev(sim)
+
+    def add_pcidev(self, sim):
+        for d in self.pcidevs:
+            if d.name == sim.name:
+                raise Exception('Duplicate pcidev name')
+        self.pcidevs.append(sim)
 
     def add_network(self, sim):
         for n in self.networks:
@@ -65,7 +68,7 @@ class Experiment(object):
 
     def all_simulators(self):
         """ All simulators used in experiment. """
-        return itertools.chain(self.hosts, self.nics, self.networks)
+        return itertools.chain(self.hosts, self.pcidevs, self.networks)
 
     def resreq_mem(self):
         mem = 0
@@ -339,14 +342,14 @@ class ExpEnv(object):
     def cfgtar_path(self, sim):
         return '%s/cfg.%s.tar' % (self.workdir, sim.name)
 
-    def nic_pci_path(self, sim):
-        return '%s/nic.pci.%s' % (self.workdir, sim.name)
+    def dev_pci_path(self, sim):
+        return '%s/dev.pci.%s' % (self.workdir, sim.name)
 
     def nic_eth_path(self, sim):
         return '%s/nic.eth.%s' % (self.workdir, sim.name)
 
-    def nic_shm_path(self, sim):
-        return '%s/nic.shm.%s' % (self.shm_base, sim.name)
+    def dev_shm_path(self, sim):
+        return '%s/dev.shm.%s' % (self.shm_base, sim.name)
 
     def n2n_eth_path(self, sim_l, sim_c):
         return '%s/n2n.eth.%s.%s' % (self.workdir, sim_l.name, sim_c.name)
