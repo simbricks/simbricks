@@ -52,6 +52,7 @@ for proto_config in proto_configs:
                     # host
                     if host_config == 'qemu':
                         host_class = sim.QemuHost
+                        net.sync = False
                     elif host_config == 'gt':
                         host_class = sim.Gem5Host
                         e.checkpoint = True

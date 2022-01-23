@@ -396,7 +396,7 @@ class VRClient(AppConfig):
     def run_cmds(self, node):
         cmds = []
         for ip in self.server_ips:
-            cmds.append('ping -c 1 ' + ip)
+            cmds.append('ping -c 5 ' + ip)
         cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
                 '-m vr -u 2 -h ' + node.ip)
         return cmds
@@ -415,7 +415,7 @@ class NOPaxosClient(AppConfig):
     def run_cmds(self, node):
         cmds = []
         for ip in self.server_ips:
-            cmds.append('ping -c 1 ' + ip)
+            cmds.append('ping -c 5 ' + ip)
         cmd = '/root/nopaxos/bench/client -c /root/nopaxos.config ' + \
                 '-m nopaxos -u 2 -h ' + node.ip
         if self.use_ehseq:
