@@ -459,12 +459,17 @@ class SwitchNet(NetSim):
         return cleanup
 
 class TofinoNet(NetSim):
+    tofino_log_path = '/tmp/model.ldjson'
+    sync = True
+
     def __init__(self):
         super().__init__()
 
     def run_cmd(self, env):
         cmd = env.repodir + '/sims/tofino/tofino'
-        cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency}'
+        cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency} -t {self.tofino_log_path}'
+        if not self.sync:
+            cmd += ' -u'
         for (_,n) in self.connect_sockets(env):
             cmd += ' -s ' + n
         return cmd

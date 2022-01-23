@@ -9,6 +9,6 @@ make install
 ldconfig
 
 mkdir -p /root
-git clone https://github.com/UWSysLab/NOPaxos.git /root/nopaxos
+git clone https://github.com/nicklijl/simbricks-nopaxos.git /root/nopaxos
 cd /root/nopaxos
 make -j4

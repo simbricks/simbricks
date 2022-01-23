@@ -25,7 +25,7 @@ import simbricks.simulators as sim
 import simbricks.nodeconfig as node
 
 host_configs = ['qemu', 'gt']
-seq_configs = ['swseq', 'ehseq']
+seq_configs = ['swseq', 'ehseq', 'tofino']
 nic_configs = ['ib', 'cb', 'cv']
 proto_configs = ['vr', 'nopaxos']
 num_client_configs = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12]
@@ -41,7 +41,10 @@ for proto_config in proto_configs:
             for seq_config in seq_configs:
                 for nic_config in nic_configs:
                     e = exp.Experiment(proto_config + '-'  + host_config + '-' + nic_config + '-' + seq_config + f'-{num_c}')
-                    net = sim.NS3SequencerNet()
+                    if seq_config == 'tofino':
+                        net = sim.TofinoNet()
+                    else:
+                        net = sim.NS3SequencerNet()
                     net.sync_period = sync_period
                     net.opt = link_rate_opt + link_latency_opt
                     e.add_network(net)
@@ -49,6 +52,7 @@ for proto_config in proto_configs:
                     # host
                     if host_config == 'qemu':
                         host_class = sim.QemuHost
+                        net.sync = False
                     elif host_config == 'gt':
                         host_class = sim.Gem5Host
                         e.checkpoint = True
@@ -103,6 +107,9 @@ for proto_config in proto_configs:
                     for c in clients:
                         c.sleep = 5
                         c.node_config.app.server_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
+                        if seq_config == 'ehseq':
+                            c.node_config.app.server_ips.append('10.0.0.100')
+                            c.node_config.app.use_ehseq = True
                         c.node_config.disk_image = 'nopaxos'
                         c.nics[0].sync_period = sync_period
                         c.sync_period = sync_period
