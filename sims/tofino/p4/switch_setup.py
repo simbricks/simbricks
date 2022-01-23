@@ -414,36 +414,10 @@ class l2_switch():
 
         return (dmac_entry, smac_entry)
 
-    def l2_add(self, vid, mac_addr, port,
-               static=False, pending=False, ttl=None,
-               dst_drop=False, src_drop=False):
-
-        # mac_addr = mac(mac_addr)
-
-        # Program DMAC
-        if pending:
-            self.p4.Ingress.dmac.entry_with_dmac_miss(
-                vid=vid, dst_addr=mac_addr).push()
-        elif dst_drop:
-            self.p4.Ingress.dmac.entry_with_dmac_drop(
-                vid=vid, dst_addr=mac_addr).push()
-        else:
-            self.p4.Ingress.dmac.entry_with_dmac_unicast(
-                vid=vid, dst_addr=mac_addr, port=port).push()
-
-        # Program SMAC
-        if src_drop:
-            self.p4.Ingress.smac.entry_with_smac_drop(
-                vid=vid, src_addr=mac_addr).push()
-        else:
-            if static:
-                ttl = 0
-            elif ttl == None:
-                ttl = self.l2_age_ttl
-
-                self.p4.Ingress.smac.entry_with_smac_hit(
-                    vid=vid, src_addr=mac_addr, is_static=static,
-                    ENTRY_TTL=ttl).push()
+    def l2_add_smac_drop(self, vid, mac_addr):
+        mac_addr = mac(mac_addr)
+        self.p4.Ingress.smac.entry_with_smac_drop(
+            vid=vid, src_addr=mac_addr).push()
 
     def l2_del(self, vid, mac_addr):
         mac_addr = mac(mac_addr)
@@ -496,7 +470,7 @@ class l2_switch():
 
                 if smac_entry.data[b'is_static']:
                     static = "Y"
-            elif smac_entry.action.name.endswith("smac_drop"):
+            elif smac_entry.action.endswith("smac_drop"):
                 src_drop = "Y"
 
         if dmac_entry or smac_entry:
@@ -563,6 +537,7 @@ sl2.port_vlan_default_set(0, 1)
 sl2.port_vlan_default_set(1, 1)
 sl2.port_vlan_default_set(2, 1)
 sl2.port_vlan_default_set(3, 1)
+sl2.l2_add_smac_drop(1, "00:00:00:00:00:00")
 bfrt.complete_operations()
 
 sl2.vlan_show()

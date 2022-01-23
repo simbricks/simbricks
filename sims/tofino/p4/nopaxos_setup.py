@@ -193,6 +193,11 @@ class l2_switch():
                                          port=port).push()
         return 0
 
+    def l2_add_smac_drop(self, vid, mac_addr):
+        mac_addr = mac(mac_addr)
+        self.p4.Ingress.smac.entry_with_smac_drop(
+            src_addr=mac_addr).push()
+
 def set_mcast(num_groups=1, num_sequencers=1):
     all_ports = [p for p in range(8)]
     mcast_ports = [0, 1, 2]
@@ -213,6 +218,7 @@ def set_mcast(num_groups=1, num_sequencers=1):
 ### Setup L2 learning
 sl2 = l2_switch(default_ttl=10000)
 sl2.setup()
+sl2.l2_add_smac_drop(1, "00:00:00:00:00:00")
 bfrt.complete_operations()
 
 p4 = bfrt.nopaxos.pipe
