@@ -307,8 +307,8 @@ class Gem5Host(HostSim):
             cmd += '--no-simbricks '
 
         if env.create_cp:
-            cmd += '--max-checkpoints=1 '
-
+            #cmd += '--max-checkpoints=1 '
+            pass
         if env.restore_cp:
             cmd += '-r 1 '
 
@@ -519,7 +519,7 @@ class NS3SequencerNet(NetSim):
         return cmd
 
 # fix temparal path
-class NS3BridgeNet(NetSim):
+class OmnetSwitch(NetSim):
     def __init__(self):
         super().__init__()
 
@@ -528,7 +528,7 @@ class NS3BridgeNet(NetSim):
         #for (_,n) in self.connect_sockets(env):
         #    ports += '--CosimPort=' + n + ' '
 
-        cmd = 'opp_run -u Cmdenv -m -n /OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/src:/OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/examples/:/OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/tutorials/:/OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/showcases/ --image-path=/OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/images -l /OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/src/INET -f /OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/examples/ethernet/simbricks/omnetpp.ini'
+        cmd = 'opp_run -u Cmdenv -m -n /OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/src:/OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/examples/:/OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/tutorials/:/OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/showcases/ --image-path=/OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/images --cmdenv-express-mode=false -l /OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/src/INET -f /OS/endhost-networking/work/sim/hejing/omnetpp-5.7/samples/inet4/examples/ethernet/simbricks/omnetpp.ini'
         print(cmd)
 
         return cmd
