@@ -161,6 +161,7 @@ class Runner {
   void IssueDma(DMAOp &op);
   void MsiIssue(uint8_t vec);
   void MsiXIssue(uint8_t vec);
+  void IntXIssue(bool level);
   void EthSend(const void *data, size_t len);
 
   void EventSchedule(TimedEvent &evt);
