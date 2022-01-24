@@ -22,9 +22,13 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,corundum))
-$(eval $(call subdir,corundum_bm))
-$(eval $(call subdir,e1000_gem5))
-$(eval $(call subdir,i40e_bm))
+bin_e1000_gem5 := $(d)e1000_gem5
 
+OBJS := $(addprefix $(d),e1000_gem5.o i8254xGBe.o gem5/bitfield.o gem5/inet.o \
+	gem5/pktfifo.o)
+
+$(bin_e1000_gem5): $(OBJS) $(lib_nicbm) $(lib_nicif)
+
+CLEAN := $(bin_e1000_gem5) $(OBJS)
+ALL := $(bin_e1000_gem5)
 include mk/subdir_post.mk
