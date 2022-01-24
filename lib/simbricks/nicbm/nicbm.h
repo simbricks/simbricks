@@ -122,7 +122,7 @@ class Runner {
 
   uint64_t main_time_;
   Device &dev_;
-  std::set<TimedEvent *, EventCmp> events_;
+  std::multiset<TimedEvent *, EventCmp> events_;
   std::deque<DMAOp *> dma_queue_;
   size_t dma_pending_;
   uint64_t mac_addr_;
