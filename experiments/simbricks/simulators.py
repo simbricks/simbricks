@@ -360,6 +360,14 @@ class I40eNIC(NICSim):
     def run_cmd(self, env):
         return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
 
+class E1000NIC(NICSim):
+    def __init__(self):
+        super().__init__()
+
+    def run_cmd(self, env):
+        #return 'valgrind -v -v -v ' + self.basic_run_cmd(env, '/e1000_gem5/e1000_gem5')
+        return self.basic_run_cmd(env, '/e1000_gem5/e1000_gem5')
+
 class MultiSubNIC(NICSim):
     name = ''
     multinic = None

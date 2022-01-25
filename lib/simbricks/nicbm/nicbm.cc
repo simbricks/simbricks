@@ -233,6 +233,21 @@ void Runner::MsiXIssue(uint8_t vec) {
                    SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
 }
 
+void Runner::IntXIssue(bool level) {
+  volatile union SimbricksProtoPcieD2H *msg = D2HAlloc();
+#ifdef DEBUG_NICBM
+  printf("nicbm: set intx interrupt %u\n", level);
+#endif
+  volatile struct SimbricksProtoPcieD2HInterrupt *intr = &msg->interrupt;
+  intr->vector = 0;
+  intr->inttype = (level ? SIMBRICKS_PROTO_PCIE_INT_LEGACY_HI
+                         : SIMBRICKS_PROTO_PCIE_INT_LEGACY_LO);
+
+  // WMB();
+  intr->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
+                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+}
+
 void Runner::EventSchedule(TimedEvent &evt) {
   events_.insert(&evt);
 }

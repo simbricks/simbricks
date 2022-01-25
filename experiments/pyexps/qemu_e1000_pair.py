@@ -20,11 +20,24 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-include mk/subdir_pre.mk
+import simbricks.experiments as exp
+import simbricks.simulators as sim
+import simbricks.nodeconfig as node
 
-$(eval $(call subdir,corundum))
-$(eval $(call subdir,corundum_bm))
-$(eval $(call subdir,e1000_gem5))
-$(eval $(call subdir,i40e_bm))
 
-include mk/subdir_post.mk
+e = exp.Experiment('qemu-e1000-pair')
+net = sim.SwitchNet()
+e.add_network(net)
+
+servers = sim.create_basic_hosts(e, 1, 'server', net, sim.E1000NIC, sim.QemuHost,
+        node.E1000LinuxNode, node.IperfTCPServer)
+
+clients = sim.create_basic_hosts(e, 1, 'client', net, sim.E1000NIC, sim.QemuHost,
+        node.E1000LinuxNode, node.IperfTCPClient, ip_start = 2)
+
+for c in clients:
+    c.wait = True
+    c.node_config.app.server_ip = servers[0].node_config.ip
+
+experiments = [e]
+

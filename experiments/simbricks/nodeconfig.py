@@ -146,6 +146,10 @@ class CorundumLinuxNode(LinuxNode):
         m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
         return {**m, **super().config_files()}
 
+class E1000LinuxNode(LinuxNode):
+    def __init__(self):
+        super().__init__()
+        self.drivers.append('e1000')
 
 
 class MtcpNode(NodeConfig):
