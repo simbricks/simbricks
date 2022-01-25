@@ -141,11 +141,11 @@ class l2_switch():
         self.p4.Ingress.smac.idle_table_set_notify(enable=False,
                                                    callback=None)
 
-        self.p4.Ingress.smac.idle_table_set_notify(enable=True,
-                                                   callback=self.aging_cb,
-                                                   interval = 10000,
-                                                   min_ttl  = 10000,
-                                                   max_ttl  = 60000)
+        #self.p4.Ingress.smac.idle_table_set_notify(enable=True,
+        #                                           callback=self.aging_cb,
+        #                                           interval = 10000,
+        #                                           min_ttl  = 10000,
+        #                                           max_ttl  = 60000)
         print("Done")
 
     @staticmethod
