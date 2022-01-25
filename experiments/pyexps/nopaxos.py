@@ -24,7 +24,7 @@ import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
 
-host_configs = ['qemu', 'gt']
+host_configs = ['qemu', 'gt', 'qt']
 seq_configs = ['swseq', 'ehseq', 'tofino']
 nic_configs = ['ib', 'cb', 'cv']
 proto_configs = ['vr', 'nopaxos']
@@ -56,6 +56,12 @@ for proto_config in proto_configs:
                     elif host_config == 'gt':
                         host_class = sim.Gem5Host
                         e.checkpoint = True
+                    elif host_config == 'qt':
+                        def qemu_timing():
+                            h = sim.QemuHost()
+                            h.sync = True
+                            return h
+                        host_class = qemu_timing
                     else:
                         raise NameError(host_config)
 
@@ -89,7 +95,7 @@ for proto_config in proto_configs:
                                 host_class, nc_class, node.NOPaxosSequencer, ip_start = 100)
                         sequencer[0].sleep = 1
                         sequencer[0].node_config.disk_image = 'nopaxos'
-                        sequencer[0].nics[0].sync_period = sync_period
+                        sequencer[0].pcidevs[0].sync_period = sync_period
                         sequencer[0].sync_period = sync_period
 
                     replicas = sim.create_basic_hosts(e, 3, 'replica', net, nic_class,
@@ -98,7 +104,7 @@ for proto_config in proto_configs:
                         replicas[i].node_config.app.index = i
                         replicas[i].sleep = 1
                         replicas[i].node_config.disk_image = 'nopaxos'
-                        replicas[i].nics[0].sync_period = sync_period
+                        replicas[i].pcidevs[0].sync_period = sync_period
                         replicas[i].sync_period = sync_period
 
                     clients = sim.create_basic_hosts(e, num_c, 'client', net, nic_class,
@@ -111,7 +117,7 @@ for proto_config in proto_configs:
                             c.node_config.app.server_ips.append('10.0.0.100')
                             c.node_config.app.use_ehseq = True
                         c.node_config.disk_image = 'nopaxos'
-                        c.nics[0].sync_period = sync_period
+                        c.pcidevs[0].sync_period = sync_period
                         c.sync_period = sync_period
 
                     clients[num_c - 1].wait = True
