@@ -24,9 +24,9 @@ import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
 
-host_types = ['qemu', 'gem5', 'qt']
-nic_types = ['i40e', 'cd_bm', 'cd_verilator']
-net_types = ['switch', 'ns3']
+host_types = ['qemu', 'gt', 'qt']
+nic_types = ['ib', 'cd_bm', 'cd_verilator']
+net_types = ['switch', 'ns3', 'omn']
 experiments = []
 
 for host_type in host_types:
@@ -39,6 +39,8 @@ for host_type in host_types:
                 net = sim.SwitchNet()
             elif net_type == 'ns3':
                 net = sim.NS3BridgeNet()
+            elif net_type == 'omn':
+                net = sim.OmnetSwitch()
             else:
                 raise NameError(net_type)
             e.add_network(net)
@@ -52,14 +54,14 @@ for host_type in host_types:
                     h.sync = True
                     return h
                 host_class = qemu_timing
-            elif host_type == 'gem5':
+            elif host_type == 'gt':
                 host_class = sim.Gem5Host
                 e.checkpoint = True
             else:
                 raise NameError(host_type)
 
             # nic
-            if nic_type == 'i40e':
+            if nic_type == 'ib':
                 nic_class = sim.I40eNIC
                 nc_class = node.I40eLinuxNode
             elif nic_type == 'cd_bm':
