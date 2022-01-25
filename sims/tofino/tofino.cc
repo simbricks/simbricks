@@ -40,9 +40,10 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include <set>
+#include <queue>
 #include <string>
 #include <vector>
+#include <set>
 
 extern "C" {
 #include <simbricks/netif/netif.h>
@@ -86,10 +87,10 @@ struct event {
 };
 struct classcomp {
   bool operator()(const struct event &lhs, const struct event &rhs) const {
-    return lhs.time < rhs.time;
+    return lhs.time > rhs.time;
   }
 };
-std::set<struct event, classcomp> event_queue;
+std::priority_queue<struct event, std::vector<struct event>, classcomp> event_queue;
 
 static bool get_tofino_log_line(int limit_ms) {
   using std::chrono::system_clock;
@@ -213,7 +214,7 @@ static void process_event(const struct event &e) {
           de.time = cur_ts + pkt.latency;
           de.to_switch = false;
           de.port = pkt.port;
-          event_queue.insert(de);
+          event_queue.push(de);
 #ifdef DEBUG
           printf("add to_dev event to peer %u at time %llu to queue\n", de.port,
                  de.time);
@@ -246,7 +247,7 @@ static void recv_from_peer(int port) {
     printf("received packet from peer %u at time %llu\n", port, e.time);
 #endif
     if (nsif->sync) {
-      event_queue.insert(e);
+      event_queue.push(e);
 #ifdef DEBUG
       printf("add to_switch event from peer %u at time %llu to queue\n", port,
              e.time);
@@ -264,10 +265,10 @@ static void recv_from_peer(int port) {
 
 static void process_event_queue() {
   while (!event_queue.empty()) {
-    const struct event &e = *event_queue.begin();
+    const struct event &e = event_queue.top();
     if (e.time <= cur_ts) {
       process_event(e);
-      event_queue.erase(event_queue.begin());
+      event_queue.pop();
     } else {
       break;
     }
