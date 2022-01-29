@@ -26,5 +26,6 @@ $(eval $(call subdir,wire))
 $(eval $(call subdir,tap))
 $(eval $(call subdir,switch))
 $(eval $(call subdir,pktgen))
+$(eval $(call subdir,menshen))
 
 include mk/subdir_post.mk
