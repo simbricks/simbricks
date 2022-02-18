@@ -143,8 +143,10 @@ for host_type in host_types:
                 c.extra_deps.append(switch_top)
 
         all_servers = []
-        for  (s,_) in racks:
+        all_clients = []
+        for  (s,c) in racks:
             all_servers += s
+            all_clients += c
 
         # set up client -> server connections
         for i in range(0, n):
@@ -157,6 +159,9 @@ for host_type in host_types:
                 c.node_config.app.threads = len(server_ips)
                 c.node_config.app.concurrency = len(server_ips)
                 c.extra_deps += all_servers
+
+        for h in all_servers + all_clients:
+            h.node_config.disk_image = 'memcached'
 
         # add to experiments
         experiments.append(e)
