@@ -1,119 +1,39 @@
 {
-  "_comment": "Build with `packer build ubuntu.json`",
-  "builders": [
-    {
-      "boot_command": [
-        "{{ user `boot_command_prefix` }}",
-        "/install/vmlinuz noapic ",
-        "file=/floppy/{{ user `preseed` }} ",
-        "debian-installer={{ user `locale` }} auto locale={{ user `locale` }} kbd-chooser/method=us ",
-        "hostname={{ user `hostname` }} ",
-        "fb=false debconf/frontend=noninteractive ",
-        "keyboard-configuration/modelcode=SKIP ",
-        "keyboard-configuration/layout=USA ",
-        "keyboard-configuration/variant=USA console-setup/ask_detect=false ",
-        "passwd/user-fullname={{ user `ssh_fullname` }} ",
-        "passwd/user-password={{ user `ssh_password` }} ",
-        "passwd/user-password-again={{ user `ssh_password` }} ",
-        "passwd/username={{ user `ssh_username` }} ",
-        "initrd=/install/initrd.gz -- <enter>"
-      ],
-      "disk_size": "{{ user `disk_size` }}",
-      "floppy_files": [
-        "scripts/{{ user `preseed` }}"
-      ],
-      "headless": "{{ user `headless` }}",
-      "http_directory": "http",
-      "iso_checksum": "{{ user `iso_checksum_type` }}:{{ user `iso_checksum` }}",
-      "iso_urls": [
-        "{{ user `iso_url` }}"
-      ],
-      "output_directory": "output-{{ user `vm_name` }}",
-      "qemuargs": [
-        [
-          "-m",
-          "{{ user `memory` }}"
-        ],
-        [
-          "-display",
-          "none"
-        ],
-        [
-          "-machine",
-          "accel=kvm"
-        ],
-        [
-          "-cpu",
-          "host"
-        ],
-        [
-          "-smp",
-          "cpus={{ user `cpus`}}"
+    "builders": [
+        {
+            "type": "qemu",
+            "communicator": "ssh",
+            "headless": true,
+            "disk_image": true,
+            "cpus": "{{ user `cpus` }}",
+            "memory": "{{ user `memory` }}",
+            "iso_checksum": "file:https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS",
+            "iso_url": "https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img",
+            "qemuargs": [
+                ["-smbios", "type=1,serial=ds=nocloud-net;instance-id=packer;seedfrom=http://{{ .HTTPIP }}:{{ .HTTPPort }}/"],
+                ["-machine","pc-q35-4.2,accel=kvm,usb=off,vmport=off,dump-guest-core=off"]
+            ],
+            "http_directory": "scripts",
+            "ssh_username": "ubuntu",
+            "ssh_password": "ubuntu",
+            "net_device": "virtio-net",
+            "shutdown_command": "sudo shutdown --poweroff --no-wall now",
+            "output_directory": "output-ubuntu1804",
+            "vm_name": "ubuntu1804"
+        }
+    ],
+    "provisioners": [
+      {
+        "type": "shell",
+        "execute_command": "{{.Vars}} sudo -S -E bash '{{.Path}}'",
+        "scripts": [
+            "scripts/packages.sh",
+            "scripts/cleanup.sh"
         ]
-      ],
-      "shutdown_command": "echo '{{ user `ssh_password` }}'|sudo -S shutdown -P now",
-      "ssh_password": "{{ user `ssh_password` }}",
-      "ssh_timeout": "10000s",
-      "ssh_username": "{{ user `ssh_username` }}",
-      "type": "qemu",
-      "vm_name": "{{ user `vm_name` }}"
+      }
+    ],
+    "variables": {
+        "cpus": "4",
+        "memory": "4096"
     }
-  ],
-  "provisioners": [
-    {
-      "environment_vars": [
-        "UPDATE={{user `update`}}",
-        "INSTALL_DEV_PACKAGES={{user `install_dev_packages`}}",
-        "INSTALL_VAGRANT_KEY={{user `install_vagrant_key`}}",
-        "SSH_USERNAME={{user `ssh_username`}}",
-        "SSH_PASSWORD={{user `ssh_password`}}",
-        "http_proxy={{user `http_proxy`}}",
-        "https_proxy={{user `https_proxy`}}",
-        "ftp_proxy={{user `ftp_proxy`}}",
-        "rsync_proxy={{user `rsync_proxy`}}",
-        "no_proxy={{user `no_proxy`}}"
-      ],
-      "execute_command": "echo '{{ user `ssh_password` }}' | {{.Vars}} sudo -E -S bash '{{.Path}}'",
-      "scripts": [
-        "scripts/vagrant.sh",
-        "scripts/sshd.sh",
-        "scripts/update.sh",
-        "scripts/packages.sh",
-        "scripts/cleanup.sh"
-      ],
-      "type": "shell"
-    }
-  ],
-  "variables": {
-    "boot_command_prefix": "<esc><esc><enter><wait>",
-    "cleanup_pause": "",
-    "cpus": "4",
-    "custom_script": ".",
-    "desktop": "false",
-    "disk_size": "10000",
-    "ftp_proxy": "{{env `ftp_proxy`}}",
-    "headless": "",
-    "hostname": "vagrant",
-    "http_proxy": "{{env `http_proxy`}}",
-    "https_proxy": "{{env `https_proxy`}}",
-    "install_dev_packages": "false",
-    "install_vagrant_key": "true",
-    "iso_checksum": "f5cbb8104348f0097a8e513b10173a07dbc6684595e331cb06f93f385d0aecf6",
-    "iso_checksum_type": "sha256",
-    "iso_name": "ubuntu-18.04.6-server-amd64.iso",
-    "iso_url": "http://cdimage.ubuntu.com/ubuntu/releases/18.04.5/release/ubuntu-18.04.6-server-amd64.iso",
-    "locale": "en_US",
-    "memory": "4096",
-    "no_proxy": "{{env `no_proxy`}}",
-    "preseed": "preseed.cfg",
-    "rsync_proxy": "{{env `rsync_proxy`}}",
-    "ssh_fullname": "vagrant",
-    "ssh_password": "ubuntu",
-    "ssh_username": "ubuntu",
-    "update": "false",
-    "vagrantfile_template": "",
-    "version": "0.1.0",
-    "vm_name": "ubuntu1804"
-  }
 }
-

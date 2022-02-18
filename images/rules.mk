@@ -53,8 +53,7 @@ build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod)
 	$(QEMU_IMG) convert -f qcow2 -O raw $< $@
 
 $(UBUNTU_IMAGE): $(packer) $(QEMU) $(addprefix $(d),ubuntu1804.json \
-    scripts/vagrant.sh scripts/sshd.sh scripts/update.sh scripts/packages.sh \
-    scripts/cleanup.sh scripts/preseed.cfg)
+    scripts/user-data scripts/packages.sh scripts/cleanup.sh)
 	rm -rf $(dir $@)
 	cd $(img_dir) && ./packer-wrap.sh build ubuntu1804.json
 	touch $@
