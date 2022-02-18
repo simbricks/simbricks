@@ -12,3 +12,5 @@ mkdir -p /root
 git clone https://github.com/nicklijl/simbricks-nopaxos.git /root/nopaxos
 cd /root/nopaxos
 make -j4
+
+ mv /tmp/input/nopaxos.config /root/nopaxos.config

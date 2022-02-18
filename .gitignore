@@ -24,6 +24,7 @@ images/mqnic/modules.order
 images/mqnic/mqnic.mod*
 images/vmlinux
 images/bzImage
+images/input-*
 images/output-*
 images/packer
 images/packer_cache
