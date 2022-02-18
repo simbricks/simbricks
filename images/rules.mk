@@ -27,10 +27,12 @@ KERNEL_VERSION := 5.4.46
 
 UBUNTU_IMAGE := $(d)output-ubuntu1804/ubuntu1804
 BASE_IMAGE := $(d)output-base/base
+MEMCACHED_IMAGE := $(d)output-memcached/memcached
 NOPAXOS_IMAGE := $(d)output-nopaxos/nopaxos
 MTCP_IMAGE := $(d)output-mtcp/mtcp
 TAS_IMAGE := $(d)output-tas/tas
-IMAGES := $(UBUNTU_IMAGE) $(BASE_IMAGE) $(NOPAXOS_IMAGE)
+
+IMAGES := $(UBUNTU_IMAGE) $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
 img_dir := $(d)
@@ -72,6 +74,13 @@ $(BASE_IMAGE): $(packer) $(QEMU) $(UBUNTU_IMAGE) $(bz_image) $(m5_bin) \
 	    $(img_dir)/input-base/
 	cd $(img_dir) && ./packer-wrap.sh ubuntu1804 base extended-image.pkr.hcl
 	rm -rf $(img_dir)/input-base
+	touch $@
+
+$(MEMCACHED_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
+    $(addprefix $(d), extended-image.pkr.hcl scripts/install-memcached.sh \
+      scripts/cleanup.sh)
+	rm -rf $(dir $@)
+	cd $(img_dir) && ./packer-wrap.sh base memcached extended-image.pkr.hcl
 	touch $@
 
 $(NOPAXOS_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
