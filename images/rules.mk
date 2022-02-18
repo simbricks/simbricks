@@ -22,7 +22,7 @@
 
 include mk/subdir_pre.mk
 
-PACKER_VERSION := 1.6.0
+PACKER_VERSION := 1.7.0
 KERNEL_VERSION := 5.4.46
 
 UBUNTU_IMAGE := $(d)output-ubuntu1804/ubuntu1804
@@ -40,9 +40,13 @@ bz_image := $(d)bzImage
 vmlinux := $(d)vmlinux
 kernel_pardir := $(d)kernel
 kernel_dir := $(kernel_pardir)/linux-$(KERNEL_VERSION)
+kernel_config := $(kernel_pardir)/config-$(KERNEL_VERSION)
 kheader_dir := $(d)kernel/kheaders
+kheader_tar := $(d)kheaders.tar.bz2
 mqnic_dir := $(d)mqnic
 mqnic_mod := $(mqnic_dir)/mqnic.ko
+m5_bin := $(d)m5
+guest_init := $(d)/scripts/guestinit.sh
 
 build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod)
 
@@ -55,35 +59,47 @@ build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod)
 $(UBUNTU_IMAGE): $(packer) $(QEMU) $(addprefix $(d),ubuntu1804.json \
     scripts/user-data scripts/packages.sh scripts/cleanup.sh)
 	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh build ubuntu1804.json
+	cd $(img_dir) && ./packer-wrap.sh none ubuntu1804 ubuntu1804.json
 	touch $@
 
-$(BASE_IMAGE): $(packer) $(QEMU) $(d)base.json $(UBUNTU_IMAGE) $(bz_image) \
-    $(d)kheaders.tar.bz2 $(d)scripts/guestinit.sh
+$(BASE_IMAGE): $(packer) $(QEMU) $(UBUNTU_IMAGE) $(bz_image) $(m5_bin) \
+    $(kheader_tar) $(guest_init) $(kernel_config) \
+    $(addprefix $(d), extended-image.pkr.hcl scripts/install-base.sh \
+      scripts/cleanup.sh)
 	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh build base.json
+	mkdir -p $(img_dir)/input-base
+	cp $(m5_bin) $(kheader_tar) $(guest_init) $(bz_image) $(kernel_config) \
+	    $(img_dir)/input-base/
+	cd $(img_dir) && ./packer-wrap.sh ubuntu1804 base extended-image.pkr.hcl
+	rm -rf $(img_dir)/input-base
 	touch $@
 
-$(NOPAXOS_IMAGE): $(packer) $(QEMU) $(d)nopaxos.json $(BASE_IMAGE) \
-    $(addprefix $(d), scripts/install-nopaxos.sh nopaxos.config)
+$(NOPAXOS_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
+    $(addprefix $(d), extended-image.pkr.hcl scripts/install-nopaxos.sh \
+      scripts/cleanup.sh nopaxos.config)
 	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh build nopaxos.json
+	mkdir -p $(img_dir)/input-nopaxos
+	cp $(img_dir)/nopaxos.config $(img_dir)/input-nopaxos/
+	cd $(img_dir) && ./packer-wrap.sh base nopaxos extended-image.pkr.hcl
 	touch $@
 
-$(MTCP_IMAGE): $(packer) $(QEMU) $(d)mtcp.json $(BASE_IMAGE) \
-    $(d)scripts/install-mtcp.sh
+$(MTCP_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
+    $(addprefix $(d), extended-image.pkr.hcl scripts/install-mtcp.sh \
+      scripts/cleanup.sh)
 	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh build mtcp.json
+	cd $(img_dir) && ./packer-wrap.sh base mtcp extended-image.pkr.hcl
 	touch $@
 
-$(TAS_IMAGE): $(packer) $(QEMU) $(d)tas.json $(BASE_IMAGE) \
-    $(d)scripts/install-tas.sh
+$(TAS_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
+    $(addprefix $(d), extended-image.pkr.hcl scripts/install-tas.sh \
+      scripts/cleanup.sh)
 	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh build tas.json
+	cd $(img_dir) && ./packer-wrap.sh base tas extended-image.pkr.hcl
 	touch $@
 
 $(packer):
-	wget -O $(img_dir)packer_$(PACKER_VERSION)_linux_amd64.zip https://releases.hashicorp.com/packer/$(PACKER_VERSION)/packer_$(PACKER_VERSION)_linux_amd64.zip
+	wget -O $(img_dir)packer_$(PACKER_VERSION)_linux_amd64.zip \
+	    https://releases.hashicorp.com/packer/$(PACKER_VERSION)/packer_$(PACKER_VERSION)_linux_amd64.zip
 	cd $(img_dir) && unzip packer_$(PACKER_VERSION)_linux_amd64.zip
 	rm -f $(img_dir)packer_$(PACKER_VERSION)_linux_amd64.zip
 
@@ -104,7 +120,7 @@ $(bz_image): $(kernel_dir)/vmlinux
 	cp $(kernel_dir)/arch/x86_64/boot/bzImage $@
 	touch $@
 
-$(d)kheaders.tar.bz2: $(kernel_dir)/vmlinux
+$(kheader_tar): $(kernel_dir)/vmlinux
 	rm -rf $(kheader_dir)
 	mkdir -p $(kheader_dir)
 	$(MAKE) -C $(kernel_dir) headers_install INSTALL_HDR_PATH=$(abspath $(kheader_dir)/usr)
@@ -148,7 +164,7 @@ CLEAN := $(addprefix $(d), mqnic/mqnic.ko mqnic/*.o mqnic/.*.cmd mqnic/*.mod \
     mqnic/mqnic.mod.c mqnic/Module.symvers mqnic/modules.order)
 
 DISTCLEAN := $(kernel_dir) $(packer) $(bz_image) $(vmlinux) $(kheader_dir) \
-    $(foreach i,$(IMAGES),$(dir $(i))) \
+    $(foreach i,$(IMAGES),$(dir $(i)) $(subst output-,input-,$(dir $(i)))) \
     $(d)packer_cache $(d)kheaders.tar.bz2
 
 include mk/subdir_post.mk
