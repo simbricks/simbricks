@@ -35,6 +35,9 @@ TAS_IMAGE := $(d)output-tas/tas
 IMAGES := $(UBUNTU_IMAGE) $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
+IMAGES_MIN := $(UBUNTU_IMAGE) $(BASE_IMAGE)
+RAW_IMAGES_MIN := $(addsuffix .raw,$(IMAGES_MIN))
+
 img_dir := $(d)
 packer := $(d)packer
 
@@ -51,6 +54,9 @@ m5_bin := $(d)m5
 guest_init := $(d)/scripts/guestinit.sh
 
 build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod)
+
+build-images-min: $(IMAGES_MIN) $(RAW_IMAGES_MIN) $(vmlinux) $(bz_image) \
+    $(mqnic_mod)
 
 ################################################
 # Disk image
