@@ -21,3 +21,6 @@ find /var/log -type f | while read f; do echo -ne '' > "${f}"; done;
 >/var/log/lastlog
 >/var/log/wtmp
 >/var/log/btmp
+
+# Finally trim unused file system blocks to reduce image size
+fstrim -av
