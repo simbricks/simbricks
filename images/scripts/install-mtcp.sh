@@ -10,7 +10,7 @@ wget https://ftp.gnu.org/gnu/automake/automake-1.16.2.tar.gz
 tar xf automake-1.16.2.tar.gz
 cd automake-1.16.2
 ./configure
-make -j4 install
+make -j`nproc` install
 
 cd /tmp
 git clone https://github.com/mtcp-stack/mtcp.git /root/mtcp
@@ -34,15 +34,15 @@ rm -rf dpdk/.git
 #    -e 's/CONFIG_RTE_LIBRTE_I40E_DEBUG_TX_FREE=n/CONFIG_RTE_LIBRTE_I40E_DEBUG_TX_FREE=y/' \
 #    -e 's/CONFIG_RTE_LOG_LEVEL=RTE_LOG_INFO/CONFIG_RTE_LOG_LEVEL=RTE_LOG_DEBUG/' \
 #    dpdk/config/common_base
-make -j4 -C dpdk install T=$RTE_TARGET
+make -j`nproc` -C dpdk install T=$RTE_TARGET
 
 ./configure --with-dpdk-lib=$RTE_SDK/$RTE_TARGET CFLAGS="-DMAX_CPUS=8"
 
 #sed -i -e 's://#define DEBUG:#define DEBUG:' \
 #    -e 's/RTE_LOG_EMERG/RTE_LOG_DEBUG/g' \
 #    dpdk-iface-kmod/dpdk_iface_main.c
-(cd dpdk-iface-kmod && make -j4)
-make -j4
+(cd dpdk-iface-kmod && make -j`nproc`)
+make -j`nproc`
 
 
 ls -l $MTCPDIR/apps
@@ -59,17 +59,17 @@ touch aclocal.m4 Makefile.in
 ./configure --without-bzip2 CFLAGS="-O3" \
     --with-libmtcp="$MTCPDIR/mtcp/" \
     --with-libdpdk="$RTE_SDK/$RTE_TARGET"
-make -j4
+make -j`nproc`
 
 cd $MTCPDIR/apps/lighttpd-mtlinux
 touch aclocal.m4 Makefile.in
 ./configure --without-bzip2 CFLAGS="-O3" --enable-multithreading
-make -j4
+make -j`nproc`
 
 cd $MTCPDIR/apps/lighttpd-mtlinux-rop
 touch aclocal.m4 Makefile.in
 ./configure --without-bzip2 CFLAGS="-O3 -DREUSEPORT" --enable-multithreading
-make -j4
+make -j`nproc`
 
 
 cd $MTCPDIR
@@ -80,12 +80,12 @@ cp -r apps/apache_benchmark apps/ab-linux
 cd $MTCPDIR/apps/ab-mtcp
 ./configure --with-libmtcp="$MTCPDIR/mtcp/" \
     --with-libdpdk="$RTE_SDK/$RTE_TARGET"
-make -j4
+make -j`nproc`
 
 # build linux version of ab
 cd $MTCPDIR/apps/ab-linux
 ./configure
-make -j4
+make -j`nproc`
 
 
 # build tas microbenchmarks
