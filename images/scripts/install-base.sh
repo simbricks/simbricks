@@ -11,3 +11,11 @@ update-grub
 tar xf kheaders.tar.bz2 -C /
 popd
 rm -rf /tmp/input
+
+apt-get update
+apt-get -y install \
+    iperf \
+    netperf \
+    netcat \
+    ethtool \
+    tcpdump
