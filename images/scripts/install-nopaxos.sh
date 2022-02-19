@@ -1,5 +1,19 @@
 #!/bin/bash -eux
 
+apt-get update
+apt-get -y install \
+    autoconf \
+    automake \
+    build-essential \
+    g++ \
+    git \
+    libevent-dev \
+    libssl-dev \
+    libtool \
+    libunwind-dev \
+    make \
+    pkg-config
+
 git clone https://github.com/google/protobuf.git /tmp/protobuf
 cd /tmp/protobuf
 ./autogen.sh

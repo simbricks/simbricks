@@ -1,7 +1,7 @@
 #!/bin/bash -eux
 set -eux
 
-apt-get -y install libnuma-dev libgmp-dev bc python
+apt-get -y install build-essential git libnuma-dev libgmp-dev bc python
 
 cd /root/
 wget http://fast.dpdk.org/rel/dpdk-18.11.8.tar.gz

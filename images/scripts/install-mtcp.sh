@@ -2,7 +2,8 @@
 
 set -eux
 
-apt-get -y install libnuma-dev libgmp-dev bc python libpcre3-dev libpcre++-dev zlib1g-dev
+apt-get -y install autoconf build-essential file git libnuma-dev libgmp-dev bc \
+    python libpcre3-dev libpcre++-dev zlib1g-dev
 
 cd /tmp
 wget https://ftp.gnu.org/gnu/automake/automake-1.16.2.tar.gz

@@ -25,17 +25,16 @@ include mk/subdir_pre.mk
 PACKER_VERSION := 1.7.0
 KERNEL_VERSION := 5.4.46
 
-UBUNTU_IMAGE := $(d)output-ubuntu1804/ubuntu1804
 BASE_IMAGE := $(d)output-base/base
 MEMCACHED_IMAGE := $(d)output-memcached/memcached
 NOPAXOS_IMAGE := $(d)output-nopaxos/nopaxos
 MTCP_IMAGE := $(d)output-mtcp/mtcp
 TAS_IMAGE := $(d)output-tas/tas
 
-IMAGES := $(UBUNTU_IMAGE) $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE)
+IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
-IMAGES_MIN := $(UBUNTU_IMAGE) $(BASE_IMAGE)
+IMAGES_MIN := $(BASE_IMAGE)
 RAW_IMAGES_MIN := $(addsuffix .raw,$(IMAGES_MIN))
 
 img_dir := $(d)
@@ -64,21 +63,15 @@ build-images-min: $(IMAGES_MIN) $(RAW_IMAGES_MIN) $(vmlinux) $(bz_image) \
 %.raw: %
 	$(QEMU_IMG) convert -f qcow2 -O raw $< $@
 
-$(UBUNTU_IMAGE): $(packer) $(QEMU) $(addprefix $(d),ubuntu1804.json \
-    scripts/user-data scripts/packages.sh scripts/cleanup.sh)
-	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh none ubuntu1804 ubuntu1804.json
-	touch $@
-
-$(BASE_IMAGE): $(packer) $(QEMU) $(UBUNTU_IMAGE) $(bz_image) $(m5_bin) \
-    $(kheader_tar) $(guest_init) $(kernel_config) \
+$(BASE_IMAGE): $(packer) $(QEMU) $(bz_image) $(m5_bin) $(kheader_tar) \
+    $(guest_init) $(kernel_config) \
     $(addprefix $(d), extended-image.pkr.hcl scripts/install-base.sh \
       scripts/cleanup.sh)
 	rm -rf $(dir $@)
 	mkdir -p $(img_dir)/input-base
 	cp $(m5_bin) $(kheader_tar) $(guest_init) $(bz_image) $(kernel_config) \
 	    $(img_dir)/input-base/
-	cd $(img_dir) && ./packer-wrap.sh ubuntu1804 base extended-image.pkr.hcl
+	cd $(img_dir) && ./packer-wrap.sh base base base.pkr.hcl
 	rm -rf $(img_dir)/input-base
 	touch $@
 
