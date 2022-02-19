@@ -11,7 +11,7 @@
             "iso_url": "https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img",
             "qemuargs": [
                 ["-smbios", "type=1,serial=ds=nocloud-net;instance-id=packer;seedfrom=http://{{ .HTTPIP }}:{{ .HTTPPort }}/"],
-                ["-machine","pc-q35-4.2,accel=kvm,usb=off,vmport=off,dump-guest-core=off"]
+                ["-machine","pc-q35-4.2,accel=kvm:tcg,usb=off,vmport=off,dump-guest-core=off"]
             ],
             "http_directory": "scripts",
             "ssh_username": "ubuntu",
