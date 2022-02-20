@@ -30,6 +30,7 @@ MEMCACHED_IMAGE := $(d)output-memcached/memcached
 NOPAXOS_IMAGE := $(d)output-nopaxos/nopaxos
 MTCP_IMAGE := $(d)output-mtcp/mtcp
 TAS_IMAGE := $(d)output-tas/tas
+COMRESSED_IMAGES ?= false
 
 IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
@@ -71,7 +72,8 @@ $(BASE_IMAGE): $(packer) $(QEMU) $(bz_image) $(m5_bin) $(kheader_tar) \
 	mkdir -p $(img_dir)/input-base
 	cp $(m5_bin) $(kheader_tar) $(guest_init) $(bz_image) $(kernel_config) \
 	    $(img_dir)/input-base/
-	cd $(img_dir) && ./packer-wrap.sh base base base.pkr.hcl
+	cd $(img_dir) && ./packer-wrap.sh base base base.pkr.hcl \
+	    $(COMRESSED_IMAGES)
 	rm -rf $(img_dir)/input-base
 	touch $@
 
@@ -79,7 +81,9 @@ $(MEMCACHED_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
     $(addprefix $(d), extended-image.pkr.hcl scripts/install-memcached.sh \
       scripts/cleanup.sh)
 	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh base memcached extended-image.pkr.hcl
+	cd $(img_dir) && ./packer-wrap.sh base memcached \
+	    extended-image.pkr.hcl $(COMRESSED_IMAGES)
+	rm -rf $(img_dir)/input-base
 	touch $@
 
 $(NOPAXOS_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
@@ -88,21 +92,24 @@ $(NOPAXOS_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
 	rm -rf $(dir $@)
 	mkdir -p $(img_dir)/input-nopaxos
 	cp $(img_dir)/nopaxos.config $(img_dir)/input-nopaxos/
-	cd $(img_dir) && ./packer-wrap.sh base nopaxos extended-image.pkr.hcl
+	cd $(img_dir) && ./packer-wrap.sh base nopaxos extended-image.pkr.hcl \
+	    $(COMRESSED_IMAGES)
 	touch $@
 
 $(MTCP_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
     $(addprefix $(d), extended-image.pkr.hcl scripts/install-mtcp.sh \
       scripts/cleanup.sh)
 	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh base mtcp extended-image.pkr.hcl
+	cd $(img_dir) && ./packer-wrap.sh base mtcp extended-image.pkr.hcl \
+	    $(COMRESSED_IMAGES)
 	touch $@
 
 $(TAS_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
     $(addprefix $(d), extended-image.pkr.hcl scripts/install-tas.sh \
       scripts/cleanup.sh)
 	rm -rf $(dir $@)
-	cd $(img_dir) && ./packer-wrap.sh base tas extended-image.pkr.hcl
+	cd $(img_dir) && ./packer-wrap.sh base tas extended-image.pkr.hcl \
+	    $(COMRESSED_IMAGES)
 	touch $@
 
 $(packer):
