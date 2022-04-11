@@ -5,4 +5,4 @@ submodules:
 
 python:
    install:
-   - requirements: docs/requirements.txt
+   - requirements: doc/requirements.txt
