@@ -2,3 +2,7 @@ version: 2
 
 submodules:
   exclude: all
+
+python:
+   install:
+   - requirements: docs/requirements.txt
