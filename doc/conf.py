@@ -21,7 +21,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'SimBricks'
-copyright = '2021 Max Planck Institute for Software Systems, ' + \
+copyright = '2022 Max Planck Institute for Software Systems, ' + \
         'and National University of Singapore'
 
 author = 'Antoine Kaufmann'
@@ -101,6 +101,15 @@ html_static_path = ['_static']
 #
 # html_sidebars = {}
 
+html_logo = 'simbricks-text-horizontal.svg'
+html_theme_options = {
+    'logo_only': True,
+    'display_version': False,
+}
+
+html_css_files = [
+    'css/custom.css',
+]
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
