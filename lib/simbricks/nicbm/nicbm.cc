@@ -38,7 +38,7 @@
 #include <vector>
 
 extern "C" {
-#include <simbricks/proto/base.h>
+#include <simbricks/base/proto.h>
 }
 
 //#define DEBUG_NICBM 1
@@ -88,10 +88,10 @@ static void sigusr2_handler(int dummy) {
 volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   volatile union SimbricksProtoPcieD2H *msg;
   bool first = true;
-  while ((msg = SimbricksNicIfD2HAlloc(&nicif_, main_time_)) == NULL) {
+  while ((msg = SimbricksPcieIfD2HOutAlloc(&nicif_.pcie, main_time_)) == NULL) {
     if (first) {
       fprintf(stderr, "D2HAlloc: warning waiting for entry (%zu)\n",
-              nicif_.d2h_pos);
+              nicif_.pcie.base.out_pos);
       first = false;
     }
     YieldPoll();
@@ -103,13 +103,13 @@ volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   return msg;
 }
 
-volatile union SimbricksProtoNetD2N *Runner::D2NAlloc() {
-  volatile union SimbricksProtoNetD2N *msg;
+volatile union SimbricksProtoNetMsg *Runner::D2NAlloc() {
+  volatile union SimbricksProtoNetMsg *msg;
   bool first = true;
-  while ((msg = SimbricksNicIfD2NAlloc(&nicif_, main_time_)) == NULL) {
+  while ((msg = SimbricksNetIfOutAlloc(&nicif_.net, main_time_)) == NULL) {
     if (first) {
       fprintf(stderr, "D2NAlloc: warning waiting for entry (%zu)\n",
-              nicif_.d2n_pos);
+              nicif_.pcie.base.out_pos);
       first = false;
     }
     YieldPoll();
@@ -156,13 +156,14 @@ void Runner::DmaDo(DMAOp &op) {
          op.dma_addr_, op.len_, dma_pending_);
 #endif
 
+  size_t maxlen = SimbricksBaseIfOutMsgLen(&nicif_.pcie.base);
   if (op.write_) {
     volatile struct SimbricksProtoPcieD2HWrite *write = &msg->write;
-    if (dintro_.d2h_elen < sizeof(*write) + op.len_) {
+    if (maxlen < sizeof(*write) + op.len_) {
       fprintf(stderr,
               "issue_dma: write too big (%zu), can only fit up "
               "to (%zu)\n",
-              op.len_, dintro_.d2h_elen - sizeof(*write));
+              op.len_, maxlen - sizeof(*write));
       abort();
     }
 
@@ -181,27 +182,24 @@ void Runner::DmaDo(DMAOp &op) {
 
     }
 #endif
-    // WMB();
-    write->own_type =
-        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE | SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE);
   } else {
     volatile struct SimbricksProtoPcieD2HRead *read = &msg->read;
-    if (dintro_.h2d_elen <
-        sizeof(struct SimbricksProtoPcieH2DReadcomp) + op.len_) {
+    if (maxlen < sizeof(struct SimbricksProtoPcieH2DReadcomp) + op.len_) {
       fprintf(stderr,
               "issue_dma: write too big (%zu), can only fit up "
               "to (%zu)\n",
               op.len_,
-              dintro_.h2d_elen - sizeof(struct SimbricksProtoPcieH2DReadcomp));
+              maxlen - sizeof(struct SimbricksProtoPcieH2DReadcomp));
       abort();
     }
 
     read->req_id = (uintptr_t)&op;
     read->offset = op.dma_addr_;
     read->len = op.len_;
-    // WMB();
-    read->own_type =
-        SIMBRICKS_PROTO_PCIE_D2H_MSG_READ | SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_READ);
   }
 }
 
@@ -214,9 +212,8 @@ void Runner::MsiIssue(uint8_t vec) {
   intr->vector = vec;
   intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSI;
 
-  // WMB();
-  intr->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
-                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
+      SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
 }
 
 void Runner::MsiXIssue(uint8_t vec) {
@@ -228,9 +225,8 @@ void Runner::MsiXIssue(uint8_t vec) {
   intr->vector = vec;
   intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSIX;
 
-  // WMB();
-  intr->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
-                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
+      SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
 }
 
 void Runner::IntXIssue(bool level) {
@@ -243,9 +239,8 @@ void Runner::IntXIssue(bool level) {
   intr->inttype = (level ? SIMBRICKS_PROTO_PCIE_INT_LEGACY_HI
                          : SIMBRICKS_PROTO_PCIE_INT_LEGACY_LO);
 
-  // WMB();
-  intr->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
-                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
+      SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
 }
 
 void Runner::EventSchedule(TimedEvent &evt) {
@@ -273,9 +268,8 @@ void Runner::H2DRead(volatile struct SimbricksProtoPcieH2DRead *read) {
          dbg_val);
 #endif
 
-  // WMB();
-  rc->own_type =
-      SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP | SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
+      SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
 }
 
 void Runner::H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write) {
@@ -294,9 +288,8 @@ void Runner::H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write) {
   dev_.RegWrite(write->bar, write->offset, (void *)write->data, write->len);
   wc->req_id = write->req_id;
 
-  // WMB();
-  wc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
-                 SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
+      SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP);
 }
 
 void Runner::H2DReadcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc) {
@@ -332,12 +325,12 @@ void Runner::H2DDevctrl(volatile struct SimbricksProtoPcieH2DDevctrl *dc) {
   dev_.DevctrlUpdate(*(struct SimbricksProtoPcieH2DDevctrl *)dc);
 }
 
-void Runner::EthRecv(volatile struct SimbricksProtoNetN2DRecv *recv) {
+void Runner::EthRecv(volatile struct SimbricksProtoNetMsgPacket *packet) {
 #ifdef DEBUG_NICBM
-  printf("nicbm: eth rx: port %u len %u\n", recv->port, recv->len);
+  printf("nicbm: eth rx: port %u len %u\n", packet->port, packet->len);
 #endif
 
-  dev_.EthRx(recv->port, (void *)recv->data, recv->len);
+  dev_.EthRx(packet->port, (void *)packet->data, packet->len);
 }
 
 void Runner::EthSend(const void *data, size_t len) {
@@ -345,18 +338,18 @@ void Runner::EthSend(const void *data, size_t len) {
   printf("nicbm: eth tx: len %zu\n", len);
 #endif
 
-  volatile union SimbricksProtoNetD2N *msg = D2NAlloc();
-  volatile struct SimbricksProtoNetD2NSend *send = &msg->send;
-  send->port = 0;  // single port
-  send->len = len;
-  memcpy((void *)send->data, data, len);
-  send->own_type =
-      SIMBRICKS_PROTO_NET_D2N_MSG_SEND | SIMBRICKS_PROTO_NET_D2N_OWN_NET;
+  volatile union SimbricksProtoNetMsg *msg = D2NAlloc();
+  volatile struct SimbricksProtoNetMsgPacket *packet = &msg->packet;
+  packet->port = 0;  // single port
+  packet->len = len;
+  memcpy((void *)packet->data, data, len);
+  SimbricksNetIfOutSend(&nicif_.net, msg,
+      SIMBRICKS_PROTO_NET_MSG_PACKET);
 }
 
 void Runner::PollH2D() {
   volatile union SimbricksProtoPcieH2D *msg =
-      SimbricksNicIfH2DPoll(&nicif_, main_time_);
+      SimbricksPcieIfH2DInPoll(&nicif_.pcie, main_time_);
   uint8_t type;
 
 #ifdef STAT_NICBM
@@ -376,7 +369,7 @@ void Runner::PollH2D() {
   }
 #endif
 
-  type = msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK;
+  type = SimbricksPcieIfH2DInType(&nicif_.pcie, msg);
   switch (type) {
     case SIMBRICKS_PROTO_PCIE_H2D_MSG_READ:
       H2DRead(&msg->read);
@@ -398,7 +391,7 @@ void Runner::PollH2D() {
       H2DDevctrl(&msg->devctrl);
       break;
 
-    case SIMBRICKS_PROTO_PCIE_H2D_MSG_SYNC:
+    case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
 #ifdef STAT_NICBM
       h2d_poll_sync += 1;
       if (stat_flag){
@@ -411,13 +404,12 @@ void Runner::PollH2D() {
       fprintf(stderr, "poll_h2d: unsupported type=%u\n", type);
   }
 
-  SimbricksNicIfH2DDone(&nicif_, msg);
-  SimbricksNicIfH2DNext(&nicif_);
+  SimbricksPcieIfH2DInDone(&nicif_.pcie, msg);
 }
 
 void Runner::PollN2D() {
-  volatile union SimbricksProtoNetN2D *msg =
-      SimbricksNicIfN2DPoll(&nicif_, main_time_);
+  volatile union SimbricksProtoNetMsg *msg =
+      SimbricksNetIfInPoll(&nicif_.net, main_time_);
   uint8_t t;
 
 #ifdef STAT_NICBM
@@ -437,13 +429,13 @@ void Runner::PollN2D() {
   }
 #endif
 
-  t = msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_MSG_MASK;
+  t = SimbricksNetIfInType(&nicif_.net, msg);
   switch (t) {
-    case SIMBRICKS_PROTO_NET_N2D_MSG_RECV:
-      EthRecv(&msg->recv);
+    case SIMBRICKS_PROTO_NET_MSG_PACKET:
+      EthRecv(&msg->packet);
       break;
 
-    case SIMBRICKS_PROTO_NET_N2D_MSG_SYNC:
+    case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
 #ifdef STAT_NICBM
       n2d_poll_sync += 1;
       if (stat_flag){
@@ -456,8 +448,7 @@ void Runner::PollN2D() {
       fprintf(stderr, "poll_n2d: unsupported type=%u", t);
   }
 
-  SimbricksNicIfN2DDone(&nicif_, msg);
-  SimbricksNicIfN2DNext(&nicif_);
+  SimbricksNetIfInDone(&nicif_.net, msg);
 }
 
 uint64_t Runner::TimePs() const {
@@ -494,8 +485,10 @@ void Runner::EventTrigger() {
 void Runner::YieldPoll() {
 }
 
-int Runner::NicIfInit(struct SimbricksNicIfParams &nsparams) {
-  return SimbricksNicIfInit(&nicif_, &nsparams, &dintro_);
+int Runner::NicIfInit(const char *shmPath,
+                        struct SimbricksBaseIfParams *netParams,
+                        struct SimbricksBaseIfParams *pcieParams) {
+  return SimbricksNicIfInit(&nicif_, shmPath, netParams, pcieParams, &dintro_);
 }
 
 Runner::Runner(Device &dev) : main_time_(0), dev_(dev), events_(EventCmp()) {
@@ -521,28 +514,31 @@ Runner::Runner(Device &dev) : main_time_(0), dev_(dev), events_(EventCmp()) {
 int Runner::RunMain(int argc, char *argv[]) {
   uint64_t next_ts;
   uint64_t max_step = 10000;
-  uint64_t sync_period = 100 * 1000ULL;
-  uint64_t pci_latency = 500 * 1000ULL;
-  uint64_t eth_latency = 500 * 1000ULL;
-  int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
+
+  struct SimbricksBaseIfParams pcieParams;
+  struct SimbricksBaseIfParams netParams;
+  SimbricksNetIfDefaultParams(&netParams);
+  SimbricksPcieIfDefaultParams(&pcieParams);
 
   if (argc < 4 || argc > 9) {
     fprintf(stderr,
             "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
             "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
-            "[ETH-LATENCY]\n");
+            "[ETH-LATENCY]\n"); 
     return EXIT_FAILURE;
   }
-  if (argc >= 5)
-    sync_mode = strtol(argv[4], NULL, 0);
   if (argc >= 6)
     main_time_ = strtoull(argv[5], NULL, 0);
   if (argc >= 7)
-    sync_period = strtoull(argv[6], NULL, 0) * 1000ULL;
+    netParams.sync_interval = pcieParams.sync_interval =
+      strtoull(argv[6], NULL, 0) * 1000ULL;
   if (argc >= 8)
-    pci_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
+    pcieParams.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
   if (argc >= 9)
-    eth_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+    netParams.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+
+  pcieParams.sock_path = argv[1];
+  netParams.sock_path = argv[2];
 
   signal(SIGINT, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
@@ -553,33 +549,21 @@ int Runner::RunMain(int argc, char *argv[]) {
   memset(&dintro_, 0, sizeof(dintro_));
   dev_.SetupIntro(dintro_);
 
-  struct SimbricksNicIfParams nsparams;
-  nsparams.sync_pci = 1;
-  nsparams.sync_eth = 1;
-  nsparams.pci_socket_path = argv[1];
-  nsparams.eth_socket_path = argv[2];
-  nsparams.shm_path = argv[3];
-  nsparams.pci_latency = pci_latency;
-  nsparams.eth_latency = eth_latency;
-  nsparams.sync_delay = sync_period;
-  assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
-         sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
-  nsparams.sync_mode = sync_mode;
-
-  if (NicIfInit(nsparams)) {
+  if (NicIfInit(argv[3], &netParams, &pcieParams)) {
     return EXIT_FAILURE;
   }
-  fprintf(stderr, "sync_pci=%d sync_eth=%d\n", nsparams.sync_pci,
-          nsparams.sync_eth);
+  bool sync_pcie = SimbricksBaseIfSyncEnabled(&nicif_.pcie.base);
+  bool sync_net = SimbricksBaseIfSyncEnabled(&nicif_.net.base);
 
-  bool is_sync = nsparams.sync_pci || nsparams.sync_eth;
+  fprintf(stderr, "sync_pci=%d sync_eth=%d\n", sync_pcie, sync_net);
+
+  bool is_sync = sync_pcie || sync_net;
 
   while (!exiting) {
     while (SimbricksNicIfSync(&nicif_, main_time_)) {
       fprintf(stderr, "warn: SimbricksNicIfSync failed (t=%lu)\n", main_time_);
       YieldPoll();
     }
-    SimbricksNicIfAdvanceEpoch(&nicif_, main_time_);
 
     bool first = true;
     do {
@@ -603,7 +587,7 @@ int Runner::RunMain(int argc, char *argv[]) {
       if (EventNext(ev_ts) && ev_ts < next_ts)
         next_ts = ev_ts;
     } while (next_ts <= main_time_ && !exiting);
-    main_time_ = SimbricksNicIfAdvanceTime(&nicif_, next_ts);
+    main_time_ = next_ts;
 
     YieldPoll();
   }

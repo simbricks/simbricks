@@ -30,6 +30,7 @@
 #include <deque>
 #include <set>
 
+#include <simbricks/base/cxxatomicfix.h>
 extern "C" {
 #include <simbricks/nicif/nicif.h>
 }
@@ -115,7 +116,7 @@ class Runner {
 
  protected:
   struct EventCmp {
-    bool operator()(TimedEvent *a, TimedEvent *b) {
+    bool operator()(TimedEvent *a, TimedEvent *b) const {
       return a->time_ < b->time_;
     }
   };
@@ -130,7 +131,7 @@ class Runner {
   struct SimbricksProtoPcieDevIntro dintro_;
 
   volatile union SimbricksProtoPcieD2H *D2HAlloc();
-  volatile union SimbricksProtoNetD2N *D2NAlloc();
+  volatile union SimbricksProtoNetMsg *D2NAlloc();
 
   void H2DRead(volatile struct SimbricksProtoPcieH2DRead *read);
   void H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write);
@@ -139,7 +140,7 @@ class Runner {
   void H2DDevctrl(volatile struct SimbricksProtoPcieH2DDevctrl *dc);
   void PollH2D();
 
-  void EthRecv(volatile struct SimbricksProtoNetN2DRecv *recv);
+  void EthRecv(volatile struct SimbricksProtoNetMsgPacket *packetl);
   void PollN2D();
 
   bool EventNext(uint64_t &retval);
@@ -149,7 +150,9 @@ class Runner {
   void DmaTrigger();
 
   virtual void YieldPoll();
-  virtual int NicIfInit(struct SimbricksNicIfParams &nsparams);
+  virtual int NicIfInit(const char *shmPath,
+                        struct SimbricksBaseIfParams *netParams,
+                        struct SimbricksBaseIfParams *pcieParams);
 
  public:
   explicit Runner(Device &dev_);

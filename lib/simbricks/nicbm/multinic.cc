@@ -38,13 +38,15 @@ void MultiNicRunner::CompRunner::YieldPoll() {
 }
 
 int MultiNicRunner::CompRunner::NicIfInit(
-    struct SimbricksNicIfParams &nsparams) {
+    const char *shmPath,
+    struct SimbricksBaseIfParams *netParams,
+    struct SimbricksBaseIfParams *pcieParams) {
   volatile bool ready = false;
   volatile int result = 0;
 
   // NicIfInit will block, so run it in a separate thread and then wait for it
-  std::thread t([this, &ready, &nsparams, &result](){
-      result = Runner::NicIfInit(nsparams);
+  std::thread t([this, &ready, &shmPath, &netParams, &pcieParams, &result](){
+      result = Runner::NicIfInit(shmPath, netParams, pcieParams);
       ready = true; 
     });
 
