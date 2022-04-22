@@ -45,9 +45,9 @@
 #include <vector>
 #include <set>
 
+#include <simbricks/base/cxxatomicfix.h>
 extern "C" {
-#include <simbricks/netif/netif.h>
-#include <simbricks/proto/base.h>
+#include <simbricks/network/if.h>
 };
 #include <utils/json.hpp>
 
@@ -58,9 +58,6 @@ using json = nlohmann::json;
 typedef long long int ts_t;
 
 static const int log_wait_limit_ms = 10;  // 10ms
-static ts_t sync_period = (500 * 1000ULL);
-static ts_t eth_latency = (500 * 1000ULL);  // 500ns
-static int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
 static ts_t cur_ts = 0;
 static int exiting = 0;
 static std::vector<struct SimbricksNetIf> nsifs;
@@ -156,7 +153,7 @@ static std::vector<struct packet_info> get_tofino_output() {
 static ts_t get_min_peer_time() {
   std::set<uint64_t> peer_times;
   for (auto &nsif : nsifs) {
-    peer_times.insert(SimbricksNetIfD2NTimestamp(&nsif));
+    peer_times.insert(SimbricksNetIfInTimestamp(&nsif));
   }
   return *peer_times.begin();
 }
@@ -164,7 +161,7 @@ static ts_t get_min_peer_time() {
 static void switch_to_dev(int port) {
   static const int BUFFER_SIZE = 2048;
   char buf[BUFFER_SIZE];
-  volatile union SimbricksProtoNetN2D *msg_to;
+  volatile union SimbricksProtoNetMsg *msg_to;
   struct sockaddr_ll addr;
   socklen_t addr_len;
   ssize_t n;
@@ -179,17 +176,15 @@ static void switch_to_dev(int port) {
     ;
   }
 
-  msg_to = SimbricksNetIfN2DAlloc(&nsifs[port], cur_ts, eth_latency);
+  msg_to = SimbricksNetIfOutAlloc(&nsifs[port], cur_ts);
   if (msg_to != nullptr) {
-    volatile struct SimbricksProtoNetN2DRecv *rx;
-    rx = &msg_to->recv;
+    volatile struct SimbricksProtoNetMsgPacket *rx;
+    rx = &msg_to->packet;
     rx->len = n;
     rx->port = 0;
     memcpy((void *)rx->data, (void *)buf, n);
 
-    // WMB();
-    rx->own_type =
-        SIMBRICKS_PROTO_NET_N2D_MSG_RECV | SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+    SimbricksNetIfOutSend(&nsifs[port], msg_to, SIMBRICKS_PROTO_NET_MSG_PACKET);
   } else {
     fprintf(stderr, "switch_to_dev: dropping packet\n");
   }
@@ -209,7 +204,7 @@ static void process_event(const struct event &e) {
     for (const auto &pkt : get_tofino_output()) {
       if (pkt.port < nsifs.size()) {
         auto &nsif = nsifs.at(pkt.port);
-        if (nsif.sync) {
+        if (SimbricksBaseIfSyncEnabled(&nsif.base)) {
           struct event de;
           de.time = cur_ts + pkt.latency;
           de.to_switch = false;
@@ -231,22 +226,23 @@ static void process_event(const struct event &e) {
 
 static void recv_from_peer(int port) {
   struct SimbricksNetIf *nsif = &nsifs.at(port);
-  volatile union SimbricksProtoNetD2N *msg_from =
-      SimbricksNetIfD2NPoll(nsif, cur_ts);
+  volatile union SimbricksProtoNetMsg *msg_from =
+      SimbricksNetIfInPoll(nsif, cur_ts);
   if (msg_from == nullptr) {
     return;
   }
-  uint8_t type = msg_from->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK;
-  if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SEND) {
+  uint8_t type = SimbricksNetIfInType(nsif, msg_from);
+  if (type == SIMBRICKS_PROTO_NET_MSG_PACKET) {
     struct event e;
-    e.time = msg_from->send.timestamp;
+    e.time = msg_from->packet.timestamp;
     e.to_switch = true;
     e.port = port;
-    e.msg = std::string((const char *)msg_from->send.data, msg_from->send.len);
+    e.msg = std::string((const char *)msg_from->packet.data,
+        msg_from->packet.len);
 #ifdef DEBUG
     printf("received packet from peer %u at time %llu\n", port, e.time);
 #endif
-    if (nsif->sync) {
+    if (SimbricksBaseIfSyncEnabled(&nsif->base)) {
       event_queue.push(e);
 #ifdef DEBUG
       printf("add to_switch event from peer %u at time %llu to queue\n", port,
@@ -255,12 +251,12 @@ static void recv_from_peer(int port) {
     } else {
       process_event(e);
     }
-  } else if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SYNC) {
+  } else if (type == SIMBRICKS_PROTO_MSG_TYPE_SYNC) {
   } else {
     fprintf(stderr, "tofino: unsupported type=%u\n", type);
     abort();
   }
-  SimbricksNetIfD2NDone(nsif, msg_from);
+  SimbricksNetIfInDone(nsif, msg_from);
 }
 
 static void process_event_queue() {
@@ -280,13 +276,16 @@ int main(int argc, char *argv[]) {
   int bad_option = 0;
   int sync = 1;
   std::string tofino_log;
+  struct SimbricksBaseIfParams params;
+
+  SimbricksNetIfDefaultParams(&params);
 
   // Parse command line argument
-  while ((c = getopt(argc, argv, "s:S:E:m:t:u")) != -1 && !bad_option) {
+  while ((c = getopt(argc, argv, "s:S:E:t:u")) != -1 && !bad_option) {
     switch (c) {
       case 's':
         struct SimbricksNetIf nsif;
-        if (SimbricksNetIfInit(&nsif, optarg, &sync) != 0) {
+        if (SimbricksNetIfInit(&nsif, &params, optarg, &sync) != 0) {
           fprintf(stderr, "connecting to %s failed\n", optarg);
           return EXIT_FAILURE;
         }
@@ -294,17 +293,11 @@ int main(int argc, char *argv[]) {
         break;
 
       case 'S':
-        sync_period = strtoull(optarg, NULL, 0) * 1000ULL;
+        params.sync_interval = strtoull(optarg, NULL, 0) * 1000ULL;
         break;
 
       case 'E':
-        eth_latency = strtoull(optarg, NULL, 0) * 1000ULL;
-        break;
-
-      case 'm':
-        sync_mode = strtol(optarg, NULL, 0);
-        assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
-               sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
+        params.link_latency = strtoull(optarg, NULL, 0) * 1000ULL;
         break;
 
       case 't':
@@ -319,12 +312,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "unknown option %c\n", c);
         bad_option = 1;
         break;
-    }
-  }
-
-  if (!sync) {
-    for (auto &nsif : nsifs) {
-      nsif.sync = 0;
     }
   }
 
@@ -392,13 +379,11 @@ int main(int argc, char *argv[]) {
   while (!exiting) {
     // Sync all interfaces
     for (auto &nsif : nsifs) {
-      if (SimbricksNetIfN2DSync(&nsif, cur_ts, eth_latency, sync_period,
-                                sync_mode) != 0) {
+      if (SimbricksNetIfOutSync(&nsif, cur_ts) != 0) {
         fprintf(stderr, "SimbricksNetIfN2DSync failed\n");
         abort();
       }
     }
-    SimbricksNetIfAdvanceEpoch(cur_ts, sync_period, sync_mode);
 
     // Switch packets
     ts_t min_ts = 0;
@@ -410,7 +395,7 @@ int main(int argc, char *argv[]) {
       process_event_queue();
     }
     if (min_ts > cur_ts) {
-      cur_ts = SimbricksNetIfAdvanceTime(min_ts, sync_period, sync_mode);
+      cur_ts = min_ts;
     }
   }
 
