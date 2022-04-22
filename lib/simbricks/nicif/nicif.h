@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Max Planck Institute for Software Systems, and
+ * Copyright 2022 Max Planck Institute for Software Systems, and
  * National University of Singapore
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -28,82 +28,37 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <simbricks/proto/network.h>
-#include <simbricks/proto/pcie.h>
-
-struct SimbricksNicIfParams {
-  const char *pci_socket_path;
-  const char *eth_socket_path;
-  const char *shm_path;
-
-  uint64_t pci_latency;
-  uint64_t eth_latency;
-  uint64_t sync_delay;
-
-  int sync_pci;
-  int sync_eth;
-  int sync_mode;
-};
+#include <simbricks/network/if.h>
+#include <simbricks/pcie/if.h>
 
 struct SimbricksNicIf {
-  uint8_t *d2h_queue;
-  size_t d2h_pos;
-  size_t d2h_off; /* offset in shm region */
-
-  uint8_t *h2d_queue;
-  size_t h2d_pos;
-  size_t h2d_off; /* offset in shm region */
-
-  uint8_t *d2n_queue;
-  size_t d2n_pos;
-  size_t d2n_off; /* offset in shm region */
-
-  uint8_t *n2d_queue;
-  size_t n2d_pos;
-  size_t n2d_off; /* offset in shm region */
-
-  uint64_t pci_last_rx_time;
-  uint64_t pci_last_tx_time;
-  uint64_t eth_last_rx_time;
-  uint64_t eth_last_tx_time;
-  uint64_t current_epoch;
-
-  struct SimbricksNicIfParams params;
-
-  int shm_fd;
-  int pci_cfd;
-  int eth_cfd;
+  struct SimbricksBaseIfSHMPool pool;
+  struct SimbricksNetIf net;
+  struct SimbricksPcieIf pcie;
 };
 
+
 int SimbricksNicIfInit(struct SimbricksNicIf *nicif,
-                       struct SimbricksNicIfParams *params,
+                       const char *shmPath,
+                       struct SimbricksBaseIfParams *netParams,
+                       struct SimbricksBaseIfParams *pcieParams,
                        struct SimbricksProtoPcieDevIntro *di);
-void SimbricksNicIfCleanup(struct SimbricksNicIf *nicif);
 
-int SimbricksNicIfSync(struct SimbricksNicIf *nicif,
-                       uint64_t timestamp);
-void SimbricksNicIfAdvanceEpoch(struct SimbricksNicIf *nicif,
-                                uint64_t timestamp);
-uint64_t SimbricksNicIfAdvanceTime(struct SimbricksNicIf *nicif,
-                                   uint64_t timestamp);
-uint64_t SimbricksNicIfNextTimestamp(struct SimbricksNicIf *nicif);
+int SimbricksNicIfCleanup(struct SimbricksNicIf *nicif);
 
-volatile union SimbricksProtoPcieH2D *SimbricksNicIfH2DPoll(
-    struct SimbricksNicIf *nicif, uint64_t timestamp);
-void SimbricksNicIfH2DDone(struct SimbricksNicIf *nicif,
-                           volatile union SimbricksProtoPcieH2D *msg);
-void SimbricksNicIfH2DNext(struct SimbricksNicIf *nicif);
+static inline int SimbricksNicIfSync(struct SimbricksNicIf *nicif,
+                                     uint64_t cur_ts)
+{
+  return ((SimbricksNetIfOutSync(&nicif->net, cur_ts) == 0 &&
+          SimbricksPcieIfD2HOutSync(&nicif->pcie, cur_ts) == 0) ? 0 : -1);
+}
 
-volatile union SimbricksProtoPcieD2H *SimbricksNicIfD2HAlloc(
-    struct SimbricksNicIf *nicif, uint64_t timestamp);
+static inline uint64_t SimbricksNicIfNextTimestamp(struct SimbricksNicIf *nicif)
+{
+  uint64_t net = SimbricksNetIfInTimestamp(&nicif->net);
+  uint64_t pcie = SimbricksPcieIfH2DInTimestamp(&nicif->pcie);
 
-volatile union SimbricksProtoNetN2D *SimbricksNicIfN2DPoll(
-    struct SimbricksNicIf *nicif, uint64_t timestamp);
-void SimbricksNicIfN2DDone(struct SimbricksNicIf *nicif,
-                           volatile union SimbricksProtoNetN2D *msg);
-void SimbricksNicIfN2DNext(struct SimbricksNicIf *nicif);
-
-volatile union SimbricksProtoNetD2N *SimbricksNicIfD2NAlloc(
-    struct SimbricksNicIf *nicif, uint64_t timestamp);
+  return (net < pcie ? net : pcie);
+}
 
 #endif  // SIMBRICKS_NICIF_NICIF_H_

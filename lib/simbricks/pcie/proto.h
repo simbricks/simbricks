@@ -22,20 +22,16 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_PROTO_PCIE_H_
-#define SIMBRICKS_PROTO_PCIE_H_
+#ifndef SIMBRICKS_PCIE_PROTO_H_
+#define SIMBRICKS_PCIE_PROTO_H_
 
+#include <assert.h>
 #include <stdint.h>
 
-// #define SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(s) static_assert(sizeof(s) == 64)
-// #define SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(s) _Static_assert(sizeof(s) == 64)
-#define SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(s)
+#include <simbricks/base/proto.h>
 
 /******************************************************************************/
 /* Initialization messages on Unix socket */
-
-/** in dev_intro.flags to indicate that sender supports issuing syncs. */
-#define SIMBRICKS_PROTO_PCIE_FLAGS_DI_SYNC (1 << 0)
 
 /** Number of PCI bars */
 #define SIMBRICKS_PROTO_PCIE_NBARS 6
@@ -55,23 +51,6 @@
  * memory file descriptor attached.
  */
 struct SimbricksProtoPcieDevIntro {
-  /** flags: see SIMBRICKS_PROTO_PCIE_FLAGS_DI_* */
-  uint64_t flags;
-
-  /** offset of the device-to-host queue in shared memory region */
-  uint64_t d2h_offset;
-  /** size of an entry in the device-to-host queue in bytes */
-  uint64_t d2h_elen;
-  /** total device-to-host queue length in #entries */
-  uint64_t d2h_nentries;
-
-  /** offset of the host-to-device queue in shared memory region */
-  uint64_t h2d_offset;
-  /** size of an entry in the host-to-device queue in bytes */
-  uint64_t h2d_elen;
-  /** total host-to-device queue length in #entries */
-  uint64_t h2d_nentries;
-
   /** information for each BAR exposed by the device */
   struct {
     /** length of the bar in bytes (len = 0 indicates unused bar) */
@@ -110,48 +89,20 @@ struct SimbricksProtoPcieDevIntro {
   uint16_t psi_msix_cap_offset;
 } __attribute__((packed));
 
-#define SIMBRICKS_PROTO_PCIE_FLAGS_HI_SYNC (1 << 0)
 
 /** welcome message sent by host to device */
 struct SimbricksProtoPcieHostIntro {
-  /** flags: see SIMBRICKS_PROTO_PCIE_FLAGS_HI_* */
-  uint64_t flags;
 } __attribute__((packed));
 
 /******************************************************************************/
 /* Messages on in-memory device to host channel */
 
-/** Mask for ownership bit in own_type field */
-#define SIMBRICKS_PROTO_PCIE_D2H_OWN_MASK 0x80
-/** Message is owned by device */
-#define SIMBRICKS_PROTO_PCIE_D2H_OWN_DEV 0x00
-/** Message is owned by host */
-#define SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST 0x80
-
 /** Mask for type value in own_type field */
-#define SIMBRICKS_PROTO_PCIE_D2H_MSG_MASK 0x7f
-#define SIMBRICKS_PROTO_PCIE_D2H_MSG_SYNC 0x1
-#define SIMBRICKS_PROTO_PCIE_D2H_MSG_READ 0x2
-#define SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE 0x3
-#define SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT 0x4
-#define SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP 0x5
-#define SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP 0x6
-
-struct SimbricksProtoPcieD2HDummy {
-  uint8_t pad[48];
-  uint64_t timestamp;
-  uint8_t pad_[7];
-  uint8_t own_type;
-} __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HDummy);
-
-struct SimbricksProtoPcieD2HSync {
-  uint8_t pad[48];
-  uint64_t timestamp;
-  uint8_t pad_[7];
-  uint8_t own_type;
-} __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HSync);
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_READ 0x40
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE 0x41
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT 0x42
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP 0x43
+#define SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP 0x44
 
 struct SimbricksProtoPcieD2HRead {
   uint64_t req_id;
@@ -162,7 +113,7 @@ struct SimbricksProtoPcieD2HRead {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HRead);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieD2HRead);
 
 struct SimbricksProtoPcieD2HWrite {
   uint64_t req_id;
@@ -174,7 +125,7 @@ struct SimbricksProtoPcieD2HWrite {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HWrite);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieD2HWrite);
 
 #define SIMBRICKS_PROTO_PCIE_INT_LEGACY_HI 0
 #define SIMBRICKS_PROTO_PCIE_INT_LEGACY_LO 1
@@ -189,7 +140,7 @@ struct SimbricksProtoPcieD2HInterrupt {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HInterrupt);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieD2HInterrupt);
 
 struct SimbricksProtoPcieD2HReadcomp {
   uint64_t req_id;
@@ -199,7 +150,7 @@ struct SimbricksProtoPcieD2HReadcomp {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HReadcomp);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieD2HReadcomp);
 
 struct SimbricksProtoPcieD2HWritecomp {
   uint64_t req_id;
@@ -208,51 +159,26 @@ struct SimbricksProtoPcieD2HWritecomp {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieD2HWritecomp);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieD2HWritecomp);
 
 union SimbricksProtoPcieD2H {
-  struct SimbricksProtoPcieD2HDummy dummy;
-  struct SimbricksProtoPcieD2HSync sync;
+  union SimbricksProtoBaseMsg base;
   struct SimbricksProtoPcieD2HRead read;
   struct SimbricksProtoPcieD2HWrite write;
   struct SimbricksProtoPcieD2HInterrupt interrupt;
   struct SimbricksProtoPcieD2HReadcomp readcomp;
   struct SimbricksProtoPcieD2HWritecomp writecomp;
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(union SimbricksProtoPcieD2H);
+SIMBRICKS_PROTO_MSG_SZCHECK(union SimbricksProtoPcieD2H);
 
 /******************************************************************************/
 /* Messages on in-memory host to device channel */
 
-#define SIMBRICKS_PROTO_PCIE_H2D_OWN_MASK 0x80
-/** Message is owned by host */
-#define SIMBRICKS_PROTO_PCIE_H2D_OWN_HOST 0x00
-/** Message is owned by device */
-#define SIMBRICKS_PROTO_PCIE_H2D_OWN_DEV 0x80
-
-#define SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK 0x7f
-#define SIMBRICKS_PROTO_PCIE_H2D_MSG_SYNC 0x1
-#define SIMBRICKS_PROTO_PCIE_H2D_MSG_READ 0x2
-#define SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE 0x3
-#define SIMBRICKS_PROTO_PCIE_H2D_MSG_READCOMP 0x4
-#define SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITECOMP 0x5
-#define SIMBRICKS_PROTO_PCIE_H2D_MSG_DEVCTRL 0x7
-
-struct SimbricksProtoPcieH2DDummy {
-  uint8_t pad[48];
-  uint64_t timestamp;
-  uint8_t pad_[7];
-  uint8_t own_type;
-} __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DDummy);
-
-struct SimbricksProtoPcieH2DSync {
-  uint8_t pad[48];
-  uint64_t timestamp;
-  uint8_t pad_[7];
-  uint8_t own_type;
-} __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DSync);
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_READ 0x60
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE 0x61
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_READCOMP 0x62
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITECOMP 0x63
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_DEVCTRL 0x64
 
 struct SimbricksProtoPcieH2DRead {
   uint64_t req_id;
@@ -264,7 +190,7 @@ struct SimbricksProtoPcieH2DRead {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DRead);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieH2DRead);
 
 struct SimbricksProtoPcieH2DWrite {
   uint64_t req_id;
@@ -277,7 +203,7 @@ struct SimbricksProtoPcieH2DWrite {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DWrite);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieH2DWrite);
 
 struct SimbricksProtoPcieH2DReadcomp {
   uint64_t req_id;
@@ -287,7 +213,7 @@ struct SimbricksProtoPcieH2DReadcomp {
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DReadcomp);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieH2DReadcomp);
 
 struct SimbricksProtoPcieH2DWritecomp {
   uint64_t req_id;
@@ -296,7 +222,7 @@ struct SimbricksProtoPcieH2DWritecomp {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DWritecomp);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieH2DWritecomp);
 
 #define SIMBRICKS_PROTO_PCIE_CTRL_INTX_EN (1 << 0)
 #define SIMBRICKS_PROTO_PCIE_CTRL_MSI_EN (1 << 1)
@@ -308,17 +234,16 @@ struct SimbricksProtoPcieH2DDevctrl {
   uint8_t pad_[7];
   uint8_t own_type;
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(struct SimbricksProtoPcieH2DDevctrl);
+SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoPcieH2DDevctrl);
 
 union SimbricksProtoPcieH2D {
-  struct SimbricksProtoPcieH2DDummy dummy;
-  struct SimbricksProtoPcieH2DSync sync;
+  union SimbricksProtoBaseMsg base;
   struct SimbricksProtoPcieH2DRead read;
   struct SimbricksProtoPcieH2DWrite write;
   struct SimbricksProtoPcieH2DReadcomp readcomp;
   struct SimbricksProtoPcieH2DWritecomp writecomp;
   struct SimbricksProtoPcieH2DDevctrl devctrl;
 } __attribute__((packed));
-SIMBRICKS_PROTO_PCIE_MSG_SZCHECK(union SimbricksProtoPcieH2D);
+SIMBRICKS_PROTO_MSG_SZCHECK(union SimbricksProtoPcieH2D);
 
-#endif  // SIMBRICKS_PROTO_PCIE_H_
+#endif  // SIMBRICKS_PCIE_PROTO_H_

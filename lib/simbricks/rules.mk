@@ -22,7 +22,9 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,netif))
+$(eval $(call subdir,base))
+$(eval $(call subdir,network))
+$(eval $(call subdir,pcie))
 $(eval $(call subdir,nicif))
 $(eval $(call subdir,nicbm))
 
