@@ -30,7 +30,7 @@
 #include <sstream>
 #include <string>
 extern "C" {
-#include <simbricks/proto/pcie.h>
+#include <simbricks/pcie/proto.h>
 }
 #include <simbricks/nicbm/nicbm.h>
 

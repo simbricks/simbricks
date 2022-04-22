@@ -28,9 +28,7 @@
 
 #include <list>
 #include <vector>
-extern "C" {
-#include <simbricks/proto/pcie.h>
-}
+
 #include <simbricks/nicbm/nicbm.h>
 
 typedef uint32_t reg_t;
