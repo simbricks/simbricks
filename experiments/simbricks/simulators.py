@@ -247,20 +247,15 @@ class QemuHost(HostSim):
         else:
             cmd += ' -cpu host -enable-kvm '
 
-        di = 0
         for dev in self.pcidevs:
-            cmd += f'-chardev socket,path={env.dev_pci_path(dev)},'
-            cmd += f'id=simbrickscd{di} '
-            cmd += f'-device simbricks-pci,chardev=simbrickscd{di}'
+            cmd += f'-device simbricks-pci,socket={env.dev_pci_path(dev)}'
             if self.sync:
                 cmd += ',sync=on'
-                cmd += f',sync-mode={self.sync_mode}'
                 cmd += f',pci-latency={self.pci_latency}'
                 cmd += f',sync-period={self.sync_period}'
             else:
                 cmd += ',sync=off'
             cmd += ' '
-            di += 1
 
         return cmd
 
@@ -444,7 +439,7 @@ class SwitchNet(NetSim):
 
     def run_cmd(self, env):
         cmd = env.repodir + '/sims/net/switch/net_switch'
-        cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency}'
+        cmd += f' -S {self.sync_period} -E {self.eth_latency}'
 
         if not self.sync:
             cmd += ' -u'
@@ -475,7 +470,7 @@ class TofinoNet(NetSim):
 
     def run_cmd(self, env):
         cmd = env.repodir + '/sims/tofino/tofino'
-        cmd += f' -m {self.sync_mode} -S {self.sync_period} -E {self.eth_latency} -t {self.tofino_log_path}'
+        cmd += f' -S {self.sync_period} -E {self.eth_latency} -t {self.tofino_log_path}'
         if not self.sync:
             cmd += ' -u'
         for (_,n) in self.connect_sockets(env):
