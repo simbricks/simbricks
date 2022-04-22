@@ -32,10 +32,9 @@
 #include <verilated_vcd_c.h>
 #endif
 
+#include <simbricks/base/cxxatomicfix.h>
 extern "C" {
 #include <simbricks/nicif/nicif.h>
-#include <simbricks/proto/base.h>
-#include <simbricks/proto/pcie.h>
 }
 
 #include "sims/nic/corundum/coord.h"
@@ -48,9 +47,6 @@ extern "C" {
 struct DMAOp;
 
 static uint64_t clock_period = 4 * 1000ULL;   // 4ns -> 250MHz
-static uint64_t sync_period = 500 * 1000ULL;  // 500ns
-static uint64_t pci_latency = 500 * 1000ULL;  // 500ns
-static uint64_t eth_latency = 500 * 1000ULL;  // 500ns
 
 static volatile int exiting = 0;
 uint64_t main_time = 0;
@@ -370,17 +366,15 @@ void pci_rwcomp_issue(MMIOOp *op) {
     wc = &msg->writecomp;
     wc->req_id = op->id;
 
-    // WMB();
-    wc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
-                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    SimbricksPcieIfD2HOutSend(&nicif.pcie, msg,
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP);
   } else {
     rc = &msg->readcomp;
     memcpy((void *)rc->data, &op->value, op->len);
     rc->req_id = op->id;
 
-    // WMB();
-    rc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
-                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    SimbricksPcieIfD2HOutSend(&nicif.pcie, msg,
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
   }
 
   delete op;
@@ -404,18 +398,16 @@ void pci_dma_issue(DMAOp *op) {
     // TODO(antoinek): check DMA length
     memcpy((void *)write->data, op->data, op->len);
 
-    // WMB();
-    write->own_type =
-        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE | SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    SimbricksPcieIfD2HOutSend(&nicif.pcie, msg,
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE);
   } else {
     volatile struct SimbricksProtoPcieD2HRead *read = &msg->read;
     read->req_id = (uintptr_t)op;
     read->offset = op->dma_addr;
     read->len = op->len;
 
-    // WMB();
-    read->own_type =
-        SIMBRICKS_PROTO_PCIE_D2H_MSG_READ | SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    SimbricksPcieIfD2HOutSend(&nicif.pcie, msg,
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_READ);
   }
 
   pci_dma_pending.insert(op);
@@ -497,9 +489,8 @@ static void h2d_read(MMIOInterface &mmio,
     memcpy((void *)rc->data, &val, read->len);
     rc->req_id = read->req_id;
 
-    // WMB();
-    rc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP |
-                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    SimbricksPcieIfD2HOutSend(&nicif.pcie, msg,
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
   } else {
     /*printf("read(bar=%u, off=%lu, len=%u) = %lu\n", read->bar, read->offset,
             read->len, val);*/
@@ -527,9 +518,8 @@ static void h2d_write(MMIOInterface &mmio,
     wc = &msg->writecomp;
     wc->req_id = write->req_id;
 
-    // WMB();
-    wc->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP |
-                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+    SimbricksPcieIfD2HOutSend(&nicif.pcie, msg,
+        SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP);
   } else {
     mmio.issueWrite(write->req_id, write->offset, write->len, val);
   }
@@ -537,13 +527,13 @@ static void h2d_write(MMIOInterface &mmio,
 
 static void poll_h2d(MMIOInterface &mmio) {
   volatile union SimbricksProtoPcieH2D *msg =
-      SimbricksNicIfH2DPoll(&nicif, main_time);
+      SimbricksPcieIfH2DInPoll(&nicif.pcie, main_time);
   uint8_t t;
 
   if (msg == NULL)
     return;
 
-  t = msg->dummy.own_type & SIMBRICKS_PROTO_PCIE_H2D_MSG_MASK;
+  t = SimbricksPcieIfH2DInType(&nicif.pcie, msg);
 
   // std::cerr << "poll_h2d: polled type=" << (int) t << std::endl;
   switch (t) {
@@ -566,19 +556,18 @@ static void poll_h2d(MMIOInterface &mmio) {
     case SIMBRICKS_PROTO_PCIE_H2D_MSG_DEVCTRL:
       break;
 
-    case SIMBRICKS_PROTO_PCIE_H2D_MSG_SYNC:
+    case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
       break;
 
     default:
       std::cerr << "poll_h2d: unsupported type=" << t << std::endl;
   }
 
-  SimbricksNicIfH2DDone(&nicif, msg);
-  SimbricksNicIfH2DNext(&nicif);
+  SimbricksPcieIfH2DInDone(&nicif.pcie, msg);
 }
 
 static volatile union SimbricksProtoPcieD2H *d2h_alloc(void) {
-  return SimbricksNicIfD2HAlloc(&nicif, main_time);
+  return SimbricksPcieIfD2HOutAlloc(&nicif.pcie, main_time);
 }
 
 class EthernetTx {
@@ -592,21 +581,18 @@ class EthernetTx {
   }
 
   void packet_done() {
-    volatile union SimbricksProtoNetD2N *msg =
-        SimbricksNicIfD2NAlloc(&nicif, main_time);
-    volatile struct SimbricksProtoNetD2NSend *send;
+    volatile union SimbricksProtoNetMsg *msg =
+        SimbricksNetIfOutAlloc(&nicif.net, main_time);
+    volatile struct SimbricksProtoNetMsgPacket *packet;
 
     if (!msg)
       throw "completion alloc failed";
 
-    send = &msg->send;
-    memcpy((void *)send->data, packet_buf, packet_len);
-    send->len = packet_len;
-    send->timestamp = main_time + eth_latency;
+    packet = &msg->packet;
+    memcpy((void *)packet->data, packet_buf, packet_len);
+    packet->len = packet_len;
 
-    // WMB();
-    send->own_type =
-        SIMBRICKS_PROTO_NET_D2N_MSG_SEND | SIMBRICKS_PROTO_NET_D2N_OWN_NET;
+    SimbricksNetIfOutSend(&nicif.net, msg, SIMBRICKS_PROTO_NET_MSG_PACKET);
 
 #ifdef ETH_DEBUG
     std::cerr << main_time << " EthernetTx: packet len=" << std::hex
@@ -731,34 +717,32 @@ class EthernetRx {
 };
 
 static void n2d_recv(EthernetRx &rx,
-                     volatile struct SimbricksProtoNetN2DRecv *recv) {
-  rx.packet_received((const void *)recv->data, recv->len);
+                     volatile struct SimbricksProtoNetMsgPacket *packet) {
+  rx.packet_received((const void *)packet->data, packet->len);
 }
 
 static void poll_n2d(EthernetRx &rx) {
-  volatile union SimbricksProtoNetN2D *msg =
-      SimbricksNicIfN2DPoll(&nicif, main_time);
+  volatile union SimbricksProtoNetMsg *msg =
+      SimbricksNetIfInPoll(&nicif.net, main_time);
   uint8_t t;
 
   if (msg == NULL)
     return;
 
-  t = msg->dummy.own_type & SIMBRICKS_PROTO_NET_N2D_MSG_MASK;
-
+  t = SimbricksNetIfInType(&nicif.net, msg);
   switch (t) {
-    case SIMBRICKS_PROTO_NET_N2D_MSG_RECV:
-      n2d_recv(rx, &msg->recv);
+    case SIMBRICKS_PROTO_NET_MSG_PACKET:
+      n2d_recv(rx, &msg->packet);
       break;
 
-    case SIMBRICKS_PROTO_NET_N2D_MSG_SYNC:
+    case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
       break;
 
     default:
       std::cerr << "poll_n2d: unsupported type=" << t << std::endl;
   }
 
-  SimbricksNicIfN2DDone(&nicif, msg);
-  SimbricksNicIfN2DNext(&nicif);
+  SimbricksNetIfInDone(&nicif.net, msg);
 }
 
 void pci_msi_issue(uint8_t vec) {
@@ -773,9 +757,8 @@ void pci_msi_issue(uint8_t vec) {
   intr->vector = vec;
   intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSI;
 
-  // WMB();
-  intr->own_type = SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT |
-                   SIMBRICKS_PROTO_PCIE_D2H_OWN_HOST;
+  SimbricksPcieIfD2HOutSend(&nicif.pcie, msg,
+      SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
 }
 
 static void msi_step(Vinterface &top, PCICoordinator &coord) {
@@ -797,30 +780,33 @@ static void msi_step(Vinterface &top, PCICoordinator &coord) {
 int main(int argc, char *argv[]) {
   char *vargs[2] = {argv[0], NULL};
   Verilated::commandArgs(1, vargs);
-  int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
+  struct SimbricksBaseIfParams netParams;
+  struct SimbricksBaseIfParams pcieParams;
 #ifdef TRACE_ENABLED
   Verilated::traceEverOn(true);
 #endif
 
-  if (argc < 4 && argc > 10) {
+  SimbricksNetIfDefaultParams(&netParams);
+  SimbricksPcieIfDefaultParams(&pcieParams);
+
+  if (argc < 4 && argc > 9) {
     fprintf(stderr,
             "Usage: corundum_verilator PCI-SOCKET ETH-SOCKET "
-            "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
+            "SHM [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
             "[ETH-LATENCY] [CLOCK-FREQ-MHZ]\n");
     return EXIT_FAILURE;
   }
-  if (argc >= 5)
-    sync_mode = strtol(argv[4], NULL, 0);
   if (argc >= 6)
-    main_time = strtoull(argv[5], NULL, 0);
+    main_time = strtoull(argv[4], NULL, 0);
   if (argc >= 7)
-    sync_period = strtoull(argv[6], NULL, 0) * 1000ULL;
+    netParams.sync_interval = pcieParams.sync_interval =
+        strtoull(argv[5], NULL, 0) * 1000ULL;
   if (argc >= 8)
-    pci_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
+    pcieParams.link_latency = strtoull(argv[6], NULL, 0) * 1000ULL;
   if (argc >= 9)
-    eth_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+    netParams.link_latency  = strtoull(argv[7], NULL, 0) * 1000ULL;
   if (argc >= 10)
-    clock_period = 1000000ULL / strtoull(argv[9], NULL, 0);
+    clock_period = 1000000ULL / strtoull(argv[8], NULL, 0);
 
   struct SimbricksProtoPcieDevIntro di;
   memset(&di, 0, sizeof(di));
@@ -835,24 +821,15 @@ int main(int argc, char *argv[]) {
   di.pci_revision = 0x00;
   di.pci_msi_nvecs = 32;
 
-  struct SimbricksNicIfParams nsparams;
-  nsparams.sync_pci = 1;
-  nsparams.sync_eth = 1;
-  nsparams.pci_socket_path = argv[1];
-  nsparams.eth_socket_path = argv[2];
-  nsparams.shm_path = argv[3];
-  nsparams.pci_latency = pci_latency;
-  nsparams.eth_latency = eth_latency;
-  nsparams.sync_delay = sync_period;
-  assert(sync_mode == SIMBRICKS_PROTO_SYNC_SIMBRICKS ||
-         sync_mode == SIMBRICKS_PROTO_SYNC_BARRIER);
-  nsparams.sync_mode = sync_mode;
+  pcieParams.sock_path = argv[1];
+  netParams.sock_path = argv[2];
 
-  if (SimbricksNicIfInit(&nicif, &nsparams, &di)) {
+  if (SimbricksNicIfInit(&nicif, argv[3], &netParams, &pcieParams, &di)) {
     return EXIT_FAILURE;
   }
-  std::cout << "sync_pci=" << nsparams.sync_pci
-            << "  sync_eth=" << nsparams.sync_eth << std::endl;
+  int sync_pci = SimbricksBaseIfSyncEnabled(&nicif.pcie.base);
+  int sync_eth = SimbricksBaseIfSyncEnabled(&nicif.net.base);
+  std::cout << "sync_pci=" << sync_pci << " sync_eth=" << sync_eth << std::endl;
 
   signal(SIGINT, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
@@ -957,17 +934,29 @@ int main(int argc, char *argv[]) {
   top->rst = 0;
 
   while (!exiting) {
-    while (SimbricksNicIfSync(&nicif, main_time)) {
-      std::cerr << "warn: SimbricksNicIfSync failed (t=" << main_time << ")"
-                << std::endl;
-    }
-    SimbricksNicIfAdvanceEpoch(&nicif, main_time);
+    int done;
+    do {
+      done = 1;
+      if (SimbricksPcieIfD2HOutSync(&nicif.pcie, main_time) < 0) {
+        std::cerr << "warn: SimbricksPcieIfD2HOutSync failed (t=" << main_time
+                << ")" << std::endl;
+        done = 0;
+      }
+      if (SimbricksNetIfOutSync(&nicif.net, main_time) < 0) {
+        std::cerr << "warn: SimbricksNetIfOutSync failed (t=" << main_time
+                << ")" << std::endl;
+        done = 0;
+      }
+    } while (!done);
 
     do {
       poll_h2d(mmio);
       poll_n2d(rx);
-    } while ((nsparams.sync_pci || nsparams.sync_eth) &&
-             SimbricksNicIfNextTimestamp(&nicif) <= main_time && !exiting);
+    } while (!exiting &&
+              ((sync_pci &&
+                  SimbricksPcieIfH2DInTimestamp(&nicif.pcie) <= main_time) ||
+                (sync_eth &&
+                  SimbricksNetIfInTimestamp(&nicif.net) <= main_time)));
 
     /* falling edge */
     top->clk = !top->clk;
