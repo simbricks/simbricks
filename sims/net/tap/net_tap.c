@@ -33,7 +33,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <simbricks/netif/netif.h>
+#include <simbricks/network/if.h>
 
 // #define DEBUG_PKTMETA
 
@@ -51,7 +51,13 @@ static int tap_open(const char *name) {
 
   memset(&ifr, 0, sizeof(ifr));
   ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+
+  /* fix gcc warning here: this is okay, kernel will nul-terminate ifr name,
+     if neeeded, no need for us to worry */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
   strncpy(ifr.ifr_name, name, IFNAMSIZ);
+#pragma GCC diagnostic pop
 
   if (ioctl(fd, TUNSETIFF, &ifr) != 0) {
     perror("tap_open: ioctl failed");
@@ -62,7 +68,7 @@ static int tap_open(const char *name) {
   return fd;
 }
 
-static void d2n_send(volatile struct SimbricksProtoNetD2NSend *s) {
+static void d2n_send(volatile struct SimbricksProtoNetMsgPacket *s) {
 #ifdef DEBUG_PKTMETA
   printf("sent packet: len=%u\n", s->len);
 #endif
@@ -73,40 +79,41 @@ static void d2n_send(volatile struct SimbricksProtoNetD2NSend *s) {
 }
 
 static void poll_d2n(void) {
-  volatile union SimbricksProtoNetD2N *msg = SimbricksNetIfD2NPoll(&nsif, 0);
+  volatile union SimbricksProtoNetMsg *msg = SimbricksNetIfInPoll(&nsif, 0);
   uint8_t type;
 
   /* message not ready */
   if (msg == NULL)
     return;
 
-  type = msg->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK;
+  type = SimbricksNetIfInType(&nsif, msg);
   switch (type) {
-    case SIMBRICKS_PROTO_NET_D2N_MSG_SEND:
-      d2n_send(&msg->send);
+    case SIMBRICKS_PROTO_NET_MSG_PACKET:
+      d2n_send(&msg->packet);
       break;
 
     default:
       fprintf(stderr, "poll_d2n: unsupported type=%u\n", type);
   }
 
-  SimbricksNetIfD2NDone(&nsif, msg);
+  SimbricksNetIfInDone(&nsif, msg);
 }
 
 static void *rx_handler(void *arg) {
-  volatile union SimbricksProtoNetN2D *msg;
-  volatile struct SimbricksProtoNetN2DRecv *rx;
+  volatile union SimbricksProtoNetMsg *msg;
+  volatile struct SimbricksProtoNetMsgPacket *rx;
   ssize_t len;
 
   while (1) {
-    msg = SimbricksNetIfN2DAlloc(&nsif, 0, 0);
+    msg = SimbricksNetIfOutAlloc(&nsif, 0);
     if (msg == NULL) {
       fprintf(stderr, "coudl not allocate message for rx\n");
       abort();
     }
-    rx = &msg->recv;
+    rx = &msg->packet;
 
-    len = read(tap_fd, (void *)rx->data, nsif.n2d_elen - sizeof(*msg));
+    len = read(tap_fd, (void *)rx->data,
+               SimbricksBaseIfOutMsgLen(&nsif.base) - sizeof(*msg));
     if (len <= 0) {
       perror("rx handler: read failed");
     }
@@ -116,9 +123,7 @@ static void *rx_handler(void *arg) {
     printf("received packet: len=%u\n", rx->len);
 #endif
 
-    // WMB();
-    rx->own_type =
-        SIMBRICKS_PROTO_NET_N2D_MSG_RECV | SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+    SimbricksNetIfOutSend(&nsif, msg, SIMBRICKS_PROTO_NET_MSG_PACKET);
   }
 }
 
@@ -134,8 +139,11 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  struct SimbricksBaseIfParams params;
+  SimbricksNetIfDefaultParams(&params);
+
   sync = 0;
-  if (SimbricksNetIfInit(&nsif, argv[2], &sync) != 0) {
+  if (SimbricksNetIfInit(&nsif, &params, argv[2], &sync) != 0) {
     close(tap_fd);
     return -1;
   }
