@@ -22,11 +22,13 @@
 
 include mk/subdir_pre.mk
 
-lib_netif := $(d)libnetif_common.a
+lib_pcie := $(d)libpcie.a
 
-OBJS := $(addprefix $(d),netif.o utils.o)
+OBJS := $(addprefix $(d),if.o)
 
-$(lib_netif): $(OBJS)
+libsimbricks_objs += $(OBJS)
 
-CLEAN := $(lib_netif) $(OBJS)
+$(lib_pcie): $(OBJS)
+
+CLEAN := $(lib_pcie) $(OBJS)
 include mk/subdir_post.mk

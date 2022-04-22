@@ -22,13 +22,27 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_NETIF_INTERNAL_H_
-#define SIMBRICKS_NETIF_INTERNAL_H_
+#ifndef SIMBRICKS_NETWORK_IF_H_
+#define SIMBRICKS_NETWORK_IF_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
-int uxsocket_connect(const char *path);
-int uxsocket_recv(int fd, void *data, size_t len, int *pfd);
-void *shm_map(int shm_fd);
+#include <simbricks/network/proto.h>
+#include <simbricks/base/generic.h>
 
-#endif  // SIMBRICKS_NETIF_INTERNAL_H_
+
+struct SimbricksNetIf {
+    struct SimbricksBaseIf base;
+};
+
+void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params);
+int SimbricksNetIfInit(struct SimbricksNetIf *nsif,
+                       struct SimbricksBaseIfParams *params,
+                       const char *eth_socket_path,
+                       int *sync_eth);
+
+/** Generate queue access functions */
+SIMBRICKS_BASEIF_GENERIC(SimbricksNetIf, SimbricksProtoNetMsg, SimbricksNetIf);
+
+#endif  // SIMBRICKS_NETWORK_IF_H_

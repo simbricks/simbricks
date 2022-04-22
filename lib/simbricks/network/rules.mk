@@ -22,11 +22,13 @@
 
 include mk/subdir_pre.mk
 
-lib_nicif := $(d)libnicif.a
+lib_netif := $(d)libnetwork.a
 
-OBJS := $(addprefix $(d),nicif.o)
+OBJS := $(addprefix $(d),if.o)
 
-$(lib_nicif): $(OBJS)
+libsimbricks_objs += $(OBJS)
 
-CLEAN := $(lib_nicif) $(OBJS)
+$(lib_netif): $(OBJS)
+
+CLEAN := $(lib_netif) $(OBJS)
 include mk/subdir_post.mk

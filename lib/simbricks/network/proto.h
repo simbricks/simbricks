@@ -22,10 +22,39 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_PROTO_BASE_H_
-#define SIMBRICKS_PROTO_BASE_H_
+#ifndef SIMBRICKS_NETWORK_PROTO_H_
+#define SIMBRICKS_NETWORK_PROTO_H_
 
-#define SIMBRICKS_PROTO_SYNC_SIMBRICKS 0
-#define SIMBRICKS_PROTO_SYNC_BARRIER 1
+#include <stdint.h>
 
-#endif  // SIMBRICKS_PROTO_BASE_H_
+#include <simbricks/base/proto.h>
+
+/******************************************************************************/
+/* Initialization messages on Unix socket */
+
+/** welcome message sent by network devices to eachother. */
+struct SimbricksProtoNetIntro {
+} __attribute__((packed));
+
+/******************************************************************************/
+/* The network protocol is symmetric */
+
+/** a network packet */
+#define SIMBRICKS_PROTO_NET_MSG_PACKET 0x40
+
+struct SimbricksProtoNetMsgPacket {
+  uint16_t len;
+  uint8_t port;
+  uint8_t pad[45];
+  uint64_t timestamp;
+  uint8_t pad_[7];
+  uint8_t own_type;
+  uint8_t data[];
+} __attribute__((packed));
+
+union SimbricksProtoNetMsg {
+  union SimbricksProtoBaseMsg base;
+  struct SimbricksProtoNetMsgPacket packet;
+};
+
+#endif  // SIMBRICKS_NETWORK_PROTO_H_

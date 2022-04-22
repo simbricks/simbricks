@@ -22,14 +22,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_NICIF_INTERNAL_H_
-#define SIMBRICKS_NICIF_INTERNAL_H_
+#include "lib/simbricks/pcie/if.h"
 
-#include <stddef.h>
-#include <stdio.h>
-
-int uxsocket_init(const char *path);
-int uxsocket_send(int connfd, void *data, size_t len, int fd);
-int shm_create(const char *path, size_t size, void **addr);
-
-#endif  // SIMBRICKS_NICIF_INTERNAL_H_
+void SimbricksPcieIfDefaultParams(struct SimbricksBaseIfParams *params)
+{
+  SimbricksBaseIfDefaultParams(params);
+  params->upper_layer_proto = SIMBRICKS_PROTO_ID_PCIE;
+  params->in_entries_size = params->out_entries_size = 9024 + 64;
+}
