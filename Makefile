@@ -29,8 +29,8 @@ base_dir := $(d)./
 CPPLINT ?= cpplint
 CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
-CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC $(EXTRA_CFLAGS)
-CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC $(EXTRA_CXXFLAGS)
+CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu11 $(EXTRA_CFLAGS)
+CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu++17 $(EXTRA_CXXFLAGS)
 CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir) $(EXTRA_CPPFLAGS)
 
 VERILATOR = verilator
