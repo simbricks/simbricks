@@ -28,7 +28,7 @@ OBJS := $(d)tofino.o
 
 $(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
-$(bin_tofino): $(OBJS) $(lib_netif)
+$(bin_tofino): $(OBJS) $(lib_netif) $(lib_base)
 
 CLEAN := $(bin_tofino) $(OBJS)
 ALL := $(bin_tofino)
