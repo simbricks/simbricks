@@ -28,7 +28,7 @@ OBJS := $(d)net_tap.o
 
 $(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
-$(bin_net_tap): $(OBJS) $(lib_netif) -lpcap -lpthread
+$(bin_net_tap): $(OBJS) $(lib_netif) $(lib_base) -lpcap -lpthread
 
 CLEAN := $(bin_net_tap) $(OBJS)
 ALL := $(bin_net_tap)
