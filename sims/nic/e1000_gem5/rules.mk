@@ -27,7 +27,8 @@ bin_e1000_gem5 := $(d)e1000_gem5
 OBJS := $(addprefix $(d),e1000_gem5.o i8254xGBe.o gem5/bitfield.o gem5/inet.o \
 	gem5/pktfifo.o)
 
-$(bin_e1000_gem5): $(OBJS) $(lib_nicbm) $(lib_nicif)
+$(bin_e1000_gem5): $(OBJS) $(lib_nicbm) $(lib_nicif) $(lib_netif) $(lib_pcie) \
+	$(lib_base)
 
 CLEAN := $(bin_e1000_gem5) $(OBJS)
 ALL := $(bin_e1000_gem5)
