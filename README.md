@@ -1,4 +1,5 @@
-# Endhost
+# SimBricks
+**End-to-end system simulation through modular combination of component simulators.**
 
 Code structure:
  - `proto/`: protocol definitions for PCIe and Ethernet channels
