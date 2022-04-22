@@ -42,7 +42,8 @@ $(verilator_src_menshen): $(vsrcs_menshen)
 	    --Mdir $(verilator_dir_menshen) \
 	    -y $(dir_menshen)rtl -y $(dir_menshen)rtl/extract \
 	    -y $(dir_menshen)rtl/action  -y $(dir_menshen)rtl/lookup -y $(dir_menshen)lib \
-	    $(dir_menshen)rtl/rmt_wrapper.v --exe $(abspath $(srcs_menshen)) $(abspath $(lib_netif))
+	    $(dir_menshen)rtl/rmt_wrapper.v --exe $(abspath $(srcs_menshen)) \
+		$(abspath $(lib_netif)) $(abspath $(lib_base))
 
 $(verilator_bin_menshen): $(verilator_src_menshen) $(srcs_menshen) $(lib_netif)
 	$(MAKE) -C $(verilator_dir_menshen) -f Vrmt_wrapper.mk

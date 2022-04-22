@@ -310,8 +310,11 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
+  struct SimbricksBaseIfParams params;
+  SimbricksNetIfDefaultParams(&params);
+
   for (int i = 1; i < argc; i++) {
-    NetPort *np = new NetPort();
+    NetPort *np = new NetPort(&params);
     if (!np->Connect(argv[i], synchronized)) {
       std::cerr << "connecting to port " << argv[i] << " failed" << std::endl;
       return EXIT_FAILURE;
@@ -332,8 +335,6 @@ int main(int argc, char *argv[]) {
     // Sync all interfaces
     for (auto port : ports)
       port->Sync(main_time);
-    for (auto port : ports)
-      port->AdvanceEpoch(main_time);
 
     poll_ports();
 

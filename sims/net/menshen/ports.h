@@ -3,10 +3,9 @@
 
 #include <stdint.h>
 
-#include <simbricks/proto/base.h>
-#include <simbricks/proto/network.h>
+#include <simbricks/base/cxxatomicfix.h>
 extern "C" {
-#include <simbricks/netif/netif.h>
+#include <simbricks/network/if.h>
 }
 
 extern uint64_t sync_period;
@@ -27,7 +26,6 @@ class Port {
   virtual bool Connect(const char *path, int sync) = 0;
   virtual bool IsSync() = 0;
   virtual void Sync(uint64_t cur_ts) = 0;
-  virtual void AdvanceEpoch(uint64_t cur_ts) = 0;
   virtual uint64_t NextTimestamp() = 0;
   virtual enum RxPollState RxPacket(
       const void *& data, size_t &len, uint64_t cur_ts) = 0;
@@ -39,21 +37,24 @@ class Port {
 /** Normal network switch port (conneting to a NIC) */
 class NetPort : public Port {
  protected:
-  struct SimbricksNetIf netif_;
-  volatile union SimbricksProtoNetD2N *rx_;
+  struct SimbricksBaseIfParams *params_;
+  struct SimbricksNetIf netifObj_;
+  struct SimbricksNetIf *netif_;
+  volatile union SimbricksProtoNetMsg *rx_;
   int sync_;
 
  public:
-  NetPort() : rx_(nullptr), sync_(0) {
-    memset(&netif_, 0, sizeof(netif_));
+  NetPort(struct SimbricksBaseIfParams *params) : params_(params),
+      netif_(&netifObj_), rx_(nullptr), sync_(0) {
+    memset(&netifObj_, 0, sizeof(netifObj_));
   }
 
-  NetPort(const NetPort &other) : netif_(other.netif_), rx_(other.rx_),
-      sync_(other.sync_) {}
+  NetPort(const NetPort &other) : netifObj_(other.netifObj_),
+      netif_(&netifObj_), rx_(other.rx_), sync_(other.sync_) {}
 
   virtual bool Connect(const char *path, int sync) override {
     sync_ = sync;
-    return SimbricksNetIfInit(&netif_, path, &sync_) == 0;
+    return SimbricksNetIfInit(netif_, params_, path, &sync_) == 0;
   }
 
   virtual bool IsSync() override {
@@ -61,32 +62,27 @@ class NetPort : public Port {
   }
 
   virtual void Sync(uint64_t cur_ts) override {
-    while (SimbricksNetIfN2DSync(&netif_, cur_ts, eth_latency, sync_period,
-                              sync_mode));
-  }
-
-  virtual void AdvanceEpoch(uint64_t cur_ts) override {
-    SimbricksNetIfAdvanceEpoch(cur_ts, sync_period, sync_mode);
+    while (SimbricksNetIfOutSync(netif_, cur_ts));
   }
 
   virtual uint64_t NextTimestamp() override {
-    return SimbricksNetIfD2NTimestamp(&netif_);
+    return SimbricksNetIfInTimestamp(netif_);
   }
 
   virtual enum RxPollState RxPacket(
       const void *& data, size_t &len, uint64_t cur_ts) override {
     assert(rx_ == nullptr);
 
-    rx_ = SimbricksNetIfD2NPoll(&netif_, cur_ts);
+    rx_ = SimbricksNetIfInPoll(netif_, cur_ts);
     if (!rx_)
       return kRxPollFail;
 
-    uint8_t type = rx_->dummy.own_type & SIMBRICKS_PROTO_NET_D2N_MSG_MASK;
-    if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SEND) {
-      data = (const void *)rx_->send.data;
-      len = rx_->send.len;
+    uint8_t type = SimbricksNetIfInType(netif_, rx_);
+    if (type == SIMBRICKS_PROTO_NET_MSG_PACKET) {
+      data = (const void *)rx_->packet.data;
+      len = rx_->packet.len;
       return kRxPollSuccess;
-    } else if (type == SIMBRICKS_PROTO_NET_D2N_MSG_SYNC) {
+    } else if (type == SIMBRICKS_PROTO_MSG_TYPE_SYNC) {
       return kRxPollSync;
     } else {
       fprintf(stderr, "switch_pkt: unsupported type=%u\n", type);
@@ -97,29 +93,27 @@ class NetPort : public Port {
   virtual void RxDone() override {
     assert(rx_ != nullptr);
 
-    SimbricksNetIfD2NDone(&netif_, rx_);
+    SimbricksNetIfInDone(netif_, rx_);
     rx_ = nullptr;
   }
 
   virtual bool TxPacket(
       const void *data, size_t len, uint64_t cur_ts) override {
-    volatile union SimbricksProtoNetN2D *msg_to =
-      SimbricksNetIfN2DAlloc(&netif_, cur_ts, eth_latency);
+    volatile union SimbricksProtoNetMsg *msg_to =
+      SimbricksNetIfOutAlloc(netif_, cur_ts);
     if (!msg_to && !sync_) {
       return false;
     } else if (!msg_to && sync_) {
       while (!msg_to)
-        msg_to = SimbricksNetIfN2DAlloc(&netif_, cur_ts, eth_latency);
+        msg_to = SimbricksNetIfOutAlloc(netif_, cur_ts);
     }
-    volatile struct SimbricksProtoNetN2DRecv *rx;
-    rx = &msg_to->recv;
+    volatile struct SimbricksProtoNetMsgPacket *rx;
+    rx = &msg_to->packet;
     rx->len = len;
     rx->port = 0;
     memcpy((void *)rx->data, data, len);
 
-    // WMB();
-    rx->own_type =
-        SIMBRICKS_PROTO_NET_N2D_MSG_RECV | SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
+    SimbricksNetIfOutSend(netif_, msg_to, SIMBRICKS_PROTO_NET_MSG_PACKET);
     return true;
   }
 };
