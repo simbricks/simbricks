@@ -48,7 +48,7 @@ $(verilator_src_corundum): $(vsrcs_corundum)
 	      $(abspath $(lib_nicif) $(lib_netif) $(lib_pcie) $(lib_base))
 
 $(verilator_bin_corundum): $(verilator_src_corundum) $(srcs_corundum) \
-    $(lib_nicif)
+    $(lib_nicif) $(lib_netif) $(lib_pcie) $(lib_base)
 	$(MAKE) -C $(verilator_dir_corundum) -f Vinterface.mk
 
 $(bin_corundum): $(verilator_bin_corundum)
