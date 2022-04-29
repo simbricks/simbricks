@@ -19,6 +19,7 @@ fi
 base_img=$1
 outname=$2
 pkrfile=$3
+compressed=$4
 
 mkdir -p input-$outname
 
@@ -29,5 +30,6 @@ export PATH="$qemupath:$qemupath/build/:$PATH"
     -var "memory=$mem" \
     -var "base_img=$base_img" \
     -var "outname=$outname" \
+    -var "compressed=$compressed" \
     ${pkrfile}
 rm -rf input-$outname
