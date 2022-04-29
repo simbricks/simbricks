@@ -350,17 +350,19 @@ int BasePeerEvent(struct Peer *peer, uint32_t events) {
   }
 
   // receive intro message
+  ssize_t ret;
   if (!peer->is_listener) {
     /* not a listener, so we're expecting an fd for the shm region */
-    if (UxsocketRecvFd(peer->sock_fd, peer->intro_local,
-        sizeof(peer->intro_local), &peer->shm_fd))
+    ret = UxsocketRecvFd(peer->sock_fd, peer->intro_local,
+        sizeof(peer->intro_local), &peer->shm_fd);
+    if (ret <= 0)
       return 1;
 
     if (!(peer->shm_base = ShmMap(peer->shm_fd, &peer->shm_size)))
       return 1;
   } else {
     /* as a listener, we use our local shm region, so no fd is sent to us */
-    ssize_t ret = recv(peer->sock_fd, peer->intro_local,
+    ret = recv(peer->sock_fd, peer->intro_local,
         sizeof(peer->intro_local), 0);
     if (ret <= 0) {
       perror("PeerEvent: recv failed");
@@ -368,6 +370,7 @@ int BasePeerEvent(struct Peer *peer, uint32_t events) {
     }
   }
 
+  peer->intro_local_len = ret;
   peer->intro_valid_local = true;
 
   // pass intro along
