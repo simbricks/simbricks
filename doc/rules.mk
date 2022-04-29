@@ -28,14 +28,16 @@ doxygen_srcs := $(wildcard $(d)/*.h)
 sphinx_outdir := $(d)_build
 sphinx_srcs := $(wildcard $(d)/*.rst $(d)/*/*.rst)
 
-documentation: $(doxygen_outdir) $(sphinx_outdir)
+documentation: $(doxygen_outdir)/ready $(sphinx_outdir)/ready
 .PHONY: documentation
 
-$(doxygen_outdir): $(d)Doxyfile $(doxygen_srcs)
+$(doxygen_outdir)/ready: $(d)Doxyfile $(doxygen_srcs)
 	cd $(base_dir). && doxygen doc/Doxyfile
+	touch $@
 
-$(sphinx_outdir): $(d)conf.py $(sphinx_srcs)
+$(sphinx_outdir)/ready: $(d)conf.py $(sphinx_srcs)
 	cd $(base_dir). && sphinx-build doc/ doc/_build
+	touch $@
 
 CLEAN := $(doxygen_outdir) $(sphinx_outdir)
 

@@ -88,7 +88,7 @@ int UxsocketConnect(const char *path) {
   return fd;
 }
 
-int UxsocketRecvFd(int fd, void *data, size_t len, int *pfd) {
+ssize_t UxsocketRecvFd(int fd, void *data, size_t len, int *pfd) {
   int *ppfd;
   ssize_t ret;
   struct cmsghdr *cmsg;
@@ -110,7 +110,7 @@ int UxsocketRecvFd(int fd, void *data, size_t len, int *pfd) {
       .msg_flags = 0,
   };
 
-  if ((ret = recvmsg(fd, &msg, 0)) != (ssize_t) len) {
+  if ((ret = recvmsg(fd, &msg, 0)) <= 0) {
     perror("recvmsg failed");
     return -1;
   }
@@ -123,7 +123,7 @@ int UxsocketRecvFd(int fd, void *data, size_t len, int *pfd) {
   }
 
   *pfd = *ppfd;
-  return 0;
+  return ret;
 }
 
 int UxsocketSendFd(int connfd, void *data, size_t len, int fd) {
