@@ -35,9 +35,9 @@ $(bin_net_sockets): $(SOCKETS_OBJS) $(COMMON_OBJS) -lpthread
 CLEAN := $(bin_net_rdma) $(bin_net_sockets) \
 	$(RDMA_OBJS) $(SOCKETS_OBJS) $(COMMON_OBJS)
 
-ALL :=
+ALL := $(bin_net_sockets)
 ifeq ($(ENABLE_DIST),y)
-ALL += $(bin_net_sockets) $(bin_net_rdma)
+ALL += $(bin_net_rdma)
 endif
 
 include mk/subdir_post.mk
