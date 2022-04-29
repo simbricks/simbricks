@@ -22,18 +22,16 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef DIST_COMMON_NET_H_
-#define DIST_COMMON_NET_H_
+#ifndef DIST_COMMON_BASE_H_
+#define DIST_COMMON_BASE_H_
 
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <stddef.h>
 
-#include <simbricks/proto/network.h>
 
 struct Peer {
-  /* base address of the local queue we're polling.
-     (d2n or n2d depending on is_dev). */
+  /* base address of the local queue we're polling. */
   uint8_t *local_base;
   uint32_t local_elen;
   uint32_t local_enum;
@@ -66,9 +64,6 @@ struct Peer {
   // last cleanup position reported to peer
   uint32_t cleanup_pos_reported;
 
-
-  struct SimbricksProtoNetDevIntro dev_intro __attribute__ ((aligned (8)));
-  struct SimbricksProtoNetNetIntro net_intro __attribute__ ((aligned (8)));
   const char *sock_path;
 
   // opaque value, e.g. to be used by rdma proxy for memory region
@@ -80,35 +75,43 @@ struct Peer {
   int sock_fd;
   int shm_fd;
 
-  // is our local peer a device? (otherwise it's a network)
-  bool is_dev;
+  // is our local peer a listener?
+  bool is_listener;
 
-  bool intro_valid_local;
-  bool intro_valid_remote;
 
   // set true when the queue is ready for polling
   volatile bool ready;
+
+  /* intro received from our local peer */
+  bool intro_valid_local;
+  uint8_t intro_local[2048];
+  size_t intro_local_len;
+
+  /* intro received through proxy channel */
+  bool intro_valid_remote;
+  uint8_t intro_remote[2048];
+  size_t intro_remote_len;
 };
 
 extern void *shm_base;
 extern size_t peer_num;
 extern struct Peer *peers;
 
-int NetInit(const char *shm_path_, size_t shm_size_, int epfd_);
-bool NetPeerAdd(const char *path, bool dev);
-struct Peer *NetPeerLookup(uint32_t id);
-int NetListen(void);
-int NetConnect(void);
-void NetPoll(void);
-int NetPeerSendDevIntro(struct Peer *peer);
-int NetPeerSetupNetQueues(struct Peer *peer);
-int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos);
-int NetPeerEvent(struct Peer *peer, uint32_t events);
-void NetEntryReceived(struct Peer *peer, uint32_t pos, void *data);
+int BaseInit(const char *shm_path_, size_t shm_size_, int epfd_);
+bool BasePeerAdd(const char *path, bool listener);
+struct Peer *BasePeerLookup(uint32_t id);
+int BaseListen(void);
+int BaseConnect(void);
+void BasePoll(void);
+int BasePeerSetupQueues(struct Peer *peer);
+int BasePeerSendIntro(struct Peer *peer);
+int BasePeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos);
+int BasePeerEvent(struct Peer *peer, uint32_t events);
+void BaseEntryReceived(struct Peer *peer, uint32_t pos, void *data);
 
 // To be implemented in proxy implementation
-int NetOpPassIntro(struct Peer *peer);
-int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n);
-int NetOpPassReport();
+int BaseOpPassIntro(struct Peer *peer);
+int BaseOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n);
+int BaseOpPassReport();
 
-#endif  // DIST_NET_RDMA_H_
+#endif  // DIST_COMMON_BASE_H_

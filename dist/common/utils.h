@@ -26,10 +26,11 @@
 #define DIST_UTILS_H_
 
 #include <stddef.h>
+#include <sys/types.h>
 
 int UxsocketInit(const char *path);
 int UxsocketConnect(const char *path);
-int UxsocketRecvFd(int fd, void *data, size_t len, int *pfd);
+ssize_t UxsocketRecvFd(int fd, void *data, size_t len, int *pfd);
 int UxsocketSendFd(int connfd, void *data, size_t len, int fd);
 
 int ShmCreate(const char *path, size_t size, void **addr);

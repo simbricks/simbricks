@@ -25,7 +25,7 @@ include mk/subdir_pre.mk
 bin_net_rdma := $(d)rdma/net_rdma
 bin_net_sockets := $(d)sockets/net_sockets
 
-COMMON_OBJS := $(addprefix $(d)common/, net.o utils.o)
+COMMON_OBJS := $(addprefix $(d)common/, base.o utils.o)
 RDMA_OBJS := $(addprefix $(d)rdma/, net_rdma.o rdma.o rdma_cm.o rdma_ib.o)
 SOCKETS_OBJS := $(addprefix $(d)sockets/, net_sockets.o)
 

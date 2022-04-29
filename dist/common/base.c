@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "dist/common/net.h"
+#include "dist/common/base.h"
 
 #include <assert.h>
 #include <fcntl.h>
@@ -36,7 +36,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <simbricks/proto/base.h>
+#include <simbricks/base/proto.h>
 
 #include "dist/common/utils.h"
 
@@ -55,7 +55,7 @@ struct Peer *peers = NULL;
 
 static int epfd = -1;
 
-int NetInit(const char *shm_path_, size_t shm_size_, int epfd_) {
+int BaseInit(const char *shm_path_, size_t shm_size_, int epfd_) {
   shm_size = shm_size_;
   if ((shm_fd = ShmCreate(shm_path_, shm_size_, &shm_base)) < 0)
     return 1;
@@ -79,7 +79,7 @@ static int ShmAlloc(size_t size, uint64_t *off) {
   return 0;
 }
 
-bool NetPeerAdd(const char *path, bool dev) {
+bool BasePeerAdd(const char *path, bool listener) {
   struct Peer *peer = realloc(peers, sizeof(*peers) * (peer_num + 1));
   if (!peer) {
     perror("NetPeerAdd: realloc failed");
@@ -94,7 +94,7 @@ bool NetPeerAdd(const char *path, bool dev) {
     perror("NetPeerAdd: strdup failed");
     return false;
   }
-  peer->is_dev = dev;
+  peer->is_listener = listener;
   peer->sock_fd = -1;
   peer->shm_fd = -1;
   peer->last_sent_pos = -1;
@@ -102,14 +102,14 @@ bool NetPeerAdd(const char *path, bool dev) {
 }
 
 
-int NetListen() {
+int BaseListen() {
 #ifdef DEBUG
-  fprintf(stderr, "Creating net listening sockets\n");
+  fprintf(stderr, "Creating listening sockets\n");
 #endif
 
   for (size_t i = 0; i < peer_num; i++) {
     struct Peer *peer = &peers[i];
-    if (peer->is_dev)
+    if (!peer->is_listener)
       continue;
 
 #ifdef DEBUG
@@ -135,14 +135,14 @@ int NetListen() {
   return 0;
 }
 
-int NetConnect() {
+int BaseConnect() {
 #ifdef DEBUG
   fprintf(stderr, "Connecting to device sockets\n");
 #endif
 
   for (size_t i = 0; i < peer_num; i++) {
     struct Peer *peer = &peers[i];
-    if (!peer->is_dev)
+    if (peer->is_listener)
       continue;
 
 #ifdef DEBUG
@@ -163,61 +163,49 @@ int NetConnect() {
   return 0;
 }
 
-int NetPeerSendDevIntro(struct Peer *peer) {
-#ifdef DEBUG
-  fprintf(stderr, "PeerDevSendIntro(%s)\n", peer->sock_path);
-#endif
-
-  struct SimbricksProtoNetDevIntro *di = &peer->dev_intro;
-  peer->local_base = (void *) ((uintptr_t) peer->shm_base + di->d2n_offset);
-  peer->local_elen = di->d2n_elen;
-  peer->local_enum = di->d2n_nentries;
-
-  peer->cleanup_base = (void *) ((uintptr_t) peer->shm_base + di->n2d_offset);
-  peer->cleanup_elen = di->n2d_elen;
-  peer->cleanup_enum = di->n2d_nentries;
-
-  struct SimbricksProtoNetNetIntro *ni = &peer->net_intro;
-  ssize_t ret = send(peer->sock_fd, ni, sizeof(*ni), 0);
-  if (ret < 0) {
-    perror("PeerDevSendIntro: send failed");
-    return 1;
-  } else if (ret != (ssize_t) sizeof(*ni)) {
-    fprintf(stderr, "PeerDevSendIntro: send incomplete\n");
-    return 1;
+int BasePeerSetupQueues(struct Peer *peer) {
+  if (!peer->is_listener) {
+    /* only need to set up queues for listeners */
+    return 0;
   }
-  return 0;
-}
 
-int NetPeerSetupNetQueues(struct Peer *peer) {
-  struct SimbricksProtoNetDevIntro *di = &peer->dev_intro;
+  struct SimbricksProtoListenerIntro *li =
+      (struct SimbricksProtoListenerIntro *) peer->intro_remote;
 
 #ifdef DEBUG
   fprintf(stderr, "PeerNetSetupQueues(%s)\n", peer->sock_path);
-  fprintf(stderr, "  d2n_el=%lu d2n_n=%lu n2d_el=%lu n2d_n=%lu\n", di->d2n_elen,
-      di->d2n_nentries, di->n2d_elen, di->n2d_nentries);
+  fprintf(stderr, "  l2c_el=%lu l2c_n=%lu c2l_el=%lu c2l_n=%lu\n", li->l2c_elen,
+      li->l2c_nentries, li->c2l_elen, li->c2l_nentries);
 #endif
 
-  if (ShmAlloc(di->d2n_elen * di->d2n_nentries, &di->d2n_offset)) {
-    fprintf(stderr, "PeerNetSetupQueues: ShmAlloc d2n failed");
+  if (ShmAlloc(li->l2c_elen * li->l2c_nentries, &li->l2c_offset)) {
+    fprintf(stderr, "PeerNetSetupQueues: ShmAlloc l2c failed");
     return 1;
   }
-  if (ShmAlloc(di->n2d_elen * di->n2d_nentries, &di->n2d_offset)) {
-    fprintf(stderr, "PeerNetSetupQueues: ShmAlloc n2d failed");
+  if (ShmAlloc(li->c2l_elen * li->c2l_nentries, &li->c2l_offset)) {
+    fprintf(stderr, "PeerNetSetupQueues: ShmAlloc c2l failed");
     return 1;
   }
   peer->shm_fd = shm_fd;
   peer->shm_base = shm_base;
 
-  peer->local_base = (void *) ((uintptr_t) shm_base + di->n2d_offset);
-  peer->local_elen = di->n2d_elen;
-  peer->local_enum = di->n2d_nentries;
+  peer->local_base = (void *) ((uintptr_t) shm_base + li->c2l_offset);
+  peer->local_elen = li->c2l_elen;
+  peer->local_enum = li->c2l_nentries;
 
-  peer->cleanup_base = (void *) ((uintptr_t) shm_base + di->d2n_offset);
-  peer->cleanup_elen = di->d2n_elen;
-  peer->cleanup_enum = di->d2n_nentries;
+  peer->cleanup_base = (void *) ((uintptr_t) shm_base + li->l2c_offset);
+  peer->cleanup_elen = li->l2c_elen;
+  peer->cleanup_enum = li->l2c_nentries;
 
-  if (peer->sock_fd == -1) {
+  return 0;
+}
+
+int BasePeerSendIntro(struct Peer *peer) {
+#ifdef DEBUG
+  fprintf(stderr, "PeerDevSendIntro(%s)\n", peer->sock_path);
+#endif
+
+ if (peer->sock_fd == -1) {
     /* We can receive the welcome message from our peer before our local
        connection to the simulator is established. In this case we hold the
        message till the connection is established and send it then. */
@@ -225,18 +213,19 @@ int NetPeerSetupNetQueues(struct Peer *peer) {
     fprintf(stderr, "PeerNetSetupQueues: socket not ready yet, delaying "
         "send\n");
 #endif
-    return 0;
+    return 1;
   }
 
-  if (UxsocketSendFd(peer->sock_fd, di, sizeof(*di), peer->shm_fd)) {
-    fprintf(stderr, "PeerNetSetupQueues: sending welcome message failed (%lu)",
-            peer - peers);
+  int shm_fd = (peer->is_listener ? peer->shm_fd : -1);
+  if (UxsocketSendFd(peer->sock_fd, peer->intro_remote, peer->intro_remote_len,
+      shm_fd)) {
+    perror("BasePeerSendIntro: send failed");
     return 1;
   }
   return 0;
 }
 
-int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
+int BasePeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
   uint32_t pos = peer->local_pos_cleaned;
   if (written_pos == peer->cleanup_pos_last &&
       clean_pos == pos)
@@ -280,13 +269,10 @@ int NetPeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
   peer->cleanup_pos_last = written_pos;
   while (pos != clean_pos) {
     void *entry = (peer->local_base + pos * peer->local_elen);
-    if (peer->is_dev) {
-      struct SimbricksProtoNetD2NDummy *d2n = entry;
-      d2n->own_type = SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
-    } else {
-      struct SimbricksProtoNetN2DDummy *n2d = entry;
-      n2d->own_type = SIMBRICKS_PROTO_NET_N2D_OWN_NET;
-    }
+    volatile union SimbricksProtoBaseMsg *msg =
+        (volatile union SimbricksProtoBaseMsg *) entry;
+      msg->header.own_type = (msg->header.own_type &
+          (~SIMBRICKS_PROTO_MSG_OWN_MASK)) | SIMBRICKS_PROTO_MSG_OWN_PRO;
 
     pos += 1;
     if (pos >= peer->local_enum)
@@ -301,7 +287,7 @@ static int PeerAcceptEvent(struct Peer *peer) {
 #ifdef DEBUG
   fprintf(stderr, "PeerAcceptEvent(%s)\n", peer->sock_path);
 #endif
-  assert(!peer->is_dev);
+  assert(peer->is_listener);
 
   if ((peer->sock_fd = accept(peer->listen_fd, NULL, NULL)) < 0) {
     perror("PeersInitNets: accept failed");
@@ -329,17 +315,16 @@ static int PeerAcceptEvent(struct Peer *peer) {
     fprintf(stderr, "PeerAcceptEvent(%s): sending welcome message\n",
         peer->sock_path);
 #endif
-    if (UxsocketSendFd(peer->sock_fd, &peer->dev_intro, sizeof(peer->dev_intro),
-                       peer->shm_fd)) {
-      fprintf(stderr, "PeerAcceptEvent: sending welcome message failed (%lu)",
-              peer - peers);
+    if (BasePeerSendIntro(peer)) {
+      fprintf(stderr, "PeerAcceptEvent(%s): sending intro failed\n",
+          peer->sock_path);
       return 1;
     }
   }
   return 0;
 }
 
-int NetPeerEvent(struct Peer *peer, uint32_t events) {
+int BasePeerEvent(struct Peer *peer, uint32_t events) {
 #ifdef DEBUG
   fprintf(stderr, "PeerEvent(%s)\n", peer->sock_path);
 #endif
@@ -353,7 +338,7 @@ int NetPeerEvent(struct Peer *peer, uint32_t events) {
   }
 
   // if peer is network and not yet connected, this is an accept event
-  if (!peer->is_dev && peer->sock_fd == -1) {
+  if (peer->is_listener && peer->sock_fd == -1) {
     return PeerAcceptEvent(peer);
   }
 
@@ -365,21 +350,20 @@ int NetPeerEvent(struct Peer *peer, uint32_t events) {
   }
 
   // receive intro message
-  if (peer->is_dev) {
-    if (UxsocketRecvFd(peer->sock_fd, &peer->dev_intro, sizeof(peer->dev_intro),
-                       &peer->shm_fd))
+  if (!peer->is_listener) {
+    /* not a listener, so we're expecting an fd for the shm region */
+    if (UxsocketRecvFd(peer->sock_fd, peer->intro_local,
+        sizeof(peer->intro_local), &peer->shm_fd))
       return 1;
 
     if (!(peer->shm_base = ShmMap(peer->shm_fd, &peer->shm_size)))
       return 1;
   } else {
-    ssize_t ret = recv(peer->sock_fd, &peer->net_intro, sizeof(peer->net_intro),
-                       0);
-    if (ret < 0) {
+    /* as a listener, we use our local shm region, so no fd is sent to us */
+    ssize_t ret = recv(peer->sock_fd, peer->intro_local,
+        sizeof(peer->intro_local), 0);
+    if (ret <= 0) {
       perror("PeerEvent: recv failed");
-      return 1;
-    } else if (ret != (ssize_t) sizeof(peer->net_intro)) {
-      fprintf(stderr, "PeerEvent: partial receive (%zd)\n", ret);
       return 1;
     }
   }
@@ -387,7 +371,7 @@ int NetPeerEvent(struct Peer *peer, uint32_t events) {
   peer->intro_valid_local = true;
 
   // pass intro along
-  if (NetOpPassIntro(peer))
+  if (BaseOpPassIntro(peer))
     return 1;
 
   if (peer->intro_valid_remote) {
@@ -415,22 +399,15 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
     }
 
     void *entry = (peer->local_base + (peer->local_pos + n) * peer->local_elen);
-    bool ready;
-    if (peer->is_dev) {
-      struct SimbricksProtoNetD2NDummy *d2n = entry;
-      ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
-          SIMBRICKS_PROTO_NET_D2N_OWN_NET;
-    } else {
-      struct SimbricksProtoNetN2DDummy *n2d = entry;
-      ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
-          SIMBRICKS_PROTO_NET_N2D_OWN_DEV;
-    }
-    if (!ready)
+    volatile union SimbricksProtoBaseMsg *msg =
+        (volatile union SimbricksProtoBaseMsg *) entry;
+    if ((msg->header.own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) !=
+        SIMBRICKS_PROTO_MSG_OWN_CON)
       break;
   }
 
   if (n > 0) {
-    NetOpPassEntries(peer, peer->local_pos, n);
+    BaseOpPassEntries(peer, peer->local_pos, n);
     uint32_t newpos = peer->local_pos + n;
     peer->local_pos = (newpos < peer->local_enum ?
                        newpos :
@@ -447,22 +424,15 @@ static inline void PollPeerCleanup(struct Peer *peer, bool *report) {
   if (peer->cleanup_pos_next == peer->cleanup_pos_last)
     return;
 
-  bool ready;
   uint64_t cnt = 0;
   do {
     void *entry =
         (peer->cleanup_base + peer->cleanup_pos_next * peer->cleanup_elen);
-    if (peer->is_dev) {
-      struct SimbricksProtoNetN2DDummy *n2d = entry;
-      ready = (n2d->own_type & SIMBRICKS_PROTO_NET_N2D_OWN_MASK) ==
-          SIMBRICKS_PROTO_NET_N2D_OWN_NET;
-    } else {
-      struct SimbricksProtoNetD2NDummy *d2n = entry;
-      ready = (d2n->own_type & SIMBRICKS_PROTO_NET_D2N_OWN_MASK) ==
-          SIMBRICKS_PROTO_NET_D2N_OWN_DEV;
-    }
+    volatile union SimbricksProtoBaseMsg *msg =
+        (volatile union SimbricksProtoBaseMsg *) entry;
 
-    if (!ready)
+    if ((msg->header.own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) !=
+        SIMBRICKS_PROTO_MSG_OWN_PRO)
       break;
 
   #ifdef DEBUG
@@ -483,7 +453,7 @@ static inline void PollPeerCleanup(struct Peer *peer, bool *report) {
   }
 }
 
-void NetPoll() {
+void BasePoll() {
   bool report = false;
   for (size_t i = 0; i < peer_num; i++) {
     struct Peer *peer = &peers[i];
@@ -495,10 +465,10 @@ void NetPoll() {
   }
 
   if (report)
-    NetOpPassReport();
+    BaseOpPassReport();
 }
 
-void NetEntryReceived(struct Peer *peer, uint32_t pos, void *data)
+void BaseEntryReceived(struct Peer *peer, uint32_t pos, void *data)
 {
   // validate position for debugging:
   if ((peer->cleanup_pos_reported <= peer->cleanup_pos_last &&
@@ -514,30 +484,18 @@ void NetEntryReceived(struct Peer *peer, uint32_t pos, void *data)
 
   uint64_t off = (uint64_t) pos * peer->cleanup_elen;
   void *entry = peer->cleanup_base + off;
-
-  if (peer->is_dev) {
-    volatile struct SimbricksProtoNetD2NDummy *d2n = entry;
-    // first copy data after header
-    memcpy((void *) (d2n + 1), (uint8_t *) data + sizeof(*d2n),
-           peer->cleanup_elen - sizeof(*d2n));
-    // then copy header except for last byte
-    memcpy((void *) d2n, data, sizeof(*d2n) - 1);
-    // WMB()
-    // now copy last byte
-    volatile struct SimbricksProtoNetD2NDummy *src_d2n = data;
-    asm volatile("sfence" ::: "memory");
-    d2n->own_type = src_d2n->own_type;
-  } else {
-    volatile struct SimbricksProtoNetN2DDummy *n2d = entry;
-    // first copy data after header
-    memcpy((void *) (n2d + 1), (uint8_t *) data + sizeof(*n2d),
-           peer->cleanup_elen - sizeof(*n2d));
-    // then copy header except for last byte
-    memcpy((void *) n2d, data, sizeof(*n2d) - 1);
-    // WMB()
-    // now copy last byte
-    volatile struct SimbricksProtoNetN2DDummy *src_n2d = data;
-    asm volatile("sfence" ::: "memory");
-    n2d->own_type = src_n2d->own_type;
-  }
+  volatile union SimbricksProtoBaseMsg *msg =
+        (volatile union SimbricksProtoBaseMsg *) entry;
+  
+  // first copy data after header
+  memcpy((void *) (msg + 1), (uint8_t *) data + sizeof(*msg),
+          peer->cleanup_elen - sizeof(*msg));
+  // then copy header except for last byte
+  memcpy((void *) msg, data, sizeof(*msg) - 1);
+  // WMB()
+  // now copy last byte
+  volatile union SimbricksProtoBaseMsg *src_msg =
+        (volatile union SimbricksProtoBaseMsg *) data;
+  asm volatile("sfence" ::: "memory");
+  msg->header.own_type = src_msg->header.own_type;
 }

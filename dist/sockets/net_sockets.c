@@ -36,10 +36,10 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <simbricks/proto/base.h>
-#include <simbricks/proto/network.h>
+#include <simbricks/base/proto.h>
+#include <simbricks/network/proto.h>
 
-#include "dist/common/net.h"
+#include "dist/common/base.h"
 #include "dist/common/utils.h"
 
 //#define SOCK_DEBUG
@@ -48,6 +48,11 @@
 #define RXBUF_SIZE (1024 * 1024)
 #define TXBUF_SIZE (128 * 1024)
 #define TXBUF_NUM 16
+
+struct SockIntroMsg {
+  uint32_t payload_len;
+  uint8_t data[];
+} __attribute__((packed));
 
 struct SockReportMsg {
   uint32_t written_pos[MAX_PEERS];
@@ -62,8 +67,7 @@ struct SockEntriesMsg {
 } __attribute__((packed));
 
 enum SockMsgType {
-  kMsgDev,
-  kMsgNet,
+  kMsgIntro,
   kMsgReport,
   kMsgEntries,
 };
@@ -74,8 +78,7 @@ struct SockMsg {
   uint32_t msg_id;
   uint32_t id;
   union {
-    struct SimbricksProtoNetDevIntro dev_intro;
-    struct SimbricksProtoNetNetIntro net_intro;
+    struct SockIntroMsg intro;
     struct SockReportMsg report;
     struct SockEntriesMsg entries;
     struct SockMsg *next_free;
@@ -102,15 +105,15 @@ pthread_spinlock_t freelist_spin;
 static void PrintUsage() {
   fprintf(stderr,
           "Usage: net_sockets [OPTIONS] IP PORT\n"
-          "    -l: Listen instead of connecting\n"
-          "    -d DEV-SOCKET: network socket of a device simulator\n"
-          "    -n NET-SOCKET: network socket of a network simulator\n"
+          "    -l: Listen instead of connecting on socket\n"
+          "    -L LISTEN-SOCKET: listening socket for a simulator\n"
+          "    -C CONN-SOCKET: connecting socket for a simulator\n"
           "    -s SHM-PATH: shared memory region path\n"
           "    -S SHM-SIZE: shared memory region size in MB (default 256)\n");
 }
 
 static int ParseArgs(int argc, char *argv[]) {
-  const char *opts = "ld:n:s:S:";
+  const char *opts = "lL:C:s:S:";
   int c;
 
   while ((c = getopt(argc, argv, opts)) != -1) {
@@ -119,13 +122,13 @@ static int ParseArgs(int argc, char *argv[]) {
         mode_listen = true;
         break;
 
-      case 'd':
-        if (!NetPeerAdd(optarg, true))
+      case 'L':
+        if (!BasePeerAdd(optarg, true))
           return 1;
         break;
 
-      case 'n':
-        if (!NetPeerAdd(optarg, false))
+      case 'C':
+        if (!BasePeerAdd(optarg, false))
           return 1;
         break;
 
@@ -289,41 +292,43 @@ static int SockConnect(struct sockaddr_in *addr) {
 }
 
 static int SockMsgRxIntro(struct SockMsg *msg) {
+  struct SockIntroMsg *intro_msg = &msg->intro;
   if (msg->id >= peer_num) {
     fprintf(stderr, "SockMsgRxIntro: invalid peer id in message (%u)\n",
             msg->id);
     abort();
   }
-
+  if (msg->msg_len <
+      offsetof(struct SockMsg, intro.data) +  intro_msg->payload_len) {
+    fprintf(stderr, "SockMsgRxIntro: message too short for payload len\n");
+    abort();
+  }
   struct Peer *peer = peers + msg->id;
 #ifdef SOCK_DEBUG
   fprintf(stderr, "SockMsgRxIntro -> peer %s\n", peer->sock_path);
 #endif
-
-  if (peer->is_dev != (msg->msg_type == kMsgNet)) {
-    fprintf(stderr, "SockMsgRxIntro: unexpetced message type (%u)\n",
-            msg->msg_type);
-    abort();
-  }
 
   if (peer->intro_valid_remote) {
     fprintf(stderr, "SockMsgRxIntro: received multiple messages (%u)\n",
             msg->id);
     abort();
   }
+  if (intro_msg->payload_len > (uint32_t) sizeof(peer->intro_remote)) {
+    fprintf(stderr, "SockMsgRxIntro: Intro longer than buffer\n");
+    abort();
+  }
 
   peer->intro_valid_remote = true;
-  if (peer->is_dev) {
-    peer->net_intro = msg->net_intro;
-    if (NetPeerSendDevIntro(peer))
-      return 1;
-  } else {
-    peer->dev_intro = msg->dev_intro;
-    if (NetPeerSetupNetQueues(peer))
-      return 1;
-    if (peer->intro_valid_local && NetOpPassIntro(peer))
-      return 1;
+  peer->intro_remote_len = intro_msg->payload_len;
+  memcpy(peer->intro_remote, intro_msg->data, intro_msg->payload_len);
+
+  if (BasePeerSetupQueues(peer)) {
+    fprintf(stderr, "SockMsgRxIntro(%s): queue setup failed\n",
+        peer->sock_path);
+    abort();
   }
+  if (BasePeerSendIntro(peer))
+    return 1;
 
   if (peer->intro_valid_local) {
     fprintf(stderr, "SockMsgRxIntro(%s): marking peer as ready\n",
@@ -345,8 +350,8 @@ static int SockMsgRxReport(struct SockMsg *msg) {
       fprintf(stderr, "SockMsgRxReport: invalid ready peer number %zu\n", i);
       abort();
     }
-    NetPeerReport(&peers[i], msg->report.written_pos[i],
-                  msg->report.clean_pos[i]);
+    BasePeerReport(&peers[i], msg->report.written_pos[i],
+                   msg->report.clean_pos[i]);
   }
   return 0;
 }
@@ -383,8 +388,8 @@ static int SockMsgRxEntries(struct SockMsg *msg) {
 
   uint32_t i;
   for (i = 0; i < entries->num_entries; i++)
-    NetEntryReceived(peer, entries->pos + i,
-                     entries->data + (i * peer->cleanup_elen));
+    BaseEntryReceived(peer, entries->pos + i,
+                      entries->data + (i * peer->cleanup_elen));
   return 0;
 }
 
@@ -393,7 +398,7 @@ static int SockMsgRx(struct SockMsg *msg) {
   fprintf(stderr, "SockMsgRx(mi=%u t=%u i=%u l=%u)\n", msg->msg_id,
           msg->msg_type, msg->id, msg->msg_len);
 #endif
-  if (msg->msg_type == kMsgDev || msg->msg_type == kMsgNet)
+  if (msg->msg_type == kMsgIntro)
     return SockMsgRxIntro(msg);
   else if (msg->msg_type == kMsgReport)
     return SockMsgRxReport(msg);
@@ -474,50 +479,40 @@ static int SockSend(struct SockMsg *msg) {
   return 0;
 }
 
-int NetOpPassIntro(struct Peer *peer) {
+int BaseOpPassIntro(struct Peer *peer) {
 #ifdef SOCK_DEBUG
-  fprintf(stderr, "NetOpPassIntro(%s)\n", peer->sock_path);
+  fprintf(stderr, "BaseOpPassIntro(%s)\n", peer->sock_path);
 #endif
-
-  if (!peer->is_dev && !peer->intro_valid_remote) {
-    fprintf(stderr,
-            "NetOpPassIntro: skipping because remote intro not received\n");
-    return 0;
-  }
 
   struct SockMsg *msg = SockMsgAlloc();
   if (!msg)
     return 1;
 
-  msg->msg_len = sizeof(*msg);
+  msg->msg_len = offsetof(struct SockMsg, entries.data) + peer->intro_local_len;
   msg->id = peer - peers;
-  if (peer->is_dev) {
-    msg->msg_type = kMsgDev;
-    msg->dev_intro = peer->dev_intro;
-  } else {
-    msg->msg_type = kMsgNet;
-    msg->net_intro = peer->net_intro;
-  }
+  msg->msg_type = kMsgIntro;
+  msg->intro.payload_len = peer->intro_local_len;
+  memcpy(msg->intro.data, peer->intro_local, peer->intro_local_len);
 
   int ret = SockSend(msg);
   SockMsgFree(msg);
   return ret;
 }
 
-int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
+int BaseOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
 #ifdef SOCK_DEBUG
-  fprintf(stderr, "NetOpPassEntires(%s, n=%zu, pos=%u)\n", peer->sock_path, n,
+  fprintf(stderr, "BaseOpPassEntries(%s, n=%zu, pos=%u)\n", peer->sock_path, n,
           pos);
 #endif
   if (n * peer->local_elen > TXBUF_SIZE) {
     fprintf(stderr,
-            "NetOpPassEntries: tx buffer too small (%u) for n (%u) entries\n",
+            "BaseOpPassEntries: tx buffer too small (%u) for n (%u) entries\n",
             TXBUF_SIZE, n);
     abort();
   }
 
   if ((peer->last_sent_pos + 1) % peer->local_enum != pos) {
-    fprintf(stderr, "NetOpPassEntries: entry sent repeatedly: p=%u n=%u\n",
+    fprintf(stderr, "BaseOpPassEntries: entry sent repeatedly: p=%u n=%u\n",
             pos, n);
     abort();
   }
@@ -552,12 +547,12 @@ int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
   return ret;
 }
 
-int NetOpPassReport() {
+int BaseOpPassReport() {
 #ifdef SOCK_DEBUG
-  fprintf(stderr, "NetOpPassReport()\n");
+  fprintf(stderr, "BaseOpPassReport()\n");
 #endif
   if (peer_num > MAX_PEERS) {
-    fprintf(stderr, "NetOpPassReport: peer_num (%zu) larger than max (%u)\n",
+    fprintf(stderr, "BaseOpPassReport: peer_num (%zu) larger than max (%u)\n",
             peer_num, MAX_PEERS);
     abort();
   }
@@ -596,7 +591,7 @@ int NetOpPassReport() {
 
 static void *PollThread(void *data) {
   while (true)
-    NetPoll();
+    BasePoll();
   return NULL;
 }
 
@@ -615,10 +610,9 @@ static int IOLoop() {
 
     for (int i = 0; i < n; i++) {
       struct Peer *peer = evs[i].data.ptr;
-      if (peer && NetPeerEvent(peer, evs[i].events))
+      if (peer && BasePeerEvent(peer, evs[i].events))
         return 1;
-      else if (!peer && SockEvent(evs[i].events
-      ))
+      else if (!peer && SockEvent(evs[i].events))
         return 1;
     }
 
@@ -642,10 +636,10 @@ int main(int argc, char *argv[]) {
   if (SockAllocInit())
     return EXIT_FAILURE;
 
-  if (NetInit(shm_path, shm_size, epfd))
+  if (BaseInit(shm_path, shm_size, epfd))
     return EXIT_FAILURE;
 
-  if (NetListen())
+  if (BaseListen())
     return  EXIT_FAILURE;
 
   if (mode_listen) {
@@ -658,7 +652,7 @@ int main(int argc, char *argv[]) {
   printf("Socket connected\n");
   fflush(stdout);
 
-  if (NetConnect())
+  if (BaseConnect())
     return EXIT_FAILURE;
   printf("Peers initialized\n");
   fflush(stdout);
