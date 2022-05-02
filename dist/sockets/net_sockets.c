@@ -489,6 +489,8 @@ int BaseOpPassIntro(struct Peer *peer) {
     return 1;
 
   msg->msg_len = offsetof(struct SockMsg, intro.data) + peer->intro_local_len;
+  if (msg->msg_len < sizeof(*msg))
+    msg->msg_len = sizeof(*msg);
   msg->id = peer - peers;
   msg->msg_type = kMsgIntro;
   msg->intro.payload_len = peer->intro_local_len;

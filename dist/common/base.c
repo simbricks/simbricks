@@ -331,6 +331,16 @@ int BasePeerEvent(struct Peer *peer, uint32_t events) {
 
     if (!(peer->shm_base = ShmMap(peer->shm_fd, &peer->shm_size)))
       return 1;
+
+    struct SimbricksProtoListenerIntro *li =
+      (struct SimbricksProtoListenerIntro *) peer->intro_local;
+    peer->local_base = (void *) ((uintptr_t) peer->shm_base + li->l2c_offset);
+    peer->local_elen = li->l2c_elen;
+    peer->local_enum = li->l2c_nentries;
+
+    peer->cleanup_base = (void *) ((uintptr_t) peer->shm_base + li->c2l_offset);
+    peer->cleanup_elen = li->c2l_elen;
+    peer->cleanup_enum = li->c2l_nentries;
   } else {
     /* as a listener, we use our local shm region, so no fd is sent to us */
     ret = recv(peer->sock_fd, peer->intro_local,
@@ -358,8 +368,6 @@ int BasePeerEvent(struct Peer *peer, uint32_t events) {
 }
 
 static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
-  // XXX: consider batching this to forward multiple entries at once if possible
-
   uint32_t n;
   for (n = 0; n < kPollMax && peer->local_pos + n < peer->local_enum; n++) {
     // stop if we would pass the cleanup position
@@ -367,7 +375,7 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
         peer->local_pos_cleaned) {
 #ifdef DEBUG
       fprintf(stderr, "PollPeerTransfer: waiting for cleanup (%u %u)\n",
-              pos, peer->local_pos_cleaned);
+              n, peer->local_pos_cleaned);
 #endif
       break;
     }
@@ -381,6 +389,11 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
   }
 
   if (n > 0) {
+#ifdef DEBUG
+      fprintf(stderr, "PollPeerTransfer: transferring [%u,%u] (lpc=%u lpr=%u)\n",
+              peer->local_pos, peer->local_pos + n, peer->local_pos_cleaned,
+              peer->local_pos_reported);
+#endif
     BaseOpPassEntries(peer, peer->local_pos, n);
     uint32_t newpos = peer->local_pos + n;
     peer->local_pos = (newpos < peer->local_enum ?
@@ -444,6 +457,10 @@ void BasePoll() {
 
 void BaseEntryReceived(struct Peer *peer, uint32_t pos, void *data)
 {
+#ifdef DEBUG
+  fprintf(stderr, "BaseEntryReceived: pos=%u (cpr=%u cpl=%u)\n",
+          pos, peer->cleanup_pos_reported, peer->cleanup_pos_last);
+#endif
 
   uint64_t off = (uint64_t) pos * peer->cleanup_elen;
   void *entry = peer->cleanup_base + off;
