@@ -231,35 +231,6 @@ int BasePeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) 
       clean_pos == pos)
     return 0;
 
-  // make sure there are not suddenly fewer entries to be cleaned up
-  uint32_t n_before = (peer->cleanup_pos_reported <= peer->cleanup_pos_last ?
-      peer->cleanup_pos_last - peer->cleanup_pos_reported :
-      peer->cleanup_enum - peer->cleanup_pos_reported + peer->cleanup_pos_last);
-  uint32_t n_after = (peer->cleanup_pos_reported <= written_pos ?
-      written_pos - peer->cleanup_pos_reported :
-      peer->cleanup_enum - peer->cleanup_pos_reported + written_pos);
-  if (n_before > n_after) {
-    fprintf(stderr, "PeerReport: BUG fewer entries to clean up after report: "
-          "peer %s written %u -> %u, cleaned %u -> %u\n",
-          peer->sock_path, peer->cleanup_pos_last, written_pos,
-          peer->local_pos_cleaned, clean_pos);
-    abort();
-  }
-
-  // make sure clean pos is between l_p_c and l_p_r
-  if (((peer->local_pos_cleaned <= peer->local_pos_reported) &&
-          (clean_pos < peer->local_pos_cleaned ||
-            clean_pos > peer->local_pos_reported)) ||
-      ((peer->local_pos_cleaned > peer->local_pos_reported) &&
-          (clean_pos > peer->local_pos_reported &&
-           clean_pos < peer->local_pos_cleaned))) {
-    fprintf(stderr, "PeerReport: BUG invalid last clean position report: "
-          "peer %s written %u -> %u, cleaned %u -> %u (lpr=%u)\n",
-          peer->sock_path, peer->cleanup_pos_last, written_pos,
-          peer->local_pos_cleaned, clean_pos, peer->local_pos_reported);
-    abort();
-  }
-
 #ifdef DEBUG
   fprintf(stderr, "PeerReport: peer %s written %u -> %u, cleaned %u -> %u\n",
           peer->sock_path, peer->cleanup_pos_last, written_pos,
@@ -473,17 +444,6 @@ void BasePoll() {
 
 void BaseEntryReceived(struct Peer *peer, uint32_t pos, void *data)
 {
-  // validate position for debugging:
-  if ((peer->cleanup_pos_reported <= peer->cleanup_pos_last &&
-        (pos >= peer->cleanup_pos_reported && pos < peer->cleanup_pos_last)) ||
-      (peer->cleanup_pos_reported > peer->cleanup_pos_last &&
-        (pos >= peer->cleanup_pos_reported ||
-         pos < peer->cleanup_pos_last))) {
-    fprintf(stderr, "NetEntryReceived: BUG position %u is in window to be "
-            "cleaned %u -> %u", pos, peer->cleanup_pos_reported,
-            peer->cleanup_pos_last);
-    abort();
-  }
 
   uint64_t off = (uint64_t) pos * peer->cleanup_elen;
   void *entry = peer->cleanup_base + off;
