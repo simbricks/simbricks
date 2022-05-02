@@ -99,7 +99,6 @@ extern struct Peer *peers;
 
 int BaseInit(const char *shm_path_, size_t shm_size_, int epfd_);
 bool BasePeerAdd(const char *path, bool listener);
-struct Peer *BasePeerLookup(uint32_t id);
 int BaseListen(void);
 int BaseConnect(void);
 void BasePoll(void);
