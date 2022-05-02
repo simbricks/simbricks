@@ -110,11 +110,11 @@ class NetProxyListener(NetProxy):
         cmd = (f'-s {env.proxy_shm_path(self)} '
             f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
-            cmd += '-d ' if local else '-n '
+            cmd += '-C ' if local else '-L '
             cmd += env.nic_eth_path(nic) + ' '
 
         for ((net_c, net_l), local) in self.n2ns:
-            cmd += '-d ' if local else '-n '
+            cmd += '-C ' if local else '-L '
             cmd += env.n2n_eth_path(net_l, net_c) + ' '
 
         cmd += f' 0.0.0.0 {self.port}'
@@ -177,11 +177,11 @@ class NetProxyConnecter(NetProxy):
         cmd = (f'-s {env.proxy_shm_path(self)} '
             f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
-            cmd += '-n ' if local else '-d '
+            cmd += '-L ' if local else '-C '
             cmd += env.nic_eth_path(nic) + ' '
 
         for ((net_c, net_l), local) in self.n2ns:
-            cmd += '-n ' if local else '-d '
+            cmd += '-L ' if local else '-C '
             cmd += env.n2n_eth_path(net_l, net_c) + ' '
 
         cmd += f' {self.listener.ip} {self.listener.port}'
