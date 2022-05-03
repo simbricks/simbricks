@@ -52,5 +52,7 @@ $(bin_menshen): $(verilator_bin_menshen)
 	cp $< $@
 
 CLEAN := $(bin_menshen) $(verilator_dir_menshen) $(OBJS)
+ifeq ($(ENABLE_VERILATOR),y)
 ALL := $(bin_menshen)
+endif
 include mk/subdir_post.mk
