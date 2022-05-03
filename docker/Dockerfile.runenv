@@ -1,0 +1,21 @@
+FROM ubuntu:jammy
+RUN apt-get update \
+ && apt-get install -y \
+	libboost-coroutine1.74.0 \
+	libboost-fiber1.74.0 \
+	libboost-iostreams1.74.0 \
+ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+ && apt-get install -y \
+	libelf1 \
+	libpcap0.8 \
+	libpixman-1-0 \
+	rsync \
+	unzip \
+	wget \
+ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+ && apt-mark hold shared-mime-info \
+ && apt-get install -y \
+	libglib2.0-0 \
+ && rm -rf /var/lib/apt/lists/*

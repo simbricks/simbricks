@@ -1,0 +1,37 @@
+FROM ubuntu:jammy
+RUN apt-get update \
+ && apt-get install -y \
+	autoconf \
+	bc \
+	bison \
+	build-essential \
+	doxygen \
+	g++ \
+	flex \
+	git \
+	libboost-coroutine-dev \
+	libboost-fiber-dev \
+	libboost-iostreams-dev \
+	libelf-dev \
+	libglib2.0-dev \
+	libpcap-dev \
+	libpixman-1-dev \
+	ninja-build \
+	python3-sphinx \
+	python3-sphinx-rtd-theme \
+	rsync \
+	scons \
+	unzip \
+	wget \
+ && rm -rf /var/lib/apt/lists/*
+COPY verilator.patch /tmp/
+RUN cd /tmp \
+ && git clone -b v4.010 https://github.com/verilator/verilator \
+ && cd verilator \
+ && patch -p1 < /tmp/verilator.patch \
+ && autoupdate \
+ && autoconf \
+ && ./configure \
+ && make -j`nproc` \
+ && make install \
+ && rm -rf /tmp/verilator
