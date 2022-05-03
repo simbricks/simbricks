@@ -165,6 +165,7 @@ $(kernel_dir)/.config: $(kernel_pardir)/config-$(KERNEL_VERSION)
 	wget -O - https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$(KERNEL_VERSION).tar.xz | \
 	    tar xJf - -C $(kernel_pardir)
 	cd $(kernel_dir) && patch -p1 < ../linux-$(KERNEL_VERSION)-timers-gem5.patch
+	cd $(kernel_dir) && patch -p1 < ../linux-$(KERNEL_VERSION)-new-binutils.patch
 	cp $< $@
 
 ################################################
