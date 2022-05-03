@@ -2,7 +2,7 @@
 
 set -eux
 
-apt-get -y install memcached libevent-dev
+apt-get -y install build-essential libevent-dev memcached libevent-dev
 systemctl disable memcached.service
 
 cd /tmp
