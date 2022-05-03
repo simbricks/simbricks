@@ -36,7 +36,7 @@ CLEAN := $(bin_net_rdma) $(bin_net_sockets) \
 	$(RDMA_OBJS) $(SOCKETS_OBJS) $(COMMON_OBJS)
 
 ALL := $(bin_net_sockets)
-ifeq ($(ENABLE_DIST),y)
+ifeq ($(ENABLE_RDMA),y)
 ALL += $(bin_net_rdma)
 endif
 
