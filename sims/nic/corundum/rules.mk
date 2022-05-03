@@ -55,5 +55,8 @@ $(bin_corundum): $(verilator_bin_corundum)
 	cp $< $@
 
 CLEAN := $(bin_corundum) $(verilator_dir_corundum) $(OBJS)
+
+ifeq ($(ENABLE_VERILATOR),y)
 ALL := $(bin_corundum)
+endif
 include mk/subdir_post.mk
