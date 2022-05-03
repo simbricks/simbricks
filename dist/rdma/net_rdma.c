@@ -36,7 +36,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <simbricks/proto/base.h>
+#include <simbricks/base/proto.h>
 
 #include "dist/common/utils.h"
 
@@ -58,14 +58,14 @@ static void PrintUsage() {
   fprintf(stderr,
           "Usage: net_rdma [OPTIONS] IP PORT\n"
           "    -l: Listen instead of connecting\n"
-          "    -d DEV-SOCKET: network socket of a device simulator\n"
-          "    -n NET-SOCKET: network socket of a network simulator\n"
+          "    -L LISTEN-SOCKET: listening socket for a simulator\n"
+          "    -C CONN-SOCKET: connecting socket for a simulator\n"
           "    -s SHM-PATH: shared memory region path\n"
           "    -S SHM-SIZE: shared memory region size in MB (default 256)\n");
 }
 
 static int ParseArgs(int argc, char *argv[]) {
-  const char *opts = "ld:n:s:S:D:ip:g:";
+  const char *opts = "lL:C:s:S:D:ip:g:";
   int c;
 
   while ((c = getopt(argc, argv, opts)) != -1) {
@@ -74,13 +74,13 @@ static int ParseArgs(int argc, char *argv[]) {
         mode_listen = true;
         break;
 
-      case 'd':
-        if (!NetPeerAdd(optarg, true))
+      case 'L':
+        if (!BasePeerAdd(optarg, true))
           return 1;
         break;
 
-      case 'n':
-        if (!NetPeerAdd(optarg, false))
+      case 'C':
+        if (!BasePeerAdd(optarg, false))
           return 1;
         break;
 
@@ -134,7 +134,7 @@ static int ParseArgs(int argc, char *argv[]) {
 
 static void *PollThread(void *data) {
   while (true)
-    NetPoll();
+    BasePoll();
   return NULL;
 }
 
@@ -150,7 +150,7 @@ static int IOLoop() {
 
     for (int i = 0; i < n; i++) {
       struct Peer *peer = evs[i].data.ptr;
-      if (peer && NetPeerEvent(peer, evs[i].events))
+      if (peer && BasePeerEvent(peer, evs[i].events))
         return 1;
       else if (!peer && RdmaEvent())
         return 1;
@@ -173,10 +173,10 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  if (NetInit(shm_path, shm_size, epfd))
+  if (BaseInit(shm_path, shm_size, epfd))
     return EXIT_FAILURE;
 
-  if (NetListen())
+  if (BaseListen())
     return EXIT_FAILURE;
 
   if (mode_listen) {
@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
   printf("RDMA connected\n");
   fflush(stdout);
 
-  if (NetConnect())
+  if (BaseConnect())
     return EXIT_FAILURE;
   printf("Peers initialized\n");
   fflush(stdout);

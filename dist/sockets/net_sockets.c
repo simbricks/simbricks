@@ -37,7 +37,6 @@
 #include <unistd.h>
 
 #include <simbricks/base/proto.h>
-#include <simbricks/network/proto.h>
 
 #include "dist/common/base.h"
 #include "dist/common/utils.h"
