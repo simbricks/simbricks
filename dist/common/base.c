@@ -190,10 +190,12 @@ int BasePeerSetupQueues(struct Peer *peer) {
   peer->shm_base = shm_base;
 
   peer->local_base = (void *) ((uintptr_t) shm_base + li->c2l_offset);
+  peer->local_offset = li->c2l_offset;
   peer->local_elen = li->c2l_elen;
   peer->local_enum = li->c2l_nentries;
 
   peer->cleanup_base = (void *) ((uintptr_t) shm_base + li->l2c_offset);
+  peer->cleanup_offset = li->l2c_offset;
   peer->cleanup_elen = li->l2c_elen;
   peer->cleanup_enum = li->l2c_nentries;
 
@@ -335,10 +337,12 @@ int BasePeerEvent(struct Peer *peer, uint32_t events) {
     struct SimbricksProtoListenerIntro *li =
       (struct SimbricksProtoListenerIntro *) peer->intro_local;
     peer->local_base = (void *) ((uintptr_t) peer->shm_base + li->l2c_offset);
+    peer->local_offset = li->l2c_offset;
     peer->local_elen = li->l2c_elen;
     peer->local_enum = li->l2c_nentries;
 
     peer->cleanup_base = (void *) ((uintptr_t) peer->shm_base + li->c2l_offset);
+    peer->cleanup_offset = li->c2l_offset;
     peer->cleanup_elen = li->c2l_elen;
     peer->cleanup_enum = li->c2l_nentries;
   } else {

@@ -33,6 +33,7 @@
 struct Peer {
   /* base address of the local queue we're polling. */
   uint8_t *local_base;
+  uint64_t local_offset;
   uint32_t local_elen;
   uint32_t local_enum;
   uint32_t local_pos;
@@ -55,6 +56,7 @@ struct Peer {
      this periodically and keep track of the last communicated position in
      `cleanup_pos_reported`. */
   uint8_t *cleanup_base;
+  uint64_t cleanup_offset;
   uint32_t cleanup_elen;
   uint32_t cleanup_enum;
   // next position to be cleaned up

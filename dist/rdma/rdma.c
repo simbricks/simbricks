@@ -39,6 +39,11 @@
 #define MAX_PEERS 32
 #define SIG_THRESHOLD 32
 
+struct NetRdmaIntroMsg {
+  uint32_t payload_len;
+  uint8_t data[1024];
+} __attribute__((packed));
+
 struct NetRdmaReportMsg {
   uint32_t written_pos[MAX_PEERS];
   uint32_t clean_pos[MAX_PEERS];
@@ -47,8 +52,7 @@ struct NetRdmaReportMsg {
 
 struct NetRdmaMsg {
   union {
-    struct SimbricksProtoNetDevIntro dev;
-    struct SimbricksProtoNetNetIntro net;
+    struct NetRdmaIntroMsg intro;
     struct NetRdmaReportMsg report;
     struct NetRdmaMsg *next_free;
   };
@@ -57,8 +61,7 @@ struct NetRdmaMsg {
   uint64_t queue_off;
   uint64_t rkey;
   enum {
-    kMsgDev,
-    kMsgNet,
+    kMsgIntro,
     kMsgReport,
   } msg_type;
 } __attribute__((packed));
@@ -115,40 +118,44 @@ static int RdmMsgRxEnqueue(struct NetRdmaMsg *msg) {
 
 static int RdmaMsgRxIntro(struct NetRdmaMsg *msg) {
   if (msg->id >= peer_num) {
-    fprintf(stderr, "RdmMsgRx: invalid peer id in message (%lu)\n", msg->id);
+    fprintf(stderr, "RdmaMsgRxIntro: invalid peer id in message (%lu)\n",
+        msg->id);
     abort();
   }
 
   struct Peer *peer = peers + msg->id;
   printf("RdmMsgRx -> peer %s\n", peer->sock_path);
 
-  if (peer->is_dev != (msg->msg_type == kMsgNet)) {
-    fprintf(stderr, "RdmMsgRx: unexpetced message type (%u)\n", msg->msg_type);
-    abort();
-  }
-
   if (peer->intro_valid_remote) {
-    fprintf(stderr, "RdmMsgRx: received multiple messages (%lu)\n", msg->id);
+    fprintf(stderr, "RdmaMsgRxIntro: received multiple messages (%lu)\n",
+        msg->id);
     abort();
   }
 
   peer->remote_rkey = msg->rkey;
   peer->remote_base = msg->base_addr + msg->queue_off;
+
   peer->intro_valid_remote = true;
-  if (peer->is_dev) {
-    peer->net_intro = msg->net;
-    if (NetPeerSendDevIntro(peer))
-      return 1;
-  } else {
-    peer->dev_intro = msg->dev;
-    if (NetPeerSetupNetQueues(peer))
-      return 1;
-    if (peer->intro_valid_local && NetOpPassIntro(peer))
-      return 1;
+  peer->intro_remote_len = msg->intro.payload_len;
+  memcpy(peer->intro_remote, msg->intro.data, msg->intro.payload_len);
+
+  if (BasePeerSetupQueues(peer)) {
+    fprintf(stderr, "RdmaMsgRxIntro(%s): queue setup failed\n",
+        peer->sock_path);
+    abort();
   }
+  if (BasePeerSendIntro(peer))
+    return 1;
 
   if (peer->intro_valid_local) {
-    fprintf(stderr, "RdmMsgRx(%s): marking peer as ready\n", peer->sock_path);
+    // now we can send our intro for a listener
+    if (peer->is_listener && BaseOpPassIntro(peer)) {
+      fprintf(stderr, "RdmaMsgRxIntro(%s): sending l intro failed\n",
+        peer->sock_path);
+      return 1;
+    }
+    fprintf(stderr, "RdmaMsgRxIntro(%s): marking peer as ready\n",
+        peer->sock_path);
     peer->ready = true;
   }
   return 0;
@@ -163,14 +170,14 @@ static int RdmaMsgRxReport(struct NetRdmaMsg *msg) {
       fprintf(stderr, "RdmaMsgRxReport: invalid ready peer number %zu\n", i);
       abort();
     }
-    NetPeerReport(&peers[i], msg->report.written_pos[i],
-                  msg->report.clean_pos[i]);
+    BasePeerReport(&peers[i], msg->report.written_pos[i],
+                   msg->report.clean_pos[i]);
   }
   return 0;
 }
 
 static int RdmaMsgRx(struct NetRdmaMsg *msg) {
-  if (msg->msg_type == kMsgDev || msg->msg_type == kMsgNet)
+  if (msg->msg_type == kMsgIntro)
     return RdmaMsgRxIntro(msg);
   else if (msg->msg_type == kMsgReport)
     return RdmaMsgRxReport(msg);
@@ -336,7 +343,7 @@ int RdmaEvent() {
     for (int i = 0; i < n; i++) {
       if (wcs[i].opcode == IBV_WC_SEND) {
 #ifdef RDMA_DEBUG
-        fprintf(stderr, "Send done\n", n);
+        fprintf(stderr, "Send done\n");
 #endif
         if (wcs[i].status != IBV_WC_SUCCESS) {
           fprintf(stderr, "RdmaEvent: unsuccessful send (%u)\n", wcs[i].status);
@@ -347,7 +354,7 @@ int RdmaEvent() {
         RdmaMsgFree(msgs + wcs[i].wr_id);
       } else if ((wcs[i].opcode & IBV_WC_RECV)) {
 #ifdef RDMA_DEBUG
-        fprintf(stderr, "Recv done\n", n);
+        fprintf(stderr, "Recv done\n");
 #endif
 
         if (wcs[i].status != IBV_WC_SUCCESS) {
@@ -370,17 +377,17 @@ int RdmaEvent() {
   return 0;
 }
 
-int NetOpPassIntro(struct Peer *peer) {
+int BaseOpPassIntro(struct Peer *peer) {
 #ifdef RDMA_DEBUG
-  fprintf(stderr, "NetOpPassIntro(%s)\n", peer->sock_path);
+  fprintf(stderr, "BaseOpPassIntro(%s)\n", peer->sock_path);
 #endif
 
-  // device peers have sent us an SHM region, need to register this an as MR
-  if (peer->is_dev) {
+  // connecting peers have sent us an SHM region, need to register this an as MR
+  if (!peer->is_listener) {
     if (!(peer->shm_opaque = ibv_reg_mr(pd, peer->shm_base, peer->shm_size,
                                         IBV_ACCESS_LOCAL_WRITE |
                                         IBV_ACCESS_REMOTE_WRITE))) {
-      perror("NetOpPassIntro: ibv_reg_mr shm failed");
+      perror("BaseOpPassIntro: ibv_reg_mr shm failed");
       return 1;
     }
   } else {
@@ -388,13 +395,11 @@ int NetOpPassIntro(struct Peer *peer) {
        intro from our RDMA peer, so we can include the queue position. */
     if (!peer->intro_valid_remote) {
       fprintf(stderr,
-              "NetOpPassIntro: skipping because remote intro not received\n");
+              "BaseOpPassIntro: skipping because remote intro not received\n");
       return 0;
     }
 
     peer->shm_opaque = mr_shm;
-    peer->shm_base = shm_base;
-    peer->shm_size = shm_size;
   }
 
   struct NetRdmaMsg *msg = RdmaMsgAlloc();
@@ -405,19 +410,14 @@ int NetOpPassIntro(struct Peer *peer) {
   msg->base_addr = (uintptr_t) peer->shm_base;
   struct ibv_mr *mr = peer->shm_opaque;
   msg->rkey = mr->rkey;
-  if (peer->is_dev) {
-    msg->msg_type = kMsgDev;
-    /* this is a device peer, meaning the remote side will write to the
-       network-to-device queue. */
-    msg->queue_off = peer->dev_intro.n2d_offset;
-    msg->dev = peer->dev_intro;
-  } else {
-    msg->msg_type = kMsgNet;
-    /* this is a network peer, meaning the remote side will write to the
-       device-to-network queue. */
-    msg->queue_off = peer->dev_intro.d2n_offset;
-    msg->net = peer->net_intro;
+  msg->msg_type = kMsgIntro;
+  msg->queue_off = peer->cleanup_offset;
+  msg->intro.payload_len = peer->intro_local_len;
+  if (peer->intro_local_len > sizeof(msg->intro.data)) {
+    fprintf(stderr, "BaseOpPassIntro: intro longer than buffer\n");
+    abort();
   }
+  memcpy(msg->intro.data, peer->intro_local, peer->intro_local_len);
 
   struct ibv_sge sge;
   sge.addr = (uintptr_t) msg;
@@ -433,19 +433,19 @@ int NetOpPassIntro(struct Peer *peer) {
 
   struct ibv_send_wr *bad_send_wr;
   if (ibv_post_send(qp, &send_wr, &bad_send_wr)) {
-    perror("RdmaPassIntro: ibv_post_send failed");
+    perror("BaseOpPassIntro: ibv_post_send failed");
     return 1;
   }
 
 #ifdef RDMA_DEBUG
-  fprintf(stderr, "RdmaPassIntro: ibv_post_send done\n");
+  fprintf(stderr, "BaseOpPassIntro: ibv_post_send done\n");
 #endif
   return 0;
 }
 
-int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
+int BaseOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
 #ifdef RDMA_DEBUG
-  fprintf(stderr, "NetOpPassEntries(%s,%u)\n", peer->sock_path,
+  fprintf(stderr, "BaseOpPassEntries(%s,%u)\n", peer->sock_path,
           pos);
   fprintf(stderr, "  remote_base=%lx local_base=%p\n", peer->remote_base,
           peer->local_base);
@@ -478,7 +478,7 @@ int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
     if (ret == 0) {
       break;
     } else if (ret != ENOMEM) {
-      fprintf(stderr, "NetOpPassEntries: ibv_post_send failed %d (%s)\n", ret,
+      fprintf(stderr, "BaseOpPassEntries: ibv_post_send failed %d (%s)\n", ret,
               strerror(ret));
       return 1;
     }
@@ -486,9 +486,9 @@ int NetOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
   return 0;
 }
 
-int NetOpPassReport() {
+int BaseOpPassReport() {
   if (peer_num > MAX_PEERS) {
-    fprintf(stderr, "NetOpPassReport: peer_num (%zu) larger than max (%u)\n",
+    fprintf(stderr, "BaseOpPassReport: peer_num (%zu) larger than max (%u)\n",
             peer_num, MAX_PEERS);
     abort();
   }
