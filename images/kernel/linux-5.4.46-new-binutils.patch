@@ -1,0 +1,56 @@
+diff -ur linux-5.4.46.old/arch/x86/entry/Makefile linux-5.4.46/arch/x86/entry/Makefile
+--- linux-5.4.46.old/arch/x86/entry/Makefile	2022-05-03 14:52:37.250790352 +0000
++++ linux-5.4.46/arch/x86/entry/Makefile	2022-05-03 14:54:39.878691437 +0000
+@@ -7,11 +7,12 @@
+ 
+ CFLAGS_syscall_64.o		+= $(call cc-option,-Wno-override-init,)
+ CFLAGS_syscall_32.o		+= $(call cc-option,-Wno-override-init,)
+-obj-y				:= entry_$(BITS).o thunk_$(BITS).o syscall_$(BITS).o
++obj-y				:= entry_$(BITS).o syscall_$(BITS).o
+ obj-y				+= common.o
+ 
+ obj-y				+= vdso/
+ obj-y				+= vsyscall/
+ 
++obj-$(CONFIG_PREEMPTION)	+= thunk_$(BITS).o
+ obj-$(CONFIG_IA32_EMULATION)	+= entry_64_compat.o syscall_32.o
+ 
+diff -ur linux-5.4.46.old/arch/x86/entry/thunk_32.S linux-5.4.46/arch/x86/entry/thunk_32.S
+--- linux-5.4.46.old/arch/x86/entry/thunk_32.S	2022-05-03 14:52:37.250790352 +0000
++++ linux-5.4.46/arch/x86/entry/thunk_32.S	2022-05-03 14:55:08.770668074 +0000
+@@ -34,10 +34,7 @@
+ 	THUNK trace_hardirqs_off_thunk,trace_hardirqs_off_caller,1
+ #endif
+ 
+-#ifdef CONFIG_PREEMPTION
+ 	THUNK ___preempt_schedule, preempt_schedule
+ 	THUNK ___preempt_schedule_notrace, preempt_schedule_notrace
+ 	EXPORT_SYMBOL(___preempt_schedule)
+ 	EXPORT_SYMBOL(___preempt_schedule_notrace)
+-#endif
+-
+diff -ur linux-5.4.46.old/arch/x86/entry/thunk_64.S linux-5.4.46/arch/x86/entry/thunk_64.S
+--- linux-5.4.46.old/arch/x86/entry/thunk_64.S	2022-05-03 14:52:37.250790352 +0000
++++ linux-5.4.46/arch/x86/entry/thunk_64.S	2022-05-03 14:56:16.202613479 +0000
+@@ -46,16 +46,11 @@
+ 	THUNK lockdep_sys_exit_thunk,lockdep_sys_exit
+ #endif
+ 
+-#ifdef CONFIG_PREEMPTION
+ 	THUNK ___preempt_schedule, preempt_schedule
+ 	THUNK ___preempt_schedule_notrace, preempt_schedule_notrace
+ 	EXPORT_SYMBOL(___preempt_schedule)
+ 	EXPORT_SYMBOL(___preempt_schedule_notrace)
+-#endif
+ 
+-#if defined(CONFIG_TRACE_IRQFLAGS) \
+- || defined(CONFIG_DEBUG_LOCK_ALLOC) \
+- || defined(CONFIG_PREEMPTION)
+ .L_restore:
+ 	popq %r11
+ 	popq %r10
+@@ -69,4 +64,3 @@
+ 	popq %rbp
+ 	ret
+ 	_ASM_NOKPROBE(.L_restore)
+-#endif
