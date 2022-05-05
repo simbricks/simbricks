@@ -1,6 +1,9 @@
 FROM ubuntu:jammy
 RUN apt-get update \
- && apt-get install -y \
+ && DEBIAN_FRONTEND=noninteractive \
+    TZ=Europe/Berlin \
+    apt-get install -y \
+	apt-utils \
 	autoconf \
 	bc \
 	bison \
@@ -9,6 +12,7 @@ RUN apt-get update \
 	g++ \
 	flex \
 	git \
+	kmod \
 	libboost-coroutine-dev \
 	libboost-fiber-dev \
 	libboost-iostreams-dev \
