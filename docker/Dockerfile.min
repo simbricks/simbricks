@@ -1,0 +1,3 @@
+FROM simbricks as builder
+FROM simbricks-runenv
+COPY --from=builder /simbricks /simbricks
