@@ -394,3 +394,7 @@ class ExpOutput(object):
 
     def dumps(self):
         return json.dumps(self.__dict__)
+
+    def loads(self, json_s):
+        for k, v in json.loads(json_s).items():
+            self.__dict__[k] = v
