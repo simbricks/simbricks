@@ -222,8 +222,9 @@ class QemuHost(HostSim):
             f'{env.hdcopy_path(self)}']
 
     def run_cmd(self, env):
-        cmd = (f'{env.qemu_path} -machine q35 -serial mon:stdio '
-            '-display none -nic none '
+        accel = ',accel=kvm:tcg' if not self.sync else ''
+        cmd = (f'{env.qemu_path} -machine q35{accel} -serial mon:stdio '
+            '-cpu Skylake-Server -display none -nic none '
             f'-kernel {env.qemu_kernel_path} '
             f'-drive file={env.hdcopy_path(self)},if=ide,index=0,media=disk '
             f'-drive file={env.cfgtar_path(self)},if=ide,index=1,media=disk,'
@@ -243,9 +244,7 @@ class QemuHost(HostSim):
             num = float(self.cpu_freq[:-3])
             shift = base - int(math.ceil(math.log(num, 2)))
 
-            cmd += f' -cpu Skylake-Server -icount shift={shift},sleep=off '
-        else:
-            cmd += ' -cpu host -enable-kvm '
+            cmd += f' -icount shift={shift},sleep=off '
 
         for dev in self.pcidevs:
             cmd += f'-device simbricks-pci,socket={env.dev_pci_path(dev)}'
