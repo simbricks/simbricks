@@ -319,6 +319,8 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
 
 class ExpEnv(object):
     def __init__(self, repo_path, workdir, cpdir):
+        self.create_cp = False
+        self.pcap_file = ''
         self.repodir = os.path.abspath(repo_path)
         self.workdir = os.path.abspath(workdir)
         self.cpdir = os.path.abspath(cpdir)
