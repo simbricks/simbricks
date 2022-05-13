@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 
 # iperf TCP_single test
@@ -89,7 +90,7 @@ for host_type in host_types:
 
                 # create servers and clients
                 """
-                servers = sim.create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
+                servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
                         nc_class, node.NoTraffic)
                 
                 for s in servers:
@@ -99,7 +100,7 @@ for host_type in host_types:
                 """
 
                 
-                clients = sim.create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
+                clients = create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
                                                  nc_class, node.NoTraffic, ip_start=2)
 
                 clients[n_client-1].wait = True

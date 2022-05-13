@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 
 # iperf TCP_single test
@@ -60,24 +61,24 @@ for n in kinds_of_net:
         e.add_network(net)
 
         if c == 'cv':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.CorundumVerilatorNIC, sim.QemuHost,
+            servers = create_basic_hosts(e, 1, 'server', net, sim.CorundumVerilatorNIC, sim.QemuHost,
                                              node.CorundumLinuxNode, node.IperfTCPServer)
-            clients = sim.create_basic_hosts(e, 1, 'client', net, sim.CorundumVerilatorNIC, sim.QemuHost,
+            clients = create_basic_hosts(e, 1, 'client', net, sim.CorundumVerilatorNIC, sim.QemuHost,
                                              node.CorundumLinuxNode, node.IperfTCPClient, ip_start = 2)
 
 
         if c == 'cb':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.CorundumBMNIC, sim.QemuHost,
+            servers = create_basic_hosts(e, 1, 'server', net, sim.CorundumBMNIC, sim.QemuHost,
                                              node.CorundumLinuxNode, node.IperfTCPServer)
-            clients = sim.create_basic_hosts(e, 1, 'client', net, sim.CorundumBMNIC, sim.QemuHost,
+            clients = create_basic_hosts(e, 1, 'client', net, sim.CorundumBMNIC, sim.QemuHost,
                                              node.CorundumLinuxNode, node.IperfTCPClient, ip_start = 2)
 
 
 
         if c == 'ib':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
+            servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
                                              node.I40eLinuxNode, node.IperfTCPServer)
-            clients = sim.create_basic_hosts(e, 1, 'client', net, sim.I40eNIC, sim.QemuHost,
+            clients = create_basic_hosts(e, 1, 'client', net, sim.I40eNIC, sim.QemuHost,
                                              node.I40eLinuxNode, node.IperfTCPClient, ip_start = 2)
 
         clients[0].wait = True

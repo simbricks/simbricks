@@ -21,8 +21,14 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import math
+import typing as tp
+
+from simbricks.nodeconfig import NodeConfig
+
 
 class Simulator(object):
+    """Base class for all simulators."""
+
     def __init__(self):
         self.extra_deps = []
 
@@ -57,45 +63,6 @@ class Simulator(object):
 
     def wait_terminate(self):
         return False
-
-class HostSim(Simulator):
-    node_config = None
-    name = ''
-    wait = False
-    sleep = 0
-    cpu_freq = '8GHz'
-
-    sync_mode = 0
-    sync_period = 500
-    pci_latency = 500
-
-    def __init__(self):
-        self.pcidevs = []
-        super().__init__()
-
-    def full_name(self):
-        return 'host.' + self.name
-
-    def add_nic(self, dev):
-        self.add_pcidev(dev)
-
-    def add_pcidev(self, dev):
-        dev.name = self.name + '.' + dev.name
-        self.pcidevs.append(dev)
-
-    def set_config(self, nc):
-        self.node_config = nc
-
-    def dependencies(self):
-        deps = []
-        for dev in self.pcidevs:
-            deps.append(dev)
-            if isinstance(dev, NICSim):
-                deps.append(dev.network)
-        return deps
-
-    def wait_terminate(self):
-        return self.wait
 
 
 class PCIDevSim(Simulator):
@@ -155,6 +122,7 @@ class NICSim(PCIDevSim):
         return super().sockets_wait(env) + [env.nic_eth_path(self)]
 
 class NetSim(Simulator):
+    """Base class for network simulators."""
     name = ''
     opt = ''
     sync_mode = 0
@@ -170,8 +138,8 @@ class NetSim(Simulator):
     def full_name(self):
         return 'net.' + self.name
 
-    # Connect this netwrok to the listening peer `net`
     def connect_network(self, net):
+        """Connect this network to the listening peer `net`"""
         net.net_listen.append(self)
         self.net_connect.append(net)
 
@@ -197,6 +165,51 @@ class NetSim(Simulator):
 
     def sockets_wait(self, env):
         return [s for (_,s) in self.listen_sockets(env)]
+
+
+class HostSim(Simulator):
+    node_config: NodeConfig
+    """Config for this node. """
+    name = ''
+    wait = False
+    """
+    `True` - Wait for process of simulator to exit.
+    `False` - Don't wait and instead stop the process.
+    """
+    sleep = 0
+    cpu_freq = '8GHz'
+
+    sync_mode = 0
+    sync_period = 500
+    pci_latency = 500
+
+    def __init__(self):
+        self.pcidevs: tp.List[PCIDevSim] = []
+        super().__init__()
+
+    def full_name(self):
+        return 'host.' + self.name
+
+    def add_nic(self, dev: NICSim):
+        self.add_pcidev(dev)
+
+    def add_pcidev(self, dev: NICSim):
+        dev.name = self.name + '.' + dev.name
+        self.pcidevs.append(dev)
+
+    def set_config(self, nc: NodeConfig):
+        self.node_config = nc
+
+    def dependencies(self):
+        deps = []
+        for dev in self.pcidevs:
+            deps.append(dev)
+            if isinstance(dev, NICSim):
+                deps.append(dev.network)
+        return deps
+
+    def wait_terminate(self):
+        return self.wait
 
 
 class QemuHost(HostSim):
@@ -261,7 +274,7 @@ class QemuHost(HostSim):
 class Gem5Host(HostSim):
     cpu_type_cp = 'X86KvmCPU'
     cpu_type = 'TimingSimpleCPU'
-    sys_clock  = '1GHz'
+    sys_clock = '1GHz'
 
     def __init__(self):
         super().__init__()
@@ -312,7 +325,7 @@ class Gem5Host(HostSim):
             cmd += f'--simbricks-pci={env.dev_pci_path(dev)} '
             cmd += f'--simbricks-shm={env.dev_shm_path(dev)} '
             if cpu_type == 'TimingSimpleCPU':
-                cmd +=  '--simbricks-sync '
+                cmd += '--simbricks-sync '
                 cmd += f'--simbricks-sync_mode={self.sync_mode} '
                 cmd += f'--simbricks-pci-lat={self.pci_latency} '
                 cmd += f'--simbricks-sync-int={self.sync_period} '
@@ -535,87 +548,3 @@ class FEMUDev(PCIDevSim):
             (env.repodir, '/sims/external/femu/femu-simbricks',
              env.dev_pci_path(self), env.dev_shm_path(self))
         return cmd
-
-
-def create_basic_hosts(e, num, name_prefix, net, nic_class, host_class,
-        nc_class, app_class, ip_start=1, ip_prefix=24):
-    hosts = []
-    for i in range(0, num):
-        nic = nic_class()
-        #nic.name = '%s.%d' % (name_prefix, i)
-        nic.set_network(net)
-
-        host = host_class()
-        host.name = '%s.%d' % (name_prefix, i)
-
-        node_config = nc_class()
-        node_config.prefix = ip_prefix
-        ip = ip_start + i
-        node_config.ip = '10.0.%d.%d' % (int(ip / 256), ip % 256)
-        node_config.app = app_class()
-        host.set_config(node_config)
-
-        host.add_nic(nic)
-        e.add_nic(nic)
-        e.add_host(host)
-
-        hosts.append(host)
-
-    return hosts
-
-def create_multinic_hosts(e, num, name_prefix, net, host_class,
-        nc_class, app_class, ip_start=1, ip_prefix=24):
-    hosts = []
-
-    mn = I40eMultiNIC()
-    mn.name = name_prefix
-    e.add_nic(mn)
-
-    for i in range(0, num):
-        nic = mn.create_subnic()
-        #nic.name = '%s.%d' % (name_prefix, i)
-        nic.set_network(net)
-
-        host = host_class()
-        host.name = '%s.%d' % (name_prefix, i)
-
-        node_config = nc_class()
-        node_config.prefix = ip_prefix
-        ip = ip_start + i
-        node_config.ip = '10.0.%d.%d' % (int(ip / 256), ip % 256)
-        node_config.app = app_class()
-        host.set_config(node_config)
-
-        host.add_nic(nic)
-        e.add_host(host)
-
-        hosts.append(host)
-
-    return hosts
-
-
-def create_dctcp_hosts(e, num, name_prefix, net, nic_class, host_class,
-        nc_class, app_class, cpu_freq, mtu, ip_start=1):
-    hosts = []
-    for i in range(0, num):
-        nic = nic_class()
-        #nic.name = '%s.%d' % (name_prefix, i)
-        nic.set_network(net)
-
-        host = host_class()
-        host.name = '%s.%d' % (name_prefix, i)
-        host.cpu_freq = cpu_freq
-
-        node_config = nc_class()
-        node_config.mtu = mtu
-        node_config.ip = '192.168.64.%d' % (ip_start + i)
-        node_config.app = app_class()
-        host.set_config(node_config)
-
-        host.add_nic(nic)
-        e.add_nic(nic)
-        e.add_host(host)
-
-        hosts.append(host)
-
-    return hosts

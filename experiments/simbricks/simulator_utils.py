@@ -1,0 +1,163 @@
+# Copyright 2021 Max Planck Institute for Software Systems, and
+# National University of Singapore
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""Provides utility functions for assembling host simulators."""
+
+import typing as tp
+
+from simbricks.experiments import Experiment
+from simbricks.nodeconfig import NodeConfig, AppConfig
+from simbricks.simulators import NetSim, NICSim, HostSim, I40eMultiNIC
+
+
+def create_basic_hosts(
+    e: Experiment,
+    num: int,
+    name_prefix: str,
+    net: NetSim,
+    nic_class: NICSim,
+    host_class: HostSim,
+    nc_class: NodeConfig,
+    app_class: AppConfig,
+    ip_start: int = 1,
+    ip_prefix: int = 24
+):
+    """Creates and configures multiple hosts to be simulated using the given parameters.
+    
+    Args:
+        `num`: number of hosts to create
+    """
+
+    hosts: tp.List[HostSim] = []
+    for i in range(0, num):
+        nic = nic_class()
+        #nic.name = '%s.%d' % (name_prefix, i)
+        nic.set_network(net)
+
+        host = host_class()
+        host.name = '%s.%d' % (name_prefix, i)
+
+        node_config = nc_class()
+        node_config.prefix = ip_prefix
+        ip = ip_start + i
+        node_config.ip = '10.0.%d.%d' % (int(ip / 256), ip % 256)
+        node_config.app = app_class()
+        host.set_config(node_config)
+
+        host.add_nic(nic)
+        e.add_nic(nic)
+        e.add_host(host)
+
+        hosts.append(host)
+
+    return hosts
+
+
+def create_multinic_hosts(
+    e: Experiment,
+    num: int,
+    name_prefix: str,
+    net: NetSim,
+    host_class: HostSim,
+    nc_class: NodeConfig,
+    app_class: AppConfig,
+    ip_start: int = 1,
+    ip_prefix: int = 24
+):
+    # TODO modify docstring
+    """Creates and configures multiple hosts to be simulated using the given parameters.
+    
+    Args:
+        num: number of hosts to create
+    """
+
+    hosts: tp.List[HostSim] = []
+
+    mn = I40eMultiNIC()
+    mn.name = name_prefix
+    e.add_nic(mn)
+
+    for i in range(0, num):
+        nic = mn.create_subnic()
+        #nic.name = '%s.%d' % (name_prefix, i)
+        nic.set_network(net)
+
+        host = host_class()
+        host.name = '%s.%d' % (name_prefix, i)
+
+        node_config = nc_class()
+        node_config.prefix = ip_prefix
+        ip = ip_start + i
+        node_config.ip = '10.0.%d.%d' % (int(ip / 256), ip % 256)
+        node_config.app = app_class()
+        host.set_config(node_config)
+
+        host.add_nic(nic)
+        e.add_host(host)
+
+        hosts.append(host)
+
+    return hosts
+
+
+def create_dctcp_hosts(
+    e: Experiment,
+    num: int,
+    name_prefix: str,
+    net: NetSim,
+    nic_class: NICSim,
+    host_class: HostSim,
+    nc_class: NodeConfig,
+    app_class: AppConfig,
+    cpu_freq: str,
+    mtu: int,
+    ip_start: int = 1
+):
+    # TODO modify docstring
+    """Creates and configures multiple hosts to be simulated using the given parameters.
+    
+    Args:
+        num: number of hosts to create
+        cpu_freq: CPU frequency to simulate, e.g. '5GHz'
+    """
+    hosts = []
+    for i in range(0, num):
+        nic = nic_class()
+        #nic.name = '%s.%d' % (name_prefix, i)
+        nic.set_network(net)
+
+        host = host_class()
+        host.name = '%s.%d' % (name_prefix, i)
+        host.cpu_freq = cpu_freq
+
+        node_config = nc_class()
+        node_config.mtu = mtu
+        node_config.ip = '192.168.64.%d' % (ip_start + i)
+        node_config.app = app_class()
+        host.set_config(node_config)
+
+        host.add_nic(nic)
+        e.add_nic(nic)
+        e.add_host(host)
+
+        hosts.append(host)
+
+    return hosts

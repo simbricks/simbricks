@@ -23,12 +23,15 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 host_types = ['qemu', 'gem5', 'qt']
 nic_types = ['i40e', 'cd_bm', 'cd_verilator']
 net_types = ['switch', 'ns3']
 experiments = []
 
+# Create multiple experiments with different simulator permutations, which can
+# be filtered later.
 for host_type in host_types:
     for nic_type in nic_types:
         for net_type in net_types:
@@ -72,10 +75,10 @@ for host_type in host_types:
                 raise NameError(nic_type)
 
             # create servers and clients
-            servers = sim.create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
+            servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
                     nc_class, node.NetperfServer)
 
-            clients = sim.create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
+            clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
                     nc_class, node.NetperfClient, ip_start = 2)
 
             for c in clients:

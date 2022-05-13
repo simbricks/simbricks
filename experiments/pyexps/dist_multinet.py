@@ -24,6 +24,7 @@ import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.proxy as proxy
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4]
@@ -74,7 +75,7 @@ for host_type in host_types:
             # create servers and clients
             m = n_client
             if i == 0 or separate_server:
-                servers = sim.create_basic_hosts(e, 1, 'server_%d' % (i,),
+                servers = create_basic_hosts(e, 1, 'server_%d' % (i,),
                         switch, sim.I40eNIC, host_class, node.I40eLinuxNode,
                         node.NetperfServer, ip_start = i * (n_client + 1) + 1)
                 if not separate_server:
@@ -83,7 +84,7 @@ for host_type in host_types:
                 e.assign_sim_host(servers[0], h_i)
                 e.assign_sim_host(servers[0].nics[0], h_i)
 
-            clients = sim.create_basic_hosts(e, m, 'client_%d' % (i,),
+            clients = create_basic_hosts(e, m, 'client_%d' % (i,),
                     switch, sim.I40eNIC, host_class, node.I40eLinuxNode,
                     node.NetperfClient, ip_start = i * (n_client + 1) + 2)
 

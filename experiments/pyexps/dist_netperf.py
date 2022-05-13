@@ -24,6 +24,7 @@ import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.proxy as proxy
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 host_types = ['qemu', 'gem5', 'qt']
 nic_types = ['i40e', 'cd_bm', 'cd_verilator']
@@ -68,10 +69,10 @@ for host_type in host_types:
                 raise NameError(nic_type)
 
             # create servers and clients
-            servers = sim.create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
+            servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
                     nc_class, node.NetperfServer)
 
-            clients = sim.create_basic_hosts(e, n, 'client', net, nic_class, host_class,
+            clients = create_basic_hosts(e, n, 'client', net, nic_class, host_class,
                     nc_class, node.NetperfClient, ip_start = 2)
 
             for c in clients:
