@@ -22,30 +22,33 @@
 
 import os
 import asyncio
+from simbricks.simulators import HostSim, NetSim, PCIDevSim
 import simbricks.utils.graphlib as graphlib
-from collections import defaultdict
-import simbricks.exectools as exectools
-import simbricks.proxy
 import shlex
 import time
 import itertools
 import json
 import traceback
+import typing as tp
 
 class Experiment(object):
-    name = None
-    timeout = None
+    name: str
+    """This experiment's name."""
+    timeout: int
+    # TODO Add docstring
     checkpoint = False
+    # TODO Add docstring
     no_simbricks = False
+    # TODO Add docstring
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
-        self.hosts = []
-        self.pcidevs = []
-        self.networks = []
+        self.hosts: tp.List[HostSim] = []
+        self.pcidevs: tp.List[PCIDevSim] = []
+        self.networks: tp.List[NetSim] = []
         self.metadata = {}
 
-    def add_host(self, sim):
+    def add_host(self, sim: HostSim):
         for h in self.hosts:
             if h.name == sim.name:
                 raise Exception('Duplicate host name')
@@ -54,13 +57,13 @@ class Experiment(object):
     def add_nic(self, sim):
         self.add_pcidev(sim)
 
-    def add_pcidev(self, sim):
+    def add_pcidev(self, sim: PCIDevSim):
         for d in self.pcidevs:
             if d.name == sim.name:
                 raise Exception('Duplicate pcidev name')
         self.pcidevs.append(sim)
 
-    def add_network(self, sim):
+    def add_network(self, sim: NetSim):
         for n in self.networks:
             if n.name == sim.name:
                 raise Exception('Duplicate net name')
