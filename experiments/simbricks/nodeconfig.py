@@ -22,17 +22,45 @@
 
 import tarfile
 import io
-import pathlib
+
+
+class AppConfig(object):
+    """Manages the application to be run on a simulated host."""
+
+    def run_cmds(self, node):
+        return []
+
+    def prepare_pre_cp(self):
+        return []
+
+    def prepare_post_cp(self):
+        return []
+
+    def config_files(self):
+        return {}
+
+    def strfile(self, s):
+        return io.BytesIO(bytes(s, encoding='UTF-8'))
+
 
 class NodeConfig(object):
+    """Manages the configuration for a node."""
     sim = 'qemu'
+    """Name of simulator to run."""
     ip = '10.0.0.1'
+    """IP address."""
     prefix = 24
+    """IP prefix."""
     cores = 1
+    """Number of cores to be simulated."""
     memory = 8 * 1024
+    """Amount of system memory in MB."""
     disk_image = 'base'
-    app = None
+    """Disk image to use."""
+    app: AppConfig = None
+    """App to be run on simulated host."""
     mtu = 1500
+    """Networking MTU."""
 
     def config_str(self):
         if self.sim == 'qemu':
@@ -61,7 +89,7 @@ class NodeConfig(object):
         cfg_f.close()
 
         # add additional config files
-        for (n,f) in self.config_files().items():
+        for (n, f) in self.config_files().items():
             f_i = tarfile.TarInfo('guest/' + n)
             f_i.mode = 0o777
             f.seek(0, io.SEEK_END)
@@ -92,23 +120,6 @@ class NodeConfig(object):
 
     def config_files(self):
         return self.app.config_files()
-
-    def strfile(self, s):
-        return io.BytesIO(bytes(s, encoding='UTF-8'))
-
-
-class AppConfig(object):
-    def run_cmds(self, node):
-        return []
-
-    def prepare_pre_cp(self):
-        return []
-
-    def prepare_post_cp(self):
-        return []
-
-    def config_files(self):
-        return {}
 
     def strfile(self, s):
         return io.BytesIO(bytes(s, encoding='UTF-8'))
