@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 host_configs = ['qemu', 'gt', 'qt']
 seq_configs = ['swseq', 'ehseq', 'tofino']
@@ -91,14 +92,14 @@ for proto_config in proto_configs:
 
                     # endhost sequencer
                     if seq_config == 'ehseq' and proto_config == 'nopaxos':
-                        sequencer = sim.create_basic_hosts(e, 1, 'sequencer', net, nic_class,
+                        sequencer = create_basic_hosts(e, 1, 'sequencer', net, nic_class,
                                 host_class, nc_class, node.NOPaxosSequencer, ip_start = 100)
                         sequencer[0].sleep = 1
                         sequencer[0].node_config.disk_image = 'nopaxos'
                         sequencer[0].pcidevs[0].sync_period = sync_period
                         sequencer[0].sync_period = sync_period
 
-                    replicas = sim.create_basic_hosts(e, 3, 'replica', net, nic_class,
+                    replicas = create_basic_hosts(e, 3, 'replica', net, nic_class,
                             host_class, nc_class, replica_class)
                     for i in range(len(replicas)):
                         replicas[i].node_config.app.index = i
@@ -107,7 +108,7 @@ for proto_config in proto_configs:
                         replicas[i].pcidevs[0].sync_period = sync_period
                         replicas[i].sync_period = sync_period
 
-                    clients = sim.create_basic_hosts(e, num_c, 'client', net, nic_class,
+                    clients = create_basic_hosts(e, num_c, 'client', net, nic_class,
                             host_class, nc_class, client_class, ip_start = 4)
 
                     for c in clients:

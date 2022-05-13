@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 host_configs = ['bm', 'cycle']
 n_clients = [1, 2, 4, 8]
@@ -49,10 +50,10 @@ for host_config in host_configs:
 
         e.add_network(net)
 
-        servers = sim.create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
+        servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
                 nc_class, node.IperfUDPServer)
 
-        clients = sim.create_basic_hosts(e, nc, 'client', net, nic_class, host_class,
+        clients = create_basic_hosts(e, nc, 'client', net, nic_class, host_class,
                 nc_class, node.IperfUDPClient)
 
         for c in clients:

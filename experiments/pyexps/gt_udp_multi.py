@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 
 # iperf TCP_multi_client test
@@ -61,24 +62,24 @@ for n in kinds_of_net:
         e.add_network(net)
         
         if c == 'cv':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.CorundumVerilatorNIC, sim.Gem5Host, 
+            servers = create_basic_hosts(e, 1, 'server', net, sim.CorundumVerilatorNIC, sim.Gem5Host, 
                                              node.CorundumLinuxNode, node.IperfUDPServer)
-            clients = sim.create_basic_hosts(e, num_client, 'client', net, sim.CorundumVerilatorNIC, sim.Gem5Host, 
+            clients = create_basic_hosts(e, num_client, 'client', net, sim.CorundumVerilatorNIC, sim.Gem5Host, 
                                              node.CorundumLinuxNode, node.IperfUDPClient, ip_start = 2)
 
         
         if c == 'cb':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.CorundumBMNIC, sim.Gem5Host, 
+            servers = create_basic_hosts(e, 1, 'server', net, sim.CorundumBMNIC, sim.Gem5Host, 
                                              node.CorundumLinuxNode, node.IperfUDPServer)
-            clients = sim.create_basic_hosts(e, num_client, 'client', net, sim.CorundumBMNIC, sim.Gem5Host, 
+            clients = create_basic_hosts(e, num_client, 'client', net, sim.CorundumBMNIC, sim.Gem5Host, 
                                              node.CorundumLinuxNode, node.IperfUDPClient, ip_start = 2)
             
         
 
         if c == 'ib':
-            servers = sim.create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.Gem5Host, 
+            servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.Gem5Host, 
                                              node.I40eLinuxNode, node.IperfUDPServer)
-            clients = sim.create_basic_hosts(e, num_client, 'client', net, sim.I40eNIC, sim.Gem5Host, 
+            clients = create_basic_hosts(e, num_client, 'client', net, sim.I40eNIC, sim.Gem5Host, 
                                              node.I40eLinuxNode, node.IperfUDPClient, ip_start = 2)
             
         

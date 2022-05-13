@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 
 # iperf TCP_multi_client test
@@ -89,9 +90,9 @@ for mode in types_of_mode:
                     raise NameError(c)
 
 
-                servers = sim.create_basic_hosts(e, num_pairs, 'server', net, nic_class, host_class, 
+                servers = create_basic_hosts(e, num_pairs, 'server', net, nic_class, host_class, 
                                                 nc_class, node.IperfTCPServer)
-                clients = sim.create_basic_hosts(e, num_pairs, 'client', net, nic_class, host_class, 
+                clients = create_basic_hosts(e, num_pairs, 'client', net, nic_class, host_class, 
                                                 nc_class, node.IperfTCPClient, ip_start=num_pairs+1)
 
                 for se in servers:

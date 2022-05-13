@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 
 # iperf UDP test
@@ -98,11 +99,11 @@ for n_client in num_client_types:
                     raise NameError(nic_type)
 
                 # create servers and clients
-                servers = sim.create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
+                servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
                         nc_class, node.IperfUDPServer)
 
                 
-                clients = sim.create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
+                clients = create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
                                                  nc_class, node.IperfUDPClient, ip_start=2)
 
                 clients[n_client-1].node_config.app.is_last = True
