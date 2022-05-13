@@ -25,10 +25,13 @@
 #ifndef SIMBRICKS_BASE_IF_H_
 #define SIMBRICKS_BASE_IF_H_
 
-#ifndef __cplusplus
-// FIXME (see net_switch)
+#ifdef __cplusplus
+// FIXME
+#include <simbricks/base/cxxatomicfix.h>
+#else
 #include <stdatomic.h>
 #endif
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
