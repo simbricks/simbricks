@@ -82,8 +82,7 @@ def create_multinic_hosts(
     ip_start: int = 1,
     ip_prefix: int = 24
 ):
-    # TODO modify docstring
-    """Creates and configures multiple hosts to be simulated using the given parameters.
+    """Creates and configures multiple hosts to be simulated using the given parameters. These hosts use multiple NICs.
     
     Args:
         num: number of hosts to create
@@ -131,8 +130,7 @@ def create_dctcp_hosts(
     mtu: int,
     ip_start: int = 1
 ):
-    # TODO modify docstring
-    """Creates and configures multiple hosts to be simulated using the given parameters.
+    """Creates and configures multiple hosts to be simulated in a DCTCP experiment using the given parameters.
     
     Args:
         num: number of hosts to create
