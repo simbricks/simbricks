@@ -1,0 +1,11 @@
+{
+	"image": "simbricks/simbricks-build:latest",
+	"mounts": [
+		"source=/dev/kvm,target=/dev/kvm,type=bind"
+	],
+	"postCreateCommand": "apt-get update && apt-get install python3-yapf && git config --global --add safe.directory /workspaces/simbricks",
+	"extensions": [
+		"ms-python.python",
+		"Gruntfuggly.todo-tree"
+	],
+}
