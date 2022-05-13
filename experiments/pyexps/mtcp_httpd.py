@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 configs = [
     (node.I40eLinuxNode, node.HTTPDLinux, node.HTTPCLinux, 'linux'),
@@ -45,10 +46,10 @@ for (nodec, appc, clientc, label) in configs:
     net = sim.SwitchNet()
     e.add_network(net)
 
-    servers = sim.create_basic_hosts(e, 1, 'server', net, sim.I40eNIC,
+    servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC,
             sim.QemuHost, nodec, appc)
 
-    clients = sim.create_basic_hosts(e, num_clients, 'client', net, sim.I40eNIC,
+    clients = create_basic_hosts(e, num_clients, 'client', net, sim.I40eNIC,
             sim.QemuHost, nodec, clientc, ip_start = 2)
 
     for h in servers:

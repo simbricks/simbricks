@@ -26,6 +26,7 @@ import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.proxy as proxy
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_multinic_hosts
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4, 8, 16, 32]
@@ -105,7 +106,7 @@ for host_type in host_types:
 
             # create servers and clients
             m = int(n_host / 2)
-            servers = sim.create_multinic_hosts(e, m, 'server_%d' % (i,),
+            servers = create_multinic_hosts(e, m, 'server_%d' % (i,),
                     switch, host_class, node.I40eLinuxNode,
                     node.MemcachedServer, ip_start = i * n_host + 1,
                     ip_prefix=16)
@@ -113,7 +114,7 @@ for host_type in host_types:
                 e.assign_sim_host(s, h_i)
                 e.assign_sim_host(s.nics[0].multinic, h_i)
 
-            clients = sim.create_multinic_hosts(e, m, 'client_%d' % (i,),
+            clients = create_multinic_hosts(e, m, 'client_%d' % (i,),
                     switch, host_class, node.I40eLinuxNode,
                     node.MemcachedClient, ip_start = i * n_host + 1 + m,
                     ip_prefix=16)

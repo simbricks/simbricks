@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 
 mpcs = [1, 8, 128]
@@ -52,10 +53,10 @@ for mpc in mpcs:
     else:
         n = node.I40eLinuxNode
 
-    servers = sim.create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
+    servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
             n, node.RPCServer)
 
-    clients = sim.create_basic_hosts(e, num_clients, 'client', net, sim.I40eNIC,
+    clients = create_basic_hosts(e, num_clients, 'client', net, sim.I40eNIC,
             sim.QemuHost, n, node.RPCClient, ip_start = 2)
 
     for h in servers:

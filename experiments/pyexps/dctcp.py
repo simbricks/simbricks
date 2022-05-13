@@ -23,6 +23,7 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_dctcp_hosts
 
 
 # iperf TCP_multi_client test
@@ -110,9 +111,9 @@ for mtu in types_of_mtu:
                     raise NameError(c)
 
 
-                servers = sim.create_dctcp_hosts(e, num_pairs, 'server', net, nic_class, host_class, 
+                servers = create_dctcp_hosts(e, num_pairs, 'server', net, nic_class, host_class, 
                                                 nc_class, node.DctcpServer, freq, mtu)
-                clients = sim.create_dctcp_hosts(e, num_pairs, 'client', net, nic_class, host_class, 
+                clients = create_dctcp_hosts(e, num_pairs, 'client', net, nic_class, host_class, 
                                                 nc_class, node.DctcpClient, freq, mtu, ip_start=num_pairs+1)
 
             

@@ -23,16 +23,17 @@
 import simbricks.experiments as exp
 import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+from simbricks.simulator_utils import create_basic_hosts
 
 
 e = exp.Experiment('qemu-i40e-pair')
 net = sim.SwitchNet()
 e.add_network(net)
 
-servers = sim.create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
+servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
         node.I40eLinuxNode, node.IperfTCPServer)
 
-clients = sim.create_basic_hosts(e, 2, 'client', net, sim.I40eNIC, sim.QemuHost,
+clients = create_basic_hosts(e, 2, 'client', net, sim.I40eNIC, sim.QemuHost,
         node.I40eLinuxNode, node.IperfTCPClient, ip_start = 2)
 
 for c in clients:
