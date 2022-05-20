@@ -20,26 +20,36 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os
 import asyncio
-from simbricks.simulators import HostSim, NetSim, PCIDevSim
-import simbricks.utils.graphlib as graphlib
 import shlex
-import time
 import itertools
-import json
 import traceback
 import typing as tp
 
+from simbricks.experiment.experiment_environment import ExpEnv
+from simbricks.experiment.experiment_output import ExpOutput
+from simbricks.exectools import Executor, SimpleComponent
+from simbricks.proxy import NetProxyConnecter, NetProxyListener, SimProxy
+from simbricks.simulators import HostSim, NICSim, NetSim, PCIDevSim, Simulator
+import simbricks.utils.graphlib as graphlib
+
 class Experiment(object):
+    """Describes a simulation experiment. Holds information about the simulators
+    to run and paramaters to configure the experiment."""
     name: str
-    """This experiment's name."""
+    """This experiment's name. Can be used to filter multiple experiments to be
+    run."""
     timeout: int
-    # TODO Add docstring
+    """Timeout for experiment in seconds."""
     checkpoint = False
-    # TODO Add docstring
+    """Whether to use checkpoints in experiment.
+    
+    Can for example be used to speed up booting a host simulator by first
+    running in a less accurate mode. Before we then start the application we are
+    interested in, a checkpoint is taken and the simulator shut down. Then, the
+    simulator is restored in the accurate mode using this checkpoint."""
     no_simbricks = False
-    # TODO Add docstring
+    """`true` - No simbricks adapters are used in the simulators."""
 
     def __init__(self, name: str):
         self.name = name
@@ -54,7 +64,7 @@ class Experiment(object):
                 raise Exception('Duplicate host name')
         self.hosts.append(sim)
 
-    def add_nic(self, sim):
+    def add_nic(self, sim: NICSim):
         self.add_pcidev(sim)
 
     def add_pcidev(self, sim: PCIDevSim):
@@ -74,31 +84,37 @@ class Experiment(object):
         return itertools.chain(self.hosts, self.pcidevs, self.networks)
 
     def resreq_mem(self):
+        """Memory required to run all simulators used in this experiment."""
         mem = 0
         for s in self.all_simulators():
             mem += s.resreq_mem()
         return mem
 
     def resreq_cores(self):
+        """Number of Cores required to run all simulators used in this
+        experiment."""
         cores = 0
         for s in self.all_simulators():
             cores += s.resreq_cores()
         return cores
 
 class DistributedExperiment(Experiment):
+    """Describes a distributed simulation experiment. """
     num_hosts = 1
-    host_mapping = None
-    proxies_listen = None
-    proxies_connect = None
+    """Number of hosts to use."""
+    host_mapping: tp.Dict[Simulator, int]
+    """Mapping from simulator to host ID."""
+    proxies_listen: tp.List[NetProxyListener]
+    proxies_connect: tp.List[NetProxyConnecter]
 
-    def __init__(self, name, num_hosts):
+    def __init__(self, name: str, num_hosts: int):
         self.num_hosts = num_hosts
         self.host_mapping = {}
         self.proxies_listen = []
         self.proxies_connect = []
         super().__init__(name)
 
-    def add_proxy(self, proxy):
+    def add_proxy(self, proxy: SimProxy):
         if proxy.listen:
             self.proxies_listen.append(proxy)
         else:
@@ -123,16 +139,16 @@ class DistributedExperiment(Experiment):
 
 
 class ExperimentBaseRunner(object):
-    def __init__(self, exp, env, verbose):
+    def __init__(self, exp: Experiment, env: ExpEnv, verbose: bool):
         self.exp = exp
         self.env = env
         self.verbose = verbose
         self.out = ExpOutput(exp)
-        self.running = []
+        self.running: tp.List[tp.Tuple[Simulator, SimpleComponent]] = []
         self.sockets = []
         self.wait_sims = []
 
-    def sim_executor(self, sim):
+    def sim_executor(self, sim: Simulator) -> Executor:
         raise NotImplementedError("Please implement this method")
 
     def sim_graph(self):
@@ -145,7 +161,7 @@ class ExperimentBaseRunner(object):
                 graph[sim].add(d)
         return graph
 
-    async def start_sim(self, sim):
+    async def start_sim(self, sim: Simulator):
         """ Start a simulator and wait for it to be ready. """
 
         name = sim.full_name()
@@ -288,11 +304,11 @@ class ExperimentBaseRunner(object):
 
 class ExperimentSimpleRunner(ExperimentBaseRunner):
     """ Simple experiment runner with just one executor. """
-    def __init__(self, exec, *args, **kwargs):
+    def __init__(self, exec: Executor, *args, **kwargs):
         self.exec = exec
         super().__init__(*args, **kwargs)
 
-    def sim_executor(self, sim):
+    def sim_executor(self, sim: Simulator):
         return self.exec
 
 
@@ -318,86 +334,3 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
             p.ip = exec.ip
 
         await super().prepare()
-
-
-class ExpEnv(object):
-    def __init__(self, repo_path, workdir, cpdir):
-        self.create_cp = False
-        self.pcap_file = ''
-        self.repodir = os.path.abspath(repo_path)
-        self.workdir = os.path.abspath(workdir)
-        self.cpdir = os.path.abspath(cpdir)
-        self.shm_base = self.workdir
-        self.qemu_img_path = self.repodir + '/sims/external/qemu/build/qemu-img'
-        self.qemu_path = self.repodir + '/sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64'
-        self.qemu_kernel_path = self.repodir + '/images/bzImage'
-        self.gem5_path = self.repodir + '/sims/external/gem5/build/X86/gem5.fast'
-        self.gem5_py_path = self.repodir + '/sims/external/gem5/configs/simbricks/simbricks.py'
-        self.gem5_kernel_path = self.repodir + '/images/vmlinux'
-
-    def hdcopy_path(self, sim):
-        return '%s/hdcopy.%s' % (self.workdir, sim.name)
-
-    def hd_path(self, hd_name):
-        return '%s/images/output-%s/%s' % (self.repodir, hd_name, hd_name)
-
-    def hd_raw_path(self, hd_name):
-        return '%s/images/output-%s/%s.raw' % (self.repodir, hd_name, hd_name)
-
-    def cfgtar_path(self, sim):
-        return '%s/cfg.%s.tar' % (self.workdir, sim.name)
-
-    def dev_pci_path(self, sim):
-        return '%s/dev.pci.%s' % (self.workdir, sim.name)
-
-    def nic_eth_path(self, sim):
-        return '%s/nic.eth.%s' % (self.workdir, sim.name)
-
-    def dev_shm_path(self, sim):
-        return '%s/dev.shm.%s' % (self.shm_base, sim.name)
-
-    def n2n_eth_path(self, sim_l, sim_c):
-        return '%s/n2n.eth.%s.%s' % (self.workdir, sim_l.name, sim_c.name)
-
-    def proxy_shm_path(self, sim):
-        return '%s/proxy.shm.%s' % (self.shm_base, sim.name)
-
-    def gem5_outdir(self, sim):
-        return '%s/gem5-out.%s' % (self.workdir, sim.name)
-
-    def gem5_cpdir(self, sim):
-        return '%s/gem5-cp.%s' % (self.cpdir, sim.name)
-
-class ExpOutput(object):
-    def __init__(self, exp):
-        self.exp_name = exp.name
-        self.metadata = exp.metadata
-        self.start_time = None
-        self.end_time = None
-        self.sims = {}
-        self.success = True
-
-    def set_start(self):
-        self.start_time = time.time()
-
-    def set_end(self):
-        self.end_time = time.time()
-
-    def set_failed(self):
-        self.success = False
-
-    def add_sim(self, sim, comp):
-        obj = {
-            'class': sim.__class__.__name__,
-            'cmd': comp.cmd_parts,
-            'stdout': comp.stdout,
-            'stderr': comp.stderr,
-        }
-        self.sims[sim.full_name()] = obj
-
-    def dumps(self):
-        return json.dumps(self.__dict__)
-
-    def loads(self, json_s):
-        for k, v in json.loads(json_s).items():
-            self.__dict__[k] = v
