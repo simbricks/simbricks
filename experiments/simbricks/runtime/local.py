@@ -22,24 +22,34 @@
 
 import asyncio
 import pathlib
+import typing as tp
 
 from simbricks.runtime.common import *
 import simbricks.experiments as exp
 import simbricks.exectools as exectools
 
+
 class LocalSimpleRuntime(Runtime):
-    def __init__(self, verbose=False, exec=exectools.LocalExecutor()):
-        self.runnable = []
-        self.complete = []
+    """Execute runs locally in sequence."""
+
+    def __init__(
+        self,
+        verbose=False,
+        exec: exectools.Executor = exectools.LocalExecutor()
+    ):
+        self.runnable: tp.List[Run] = []
+        self.complete: tp.List[Run] = []
         self.verbose = verbose
         self.exec = exec
 
-    def add_run(self, run):
+    def add_run(self, run: Run):
         self.runnable.append(run)
 
-    async def do_run(self, run):
-        runner = exp.ExperimentSimpleRunner(self.exec, run.experiment, run.env,
-            self.verbose)
+    async def do_run(self, run: Run):
+        """Actually executes `run`."""
+        runner = exp.ExperimentSimpleRunner(
+            self.exec, run.experiment, run.env, self.verbose
+        )
         await run.prep_dirs(self.exec)
         await runner.prepare()
         run.output = await runner.run()
@@ -50,22 +60,32 @@ class LocalSimpleRuntime(Runtime):
             f.write(run.output.dumps())
 
     def start(self):
+        """Execute the runs defined in `self.runnable`."""
         for run in self.runnable:
             asyncio.run(self.do_run(run))
 
 
 class LocalParallelRuntime(Runtime):
-    def __init__(self, cores, mem=None, verbose=False,
-            exec=exectools.LocalExecutor()):
-        self.runs_noprereq = []
-        self.runs_prereq = []
+    """Execute runs locally in parallel on multiple cores."""
+
+    def __init__(
+        self,
+        cores: int,
+        mem: tp.Optional[int] = None,
+        verbose=False,
+        exec: exectools.Executor = exectools.LocalExecutor()
+    ):
+        self.runs_noprereq: tp.List[Run] = []
+        """Runs with no prerequesite runs."""
+        self.runs_prereq: tp.List[Run] = []
+        """Runs with prerequesite runs."""
         self.complete = set()
         self.cores = cores
         self.mem = mem
         self.verbose = verbose
         self.exec = exec
 
-    def add_run(self, run):
+    def add_run(self, run: Run):
         if run.experiment.resreq_cores() > self.cores:
             raise Exception('Not enough cores available for run')
 
@@ -77,10 +97,11 @@ class LocalParallelRuntime(Runtime):
         else:
             self.runs_prereq.append(run)
 
-    async def do_run(self, run):
-        ''' actually starts a run '''
-        runner = exp.ExperimentSimpleRunner(self.exec, run.experiment, run.env,
-            self.verbose)
+    async def do_run(self, run: Run):
+        """Actually executes `run`."""
+        runner = exp.ExperimentSimpleRunner(
+            self.exec, run.experiment, run.env, self.verbose
+        )
         await run.prep_dirs(exec=self.exec)
         await runner.prepare()
         print('starting run ', run.name())
@@ -93,11 +114,12 @@ class LocalParallelRuntime(Runtime):
         return run
 
     async def wait_completion(self):
-        ''' wait for any run to terminate and return '''
+        """Wait for any run to terminate and return."""
         assert self.pending_jobs
 
-        done, self.pending_jobs = await asyncio.wait(self.pending_jobs,
-                return_when=asyncio.FIRST_COMPLETED)
+        done, self.pending_jobs = await asyncio.wait(
+            self.pending_jobs, return_when=asyncio.FIRST_COMPLETED
+        )
 
         for run in done:
             run = await run
@@ -105,8 +127,8 @@ class LocalParallelRuntime(Runtime):
             self.cores_used -= run.experiment.resreq_cores()
             self.mem_used -= run.experiment.resreq_mem()
 
-    def enough_resources(self, run):
-        ''' check if enough cores and mem are available for the run '''
+    def enough_resources(self, run: Run):
+        """Check if enough cores and mem are available for the run."""
         exp = run.experiment
 
         if self.cores is not None:
@@ -121,13 +143,16 @@ class LocalParallelRuntime(Runtime):
 
         return enough_cores and enough_mem
 
-    def prereq_ready(self, run):
+    def prereq_ready(self, run: Run):
+        """Check if the prerequesite run for `run` has completed."""
         if run.prereq is None:
             return True
 
         return run.prereq in self.complete
 
     async def do_start(self):
+        """Asynchronously execute the runs defined in `self.runs_noprereq +
+        self.runs_prereq."""
         #self.completions = asyncio.Queue()
         self.cores_used = 0
         self.mem_used = 0
@@ -156,4 +181,5 @@ class LocalParallelRuntime(Runtime):
             await self.wait_completion()
 
     def start(self):
+        """Execute all defined runs."""
         asyncio.run(self.do_start())

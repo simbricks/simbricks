@@ -23,9 +23,9 @@
 import asyncio
 import pathlib
 
+from simbricks.exectools import Executor
 from simbricks.runtime.common import *
 import simbricks.experiments as exp
-import simbricks.exectools as exectools
 import simbricks.proxy as proxy
 
 class DistributedSimpleRuntime(Runtime):
@@ -35,13 +35,13 @@ class DistributedSimpleRuntime(Runtime):
         self.verbose = verbose
         self.execs = execs
 
-    def add_run(self, run):
+    def add_run(self, run: Run):
         if not isinstance(run.experiment, exp.DistributedExperiment):
             raise RuntimeError('Only distributed experiments supported')
 
         self.runnable.append(run)
 
-    async def do_run(self, run):
+    async def do_run(self, run: Run):
         runner = exp.ExperimentDistributedRunner(self.execs, run.experiment,
             run.env, self.verbose)
         for exec in self.execs:
@@ -58,7 +58,10 @@ class DistributedSimpleRuntime(Runtime):
         for run in self.runnable:
             asyncio.run(self.do_run(run))
 
-def auto_dist(e, execs, proxy_type='sockets'):
+
+def auto_dist(
+    e: Experiment, execs: tp.List[Executor], proxy_type: str = 'sockets'
+):
     """ Converts an Experiment into a DistributedExperiment. Assigns network to
         executor zero, and then round-robin assignment of hosts to executors,
         while also assigning all nics for a host to the same executor.
