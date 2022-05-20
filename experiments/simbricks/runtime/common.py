@@ -20,17 +20,36 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.exectools as exectools
+# Allow type annotation of class to be used in its own constructor
+from __future__ import annotations
+
+from abc import abstractmethod
 import shutil
 import pathlib
+import typing as tp
+
+from simbricks.experiment.experiment_environment import ExpEnv
+from simbricks.experiment.experiment_output import ExpOutput
+from simbricks.experiments import Experiment
+import simbricks.exectools as exectools
+
 
 class Run(object):
-    def __init__(self, experiment, index, env, outpath, prereq=None):
+    """Defines a single execution run for an experiment."""
+
+    def __init__(
+        self,
+        experiment: Experiment,
+        index: int,
+        env: ExpEnv,
+        outpath: str,
+        prereq: tp.Optional[Run] = None
+    ):
         self.experiment = experiment
         self.index = index
         self.env = env
         self.outpath = outpath
-        self.output = None
+        self.output: tp.Optional[ExpOutput] = None
         self.prereq = prereq
 
     def name(self):
@@ -53,9 +72,14 @@ class Run(object):
         pathlib.Path(self.env.shm_base).mkdir(parents=True, exist_ok=True)
         await exec.mkdir(self.env.shm_base)
 
+
 class Runtime(object):
-    def add_run(self, run):
+    """Base class for managing the execution of multiple runs."""
+
+    @abstractmethod
+    def add_run(self, run: Run):
         pass
 
+    @abstractmethod
     def start(self):
         pass
