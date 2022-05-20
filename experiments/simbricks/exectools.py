@@ -257,7 +257,7 @@ class SimpleRemoteComponent(SimpleComponent):
 class Executor(object):
     ip = None
 
-    def create_component(self, label, parts, **kwargs):
+    def create_component(self, label, parts, **kwargs) -> SimpleComponent:
         raise NotImplementedError("Please Implement this method")
 
     async def await_file(self, path, delay=0.05, verbose=False):

@@ -24,6 +24,7 @@ import math
 import typing as tp
 
 from simbricks.nodeconfig import NodeConfig
+from simbricks.experiment.experiment_environment import ExpEnv
 
 
 class Simulator(object):
@@ -32,30 +33,32 @@ class Simulator(object):
     def __init__(self):
         self.extra_deps = []
 
-    # number of cores required for this simulator
     def resreq_cores(self):
+        """Number of cores required for this simulator."""
         return 1
 
-    # memory required for this simulator (in MB)
     def resreq_mem(self):
+        """Memory required for this simulator (in MB)."""
         return 64
 
-    def prep_cmds(self, env):
+    def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
+        """Commands to run to prepare simulator."""
         return []
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> tp.Optional[str]:
+        """Command to run to execute simulator."""
         return None
 
-    # Other simulators this one depends on
     def dependencies(self):
+        """Other simulators this one depends on."""
         return []
 
     # Sockets to be cleaned up
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv):
         return []
 
     # sockets to wait for indicating the simulator is ready
-    def sockets_wait(self, env):
+    def sockets_wait(self, env: ExpEnv):
         return []
 
     def start_delay(self):
@@ -169,7 +172,7 @@ class NetSim(Simulator):
 
 class HostSim(Simulator):
     node_config: NodeConfig
-    """Config for this node. """
+    """Config for the simulated host. """
     name = ''
     wait = False
     """
@@ -193,7 +196,7 @@ class HostSim(Simulator):
     def add_nic(self, dev: NICSim):
         self.add_pcidev(dev)
 
-    def add_pcidev(self, dev: NICSim):
+    def add_pcidev(self, dev: PCIDevSim):
         dev.name = self.name + '.' + dev.name
         self.pcidevs.append(dev)
 

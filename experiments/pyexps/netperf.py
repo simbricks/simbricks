@@ -19,6 +19,10 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""Experiment, which simulates two hosts, one running a netperf server and the
+other a client with the goal of measuring latency and throughput between them.
+The goal is to compare different simulators for host, NIC, and the network in
+terms of simulated network throughput and latency."""
 
 import simbricks.experiments as exp
 import simbricks.simulators as sim

@@ -35,10 +35,10 @@ class SlurmRuntime(Runtime):
         self.verbose = verbose
         self.cleanup = cleanup
 
-    def add_run(self, run):
+    def add_run(self, run: Run):
         self.runnable.append(run)
 
-    def prep_run(self, run):
+    def prep_run(self, run: Run):
         exp = run.experiment
         e_idx = exp.name + f'-{run.index}' + '.exp'
         exp_path = os.path.join(self.slurmdir, e_idx)

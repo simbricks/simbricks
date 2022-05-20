@@ -28,6 +28,8 @@ import importlib.util
 import json
 import pickle
 import fnmatch
+import typing as tp
+
 import simbricks.exectools as exectools
 import simbricks.experiments as exp
 import simbricks.runtime as runtime
@@ -141,7 +143,11 @@ else:
     warn_multi_exec()
     rt = runtime.LocalSimpleRuntime(verbose=args.verbose, exec=executors[0])
 
-def add_exp(e, run, prereq, create_cp, restore_cp, no_simbricks):
+
+def add_exp(
+    e: exp.Experiment, run: int, prereq: tp.Optional[runtime.Run],
+    create_cp: bool, restore_cp: bool, no_simbricks: bool
+):
     outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
     if os.path.exists(outpath) and not args.force:
         print('skip %s run %d' % (e.name, run))
