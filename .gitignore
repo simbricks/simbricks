@@ -7,8 +7,9 @@
 *.swp
 __pycache__/
 _vimrc_local.vim
-sims/nic/corundum/obj_dir
 sims/nic/corundum/corundum_verilator
+sims/nic/corundum/obj_dir
+sims/nic/e1000_gem5/e1000_gem5
 sims/nic/i40e_bm/i40e_bm
 sims/net/wire/net_wire
 sims/net/tap/net_tap
