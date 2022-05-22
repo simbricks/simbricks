@@ -124,6 +124,9 @@ int SimbricksBaseIfSHMPoolUnlink(struct SimbricksBaseIfSHMPool *pool);
 /** Initialize params struct with default values */
 void SimbricksBaseIfDefaultParams(struct SimbricksBaseIfParams *params);
 
+/** Required SHM size for these parameters */
+size_t SimbricksBaseIfSHMSize(struct SimbricksBaseIfParams *params);
+
 int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
                         struct SimbricksBaseIfParams *params);
 

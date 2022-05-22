@@ -153,6 +153,12 @@ void SimbricksBaseIfDefaultParams(struct SimbricksBaseIfParams *params)
   params->upper_layer_proto = SIMBRICKS_PROTO_ID_BASE;
 }
 
+size_t SimbricksBaseIfSHMSize(struct SimbricksBaseIfParams *params)
+{
+  return params->in_num_entries * params->in_entries_size +
+      params->out_num_entries * params->out_entries_size;
+}
+
 int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
                         struct SimbricksBaseIfParams *params)
 {
