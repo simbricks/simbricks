@@ -71,7 +71,7 @@ $(d)femu:
 	git clone https://github.com/simbricks/femu.git $@
 
 $(d)femu/ready: $(d)femu $(lib_nicif)
-	cd $< && make EXTRA_LDFLAGS=-L$(abspath $(lib_dir))/simbricks/nicif/ \
+	cd $< && make EXTRA_LDFLAGS="-L$(abspath $(lib_dir))/simbricks/nicif/ -L$(abspath $(lib_dir))/simbricks/pcie/ -L$(abspath $(lib_dir))/simbricks/base/ "\
 	    EXTRA_CPPFLAGS=-I$(abspath $(lib_dir))
 	touch $@
 
