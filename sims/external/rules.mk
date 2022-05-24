@@ -24,6 +24,7 @@ include mk/subdir_pre.mk
 
 QEMU_IMG := $(d)qemu/build/qemu-img
 QEMU := $(d)qemu/build/qemu-system-x86_64
+GEM5_VARIANT ?= fast
 
 external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready
 .PHONY: external
@@ -32,9 +33,7 @@ $(d)gem5:
 	git clone https://github.com/simbricks/gem5.git $@
 
 $(d)gem5/ready: $(d)gem5
-	+cd $< && scons build/X86/gem5.opt CCFLAGS="-I$(abspath $(lib_dir))" \
-	    -j`nproc`
-	+cd $< && scons build/X86/gem5.fast CCFLAGS="-I$(abspath $(lib_dir))" \
+	+cd $< && scons build/X86/gem5.$(GEM5_VARIANT) CCFLAGS="-I$(abspath $(lib_dir))" \
 	    -j`nproc`
 	touch $@
 
