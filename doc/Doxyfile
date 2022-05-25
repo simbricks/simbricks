@@ -875,7 +875,8 @@ RECURSIVE              = YES
 
 EXCLUDE                = stdlib.h stdio.h stdbool.h stdio.h errno.h unistd.h \
                           pthread.h poll.hsys/types.h \
-                          sys/un.h sys/socket.h sys/epoll.h sys/eventfd.h
+                          sys/un.h sys/socket.h sys/epoll.h sys/eventfd.h \
+                          lib/utils/json.hpp
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
