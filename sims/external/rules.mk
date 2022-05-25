@@ -24,7 +24,7 @@ include mk/subdir_pre.mk
 
 QEMU_IMG := $(d)qemu/build/qemu-img
 QEMU := $(d)qemu/build/qemu-system-x86_64
-GEM5_VARIANT ?= fast
+GEM5_VARIANT := fast
 
 external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready
 .PHONY: external
