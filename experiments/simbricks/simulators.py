@@ -313,31 +313,19 @@ class Gem5Host(HostSim):
             f'--num-cpus={self.node_config.cores} '
             '--ddio-enabled --ddio-way-part=8 --mem-type=DDR4_2400_16x4 ')
 
-        if (env.no_simbricks):
-            cmd += '--no-simbricks '
-
         if env.create_cp:
             cmd += '--max-checkpoints=1 '
 
         if env.restore_cp:
             cmd += '-r 1 '
 
-        if len(self.pcidevs) > 0:
-            assert len(self.pcidevs) == 1 # our gem5 python script supports only 1
-            dev = self.pcidevs[0]
-            cmd += f'--simbricks-pci={env.dev_pci_path(dev)} '
-            cmd += f'--simbricks-shm={env.dev_shm_path(dev)} '
+        for dev in self.pcidevs:
+            cmd += (f'--simbricks-pci=connect:{env.dev_pci_path(dev)}'
+                    f':latency={self.pci_latency}ns'
+                    f':sync_interval={self.sync_period}ns')
             if cpu_type == 'TimingSimpleCPU':
-                cmd += '--simbricks-sync '
-                cmd += f'--simbricks-sync_mode={self.sync_mode} '
-                cmd += f'--simbricks-pci-lat={self.pci_latency} '
-                cmd += f'--simbricks-sync-int={self.sync_period} '
-            if isinstance(dev, I40eNIC) or \
-                    (isinstance(dev, MultiSubNIC) and \
-                     isinstance(dev.multinic, I40eMultiNIC)):
-                cmd += '--simbricks-type=i40e '
-            elif isinstance(dev, FEMUDev):
-                cmd += '--simbricks-type=femu '
+                cmd += ':sync'
+            cmd +=' '
         return cmd
 
 
