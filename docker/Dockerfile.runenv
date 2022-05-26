@@ -7,9 +7,15 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 RUN apt-get update \
  && apt-get install -y \
+	make \
 	libelf1 \
+	libgoogle-perftools4 \
 	libpcap0.8 \
 	libpixman-1-0 \
+	libprotobuf23 \
+	libpython3.10 \
+	python-is-python3 \
+	python3-six \
 	rsync \
 	unzip \
 	wget \
