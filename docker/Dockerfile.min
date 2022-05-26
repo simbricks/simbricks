@@ -1,3 +1,4 @@
 FROM simbricks/simbricks:latest as builder
 FROM simbricks/simbricks-runenv:latest
 COPY --from=builder /simbricks /simbricks
+WORKDIR /simbricks
