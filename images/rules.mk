@@ -58,6 +58,12 @@ build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod)
 build-images-min: $(IMAGES_MIN) $(RAW_IMAGES_MIN) $(vmlinux) $(bz_image) \
     $(mqnic_mod)
 
+# only converts existing images to raw
+convert-images-raw:
+	for i in $(IMAGES); do \
+	    [ -f $$i ] || continue; \
+	    $(QEMU_IMG) convert -f qcow2 -O raw $$i $${i}.raw ; done
+
 ################################################
 # Disk image
 
