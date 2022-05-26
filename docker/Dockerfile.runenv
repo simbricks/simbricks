@@ -1,13 +1,10 @@
 FROM ubuntu:jammy
 RUN apt-get update \
  && apt-get install -y \
+	make \
 	libboost-coroutine1.74.0 \
 	libboost-fiber1.74.0 \
 	libboost-iostreams1.74.0 \
- && rm -rf /var/lib/apt/lists/*
-RUN apt-get update \
- && apt-get install -y \
-	make \
 	libelf1 \
 	libgoogle-perftools4 \
 	libpcap0.8 \
