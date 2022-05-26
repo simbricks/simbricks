@@ -8,5 +8,7 @@ RUN git submodule update --init sims/external/qemu \
 RUN git submodule update --init sims/external/gem5 \
  && make -j `nproc` sims/external/gem5/ready \
  && bash docker/cleanup_gem5.sh
+RUN git submodule update --init sims/external/femu \
+ && make -j `nproc` sims/external/femu/ready
 RUN make -j `nproc` build-images-min COMPRESSED_IMAGES=true \
  && bash docker/cleanup_images.sh
