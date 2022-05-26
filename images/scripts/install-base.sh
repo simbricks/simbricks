@@ -18,4 +18,5 @@ apt-get -y install \
     netperf \
     netcat \
     ethtool \
-    tcpdump
+    tcpdump \
+    pciutils
