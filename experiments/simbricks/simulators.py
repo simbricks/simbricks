@@ -424,7 +424,7 @@ class WireNet(NetSim):
         super().__init__()
 
     def run_cmd(self, env):
-        connects = self.connect_sockets()
+        connects = self.connect_sockets(env)
         assert len(connects) == 2
         cmd = '%s/sims/net/wire/net_wire %s %s %d %d %d' % \
                 (env.repodir, connects[0][1],
