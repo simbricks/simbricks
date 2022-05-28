@@ -15,6 +15,7 @@ rm -rf /tmp/input
 apt-get update
 apt-get -y install \
     iperf \
+    iputils-ping \
     netperf \
     netcat \
     ethtool \
