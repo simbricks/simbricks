@@ -209,6 +209,9 @@ int main(int argc, char *argv[])
     IGbE *dev = new IGbE(&params);
 
     nicbm::Runner *runner = new nicbm::Runner(*dev);
+    if (runner->ParseArgs(argc, argv))
+        return EXIT_FAILURE;
+
     dev->init();
-    return runner->RunMain(argc, argv);
+    return runner->RunMain();
 }

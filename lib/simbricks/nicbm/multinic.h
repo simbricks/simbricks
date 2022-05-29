@@ -40,9 +40,7 @@ class MultiNicRunner {
   class CompRunner : public Runner {
    protected:
     virtual void YieldPoll() override;
-    virtual int NicIfInit(const char *shmPath,
-                          struct SimbricksBaseIfParams *netParams,
-                          struct SimbricksBaseIfParams *pcieParams) override;
+    virtual int NicIfInit() override;
 
    public:
     explicit CompRunner(Device &dev_);

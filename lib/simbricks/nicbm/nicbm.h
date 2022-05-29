@@ -127,6 +127,9 @@ class Runner {
   std::deque<DMAOp *> dma_queue_;
   size_t dma_pending_;
   uint64_t mac_addr_;
+  struct SimbricksBaseIfParams pcieParams_;
+  struct SimbricksBaseIfParams netParams_;
+  const char *shmPath_;
   struct SimbricksNicIf nicif_;
   struct SimbricksProtoPcieDevIntro dintro_;
 
@@ -150,15 +153,16 @@ class Runner {
   void DmaTrigger();
 
   virtual void YieldPoll();
-  virtual int NicIfInit(const char *shmPath,
-                        struct SimbricksBaseIfParams *netParams,
-                        struct SimbricksBaseIfParams *pcieParams);
+  virtual int NicIfInit();
 
  public:
   explicit Runner(Device &dev_);
 
+  /** Parse command line arguments. */
+  int ParseArgs(int argc, char *argv[]);
+
   /** Run the simulation */
-  int RunMain(int argc, char *argv[]);
+  int RunMain();
 
   /* these three are for `Runner::Device`. */
   void IssueDma(DMAOp &op);

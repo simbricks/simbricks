@@ -37,16 +37,13 @@ void MultiNicRunner::CompRunner::YieldPoll() {
   boost::this_fiber::yield();
 }
 
-int MultiNicRunner::CompRunner::NicIfInit(
-    const char *shmPath,
-    struct SimbricksBaseIfParams *netParams,
-    struct SimbricksBaseIfParams *pcieParams) {
+int MultiNicRunner::CompRunner::NicIfInit() {
   volatile bool ready = false;
   volatile int result = 0;
 
   // NicIfInit will block, so run it in a separate thread and then wait for it
-  std::thread t([this, &ready, &shmPath, &netParams, &pcieParams, &result](){
-      result = Runner::NicIfInit(shmPath, netParams, pcieParams);
+  std::thread t([this, &ready, &result](){
+      result = Runner::NicIfInit();
       ready = true; 
     });
 
@@ -73,9 +70,11 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
     argv[start] = argv[0];
 
     CompRunner *r = new CompRunner(factory_.create());
+    if (r->ParseArgs(end - start, argv + start))
+      return -1;
+
     auto *f = new boost::fibers::fiber(
-        boost::bind(&CompRunner::RunMain, boost::ref(*r),
-                    end - start, argv + start));
+        boost::bind(&CompRunner::RunMain, boost::ref(*r)));
     runners.push_back(r);
     fibers.push_back(f);
     start = end;

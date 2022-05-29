@@ -485,10 +485,9 @@ void Runner::EventTrigger() {
 void Runner::YieldPoll() {
 }
 
-int Runner::NicIfInit(const char *shmPath,
-                        struct SimbricksBaseIfParams *netParams,
-                        struct SimbricksBaseIfParams *pcieParams) {
-  return SimbricksNicIfInit(&nicif_, shmPath, netParams, pcieParams, &dintro_);
+int Runner::NicIfInit() {
+  return SimbricksNicIfInit(&nicif_, shmPath_, &netParams_, &pcieParams_,
+                            &dintro_);
 }
 
 Runner::Runner(Device &dev) : main_time_(0), dev_(dev), events_(EventCmp()) {
@@ -508,37 +507,39 @@ Runner::Runner(Device &dev) : main_time_(0), dev_(dev), events_(EventCmp()) {
   close(rfd);
   mac_addr_ &= ~3ULL;
 
-  std::cerr << std::hex << mac_addr_ << std::endl;
+  SimbricksNetIfDefaultParams(&netParams_);
+  SimbricksPcieIfDefaultParams(&pcieParams_);
 }
 
-int Runner::RunMain(int argc, char *argv[]) {
-  uint64_t next_ts;
-  uint64_t max_step = 10000;
-
-  struct SimbricksBaseIfParams pcieParams;
-  struct SimbricksBaseIfParams netParams;
-  SimbricksNetIfDefaultParams(&netParams);
-  SimbricksPcieIfDefaultParams(&pcieParams);
-
-  if (argc < 4 || argc > 9) {
+int Runner::ParseArgs(int argc, char *argv[]) {
+  if (argc < 4 || argc > 10) {
     fprintf(stderr,
             "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
             "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
-            "[ETH-LATENCY]\n"); 
-    return EXIT_FAILURE;
+            "[ETH-LATENCY] [MAC-ADDR]\n");
+    return -1;
   }
   if (argc >= 6)
     main_time_ = strtoull(argv[5], NULL, 0);
   if (argc >= 7)
-    netParams.sync_interval = pcieParams.sync_interval =
+    netParams_.sync_interval = pcieParams_.sync_interval =
       strtoull(argv[6], NULL, 0) * 1000ULL;
   if (argc >= 8)
-    pcieParams.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
+    pcieParams_.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
   if (argc >= 9)
-    netParams.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+    netParams_.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+  if (argc >= 10)
+    mac_addr_ = strtoull(argv[9], NULL, 16);
 
-  pcieParams.sock_path = argv[1];
-  netParams.sock_path = argv[2];
+  pcieParams_.sock_path = argv[1];
+  netParams_.sock_path = argv[2];
+  shmPath_ = argv[3];
+  return 0;
+}
+
+int Runner::RunMain() {
+  uint64_t next_ts;
+  uint64_t max_step = 10000;
 
   signal(SIGINT, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
@@ -549,12 +550,13 @@ int Runner::RunMain(int argc, char *argv[]) {
   memset(&dintro_, 0, sizeof(dintro_));
   dev_.SetupIntro(dintro_);
 
-  if (NicIfInit(argv[3], &netParams, &pcieParams)) {
+  if (NicIfInit()) {
     return EXIT_FAILURE;
   }
   bool sync_pcie = SimbricksBaseIfSyncEnabled(&nicif_.pcie.base);
   bool sync_net = SimbricksBaseIfSyncEnabled(&nicif_.net.base);
 
+  fprintf(stderr, "mac_addr=%lx\n", mac_addr_);
   fprintf(stderr, "sync_pci=%d sync_eth=%d\n", sync_pcie, sync_net);
 
   bool is_sync = sync_pcie || sync_net;

@@ -745,5 +745,7 @@ void Corundum::EthRx(uint8_t port, const void *data, size_t len) {
 int main(int argc, char *argv[]) {
   corundum::Corundum dev;
   runner = new nicbm::Runner(dev);
-  return runner->RunMain(argc, argv);
+  if (runner->ParseArgs(argc, argv))
+    return -1;
+  return runner->RunMain();
 }
