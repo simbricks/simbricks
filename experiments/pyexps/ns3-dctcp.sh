@@ -30,20 +30,20 @@
 
 
 EHSIM_BASE="$(readlink -f $(dirname ${BASH_SOURCE[0]})/../..)"
-NS3_BASE="$EHSIM_BASE/ns-3"
+NS3_BASE="$EHSIM_BASE/sims/external/ns-3"
 OUTDIR_BASE="$EHSIM_BASE/experiments/pyexps"
 
 cd $NS3_BASE
 k_start=0
 k_end=199680
-k_step=2080
+#k_step=2080
 #k_end=199680
-#k_step=8320
+k_step=8320
 #mtus="1500 4000 9000"
-mtus="1500"
-# link latency corresponds to RTT latency 1us 10us 100us
+mtus="4000"
+# link latency corresponds to RTT latency 1us 10us 100us 200us
 #latencies="167ns 1670ns 16us 33us"
-latencies="33us"
+latencies="167ns 1670ns"
 cores=$1
 
 echo $cores
@@ -51,6 +51,7 @@ echo $cores
 proc=0
 pids=""
 
+trap "sighandler" SIGINT
 #for k in $(seq $k_start $k_step $k_end)
 for lat in $latencies
 do
@@ -102,4 +103,3 @@ sighandler() {
     exit 1
 }
 
-trap "sighandler" SIGINT
