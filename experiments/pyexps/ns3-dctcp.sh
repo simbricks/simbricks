@@ -41,9 +41,9 @@ k_end=199680
 k_step=8320
 #mtus="1500 4000 9000"
 mtus="4000"
-# link latency corresponds to RTT latency 1us 10us 100us 200us
-#latencies="167ns 1670ns 16us 33us"
-latencies="167ns 1670ns"
+# link latency corresponds to RTT latency 1us 10us 20us 100us 200us
+#latencies="167ns 1670ns 3300ns 16us 33us"
+latencies="16us"
 cores=$1
 
 echo $cores
@@ -51,7 +51,28 @@ echo $cores
 proc=0
 pids=""
 
+cleanup() {
+    echo Cleaning up
+    for p in $pids ; do
+        kill $p &>/dev/null
+    done
+
+    sleep 1
+    for p in $pids ; do
+        kill -KILL $p &>/dev/null
+    done
+
+}
+
+sighandler() {
+    echo "Caught Interrupt, aborting...."
+    cleanup
+    exit 1
+}
+
+
 trap "sighandler" SIGINT
+
 #for k in $(seq $k_start $k_step $k_end)
 for lat in $latencies
 do
@@ -82,24 +103,4 @@ done
 for p in $pids; do
     wait $p
 done
-
-
-cleanup() {
-    echo Cleaning up
-    for p in $pids ; do
-        kill $p &>/dev/null
-    done
-
-    sleep 1
-    for p in $pids ; do
-        kill -KILL $p &>/dev/null
-    done
-
-}
-
-sighandler() {
-    echo "Caught Interrupt, aborting...."
-    cleanup
-    exit 1
-}
 
