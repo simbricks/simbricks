@@ -94,7 +94,6 @@ for proto_config in proto_configs:
                     if seq_config == 'ehseq' and proto_config == 'nopaxos':
                         sequencer = create_basic_hosts(e, 1, 'sequencer', net, nic_class,
                                 host_class, nc_class, node.NOPaxosSequencer, ip_start = 100)
-                        sequencer[0].sleep = 1
                         sequencer[0].node_config.disk_image = 'nopaxos'
                         sequencer[0].pcidevs[0].sync_period = sync_period
                         sequencer[0].sync_period = sync_period
@@ -103,7 +102,6 @@ for proto_config in proto_configs:
                             host_class, nc_class, replica_class)
                     for i in range(len(replicas)):
                         replicas[i].node_config.app.index = i
-                        replicas[i].sleep = 1
                         replicas[i].node_config.disk_image = 'nopaxos'
                         replicas[i].pcidevs[0].sync_period = sync_period
                         replicas[i].sync_period = sync_period
@@ -112,7 +110,6 @@ for proto_config in proto_configs:
                             host_class, nc_class, client_class, ip_start = 4)
 
                     for c in clients:
-                        c.sleep = 5
                         c.node_config.app.server_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
                         if seq_config == 'ehseq':
                             c.node_config.app.server_ips.append('10.0.0.100')
@@ -124,8 +121,7 @@ for proto_config in proto_configs:
                     clients[num_c - 1].wait = True
                     clients[num_c - 1].node_config.app.is_last = True
 
-                    print(e.name)
-                    #print (len(experiments))
+                    #print(e.name)
 
                     experiments.append(e)
 
