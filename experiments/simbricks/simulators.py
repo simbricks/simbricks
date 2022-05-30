@@ -523,7 +523,7 @@ class NS3SequencerNet(NetSim):
             elif 'replica' in n.name:
                 ports += '--ServerPort=' + s + ' '
             elif 'sequencer' in n.name:
-                ports += '--EndhostSequencerPort=' + s + ' '
+                ports += '--ServerPort=' + s + ' '
             else:
                 raise Exception('Wrong NIC type')
         cmd = env.repodir + '/sims/external/ns-3' + '/cosim-run.sh sequencer sequencer-single-switch-example ' + ports + ' ' + self.opt
