@@ -38,12 +38,13 @@ k_start=0
 k_end=199680
 #k_step=2080
 #k_end=199680
-k_step=8320
+#k_step=8320
+k_step=16640
 #mtus="1500 4000 9000"
 mtus="4000"
-# link latency corresponds to RTT latency 1us 10us 20us 100us 200us
-#latencies="167ns 1670ns 3300ns 16us 33us"
-latencies="16us"
+# link latency corresponds to RTT latency 1us 10us 100us 200us
+#latencies="167ns 1670ns 16us 33us"
+latencies="50us"
 cores=$1
 
 echo $cores
