@@ -31,7 +31,7 @@
 ##### ./ns3-dctcp.sh [num_core] 
 
 
-EHSIM_BASE="$(readlink -f $(dirname ${BASH_SOURCE[0]})/../..)"
+EHSIM_BASE="$(readlink -f $(dirname ${BASH_SOURCE[0]})/../../..)"
 NS3_BASE="$EHSIM_BASE/sims/external/ns-3"
 OUTDIR_BASE="$EHSIM_BASE/experiments/pyexps"
 

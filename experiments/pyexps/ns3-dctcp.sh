@@ -22,8 +22,8 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-##### build dctcp-modes.cc example in ns-3
-##### cp cp examples/tcp/dctcp-modes.cc scratch/dctcp-modes.cc
+##### build dctcp-cwnd-devred.cc example in ns-3
+##### cp cp examples/tcp/dctcp-cwnd-devred.cc scratch/
 ##### ./waf
 
 ##### ./ns3-dctcp.sh [num_core] 
