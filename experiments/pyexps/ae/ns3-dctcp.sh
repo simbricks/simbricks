@@ -21,9 +21,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
+###########################################################################
+# This script runs dctcp experiment in standalone ns-3
+# 
 ##### build dctcp-modes.cc example in ns-3
-##### cp cp examples/tcp/dctcp-modes.cc scratch/dctcp-modes.cc
+##### cp examples/tcp/dctcp-modes.cc scratch/dctcp-modes.cc
 ##### ./waf
 
 ##### ./ns3-dctcp.sh [num_core] 
@@ -41,8 +43,8 @@ k_end=199680
 k_step=8320
 #mtus="1500 4000 9000"
 mtus="4000"
-# link latency corresponds to RTT latency 1us 10us 20us 100us 200us
-#latencies="167ns 1670ns 3300ns 16us 33us"
+# link latency corresponds to RTT latency 1us 10us 100us 200us
+#latencies="167ns 1670ns 16us 33us"
 latencies="16us"
 cores=$1
 
