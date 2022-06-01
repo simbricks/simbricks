@@ -24,8 +24,8 @@
 ###########################################################################
 # This script runs dctcp experiment in standalone ns-3
 # 
-##### build dctcp-modes.cc example in ns-3
-##### cp examples/tcp/dctcp-modes.cc scratch/dctcp-modes.cc
+##### build dctcp-cwnd-devred.cc example in ns-3
+##### cp examples/tcp/dctcp-cwnd-devred.cc scratch/
 ##### ./waf
 
 ##### ./ns3-dctcp.sh [num_core] 
@@ -38,14 +38,11 @@ OUTDIR_BASE="$EHSIM_BASE/experiments/pyexps"
 cd $NS3_BASE
 k_start=0
 k_end=199680
-#k_step=2080
-#k_end=199680
-k_step=8320
-#mtus="1500 4000 9000"
+k_step=16640
 mtus="4000"
-# link latency corresponds to RTT latency 1us 10us 100us 200us
-#latencies="167ns 1670ns 16us 33us"
-latencies="16us"
+
+# This is the RTT
+latencies="50us"
 cores=$1
 
 echo $cores
