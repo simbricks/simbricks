@@ -82,7 +82,7 @@ for host_type in host_types:
                     m = m - 1
 
                 e.assign_sim_host(servers[0], h_i)
-                e.assign_sim_host(servers[0].nics[0], h_i)
+                e.assign_sim_host(servers[0].pcidevs[0], h_i)
 
             clients = create_basic_hosts(e, m, 'client_%d' % (i,),
                     switch, sim.I40eNIC, host_class, node.I40eLinuxNode,
@@ -95,7 +95,7 @@ for host_type in host_types:
                     c.extra_deps.append(servers[0])
 
                 e.assign_sim_host(c, h_i)
-                e.assign_sim_host(c.nics[0], h_i)
+                e.assign_sim_host(c.pcidevs[0], h_i)
 
             if h_i != 0:
                 lp = proxy.SocketsNetProxyListener()
@@ -111,7 +111,7 @@ for host_type in host_types:
                 lp.add_n2n(switch_top, switch)
 
             for c in clients + servers:
-                c.nics[0].start_tick = 580000000000
+                c.pcidevs[0].start_tick = 580000000000
 
         # add to experiments
         experiments.append(e)

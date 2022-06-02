@@ -97,7 +97,7 @@ for mode in types_of_mode:
 
                 for se in servers:
                     se.sync_mode = mode
-                    se.nics[0].sync_mode = mode
+                    se.pcidevs[0].sync_mode = mode
 
                 
                 
@@ -105,7 +105,7 @@ for mode in types_of_mode:
                 i = 0
                 for cl in clients:
                     cl.sync_mode = mode
-                    cl.nics[0].sync_mode = mode
+                    cl.pcidevs[0].sync_mode = mode
                     cl.node_config.app.server_ip = servers[i].node_config.ip
                     cl.node_config.app.procs = 2
                     i += 1

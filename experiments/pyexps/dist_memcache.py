@@ -112,7 +112,7 @@ for host_type in host_types:
                     ip_prefix=16)
             for s in servers:
                 e.assign_sim_host(s, h_i)
-                e.assign_sim_host(s.nics[0].multinic, h_i)
+                e.assign_sim_host(s.pcidevs[0].multinic, h_i)
 
             clients = create_multinic_hosts(e, m, 'client_%d' % (i,),
                     switch, host_class, node.I40eLinuxNode,
@@ -121,7 +121,7 @@ for host_type in host_types:
             for c in clients:
                 c.wait = True
                 e.assign_sim_host(c, h_i)
-                e.assign_sim_host(c.nics[0].multinic, h_i)
+                e.assign_sim_host(c.pcidevs[0].multinic, h_i)
 
             racks.append((servers, clients))
 
@@ -140,7 +140,7 @@ for host_type in host_types:
 
             for c in clients + servers:
                 if host_type == 'qt':
-                    c.nics[0].start_tick = 580000000000
+                    c.pcidevs[0].start_tick = 580000000000
                 c.extra_deps.append(switch_top)
 
         all_servers = []

@@ -91,17 +91,17 @@ for host_type in host_types:
             e.assign_sim_host(lp, 0)
             e.assign_sim_host(net, 0)
             e.assign_sim_host(servers[0], 0)
-            e.assign_sim_host(servers[0].nics[0], 0)
+            e.assign_sim_host(servers[0].pcidevs[0], 0)
             e.assign_sim_host(cp, 1)
 
             # round-robin assignment for hosts
             k = 1
             for c in clients:
                 e.assign_sim_host(c, k)
-                e.assign_sim_host(c.nics[0], k)
+                e.assign_sim_host(c.pcidevs[0], k)
 
                 if k != 0:
-                    cp.add_nic(c.nics[0])
+                    cp.add_nic(c.pcidevs[0])
                 k = (k + 1) % 2
 
             # add to experiments
