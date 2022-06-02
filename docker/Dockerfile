@@ -13,3 +13,5 @@ RUN git submodule update --init sims/external/femu \
 RUN make -j `nproc` build-images-min COMPRESSED_IMAGES=true \
  && bash docker/cleanup_images.sh
 ENV PYTHONPATH=/simbricks/experiments
+RUN sudo cp docker/simbricks-run /usr/bin/ \
+ && sudo chmod 755 /usr/bin/simbricks-run

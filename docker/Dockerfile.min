@@ -14,3 +14,5 @@ RUN groupadd --gid $USER_GID $USERNAME \
 COPY --chown=${USERNAME}:${USERNAME} --from=builder /simbricks /simbricks
 WORKDIR /simbricks
 ENV PYTHONPATH=/simbricks/experiments
+RUN sudo cp docker/simbricks-run /usr/bin/ \
+ && sudo chmod 755 /usr/bin/simbricks-run
