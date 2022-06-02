@@ -182,8 +182,9 @@ class SimpleComponent(Component):
             raise Exception('Command Failed: ' + str(self.cmd_parts))
 
 class SimpleRemoteComponent(SimpleComponent):
-    def __init__(self, host_name, label, cmd_parts, cwd=None, *args, **kwargs):
+    def __init__(self, host_name, label, cmd_parts, cwd=None, ssh_extra_args=[], *args, **kwargs):
         self.host_name = host_name
+        self.extra_flags = ssh_extra_args
         # add a wrapper to print the PID
         remote_parts = ['echo', 'PID', '$$', '&&']
 
@@ -208,7 +209,8 @@ class SimpleRemoteComponent(SimpleComponent):
             '-o',
             'UserKnownHostsFile=/dev/null',
             '-o',
-            'StrictHostKeyChecking=no',
+            'StrictHostKeyChecking=no'
+            ] + self.extra_flags + [
             self.host_name,
             '--'] + parts
 
@@ -318,10 +320,12 @@ class RemoteExecutor(Executor):
     def __init__(self, host_name, workdir):
         self.host_name = host_name
         self.cwd = workdir
+        self.ssh_extra_args = []
+        self.scp_extra_args = []
 
     def create_component(self, label, parts, **kwargs):
         return SimpleRemoteComponent(self.host_name, label, parts,
-                cwd=self.cwd, **kwargs)
+                cwd=self.cwd, ssh_extra_args=self.ssh_extra_args, **kwargs)
 
     async def await_file(self, path, delay=0.05, verbose=False, timeout=30):
         if verbose:
@@ -346,7 +350,8 @@ class RemoteExecutor(Executor):
             '-o',
             'UserKnownHostsFile=/dev/null',
             '-o',
-            'StrictHostKeyChecking=no',
+            'StrictHostKeyChecking=no'
+            ] + self.scp_extra_args + [
             path,
             '%s:%s' % (self.host_name, path)]
         sc = SimpleComponent("%s.send_file('%s')" % (

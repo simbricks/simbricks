@@ -114,6 +114,10 @@ def load_executors(path):
                 ex = exectools.LocalExecutor()
             elif h['type'] == 'remote':
                 ex = exectools.RemoteExecutor(h['host'], h['workdir'])
+                if 'ssh_args' in h:
+                    ex.ssh_extra_args += h['ssh_args']
+                if 'scp_args' in h:
+                    ex.scp_extra_args += h['scp_args']
             else:
                 raise RuntimeError('invalid host type "' + h['type'] + '"')
             ex.ip = h['ip']
