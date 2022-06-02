@@ -31,5 +31,7 @@ docker-images:
 		-f docker/Dockerfile.runenv docker
 	docker build -t simbricks/simbricks-min:latest \
 		-f docker/Dockerfile.min docker
+	docker build -t simbricks/simbricks-dist-worker:latest \
+		-f docker/Dockerfile.dist-worker docker
 
 include mk/subdir_post.mk

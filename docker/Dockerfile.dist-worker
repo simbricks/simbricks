@@ -1,0 +1,9 @@
+FROM simbricks/simbricks:latest
+RUN apt-get update \
+ && apt-get install -y \
+	openssh-server \
+ && rm -rf /var/lib/apt/lists/* \
+ && mkdir -p /run/sshd \
+ && ssh-keygen -N '' -f ~/.ssh/id_rsa \
+ && cat ~/.ssh/id_rsa.pub >~/.ssh/authorized_keys
+CMD ["/usr/sbin/sshd","-D", "-p", "2222"]
