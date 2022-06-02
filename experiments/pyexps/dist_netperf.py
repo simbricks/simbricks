@@ -80,10 +80,10 @@ for host_type in host_types:
                 c.node_config.app.server_ip = servers[0].node_config.ip
 
             # create proxy
-            lp = proxy.RDMANetProxyListener()
+            lp = proxy.SocketsNetProxyListener()
             lp.name = 'listener'
             e.add_proxy(lp)
-            cp = proxy.RDMANetProxyConnecter(lp)
+            cp = proxy.SocketsNetProxyConnecter(lp)
             cp.name = 'connecter'
             e.add_proxy(cp)
 
