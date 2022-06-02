@@ -13,3 +13,4 @@ RUN groupadd --gid $USER_GID $USERNAME \
  && chmod 0440 /etc/sudoers.d/$USERNAME
 COPY --chown=${USERNAME}:${USERNAME} --from=builder /simbricks /simbricks
 WORKDIR /simbricks
+ENV PYTHONPATH=/simbricks/experiments
