@@ -16,6 +16,8 @@ RUN apt-get update \
 	rsync \
 	unzip \
 	wget \
+	nano \
+	vim \
  && rm -rf /var/lib/apt/lists/*
 RUN apt-get update \
  && apt-mark hold shared-mime-info \

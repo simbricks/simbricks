@@ -32,6 +32,8 @@ RUN apt-get update \
 	scons \
 	unzip \
 	wget \
+	nano \
+	vim \
  && rm -rf /var/lib/apt/lists/*
 COPY verilator.patch /tmp/
 RUN cd /tmp \
