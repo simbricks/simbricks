@@ -90,6 +90,7 @@ class PCIDevSim(Simulator):
 
 class NICSim(PCIDevSim):
     network = None
+    mac = None
     eth_latency = 500
 
     def __init__(self):
@@ -104,6 +105,8 @@ class NICSim(PCIDevSim):
             (env.dev_pci_path(self), env.nic_eth_path(self),
                     env.dev_shm_path(self), self.sync_mode, self.start_tick,
                     self.sync_period, self.pci_latency, self.eth_latency)
+        if self.mac is not None:
+            cmd += ' ' + (''.join(reversed(self.mac.split(':'))))
 
         if extra is not None:
             cmd += ' ' + extra
