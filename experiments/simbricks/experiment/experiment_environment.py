@@ -64,6 +64,12 @@ class ExpEnv(object):
     def n2n_eth_path(self, sim_l, sim_c):
         return '%s/n2n.eth.%s.%s' % (self.workdir, sim_l.name, sim_c.name)
 
+    def net2host_eth_path(self, sim_n, sim_h):
+        return '%s/n2h.eth.%s.%s' % (self.workdir, sim_n.name, sim_h.name)
+
+    def net2host_shm_path(self, sim_n, sim_h):
+        return '%s/n2h.shm.%s.%s' % (self.workdir, sim_n.name, sim_h.name)
+
     def proxy_shm_path(self, sim):
         return '%s/proxy.shm.%s' % (self.shm_base, sim.name)
 

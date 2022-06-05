@@ -137,6 +137,7 @@ class NetSim(Simulator):
 
     def __init__(self):
         self.nics = []
+        self.hosts_direct = []
         self.net_listen = []
         self.net_connect = []
         super().__init__()
@@ -155,6 +156,8 @@ class NetSim(Simulator):
             sockets.append((n, env.nic_eth_path(n)))
         for n in self.net_connect:
             sockets.append((n, env.n2n_eth_path(n, self)))
+        for h in self.hosts_direct:
+            sockets.append((h, env.net2host_eth_path(self, h)))
         return sockets
 
     def listen_sockets(self, env):
@@ -164,7 +167,7 @@ class NetSim(Simulator):
         return listens
 
     def dependencies(self):
-        return self.nics + self.net_connect
+        return self.nics + self.net_connect + self.hosts_direct
 
     def sockets_cleanup(self, env):
         return [s for (_,s) in self.listen_sockets(env)]
@@ -191,6 +194,7 @@ class HostSim(Simulator):
 
     def __init__(self):
         self.pcidevs: tp.List[PCIDevSim] = []
+        self.net_directs: tp.List[NetSim] = []
         super().__init__()
 
     def full_name(self):
@@ -202,6 +206,10 @@ class HostSim(Simulator):
     def add_pcidev(self, dev: PCIDevSim):
         dev.name = self.name + '.' + dev.name
         self.pcidevs.append(dev)
+
+    def add_netdirect(self, net: NetSim):
+        net.hosts_direct.append(self)
+        self.net_directs.append(net)
 
     def set_config(self, nc: NodeConfig):
         self.node_config = nc
@@ -275,6 +283,8 @@ class QemuHost(HostSim):
                 cmd += ',sync=off'
             cmd += ' '
 
+        # qemu does not currently support net direct ports
+        assert(len(self.net_directs) == 0)
         return cmd
 
 class Gem5Host(HostSim):
@@ -326,6 +336,16 @@ class Gem5Host(HostSim):
             cmd += (f'--simbricks-pci=connect:{env.dev_pci_path(dev)}'
                     f':latency={self.pci_latency}ns'
                     f':sync_interval={self.sync_period}ns')
+            if cpu_type == 'TimingSimpleCPU':
+                cmd += ':sync'
+            cmd +=' '
+
+        for net in self.net_directs:
+            cmd += ('--simbricks-eth-e1000=listen'
+                    f':{env.net2host_eth_path(net, self)}'
+                    f':{env.net2host_shm_path(net, self)}'
+                    f':latency={net.eth_latency}ns'
+                    f':sync_interval={net.sync_period}ns')
             if cpu_type == 'TimingSimpleCPU':
                 cmd += ':sync'
             cmd +=' '
