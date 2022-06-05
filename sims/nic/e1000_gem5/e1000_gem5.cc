@@ -46,10 +46,15 @@ void IGbE::RegWrite(uint8_t bar, uint64_t addr, const void *src,
 void IGbE::DmaComplete(nicbm::DMAOp &op)
 {
     Gem5DMAOp *dma = dynamic_cast <Gem5DMAOp *>(&op);
-    dma->ev_.sched = false;
-    dma->ev_.callback();
-    if (dma->write_)
+    if (dma->write_) {
         delete[] ((uint8_t *) dma->data_);
+    } else {
+        // schedule callback event. THis is at the current time, but can't call
+        // directly to ensure event priorities are respected.
+        dma->ev_.sched = true;
+        dma->ev_.time_ = runner_->TimePs();
+        runner_->EventSchedule(dma->ev_);
+    }
     delete dma;
 }
 
@@ -133,21 +138,18 @@ void IGbE::intrClear()
 void IGbE::dmaWrite(Addr daddr, size_t len, EventFunctionWrapper &ev,
     const void *buf, Tick delay)
 {
-    ev.sched = true;
-
     Gem5DMAOp *op = new Gem5DMAOp(ev);
     op->data_ = new uint8_t[len];
     memcpy(op->data_, buf, len);
     op->len_ = len;
     op->write_ = true;
     op->dma_addr_ = daddr;
+    op->priority_ = 1;
+    op->time_ = runner_->TimePs() + delay;
+    runner_->EventSchedule(*op);
 
-    if (delay == 0) {
-        runner_->IssueDma(*op);
-    } else {
-        op->time_ = runner_->TimePs() + delay;
-        runner_->EventSchedule(*op);
-    }
+    ev.time_ = runner_->TimePs() + delay;
+    runner_->EventSchedule(ev);
 }
 
 void IGbE::dmaRead(Addr saddr, size_t len, EventFunctionWrapper &ev,
@@ -160,13 +162,10 @@ void IGbE::dmaRead(Addr saddr, size_t len, EventFunctionWrapper &ev,
     op->len_ = len;
     op->write_ = false;
     op->dma_addr_ = saddr;
+    op->time_ = runner_->TimePs() + delay;
+    op->priority_ = 2;
+    runner_->EventSchedule(*op);
 
-    if (delay == 0) {
-        runner_->IssueDma(*op);
-    } else {
-        op->time_ = runner_->TimePs() + delay;
-        runner_->EventSchedule(*op);
-    }
 }
 
 bool IGbE::sendPacket(EthPacketPtr p)
