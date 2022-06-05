@@ -22,11 +22,6 @@
 
 ########################################################################
 # This script is for reproducing [Figure 9] in the paper.
-# It generates experiments for 
-#
-# Host type has qemu-kvm(qemu in short), gem5-timing-mode(gt), qemu-timing-mode(qt)
-# Nic type has Intel_i40e behavioral model(ib), corundum behavioral model(cb), corundum verilator(cv)
-# Net type has Switch behavioral model(sw), ns-3(ns3)
 #
 # In each simulation, two hosts are connected by a switch 
 # [HOST_0] - [NIC_0] ---- [SWITCH] ----  [NIC_1] - [HOST_1]
@@ -58,7 +53,13 @@ for pci_type in pci_latency:
     host_class = sim.Gem5Host
     e.checkpoint = True
 
-    nic_class = sim.I40eNIC
+    def nic_pci():
+        n = sim.I40eNIC()
+        n.sync_period = pci_type
+        n.pci_latency = pci_type
+        return n
+    
+    nic_class = nic_pci
     nc_class = node.I40eLinuxNode
 
     # create servers and clients
@@ -68,7 +69,13 @@ for pci_type in pci_latency:
     clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
             nc_class, node.NetperfClient, ip_start = 2)
 
+    for s in servers:
+        s.pci_latency = pci_type
+        s.sync_period = pci_type
+
     for c in clients:
+        c.pci_latency = pci_type
+        c.sync_period = pci_type
         c.wait = True
         c.node_config.app.server_ip = servers[0].node_config.ip
 
