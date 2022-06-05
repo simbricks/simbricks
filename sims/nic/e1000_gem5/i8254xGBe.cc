@@ -1683,7 +1683,7 @@ IGbE::TxDescCache::pktComplete()
         TcpPtr tcp = ip ? TcpPtr(ip) : TcpPtr(ip6);
         if (tcp) {
             DPRINTF(EthernetDesc,
-                    "TSO: Modifying TCP header. old seq %d + %ld\n",
+                    "TSO: Modifying TCP header. old seq %u + %u\n",
                     tcp->seq(), tsoPrevSeq);
             tcp->seq(tcp->seq() + tsoPrevSeq);
             if (tsoUsedLen != tsoTotalLen)
