@@ -78,6 +78,14 @@ void IGbE::Timed(nicbm::TimedEvent &te)
 /******************************************************************************/
 /* gem5-ish APIs */
 
+Tick IGbE::clockEdge(Tick t)
+{
+    if (t % 1000 != 0)
+        t += 1000 - (t % 1000);
+    t += 1000;
+    return t;
+}
+
 void IGbE::schedule(EventFunctionWrapper &ev, Tick t)
 {
     if (ev.sched) {

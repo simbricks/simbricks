@@ -1846,7 +1846,7 @@ IGbE::restartClock()
     DPRINTF(EthernetSM, "IGbE: requesting restart clock: sched=%d rxt=%d txt=%d txf=%d\n",
     tickEvent.scheduled(), rxTick, txTick, txFifoTick);
     if (!tickEvent.scheduled() && (rxTick || txTick || txFifoTick)) {
-        schedule(tickEvent, curTick() + 1000);
+        schedule(tickEvent, clockEdge(curTick()));
         DPRINTF(EthernetSM, "IGbE: scheduled\n");
     }
 }

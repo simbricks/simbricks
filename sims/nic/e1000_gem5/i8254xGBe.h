@@ -71,6 +71,7 @@ class IGbE : public nicbm::Runner::Device
     virtual void Timed(nicbm::TimedEvent &te);
 
 
+    Tick clockEdge(Tick t);
     void schedule(EventFunctionWrapper &ev, Tick t);
     void reschedule(EventFunctionWrapper &ev, Tick t, bool always=false);
     void deschedule(EventFunctionWrapper &ev);
@@ -192,7 +193,7 @@ class IGbE : public nicbm::Runner::Device
      */
     void cpuClearInt();
 
-    Tick intClock() { return 1024 * 1024; /* 1us */ }
+    Tick intClock() { return 1000 * 1024; /* 1us */ }
 
     /** This function is used to restart the clock so it can handle things like
      * draining and resume in one place. */
