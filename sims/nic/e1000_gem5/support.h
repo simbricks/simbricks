@@ -42,9 +42,12 @@ class EventFunctionWrapper : public nicbm::TimedEvent {
     std::string _name;
 
     EventFunctionWrapper(const std::function<void(void)> &callback,
-                         const std::string &name)
+                         const std::string &name, bool free=false,
+                         int prio=0)
         : sched(false), callback(callback), _name(name)
-    { }
+    {
+      priority_ = prio;
+    }
 
     virtual ~EventFunctionWrapper() = default;
     bool scheduled() { return sched; }
