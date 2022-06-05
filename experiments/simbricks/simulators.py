@@ -387,12 +387,15 @@ class I40eNIC(NICSim):
         return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
 
 class E1000NIC(NICSim):
+    debug = False
     def __init__(self):
         super().__init__()
 
     def run_cmd(self, env):
-        #return 'valgrind -v -v -v ' + self.basic_run_cmd(env, '/e1000_gem5/e1000_gem5')
-        return self.basic_run_cmd(env, '/e1000_gem5/e1000_gem5')
+        cmd = self.basic_run_cmd(env, '/e1000_gem5/e1000_gem5')
+        if self.debug:
+            cmd = 'env E1000_DEBUG=1 ' + cmd
+        return cmd
 
 class MultiSubNIC(NICSim):
     name = ''

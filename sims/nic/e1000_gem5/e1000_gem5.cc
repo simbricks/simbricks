@@ -5,6 +5,7 @@
 #include "sims/nic/e1000_gem5/i8254xGBe.h"
 
 static nicbm::Runner *runner;
+static bool debug_enable = false;
 
 class Gem5DMAOp : public nicbm::DMAOp, public nicbm::TimedEvent {
   public:
@@ -195,19 +196,38 @@ void panic(const char *fmt, ...)
     abort();
 }
 
+static void debug_init()
+{
+#ifdef DEBUG_E1000
+    char *debug_env = getenv("E1000_DEBUG");
+    if (debug_env &&
+        (!strcmp(debug_env, "1") ||
+         !strcmp(debug_env, "y") ||
+         !strcmp(debug_env, "Y")))
+    {
+        warn("enabling debug messages because E1000_DEBUG envar set\n");
+        debug_enable = true;
+    }
+#endif
+}
+
 void debug_printf(const char *fmt, ...)
 {
-    va_list val;
-    va_start(val, fmt);
-    fprintf(stderr, "%lu: ", runner->TimePs());
-    vfprintf(stderr, fmt, val);
-    va_end(val);
+    if (debug_enable) {
+        va_list val;
+        va_start(val, fmt);
+        fprintf(stderr, "%lu: ", runner->TimePs());
+        vfprintf(stderr, fmt, val);
+        va_end(val);
+    }
 }
 
 /******************************************************************************/
 
 int main(int argc, char *argv[])
 {
+    debug_init();
+
     IGbEParams params;
     params.rx_fifo_size = 384 * 1024;
     params.tx_fifo_size = 384 * 1024;

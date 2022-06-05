@@ -12,7 +12,7 @@
 
 void debug_printf(const char *fmt, ...);
 
-//#define DEBUG_E1000
+#define DEBUG_E1000
 #ifdef DEBUG_E1000
 #   define DPRINTF(x,y...) debug_printf(#x ": " y)
 #else
