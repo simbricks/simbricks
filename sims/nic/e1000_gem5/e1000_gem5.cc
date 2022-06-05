@@ -25,7 +25,7 @@ void IGbE::SetupIntro(struct SimbricksProtoPcieDevIntro &di)
   di.pci_device_id = 0x1075;
   di.pci_class = 0x02;
   di.pci_subclass = 0x00;
-  di.pci_revision = 0x01;
+  di.pci_revision = 0x00;
 }
 
 void IGbE::RegRead(uint8_t bar, uint64_t addr, void *dest,
