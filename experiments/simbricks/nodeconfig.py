@@ -130,6 +130,7 @@ class LinuxNode(NodeConfig):
 
     def __init__(self):
         self.drivers = []
+        self.force_mac_addr = None
 
     def prepare_post_cp(self):
         l = []
@@ -138,6 +139,9 @@ class LinuxNode(NodeConfig):
                 l.append('insmod ' + d)
             else:
                 l.append('modprobe ' + d)
+        if self.force_mac_addr:
+            l.append('ip link set dev ' + self.ifname + ' address ' +
+                     self.force_mac_addr)
         l.append('ip link set dev ' + self.ifname + ' up')
         l.append('ip addr add %s/%d dev %s' %
                 (self.ip, self.prefix, self.ifname))
