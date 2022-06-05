@@ -294,6 +294,8 @@ class Gem5Host(HostSim):
 
     def __init__(self):
         super().__init__()
+        self.extra_main_args = []
+        self.extra_config_args = []
 
     def set_config(self, nc):
         nc.sim = 'gem5'
@@ -313,8 +315,9 @@ class Gem5Host(HostSim):
         if env.create_cp:
             cpu_type = self.cpu_type_cp
 
-        cmd = (f'{env.gem5_path} --outdir={env.gem5_outdir(self)} '
-            f'{env.gem5_py_path} --caches --l2cache --l3cache '
+        cmd = f'{env.gem5_path} --outdir={env.gem5_outdir(self)} '
+        cmd += ' '.join(self.extra_main_args)
+        cmd += (f' {env.gem5_py_path} --caches --l2cache --l3cache '
             '--l1d_size=32kB --l1i_size=32kB --l2_size=2MB --l3_size=32MB '
             '--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=4 --l3_assoc=16 '
             f'--cacheline_size=64 --cpu-clock={self.cpu_freq} --sys-clock={self.sys_clock} '
@@ -349,6 +352,8 @@ class Gem5Host(HostSim):
             if cpu_type == 'TimingSimpleCPU':
                 cmd += ':sync'
             cmd +=' '
+
+        cmd += ' '.join(self.extra_config_args)
         return cmd
 
 
