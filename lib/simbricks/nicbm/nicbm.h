@@ -50,8 +50,10 @@ class DMAOp {
 
 class TimedEvent {
  public:
+  TimedEvent() : time_(0), priority_(0) {}
   virtual ~TimedEvent() = default;
   uint64_t time_;
+  int priority_;
 };
 
 /**
@@ -117,7 +119,8 @@ class Runner {
  protected:
   struct EventCmp {
     bool operator()(TimedEvent *a, TimedEvent *b) const {
-      return a->time_ < b->time_;
+      return a->time_ < b->time_ ||
+        (a->time_ == b->time_ && a->priority_ < b->priority_);
     }
   };
 
