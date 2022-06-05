@@ -420,10 +420,13 @@ class NetperfServer(AppConfig):
 
 class NetperfClient(AppConfig):
     server_ip = '10.0.0.1'
+    duration_tp = 10
+    duration_lat = 10
     def run_cmds(self, node):
         return ['netserver', 'sleep 0.5',
-                'netperf -H ' + self.server_ip,
-                'netperf -H ' + self.server_ip + ' -t TCP_RR -- -o mean_latency,p50_latency,p90_latency,p99_latency']
+                'netperf -H ' + self.server_ip + ' -l ' + str(self.duration_tp),
+                'netperf -H ' + self.server_ip + ' -l ' + str(self.duration_lat) + \
+                    ' -t TCP_RR -- -o mean_latency,p50_latency,p90_latency,p99_latency']
 
 class VRReplica(AppConfig):
     index = 0
