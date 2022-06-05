@@ -4,6 +4,7 @@
 #include <simbricks/nicbm/nicbm.h>
 #include "sims/nic/e1000_gem5/i8254xGBe.h"
 
+static nicbm::Runner *runner;
 
 class Gem5DMAOp : public nicbm::DMAOp, public nicbm::TimedEvent {
   public:
@@ -195,6 +196,15 @@ void panic(const char *fmt, ...)
     abort();
 }
 
+void debug_printf(const char *fmt, ...)
+{
+    va_list val;
+    va_start(val, fmt);
+    fprintf(stderr, "%lu: ", runner->TimePs());
+    vfprintf(stderr, fmt, val);
+    va_end(val);
+}
+
 /******************************************************************************/
 
 int main(int argc, char *argv[])
@@ -216,7 +226,7 @@ int main(int argc, char *argv[])
 
     IGbE *dev = new IGbE(&params);
 
-    nicbm::Runner *runner = new nicbm::Runner(*dev);
+    runner = new nicbm::Runner(*dev);
     if (runner->ParseArgs(argc, argv))
         return EXIT_FAILURE;
 

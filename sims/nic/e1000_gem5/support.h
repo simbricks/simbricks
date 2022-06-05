@@ -10,9 +10,11 @@
 #define DNET_LIL_ENDIAN 42
 #define DNET_BYTESEX DNET_LIL_ENDIAN
 
+void debug_printf(const char *fmt, ...);
+
 //#define DEBUG_E1000
 #ifdef DEBUG_E1000
-#   define DPRINTF(x,y...) fprintf(stderr, #x ": " y)
+#   define DPRINTF(x,y...) debug_printf(#x ": " y)
 #else
 #   define DPRINTF(x,y...) do { } while (0)
 #endif
