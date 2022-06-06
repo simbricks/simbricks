@@ -10,6 +10,8 @@ RUN git submodule update --init sims/external/gem5 \
  && bash docker/cleanup_gem5.sh
 RUN git submodule update --init sims/external/femu \
  && make -j `nproc` sims/external/femu/ready
+RUN git submodule update --init sims/external/ns-3 \
+ && make -j `nproc` sims/external/ns-3/ready
 RUN make -j `nproc` build-images-min COMPRESSED_IMAGES=true \
  && bash docker/cleanup_images.sh
 ENV PYTHONPATH=/simbricks/experiments
