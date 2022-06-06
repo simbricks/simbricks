@@ -48,6 +48,8 @@ for pci_type in pci_latency:
     e = exp.Experiment('pci-gt-ib-sw-' + f'{pci_type}')
 
     net = sim.SwitchNet()
+    net.sync_period = pci_type
+    net.eth_latency = pci_type
     e.add_network(net)
 
     host_class = sim.Gem5Host
