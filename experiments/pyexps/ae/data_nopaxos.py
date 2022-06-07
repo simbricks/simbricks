@@ -20,42 +20,24 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import json
-import re
-import os
+import sys
+import utils.parse_nopaxos as pn
 
-def parse_nopaxos_run(num_c, path):
+if len(sys.argv) != 2:
+    print('Usage: data_nopaxos.py OUTDIR')
+    sys.exit(1)
 
-    if not os.path.exists(path):
-        return None
+types_of_network = ['swseq', 'ehseq']
+num_clients = [1, 2, 3, 4, 5, 6, 8, 10]
 
-    ret = {}
-    ret['throughput'] = None
-    ret['latency'] = None
+basedir = sys.argv[1]
 
-    tp_pat = re.compile(r'(.*)Total throughput is *([0-9\.]*) ops/sec(.*)')
-    lat_pat = re.compile(r'(.*)Median latency is *([0-9\.]*) us(.*)')
-
-    f_log = open(path, 'r')
-    log = json.load(f_log)
-
-    total_tput = 0
-    total_lat = 0
-    for i in range(num_c):
-        sim_name = f'host.client.{i}'
-
-        # in this host log stdout
-        for j in log["sims"][sim_name]["stdout"]:
-            m_t = tp_pat.match(j)
-            m_l = lat_pat.match(j)
-            if m_l:
-                total_lat += float(m_l.group(2))
-            if m_t:
-                total_tput += int(m_t.group(2))
-
-
-    avg_lat = total_lat/num_c
-    ret['throughput'] = total_tput
-    ret['latency'] = int(avg_lat)
-
-    return ret
+for network in types_of_network:
+    for c in num_clients:
+        line = [network, str(c)]
+        path = '%s/nopaxos-qt-ib-%s-%s-1.json' % (basedir, network, c)
+        ret = pn.parse_nopaxos_run(c, path)
+        if ret is not None:
+            line.append('%d' % ret['throughput'])
+            line.append('%d' % ret['latency'])
+            print('\t'.join(line))
