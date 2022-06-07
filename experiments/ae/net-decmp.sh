@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd ../pyexps/ae
+cd pyexps/ae
 # Run 2 hosts connected to one switch. Bit rate: 0 GB
 echo "Run Run 2 hosts connected to one switch. Bit rate: 0 GB"
 ./pktgen.sh 2 0 run_switch >  ../../out/pktgen/2h1s0b.out 2>&1
