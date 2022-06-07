@@ -51,7 +51,7 @@ struct SimbricksBaseIfParams netParams;
 static pcap_dumper_t *dumpfile = nullptr;
 #define PKT_LEN 1500 //byte
 static uint64_t bit_rate = 100 * 1000ULL * 1000ULL * 1000ULL; // 100 Gbps
-static uint64_t target_tick = 10 * 1000ULL * 1000ULL * 1000ULL * 1000ULL; // 10s
+static uint64_t target_tick = 1 * 1000ULL * 1000ULL * 1000ULL * 1000ULL; // 1s
 static uint64_t last_pkt_sent = 0;
 static uint64_t pkt_recv_num = 0;
 static uint64_t pkt_recv_byte = 0;
@@ -414,15 +414,16 @@ int main(int argc, char *argv[]) {
   int sync_eth = 1;
   pcap_t *pc = nullptr;
   int my_num = 0;
+  int brate = 10;
 
   SimbricksNetIfDefaultParams(&netParams);
 
   // Parse command line argument
-  while ((c = getopt(argc, argv, "s:h:uS:E:p:n:")) != -1 && !bad_option) {
+  while ((c = getopt(argc, argv, "s:h:uS:E:p:n:b:")) != -1 && !bad_option) {
     switch (c) {
       case 's': {
         NetPort *port = new NetPort;
-        fprintf(stderr, "Switch connecting to: %s\n", optarg);
+        fprintf(stderr, "pktgen connecting to: %s\n", optarg);
         if (!port->Connect(optarg, sync_eth)) {
           fprintf(stderr, "connecting to %s failed\n", optarg);
           return EXIT_FAILURE;
@@ -433,7 +434,7 @@ int main(int argc, char *argv[]) {
 
       case 'h': {
         NetHostPort *port = new NetHostPort;
-        fprintf(stderr, "Switch listening on: %s\n", optarg);
+        fprintf(stderr, "pktgen listening on: %s\n", optarg);
         if (!port->Connect(optarg, sync_eth)) {
           fprintf(stderr, "listening on %s failed\n", optarg);
           return EXIT_FAILURE;
@@ -470,6 +471,19 @@ int main(int argc, char *argv[]) {
         assert(my_num < 255);
         break;
 
+      case 'b':
+        brate = strtol(optarg, NULL, 0);
+        fprintf(stderr, "bit rate set to: %d Gbps\n", brate);
+        if (brate == 0){
+          period = ULLONG_MAX;
+        }
+        else{
+          bit_rate = brate * 1000ULL * 1000ULL * 1000ULL; 
+          period = (1E12 * 8 * PKT_LEN) / bit_rate; // per packet
+        }     
+        assert(brate < 200);
+        break;
+
       default:
         fprintf(stderr, "unknown option %c\n", c);
         bad_option = 1;
@@ -479,8 +493,8 @@ int main(int argc, char *argv[]) {
 
   if (ports.empty() || bad_option) {
     fprintf(stderr,
-            "Usage: net_switch [-S SYNC-PERIOD] [-E ETH-LATENCY] "
-            "-s SOCKET-A [-s SOCKET-B ...] [-n my_num]\n");
+            "Usage: pktgen [-S SYNC-PERIOD] [-E ETH-LATENCY] "
+            "-s SOCKET-A [-s SOCKET-B ...] [-n my_num] [-b bitrate(GB)]\n");
     return EXIT_FAILURE;
   }
 
@@ -548,17 +562,6 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "sent packet: %20lu  [%20lu Byte]\n", pkt_tx_num, pkt_tx_byte);
   fprintf(stderr, "recv packet: %20lu  [%20lu Byte]\n", pkt_recv_num, pkt_recv_byte);
 
-  fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
-          "d2n_poll_total", d2n_poll_total, "d2n_poll_suc", d2n_poll_suc,
-          (double)d2n_poll_suc / d2n_poll_total);
-  fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "d2n_poll_sync",
-          d2n_poll_sync, (double)d2n_poll_sync / d2n_poll_suc);
-
-  fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
-          "s_d2n_poll_total", s_d2n_poll_total, "s_d2n_poll_suc", s_d2n_poll_suc,
-          (double)s_d2n_poll_suc / s_d2n_poll_total);
-  fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "s_d2n_poll_sync",
-          s_d2n_poll_sync, (double)s_d2n_poll_sync / s_d2n_poll_suc);
 #endif
 
   return 0;
