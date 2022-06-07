@@ -240,9 +240,9 @@ class NetHostPort : public NetPort {
     std::string shm_path = path;
     shm_path += "-shm";
     struct SimbricksBaseIfParams params = netParams;
-    netParams.sock_path = path;
+    params.sock_path = path;
     if (!sync)
-      netParams.sync_mode = kSimbricksBaseIfSyncDisabled;
+      params.sync_mode = kSimbricksBaseIfSyncDisabled;
     int ret = SimbricksNicIfInit(&nicif_, shm_path.c_str(), &params, nullptr,
         nullptr);
     sync_ = SimbricksBaseIfSyncEnabled(&netif_->base);
