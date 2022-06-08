@@ -144,6 +144,18 @@ also for the external simulators you need. We suggest you refer to the
 [`docker/Dockerfile.buildenv`](docker/Dockerfile.buildenv) for the
 authoritative list of required dependencies.
 
+## Questions? Suggestions? Bugs?
+
+If you are using SimBricks or are trying to determine if SimBricks is suitable
+for what you are trying to do, we would love to hear from you. First off,
+please feel free to report bugs or suggestions directly through
+[github issues](https://github.com/simbricks/simbricks/issues). If you
+have questions or thoughts please post them on our
+[github discussion board](https://github.com/simbricks/simbricks/discussions).
+Finally, we are also available
+[on Slack](https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA)
+for more interactive discussions or to answer quick questions.
+
 ## Repository Structure
 
 - `doc/`: Documentation (sphinx), automatically deployed on
