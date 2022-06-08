@@ -503,7 +503,7 @@ class TofinoNet(NetSim):
         super().__init__()
 
     def run_cmd(self, env):
-        cmd = env.repodir + '/sims/tofino/tofino'
+        cmd = env.repodir + '/sims/net/tofino/tofino'
         cmd += f' -S {self.sync_period} -E {self.eth_latency} -t {self.tofino_log_path}'
         if not self.sync:
             cmd += ' -u'

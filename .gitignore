@@ -16,7 +16,7 @@ sims/net/tap/net_tap
 sims/net/switch/net_switch
 sims/net/menshen/menshen_hw
 sims/net/menshen/obj_dir
-sims/tofino/tofino
+sims/net/tofino/tofino
 doc/doxygen
 doc/_build
 images/kernel/kheaders/
