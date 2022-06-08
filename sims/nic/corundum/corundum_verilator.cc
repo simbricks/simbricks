@@ -789,24 +789,24 @@ int main(int argc, char *argv[]) {
   SimbricksNetIfDefaultParams(&netParams);
   SimbricksPcieIfDefaultParams(&pcieParams);
 
-  if (argc < 4 && argc > 9) {
+  if (argc < 4 && argc > 10) {
     fprintf(stderr,
             "Usage: corundum_verilator PCI-SOCKET ETH-SOCKET "
-            "SHM [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
+            "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
             "[ETH-LATENCY] [CLOCK-FREQ-MHZ]\n");
     return EXIT_FAILURE;
   }
   if (argc >= 6)
-    main_time = strtoull(argv[4], NULL, 0);
+    main_time = strtoull(argv[5], NULL, 0);
   if (argc >= 7)
     netParams.sync_interval = pcieParams.sync_interval =
-        strtoull(argv[5], NULL, 0) * 1000ULL;
+        strtoull(argv[6], NULL, 0) * 1000ULL;
   if (argc >= 8)
-    pcieParams.link_latency = strtoull(argv[6], NULL, 0) * 1000ULL;
+    pcieParams.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
   if (argc >= 9)
-    netParams.link_latency  = strtoull(argv[7], NULL, 0) * 1000ULL;
+    netParams.link_latency  = strtoull(argv[8], NULL, 0) * 1000ULL;
   if (argc >= 10)
-    clock_period = 1000000ULL / strtoull(argv[8], NULL, 0);
+    clock_period = 1000000ULL / strtoull(argv[9], NULL, 0);
 
   struct SimbricksProtoPcieDevIntro di;
   memset(&di, 0, sizeof(di));
