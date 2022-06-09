@@ -1,0 +1,3 @@
+FROM simbricks/simbricks-base:latest
+RUN make -j `nproc` build-images COMPRESSED_IMAGES=true \
+ && bash docker/cleanup_images.sh

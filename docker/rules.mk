@@ -29,6 +29,8 @@ docker-images:
 		-f docker/Dockerfile.base .
 	docker build -t simbricks/simbricks:latest \
 		-f docker/Dockerfile .
+	docker build -t simbricks/simbricks:full \
+		-f docker/Dockerfile.full .
 	docker build -t simbricks/simbricks-runenv:latest \
 		-f docker/Dockerfile.runenv docker
 	docker build -t simbricks/simbricks-min:latest \
