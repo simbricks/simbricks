@@ -25,6 +25,8 @@ include mk/subdir_pre.mk
 docker-images:
 	docker build -t simbricks/simbricks-build:latest \
 		-f docker/Dockerfile.buildenv docker
+	docker build -t simbricks/simbricks-base:latest \
+		-f docker/Dockerfile.base .
 	docker build -t simbricks/simbricks:latest \
 		-f docker/Dockerfile .
 	docker build -t simbricks/simbricks-runenv:latest \
