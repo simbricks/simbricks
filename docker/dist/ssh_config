@@ -1,0 +1,7 @@
+
+Host *
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    ControlPath ~/.ssh/controls/%r@%h:%p
+    ControlPersist 1h
+    ControlMaster auto
