@@ -34,4 +34,8 @@ docker-images:
 	docker build -t simbricks/simbricks-dist-worker:latest \
 		-f docker/Dockerfile.dist-worker docker
 
+docker-image-tofino:
+	docker build -t simbricks/simbricks:tofino \
+		-f docker/Dockerfile.tofino .
+
 include mk/subdir_post.mk
