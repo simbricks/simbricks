@@ -105,6 +105,16 @@ struct SimbricksBaseIf {
   bool listener;
 };
 
+struct SimBricksBaseIfEstablishData {
+  struct SimbricksBaseIf *base_if;
+
+  const void *tx_intro;
+  size_t tx_intro_len;
+
+  void *rx_intro;
+  size_t rx_intro_len;
+};
+
 
 /** Create and map a new shared memory pool with the specified path and size. */
 int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
@@ -151,6 +161,19 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if,
 /** FD to wait on for intro events. */
 int SimbricksBaseIfIntroFd(struct SimbricksBaseIf *base_if);
 
+/**
+ * Completely establish multiple base-ifs in parallel. This handles the parallel
+ * connecting and handshake transmission and reception. Expects all base ifs to
+ * be in non-blocking mode.
+ *
+ * @param ifs Array of structs with info about each baseif including pointers
+ *            and lengths for intro messages.
+ * @param n   Number of ifs to establish.
+ *
+ * @return 0 on success, != 0 otherwise.
+ */
+int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
+                             size_t n);
 
 void SimbricksBaseIfClose(struct SimbricksBaseIf *base_if);
 void SimbricksBaseIfUnlink(struct SimbricksBaseIf *base_if);

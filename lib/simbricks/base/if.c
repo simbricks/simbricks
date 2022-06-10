@@ -713,6 +713,90 @@ int SimbricksBaseIfIntroFd(struct SimbricksBaseIf *base_if)
   }
 }
 
+int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
+                             size_t n)
+{
+  struct pollfd pfds[n];
+  unsigned n_pfd;
+  size_t established = 0;
+  int ret;
+
+  while (established < n) {
+    size_t i;
+    n_pfd = 0;
+    established = 0;
+    for (i = 0; i < n; i++) {
+      struct SimbricksBaseIf *bif = ifs[i].base_if;
+
+      // woops something went wrong on this connection
+      if (bif->conn_state == kConnClosed) {
+        fprintf(stderr, "SimBricksBaseIfEstablish: connection %zu is "
+                        "closed\n", i);
+        return -1;
+      }
+
+      // check if it is connected yet (this might change that)
+      ret = SimbricksBaseIfConnected(bif);
+      if (ret < 0) {
+        fprintf(stderr, "SimBricksBaseIfEstablish: connecting %zu failed\n", i);
+        return -1;
+      } else if (ret > 0) {
+        pfds[n_pfd].fd = SimbricksBaseIfConnFd(bif);
+        pfds[n_pfd].events = (bif->conn_state == kConnListening ? POLLIN :
+                                                                  POLLOUT);
+        pfds[n_pfd].revents = 0;
+        n_pfd++;
+        assert(n_pfd <= n);
+      }
+
+      // next check if we are now ready to send the handshake
+      if ((bif->conn_state == kConnAwaitHandshakeTx ||
+            bif->conn_state == kConnAwaitHandshakeRxTx) &&
+          SimbricksBaseIfIntroSend(bif, ifs[i].tx_intro, ifs[i].tx_intro_len)
+            != 0) {
+        fprintf(stderr, "SimBricksBaseIfEstablish: Sending intro on %zu "
+                        "failed\n", i);
+        return -1;
+      }
+
+      // finally check if we can receive the handshake now
+      if (bif->conn_state == kConnAwaitHandshakeRx) {
+        ret = SimbricksBaseIfIntroRecv(bif, ifs[i].rx_intro,
+                                       &ifs[i].rx_intro_len);
+        if (ret < 0) {
+          fprintf(stderr, "SimBricksBaseIfEstablish: Receiving intro on %zu "
+                          "failed\n", i);
+          return -1;
+        } else if (ret > 0) {
+          pfds[n_pfd].fd = SimbricksBaseIfIntroFd(bif);
+          pfds[n_pfd].events = POLLIN;
+          pfds[n_pfd].revents = 0;
+          n_pfd++;
+          assert(n_pfd <= n);
+        }
+      }
+
+      if (bif->conn_state == kConnOpen) {
+        established++;
+      }
+    }
+
+    if (n_pfd == 0 && established != n) {
+      fprintf(stderr, "SimBricksBaseIfEstablish: no poll events to wait for "
+                      "but not all established (BUG)\n");
+      abort();
+    } else if (n_pfd > 0) {
+      ret = poll(pfds, n_pfd, -1);
+      if (ret < 0) {
+        fprintf(stderr, "SimBricksBaseIfEstablish: poll failed\n");
+        return -1;
+      }
+    }
+  }
+
+  return 0;
+}
+
 void SimbricksBaseIfClose(struct SimbricksBaseIf *base_if)
 {
   if (base_if->conn_state == kConnListening) {
