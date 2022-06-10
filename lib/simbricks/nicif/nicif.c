@@ -52,7 +52,9 @@ int SimbricksNicIfInit(struct SimbricksNicIf *nicif,
     return -1;
   }
 
-  struct SimbricksBaseIf *bifs[2];
+  struct SimBricksBaseIfEstablishData ests[2];
+  struct SimbricksProtoNetIntro net_intro;
+  struct SimbricksProtoPcieHostIntro pcie_h_intro;
   unsigned n_bifs = 0;
   if (netParams) {
     if (SimbricksBaseIfInit(netif, netParams)) {
@@ -64,7 +66,14 @@ int SimbricksNicIfInit(struct SimbricksNicIf *nicif,
       perror("SimbricksNicIfInit: SimbricksBaseIfListen net failed");
       return -1;
     }
-    bifs[n_bifs++] = netif;
+
+    memset(&net_intro, 0, sizeof(net_intro));
+    ests[n_bifs].base_if = netif;
+    ests[n_bifs].tx_intro = &net_intro;
+    ests[n_bifs].tx_intro_len = sizeof(net_intro);
+    ests[n_bifs].rx_intro = &net_intro;
+    ests[n_bifs].rx_intro_len = sizeof(net_intro);
+    n_bifs++;
   }
 
   if (pcieParams) {
@@ -77,80 +86,15 @@ int SimbricksNicIfInit(struct SimbricksNicIf *nicif,
       perror("SimbricksNicIfInit: SimbricksBaseIfListen pcie failed");
       return -1;
     }
-    bifs[n_bifs++] = pcieif;
+    ests[n_bifs].base_if = pcieif;
+    ests[n_bifs].tx_intro = di;
+    ests[n_bifs].tx_intro_len = sizeof(*di);
+    ests[n_bifs].rx_intro = &pcie_h_intro;
+    ests[n_bifs].rx_intro_len = sizeof(pcie_h_intro);
+    n_bifs++;
   }
 
-  if (SimbricksBaseIfConnsWait(bifs, n_bifs)) {
-    perror("SimbricksNicIfInit: SimbricksBaseIfConnsWait failed");
-    return -1;
-  }
-
-  bool netRxDone = true;
-  if (netParams) {
-    struct SimbricksProtoNetIntro intro;
-    memset(&intro, 0, sizeof(intro));
-    if (SimbricksBaseIfIntroSend(netif, &intro, sizeof(intro))) {
-      perror("SimbricksNicIfInit: SimbricksBaseIfIntroSend net failed");
-      return -1;
-    }
-
-    netRxDone = false;
-  }
-  bool pcieRxDone = true;
-  if (pcieParams) {
-    if (SimbricksBaseIfIntroSend(pcieif, di, sizeof(*di))) {
-      perror("SimbricksNicIfInit: SimbricksBaseIfIntroSend pcie failed");
-      return -1;
-    }
-    pcieRxDone = false;
-  }
-
-
-  while (!netRxDone || !pcieRxDone) {
-    struct pollfd pfd[2];
-    unsigned n_pfd = 0;
-
-    if (!netRxDone) {
-      pfd[n_pfd].fd = SimbricksBaseIfIntroFd(netif);
-      pfd[n_pfd].events = POLLIN;
-      pfd[n_pfd].revents = 0;
-      n_pfd++;
-    }
-    if (!pcieRxDone) {
-      pfd[n_pfd].fd = SimbricksBaseIfIntroFd(pcieif);
-      pfd[n_pfd].events = POLLIN;
-      pfd[n_pfd].revents = 0;
-      n_pfd++;
-    }
-    if (poll(pfd, n_pfd, -1) < 0) {
-      perror("SimbricksNicIfInit: poll failed");
-      return -1;
-    }
-
-    if (!netRxDone) {
-      struct SimbricksProtoNetIntro intro;
-      size_t plen = sizeof(intro);
-      int ret = SimbricksBaseIfIntroRecv(netif, &intro, &plen);
-      if (ret == 0) {
-        netRxDone = true;
-      } else if (ret < 0) {
-        perror("SimbricksNicIfInit: SimbricksBaseIfIntroRecv net failed");
-        return -1;
-      }
-    }
-    if (!pcieRxDone) {
-      struct SimbricksProtoPcieHostIntro intro;
-      size_t plen = sizeof(intro);
-      int ret = SimbricksBaseIfIntroRecv(pcieif, &intro, &plen);
-      if (ret == 0) {
-        pcieRxDone = true;
-      } else if (ret < 0) {
-        perror("SimbricksNicIfInit: SimbricksBaseIfIntroRecv pcie failed");
-        return -1;
-      }
-    }
-  }
-  return 0;
+  return SimBricksBaseIfEstablish(ests, n_bifs);
 }
 
 int SimbricksNicIfCleanup(struct SimbricksNicIf *nicif)
