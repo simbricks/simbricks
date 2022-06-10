@@ -25,9 +25,10 @@ import os
 import pathlib
 import shutil
 import json
+import re
 
 # How to use
-# $ python3 parser.py ../out/qemu-wire-ib-TCPs-1.json 
+# $ python3 pyexps/parser.py out/qemu-wire-ib-TCPs-1.json 
 #
 
 log_file = sys.argv[1]
@@ -36,10 +37,10 @@ log = open(log_file, 'r')
 curdir = pathlib.Path().absolute()
 
 exp_log = json.load(log)
-
+run_num = re.split('-|\.', log_file)[-2]
 #Name, starting & ending time
 exp_name = exp_log['exp_name']
-tooutdir = f'../out/{exp_name}'
+tooutdir = f'out/{exp_name}/{run_num}'
 outdir = os.path.join(curdir, tooutdir)
 
 if not os.path.exists(outdir):
