@@ -52,6 +52,7 @@ servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
 
 servers[0].node_config.nockp = 1
 servers[0].cpu_freq = '3GHz'
+servers[0].extra_main_args = ['--debug-flags=SimBricksSync,SimBricksPci,SimBricksEthernet']
 # create a host
 clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
                                     nc_class, node.IperfUDPShortClient, ip_start=2)
@@ -62,6 +63,7 @@ clients[0].node_config.cores = num_cores
 clients[0].node_config.app.is_sleep = 1
 clients[0].node_config.nockp = 1
 clients[0].node_config.app.is_last = True
+clients[0].extra_main_args = ['--debug-flags=SimBricksSync,SimBricksPci,SimBricksEthernet']
 clients[0].wait = True
 
 print(e.name)
