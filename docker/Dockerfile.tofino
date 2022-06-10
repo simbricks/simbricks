@@ -93,3 +93,4 @@ WORKDIR /tofino/bf-sde
 RUN mkdir tools
 COPY docker/p4_build.sh tools/
 RUN ./tools/p4_build.sh /simbricks/sims/tofino/p4/nopaxos.p4
+RUN ./install/bin/veth_setup.sh
