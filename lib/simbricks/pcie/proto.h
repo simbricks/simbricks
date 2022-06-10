@@ -92,6 +92,7 @@ struct SimbricksProtoPcieDevIntro {
 
 /** welcome message sent by host to device */
 struct SimbricksProtoPcieHostIntro {
+  uint32_t dummy; /* not used, but need to avoid empty struct for standard C */
 } __attribute__((packed));
 
 /******************************************************************************/

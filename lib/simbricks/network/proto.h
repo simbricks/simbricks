@@ -34,6 +34,7 @@
 
 /** welcome message sent by network devices to eachother. */
 struct SimbricksProtoNetIntro {
+  uint32_t dummy; /* not used, but need to avoid empty struct for standard C */
 } __attribute__((packed));
 
 /******************************************************************************/
