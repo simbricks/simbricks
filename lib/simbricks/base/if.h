@@ -184,7 +184,7 @@ void SimbricksBaseIfUnlink(struct SimbricksBaseIf *base_if);
  *
  * @param base_if   Base interface handle (connected).
  * @param timestamp Current timestamp (in picoseconds).
- * @return Pointer to the message struct if successfull, NULL otherwise.
+ * @return Pointer to the message struct if successful, NULL otherwise.
  */
 static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPeek(
     struct SimbricksBaseIf *base_if,
@@ -215,7 +215,7 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPeek(
  *
  * @param base_if   Base interface handle (connected).
  * @param timestamp Current timestamp (in picoseconds).
- * @return Pointer to the message struct if successfull, NULL otherwise.
+ * @return Pointer to the message struct if successful, NULL otherwise.
  */
 static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPoll(
     struct SimbricksBaseIf *base_if,
@@ -276,7 +276,7 @@ static inline uint64_t SimbricksBaseIfInTimestamp(
  *
  * @param base_if   Base interface handle (connected).
  * @param timestamp Current timestamp (in picoseconds).
- * @return Pointer to the message struct if successfull, NULL otherwise.
+ * @return Pointer to the message struct if successful, NULL otherwise.
  */
 static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfOutAlloc(
     struct SimbricksBaseIf *base_if,
