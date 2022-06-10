@@ -61,13 +61,18 @@ class NodeConfig(object):
     """App to be run on simulated host."""
     mtu = 1500
     """Networking MTU."""
+    nockp = 0
+    """Do not make checkpoint in Gem5."""
 
     def config_str(self):
         if self.sim == 'qemu':
             cp_es = []
             exit_es = ['poweroff -f']
         else:
-            cp_es = ['m5 checkpoint']
+            if (self.nockp):
+                cp_es = []
+            else:
+                cp_es = ['m5 checkpoint']
             exit_es = ['m5 exit']
 
         es = self.prepare_pre_cp() + self.app.prepare_pre_cp() + cp_es + \
@@ -378,6 +383,22 @@ class IperfUDPClient(AppConfig):
     def run_cmds(self, node):
         cmds = ['sleep 1',
                 'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate]
+
+        if self.is_last:
+            cmds.append('sleep 0.5')
+        else:
+            cmds.append('sleep 10')
+
+        return cmds
+
+class IperfUDPShortClient(AppConfig):
+    server_ip = '10.0.0.1'
+    rate = '150m'
+    is_last = False
+
+    def run_cmds(self, node):
+        cmds = ['sleep 1',
+                'iperf -c ' + self.server_ip + ' -u -n 1 ']
 
         if self.is_last:
             cmds.append('sleep 0.5')
