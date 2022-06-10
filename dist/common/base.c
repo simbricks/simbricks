@@ -215,7 +215,7 @@ int BasePeerSendIntro(struct Peer *peer) {
     fprintf(stderr, "PeerNetSetupQueues: socket not ready yet, delaying "
         "send\n");
 #endif
-    return 1;
+    return 0;
   }
 
   int shm_fd = (peer->is_listener ? peer->shm_fd : -1);
