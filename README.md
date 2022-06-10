@@ -8,8 +8,8 @@
 ## What is SimBricks?
 
 SimBricks is a simulator framework aiming to enable true end-to-end simulation
-of modern data center network systems, including multiple servers running all
-full software stack with unmodified OS and applications, network topologies and
+of modern data center network systems, including multiple servers running a full
+software stack with unmodified OS and applications, network topologies and
 devices, as well as other off the shelf and custom hardware components. Instead
 of designing a new simulator from scratch, SimBricks combines and connects
 multiple existing simulators for different components into a simulated full
@@ -34,8 +34,8 @@ Depending on how you plan to use SimBricks, there are different ways to start
 using it. The quickest way to get started just running SimBricks is with our
 pre-built Docker container images. However, if you plan to make changes to
 SimBricks, you will have to build SimBricks from source, either through Docker,
-or on your local machine. Below these methods are listed in order of increasing
-effort required.
+or on your local machine. The different ways are listed below in order of
+increasing effort required.
 
 **Please refer to
 [our documentation](https://simbricks.readthedocs.io/en/latest/) for more
@@ -104,7 +104,7 @@ main `simbricks/simbricks` image.
 This repository is pre-configured with a
 [Visual Studio Code Development Container](https://code.visualstudio.com/docs/remote/containers)
 that includes all required dependencies for building and working on SimBricks.
-If you have Docker setup and the vscode remote containers extension installed,
+If you have Docker set up and the vscode remote containers extension installed,
 you can just open a freshly cloned simbricks repo in vscode and vscode will
 display a prompt to re-open the folder in the container. The vscode terminals
 will also automatically run any commands inside of the container.
