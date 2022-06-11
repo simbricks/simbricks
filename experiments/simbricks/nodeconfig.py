@@ -400,11 +400,6 @@ class IperfUDPShortClient(AppConfig):
         cmds = ['sleep 1',
                 'iperf -c ' + self.server_ip + ' -u -n 1 ']
 
-        if self.is_last:
-            cmds.append('sleep 0.5')
-        else:
-            cmds.append('sleep 10')
-
         return cmds
 
 
