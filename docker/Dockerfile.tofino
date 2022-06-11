@@ -34,6 +34,7 @@ RUN apt-get update \
 	wget \
 	nano \
 	vim \
+    psmisc \
  && rm -rf /var/lib/apt/lists/*
 COPY docker/verilator.patch /tmp/
 RUN cd /tmp \
@@ -92,5 +93,4 @@ ENV SDE_INSTALL=/tofino/bf-sde/install
 WORKDIR /tofino/bf-sde
 RUN mkdir tools
 COPY docker/p4_build.sh tools/
-RUN ./tools/p4_build.sh /simbricks/sims/tofino/p4/nopaxos.p4
-RUN ./install/bin/veth_setup.sh
+RUN ./tools/p4_build.sh /simbricks/sims/net/tofino/p4/nopaxos.p4
