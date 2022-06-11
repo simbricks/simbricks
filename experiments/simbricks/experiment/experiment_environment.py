@@ -36,9 +36,11 @@ class ExpEnv(object):
         self.qemu_img_path = self.repodir + '/sims/external/qemu/build/qemu-img'
         self.qemu_path = self.repodir + '/sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64'
         self.qemu_kernel_path = self.repodir + '/images/bzImage'
-        self.gem5_path = self.repodir + '/sims/external/gem5/build/X86/gem5.fast'
         self.gem5_py_path = self.repodir + '/sims/external/gem5/configs/simbricks/simbricks.py'
         self.gem5_kernel_path = self.repodir + '/images/vmlinux'
+
+    def gem5_path(self, variant):
+        return self.repodir + '/sims/external/gem5/build/X86/gem5.' + variant
 
     def hdcopy_path(self, sim):
         return '%s/hdcopy.%s' % (self.workdir, sim.name)

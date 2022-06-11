@@ -296,6 +296,7 @@ class Gem5Host(HostSim):
         super().__init__()
         self.extra_main_args = []
         self.extra_config_args = []
+        self.variant = 'fast'
 
     def set_config(self, nc):
         nc.sim = 'gem5'
@@ -315,7 +316,7 @@ class Gem5Host(HostSim):
         if env.create_cp:
             cpu_type = self.cpu_type_cp
 
-        cmd = f'{env.gem5_path} --outdir={env.gem5_outdir(self)} '
+        cmd = f'{env.gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} '
         cmd += ' '.join(self.extra_main_args)
         cmd += (f' {env.gem5_py_path} --caches --l2cache --l3cache '
             '--l1d_size=32kB --l1i_size=32kB --l2_size=2MB --l3_size=32MB '
