@@ -51,6 +51,7 @@ servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
                                     nc_class, node.IperfUDPServer, ip_start=2)
 
 servers[0].node_config.nockp = 1
+servers[0].variant = 'opt'
 servers[0].cpu_freq = '3GHz'
 servers[0].extra_main_args = ['--debug-flags=SimBricksSync,SimBricksPci,SimBricksEthernet']
 # create a host
@@ -59,6 +60,7 @@ clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
 
 
 clients[0].cpu_freq = '3GHz'
+clients[0].variant = 'opt'
 clients[0].node_config.cores = num_cores
 clients[0].node_config.app.is_sleep = 1
 clients[0].node_config.nockp = 1
