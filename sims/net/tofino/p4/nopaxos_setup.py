@@ -124,7 +124,7 @@ class l2_switch():
         self.l2_age_ttl = default_ttl
 
     def setup(self):
-        self.clear_all()
+        #self.clear_all()
         self.__init__()
 
         # Enable learning on SMAC
@@ -138,8 +138,11 @@ class l2_switch():
 
         # Enable aging on SMAC
         print("Inializing Aging on SMAC ... ", end='', flush=True)
-        self.p4.Ingress.smac.idle_table_set_notify(enable=False,
-                                                   callback=None)
+        try:
+            self.p4.Ingress.smac.idle_table_set_notify(enable=False,
+                                                       callback=None)
+        except:
+            pass
 
         #self.p4.Ingress.smac.idle_table_set_notify(enable=True,
         #                                           callback=self.aging_cb,

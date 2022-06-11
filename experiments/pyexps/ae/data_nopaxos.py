@@ -27,7 +27,7 @@ if len(sys.argv) != 2:
     print('Usage: data_nopaxos.py OUTDIR')
     sys.exit(1)
 
-types_of_network = ['swseq', 'ehseq']
+types_of_network = ['swseq', 'ehseq', 'tofino']
 num_clients = [1, 2, 3, 4, 5, 6, 8, 10]
 
 basedir = sys.argv[1]
