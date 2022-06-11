@@ -42,6 +42,8 @@ def mkdir_if_not_exists(path):
 parser = argparse.ArgumentParser()
 parser.add_argument('experiments', metavar='EXP', type=str, nargs='+',
         help='An experiment file to run')
+parser.add_argument('--list', action='store_const', const=True, default=False,
+        help='Only list available experiment names')
 parser.add_argument('--filter', metavar='PATTERN', type=str, nargs='+',
         help='Pattern to match experiment names against')
 parser.add_argument('--pickled', action='store_const', const=True,
@@ -187,6 +189,11 @@ if not args.pickled:
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         experiments += mod.experiments
+
+    if args.list:
+        for e in experiments:
+            print(e.name)
+        sys.exit(0)
 
     for e in experiments:
         if args.auto_dist and not isinstance(e, exp.DistributedExperiment):
