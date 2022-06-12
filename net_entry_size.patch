@@ -1,0 +1,13 @@
+diff --git a/lib/simbricks/network/if.c b/lib/simbricks/network/if.c
+index cf18f8e..620f037 100644
+--- a/lib/simbricks/network/if.c
++++ b/lib/simbricks/network/if.c
+@@ -31,7 +31,7 @@
+ void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params)
+ {
+   SimbricksBaseIfDefaultParams(params);
+-  params->in_entries_size = params->out_entries_size = 1536 + 64;
++  params->in_entries_size = params->out_entries_size = 9024  + 64;
+   params->upper_layer_proto = SIMBRICKS_PROTO_ID_NET;
+ }
+ 
