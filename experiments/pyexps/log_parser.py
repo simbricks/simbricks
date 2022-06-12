@@ -34,14 +34,14 @@ import re
 log_file = sys.argv[1]
 log = open(log_file, 'r')
 
-curdir = pathlib.Path().absolute()
-
 exp_log = json.load(log)
 run_num = re.split('-|\.', log_file)[-2]
 #Name, starting & ending time
 exp_name = exp_log['exp_name']
-tooutdir = f'out/{exp_name}/{run_num}'
-outdir = os.path.join(curdir, tooutdir)
+
+p = pathlib.Path(log_file)
+tooutdir = f'/{exp_name}/{run_num}'
+outdir = '/'.join(list(p.parts)[0:-1]) + tooutdir
 
 if not os.path.exists(outdir):
     raise Exception("no such directory")
