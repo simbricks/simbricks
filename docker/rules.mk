@@ -40,7 +40,7 @@ docker-images-debug:
 	docker build -t simbricks/simbricks-gem5opt:latest \
 		-f docker/Dockerfile.gem5opt docker
 
-docker-image-tofino:
+docker-images-tofino:
 	docker build -t simbricks/simbricks:tofino \
 		-f docker/Dockerfile.tofino .
 
