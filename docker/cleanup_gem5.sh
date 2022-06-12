@@ -3,7 +3,7 @@ set -e
 
 mkdir -p sims/external/gem5-new/
 cd sims/external/gem5
-cp -r --parent \
+cp -r --parents \
   build/X86/gem5.fast \
   configs \
   ../gem5-new/
