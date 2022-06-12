@@ -37,7 +37,7 @@ docker-images:
 		-f docker/Dockerfile.dist-worker docker
 
 docker-images-debug:
-	docker build -t simbricks/simbricks:gem5opt \
+	docker build -t simbricks/simbricks-gem5opt:latest \
 		-f docker/Dockerfile.gem5opt docker
 
 docker-image-tofino:
