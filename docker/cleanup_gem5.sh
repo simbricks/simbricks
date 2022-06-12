@@ -6,6 +6,7 @@ cd sims/external/gem5
 cp -r --parents \
   build/X86/gem5.fast \
   configs \
+  cache_conf.patch \
   ../gem5-new/
 #`find build -name \*.py` \
 cd ..
