@@ -72,7 +72,7 @@ lint-clang-format:
 	$(CLANG_FORMAT) --dry-run --style=file `cat .lint-files`
 
 lint: lint-cpplint lint-clang-format lint-python
-lint-all: lint lint-clang-tidy
+lint-all: lint lint-clang-tidy typecheck-python
 
 help:
 	@echo "Targets:"
