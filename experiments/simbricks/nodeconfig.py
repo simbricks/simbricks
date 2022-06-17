@@ -533,6 +533,7 @@ class HTTPD(AppConfig):
     threads = 1
     file_size = 64
     mtcp_config = 'lighttpd.conf'
+    httpd_dir: str # TODO added because doesn't originally exist
 
     def prepare_pre_cp(self):
         return ['mkdir -p /srv/www/htdocs/ /tmp/lighttpd/',
@@ -569,6 +570,7 @@ class HTTPC(AppConfig):
     requests = 10000
     threads = 1
     url = '/file'
+    ab_dir: str # TODO added because doesn't originally exist
 
     def run_cmds(self, node):
         return ['cd %s/support/' % (self.ab_dir),

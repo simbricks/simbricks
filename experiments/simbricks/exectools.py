@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import asyncio
+from asyncio.subprocess import Process
 import os
 import pathlib
 import re
@@ -38,6 +39,9 @@ class HostConfig(object):
         self.other = other.copy()
 
 class Component(object):
+    proc: Process
+    terminate_future: asyncio.Task[int]
+
     def __init__(self, cmd_parts, with_stdin=False):
         self.is_ready = False
         self.stdout = []
