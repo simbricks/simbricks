@@ -46,6 +46,7 @@ $(eval $(call subdir,dist))
 $(eval $(call subdir,doc))
 $(eval $(call subdir,images))
 $(eval $(call subdir,trace))
+$(eval $(call subdir,experiments))
 
 
 all: $(ALL_ALL)
@@ -70,7 +71,7 @@ clang-format:
 lint-clang-format:
 	$(CLANG_FORMAT) --dry-run --style=file `cat .lint-files`
 
-lint: lint-cpplint lint-clang-format
+lint: lint-cpplint lint-clang-format lint-python
 lint-all: lint lint-clang-tidy
 
 help:
