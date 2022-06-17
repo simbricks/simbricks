@@ -138,8 +138,10 @@ class DistributedExperiment(Experiment):
         return True
 
 
-class ExperimentBaseRunner(object):
-    def __init__(self, exp: Experiment, env: ExpEnv, verbose: bool):
+T = tp.TypeVar('T', bound=Experiment)
+
+class ExperimentBaseRunner(tp.Generic[T]):
+    def __init__(self, exp: T, env: ExpEnv, verbose: bool):
         self.exp = exp
         self.env = env
         self.verbose = verbose
@@ -304,7 +306,7 @@ class ExperimentBaseRunner(object):
         return self.out
 
 
-class ExperimentSimpleRunner(ExperimentBaseRunner):
+class ExperimentSimpleRunner(ExperimentBaseRunner[Experiment]):
     """ Simple experiment runner with just one executor. """
     def __init__(self, exec: Executor, *args, **kwargs):
         self.exec = exec
@@ -314,7 +316,7 @@ class ExperimentSimpleRunner(ExperimentBaseRunner):
         return self.exec
 
 
-class ExperimentDistributedRunner(ExperimentBaseRunner):
+class ExperimentDistributedRunner(ExperimentBaseRunner[DistributedExperiment]):
     """ Simple experiment runner with just one executor. """
     def __init__(self, execs, *args, **kwargs):
         self.execs = execs

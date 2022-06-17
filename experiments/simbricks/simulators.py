@@ -41,6 +41,10 @@ class Simulator(object):
         """Memory required for this simulator (in MB)."""
         return 64
 
+    def full_name(self):
+        """Full name of the simulator."""
+        return ''
+
     def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
         """Commands to run to prepare simulator."""
         return []
@@ -416,6 +420,8 @@ class MultiSubNIC(NICSim):
         return 0
 
 class I40eMultiNIC(Simulator):
+    name = ''
+
     def __init__(self):
         self.subnics = []
         super().__init__()
