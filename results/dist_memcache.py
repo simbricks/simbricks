@@ -19,13 +19,12 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-import sys
-import json
-
 """ Generates data file for dist_memcache scalability graph. First column is
 the number of hosts, second column the qemu timing simulation time in hours,
 and the third column is the gem5 simulation time."""
+
+import sys
+import json
 
 if len(sys.argv) != 2:
     print('Usage: dist_memcache.py OUTDIR')
