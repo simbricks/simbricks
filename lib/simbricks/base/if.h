@@ -96,6 +96,8 @@ struct SimbricksBaseIf {
   size_t out_enum;
   uint64_t out_timestamp;
 
+  bool in_terminated;
+
   int conn_state;
   int sync;
   struct SimbricksBaseIfParams params;
@@ -179,6 +181,19 @@ void SimbricksBaseIfClose(struct SimbricksBaseIf *base_if);
 void SimbricksBaseIfUnlink(struct SimbricksBaseIf *base_if);
 
 /**
+ * Read message type from received message.
+ *
+ * @param base_if  Base interface handle (connected).
+ * @param msg      Pointer to the previously received message.
+ */
+static inline uint8_t SimbricksBaseIfInType(
+    struct SimbricksBaseIf *base_if,
+    volatile union SimbricksProtoBaseMsg *msg) {
+  return (msg->header.own_type & ~SIMBRICKS_PROTO_MSG_OWN_MASK);
+
+}
+
+/**
  * Poll for an incoming message without advancing the position if one is found.
  * Message must be retrieved again with a call to `SimbricksBaseIfInPoll`
  *
@@ -223,22 +238,18 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPoll(
   volatile union SimbricksProtoBaseMsg *msg =
       SimbricksBaseIfInPeek(base_if, timestamp);
 
-  if (msg != NULL)
+  if (msg != NULL) {
     base_if->in_pos = (base_if->in_pos + 1) % base_if->in_enum;
+
+    if (SimbricksBaseIfInType(base_if, msg) ==
+        SIMBRICKS_PROTO_MSG_TYPE_TERMINATE) {
+      base_if->in_terminated = true;
+      base_if->sync = false;
+      base_if->in_timestamp = UINT64_MAX;
+      base_if->out_timestamp = UINT64_MAX;
+    }
+  }
   return msg;
-}
-
-/**
- * Read message type from received message.
- *
- * @param base_if  Base interface handle (connected).
- * @param msg      Pointer to the previously received message.
- */
-static inline uint8_t SimbricksBaseIfInType(
-    struct SimbricksBaseIf *base_if,
-    volatile union SimbricksProtoBaseMsg *msg) {
-  return (msg->header.own_type & ~SIMBRICKS_PROTO_MSG_OWN_MASK);
-
 }
 
 /**
@@ -268,6 +279,16 @@ static inline void SimbricksBaseIfInDone(
 static inline uint64_t SimbricksBaseIfInTimestamp(
     struct SimbricksBaseIf *base_if) {
   return base_if->in_timestamp;
+}
+
+/**
+ * Check if incoming channel has been terminated by peer.
+ *
+ * @param base_if Base interface handle (connected).
+ */
+static inline int SimbricksBaseIfInTerminated(
+    struct SimbricksBaseIf *base_if) {
+  return base_if->in_terminated;
 }
 
 /**
@@ -351,6 +372,8 @@ static inline int SimbricksBaseIfOutSync(struct SimbricksBaseIf *base_if,
 static inline uint64_t SimbricksBaseIfOutNextSync(
     struct SimbricksBaseIf *base_if)
 {
+  if (base_if->out_timestamp == UINT64_MAX)
+    return UINT64_MAX;
   return base_if->out_timestamp + base_if->params.sync_interval;
 }
 
