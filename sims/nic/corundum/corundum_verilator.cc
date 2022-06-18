@@ -51,6 +51,7 @@ static uint64_t clock_period = 4 * 1000ULL;   // 4ns -> 250MHz
 static volatile int exiting = 0;
 uint64_t main_time = 0;
 static struct SimbricksNicIf nicif;
+static bool pci_terminated = false;
 
 #ifdef TRACE_ENABLED
 static VerilatedVcdC *trace;
@@ -355,6 +356,11 @@ class MMIOInterface {
 };
 
 void pci_rwcomp_issue(MMIOOp *op) {
+  if (pci_terminated) {
+    delete op;
+    return;
+  }
+
   volatile union SimbricksProtoPcieD2H *msg = d2h_alloc();
   volatile struct SimbricksProtoPcieD2HReadcomp *rc;
   volatile struct SimbricksProtoPcieD2HWritecomp *wc;
@@ -383,6 +389,10 @@ void pci_rwcomp_issue(MMIOOp *op) {
 std::set<DMAOp *> pci_dma_pending;
 
 void pci_dma_issue(DMAOp *op) {
+  if (pci_terminated) {
+    std::cerr << "trying to issue dma after host terminated\n";
+    abort();
+  }
   volatile union SimbricksProtoPcieD2H *msg = d2h_alloc();
   uint8_t ty;
 
@@ -557,6 +567,11 @@ static void poll_h2d(MMIOInterface &mmio) {
       break;
 
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
+      break;
+
+    case SIMBRICKS_PROTO_MSG_TYPE_TERMINATE:
+      std::cerr << "poll_h2d: peer terminated" << std::endl;
+      pci_terminated = true;
       break;
 
     default:
@@ -746,6 +761,9 @@ static void poll_n2d(EthernetRx &rx) {
 }
 
 void pci_msi_issue(uint8_t vec) {
+  if (pci_terminated)
+    return;
+
   volatile union SimbricksProtoPcieD2H *msg = d2h_alloc();
   volatile struct SimbricksProtoPcieD2HInterrupt *intr;
 
