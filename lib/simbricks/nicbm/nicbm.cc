@@ -86,6 +86,11 @@ static void sigusr2_handler(int dummy) {
 #endif
 
 volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
+  if (SimbricksBaseIfInTerminated(&nicif_.pcie.base)) {
+    fprintf(stderr, "Runner::D2HAlloc: peer already terminated\n");
+    abort();
+  }
+
   volatile union SimbricksProtoPcieD2H *msg;
   bool first = true;
   while ((msg = SimbricksPcieIfD2HOutAlloc(&nicif_.pcie, main_time_)) == NULL) {
@@ -149,6 +154,9 @@ void Runner::DmaTrigger() {
 }
 
 void Runner::DmaDo(DMAOp &op) {
+  if (SimbricksBaseIfInTerminated(&nicif_.pcie.base))
+    return;
+
   volatile union SimbricksProtoPcieD2H *msg = D2HAlloc();
   dma_pending_++;
 #ifdef DEBUG_NICBM
@@ -204,6 +212,9 @@ void Runner::DmaDo(DMAOp &op) {
 }
 
 void Runner::MsiIssue(uint8_t vec) {
+  if (SimbricksBaseIfInTerminated(&nicif_.pcie.base))
+    return;
+
   volatile union SimbricksProtoPcieD2H *msg = D2HAlloc();
 #ifdef DEBUG_NICBM
   printf("main_time = %lu: nicbm: issue MSI interrupt vec %u\n", main_time_, vec);
@@ -217,6 +228,9 @@ void Runner::MsiIssue(uint8_t vec) {
 }
 
 void Runner::MsiXIssue(uint8_t vec) {
+  if (SimbricksBaseIfInTerminated(&nicif_.pcie.base))
+    return;
+
   volatile union SimbricksProtoPcieD2H *msg = D2HAlloc();
 #ifdef DEBUG_NICBM
   printf("main_time = %lu: nicbm: issue MSI-X interrupt vec %u\n", main_time_, vec);
@@ -230,6 +244,9 @@ void Runner::MsiXIssue(uint8_t vec) {
 }
 
 void Runner::IntXIssue(bool level) {
+  if (SimbricksBaseIfInTerminated(&nicif_.pcie.base))
+    return;
+
   volatile union SimbricksProtoPcieD2H *msg = D2HAlloc();
 #ifdef DEBUG_NICBM
   printf("main_time = %lu: nicbm: set intx interrupt %u\n", main_time_, level);
@@ -398,6 +415,10 @@ void Runner::PollH2D() {
         s_h2d_poll_sync += 1;
       }
 #endif
+      break;
+
+    case SIMBRICKS_PROTO_MSG_TYPE_TERMINATE:
+      fprintf(stderr, "poll_h2d: peer terminated\n");
       break;
 
     default:
