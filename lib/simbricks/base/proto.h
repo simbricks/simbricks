@@ -108,6 +108,8 @@ struct SimbricksProtoConnecterIntro {
 
 /** Pure Sync Message, no upper layer data */
 #define SIMBRICKS_PROTO_MSG_TYPE_SYNC 0x00
+/** Peer Termination Message, no upper layer data */
+#define SIMBRICKS_PROTO_MSG_TYPE_TERMINATE 0x01
 /* values in between are reserved for future extensions */
 /** first message type reserved for upper layer protocols */
 #define SIMBRICKS_PROTO_MSG_TYPE_UPPER_START 0x40
@@ -123,6 +125,7 @@ SIMBRICKS_PROTO_MSG_SZCHECK(struct SimbricksProtoBaseMsgHeader);
 union SimbricksProtoBaseMsg {
   struct SimbricksProtoBaseMsgHeader header;
   struct SimbricksProtoBaseMsgHeader sync;
+  struct SimbricksProtoBaseMsgHeader terminate;
 } __attribute__((packed));
 SIMBRICKS_PROTO_MSG_SZCHECK(union SimbricksProtoBaseMsg);
 
