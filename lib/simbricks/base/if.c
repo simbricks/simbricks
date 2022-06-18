@@ -809,8 +809,10 @@ void SimbricksBaseIfClose(struct SimbricksBaseIf *base_if)
   }
 
   if (base_if->conn_state == kConnOpen) {
-    /* send out sync with max time stamp so no one else is stuck */
-    while (SimbricksBaseIfOutSync(base_if, UINT64_MAX) != 0);
+    // send out termination message
+    volatile union SimbricksProtoBaseMsg *msg;
+    while ((msg = SimbricksBaseIfOutAlloc(base_if, UINT64_MAX)) == NULL);
+    SimbricksBaseIfOutSend(base_if, msg, SIMBRICKS_PROTO_MSG_TYPE_TERMINATE);
   }
 
   close(base_if->conn_fd);
