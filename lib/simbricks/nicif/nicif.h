@@ -55,8 +55,13 @@ static inline int SimbricksNicIfSync(struct SimbricksNicIf *nicif,
 
 static inline uint64_t SimbricksNicIfNextTimestamp(struct SimbricksNicIf *nicif)
 {
-  uint64_t net = SimbricksNetIfInTimestamp(&nicif->net);
-  uint64_t pcie = SimbricksPcieIfH2DInTimestamp(&nicif->pcie);
+  uint64_t net_in = SimbricksNetIfInTimestamp(&nicif->net);
+  uint64_t net_out = SimbricksNetIfOutNextSync(&nicif->net);
+  uint64_t net = (net_in <= net_out ? net_in : net_out);
+
+  uint64_t pcie_in = SimbricksPcieIfH2DInTimestamp(&nicif->pcie);
+  uint64_t pcie_out = SimbricksPcieIfD2HOutNextSync(&nicif->pcie);
+  uint64_t pcie = (pcie_in <= pcie_out ? pcie_in : pcie_out);
 
   return (net < pcie ? net : pcie);
 }
