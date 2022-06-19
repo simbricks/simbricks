@@ -34,7 +34,7 @@ n_hosts = [2, 10, 20, 30, 35, 40, 50, 60, 70, 80]
 experiments = []
 separate_net = True
 
-nets_per_host = 2
+nets_per_host = 1
 
 def select_servers(i, j, racks, n, n_host):
     nc = int(n_host / 2)
