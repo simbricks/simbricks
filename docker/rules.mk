@@ -26,6 +26,10 @@ include mk/subdir_pre.mk
 # DOCKER_REGISTRY ?= docker.io/
 # DOCKER_TAG ?= :latest
 
+DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-base \
+  simbricks/simbricks simbricks/simbricks-runenv simbricks/simbricks-min \
+  simbricks/simbricks-dist-worker simbricks/simbricks-gem5opt
+
 docker-images:
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
@@ -56,15 +60,8 @@ docker-images-tofino:
 		-f docker/Dockerfile.tofino .
 
 docker-push:
-	for i in \
-		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
-		$(DOCKER_REGISTRY)simbricks/simbricks-base$(DOCKER_TAG) \
-		$(DOCKER_REGISTRY)simbricks/simbricks$(DOCKER_TAG) \
-		$(DOCKER_REGISTRY)simbricks/simbricks-runenv$(DOCKER_TAG) \
-		$(DOCKER_REGISTRY)simbricks/simbricks-min$(DOCKER_TAG) \
-		$(DOCKER_REGISTRY)simbricks/simbricks-dist-worker$(DOCKER_TAG) \
-		$(DOCKER_REGISTRY)simbricks/simbricks-gem5opt$(DOCKER_TAG) \
-		; do \
+	for i in $(addprefix $(DOCKER_REGISTRY), $(addsuffix $(DOCKER_TAG), \
+		$(DOCKER_IMAGES))) ; do \
 		docker image inspect $$i >/dev/null && docker push $$i ; \
 		done
 
