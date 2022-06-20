@@ -61,7 +61,8 @@ docker-images-tofino:
 
 docker-retag:
 	for i in $(DOCKER_IMAGES) ; do \
-		docker image inspect $$i >/dev/null && \
+		docker image inspect \
+		  $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) >/dev/null && \
 		docker tag $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) \
 			$(DOCKER_REGISTRY)$${i}$(DOCKER_TAG) ; \
 		done
