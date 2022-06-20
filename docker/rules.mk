@@ -22,26 +22,37 @@
 
 include mk/subdir_pre.mk
 
+# Configuration parameters to control docker image build
+# DOCKER_REGISTRY ?= docker.io/
+# DOCKER_TAG ?= :latest
+
 docker-images:
-	docker build -t simbricks/simbricks-build:latest \
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
 		-f docker/Dockerfile.buildenv docker
-	docker build -t simbricks/simbricks-base:latest \
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-base$(DOCKER_TAG) \
 		-f docker/Dockerfile.base .
-	docker build -t simbricks/simbricks:latest \
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks$(DOCKER_TAG) \
 		-f docker/Dockerfile .
-	docker build -t simbricks/simbricks-runenv:latest \
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-runenv$(DOCKER_TAG) \
 		-f docker/Dockerfile.runenv docker
-	docker build -t simbricks/simbricks-min:latest \
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-min$(DOCKER_TAG) \
 		-f docker/Dockerfile.min docker
-	docker build -t simbricks/simbricks-dist-worker:latest \
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-dist-worker$(DOCKER_TAG) \
 		-f docker/Dockerfile.dist-worker docker
 
 docker-images-debug:
-	docker build -t simbricks/simbricks-gem5opt:latest \
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-gem5opt$(DOCKER_TAG) \
 		-f docker/Dockerfile.gem5opt docker
 
 docker-images-tofino:
-	docker build -t simbricks/simbricks:tofino \
+	docker build -t $(DOCKER_REGISTRY)simbricks/simbricks:tofino \
 		-f docker/Dockerfile.tofino .
 
 include mk/subdir_post.mk
