@@ -180,6 +180,11 @@ class Runner {
 
   uint64_t TimePs() const;
   uint64_t GetMacAddr() const;
+  /**
+   * Print baseif info
+   *
+   */
+  void PrintBaseIfInfo(void);
 };
 
 /**
