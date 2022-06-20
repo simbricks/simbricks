@@ -70,13 +70,23 @@ static uint64_t s_n2d_poll_sync = 0;
 static int stat_flag = 0;
 #endif
 
+void Runner::PrintBaseIfInfo() {
+  fprintf(stderr, "net_in_timestamp = %lu\n", nicif_.net.base.in_timestamp);
+  fprintf(stderr, "net_out_timestamp = %lu\n", nicif_.net.base.out_timestamp);
+
+  fprintf(stderr, "pci_in_timestamp = %lu\n", nicif_.pcie.base.in_timestamp);
+  fprintf(stderr, "pci_out_timestamp = %lu\n", nicif_.pcie.base.out_timestamp);
+}
+
 static void sigint_handler(int dummy) {
   exiting = 1;
 }
 
 static void sigusr1_handler(int dummy) {
-  for (Runner *r : runners)
-    fprintf(stderr, "[%p] main_time = %lu\n", r, r->TimePs());
+  for (Runner *r : runners) {
+    fprintf(stderr, "[Runner %p] main_time = %lu\n", r, r->TimePs());
+    r->PrintBaseIfInfo();
+  }
 }
 
 #ifdef STAT_NICBM
