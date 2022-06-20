@@ -55,4 +55,17 @@ docker-images-tofino:
 	docker build -t $(DOCKER_REGISTRY)simbricks/simbricks:tofino \
 		-f docker/Dockerfile.tofino .
 
+docker-push:
+	for i in \
+		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-base$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-runenv$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-min$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-dist-worker$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-gem5opt$(DOCKER_TAG) \
+		; do \
+		docker image inspect $$i >/dev/null && docker push $$i ; \
+		done
+
 include mk/subdir_post.mk
