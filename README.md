@@ -1,5 +1,6 @@
 # SimBricks
 
+[![CI pipeline status](https://gitlab.mpi-sws.org/simbricks/simbricks/badges/main/pipeline.svg)](https://gitlab.mpi-sws.org/simbricks/simbricks/-/commits/main)
 [![Documentation Status](https://readthedocs.org/projects/simbricks/badge/?version=latest)](https://simbricks.readthedocs.io/en/latest/?badge=latest)
 [![Docker Hub](https://img.shields.io/badge/docker-hub-brightgreen)](https://hub.docker.com/u/simbricks)
 [![Chat on Slack](https://img.shields.io/badge/slack-Chat-brightgreen)](https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA)
