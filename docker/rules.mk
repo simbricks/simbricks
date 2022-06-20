@@ -59,6 +59,12 @@ docker-images-tofino:
 	docker build -t $(DOCKER_REGISTRY)simbricks/simbricks:tofino \
 		-f docker/Dockerfile.tofino .
 
+docker-retag:
+	for i in $(DOCKER_IMAGES) ; do \
+		docker tag $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) \
+			$(DOCKER_REGISTRY)$${i}$(DOCKER_TAG) ; \
+		done
+
 docker-push:
 	for i in $(addprefix $(DOCKER_REGISTRY), $(addsuffix $(DOCKER_TAG), \
 		$(DOCKER_IMAGES))) ; do \
