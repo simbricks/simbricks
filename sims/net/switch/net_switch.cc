@@ -289,6 +289,16 @@ static void sigint_handler(int dummy) {
 
 static void sigusr1_handler(int dummy) {
   fprintf(stderr, "main_time = %lu\n", cur_ts);
+  size_t n = ports.size();
+    for (size_t i = 0; i < n; i++) {
+    NetPort *p = ports[i];
+    uint64_t in_timestamp = p->netif_.base.in_timestamp;
+    uint64_t out_timestamp = p->netif_.base.out_timestamp;
+
+    fprintf(stderr, "[ ports %lu ]: in_timestamp == %lu\n", i, in_timestamp);
+    fprintf(stderr, "[ ports %lu ]: out_timestamp == %lu\n", i, out_timestamp);
+  }
+
 }
 
 #ifdef NETSWITCH_STAT
