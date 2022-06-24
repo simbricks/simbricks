@@ -186,6 +186,8 @@ class SimpleComponent(Component):
             raise Exception('Command Failed: ' + str(self.cmd_parts))
 
 class SimpleRemoteComponent(SimpleComponent):
+    pid_fut: asyncio.Future
+
     def __init__(self, host_name, label, cmd_parts, cwd=None, ssh_extra_args=[], *args, **kwargs):
         self.host_name = host_name
         self.extra_flags = ssh_extra_args
