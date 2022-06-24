@@ -20,10 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# Allow type annotation of class to be used in its own constructor
+# Allow own class to be used as type for a method's argument
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 import shutil
 import pathlib
 import typing as tp
@@ -73,7 +73,7 @@ class Run(object):
         await exec.mkdir(self.env.shm_base)
 
 
-class Runtime(object):
+class Runtime(metaclass=ABCMeta):
     """Base class for managing the execution of multiple runs."""
 
     @abstractmethod

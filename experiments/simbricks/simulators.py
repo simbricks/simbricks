@@ -20,6 +20,9 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+# Allow own class to be used as type for a method's argument
+from __future__ import annotations
+
 import math
 import typing as tp
 
@@ -138,23 +141,20 @@ class NetSim(Simulator):
     sync_mode = 0
     sync_period = 500
     eth_latency = 500
-
-    def __init__(self):
-        self.nics = []
-        self.hosts_direct = []
-        self.net_listen = []
-        self.net_connect = []
-        super().__init__()
+    nics: list[NICSim] = []
+    hosts_direct: list[HostSim] = []
+    net_listen: list[NetSim] = []
+    net_connect: list[NetSim] = []
 
     def full_name(self):
         return 'net.' + self.name
 
-    def connect_network(self, net):
+    def connect_network(self, net: NetSim):
         """Connect this network to the listening peer `net`"""
         net.net_listen.append(self)
         self.net_connect.append(net)
 
-    def connect_sockets(self, env):
+    def connect_sockets(self, env: ExpEnv):
         sockets = []
         for n in self.nics:
             sockets.append((n, env.nic_eth_path(n)))
@@ -164,7 +164,7 @@ class NetSim(Simulator):
             sockets.append((h, env.net2host_eth_path(self, h)))
         return sockets
 
-    def listen_sockets(self, env):
+    def listen_sockets(self, env: ExpEnv):
         listens = []
         for net in self.net_listen:
             listens.append((net, env.n2n_eth_path(self, net)))
@@ -173,10 +173,10 @@ class NetSim(Simulator):
     def dependencies(self):
         return self.nics + self.net_connect + self.hosts_direct
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv):
         return [s for (_,s) in self.listen_sockets(env)]
 
-    def sockets_wait(self, env):
+    def sockets_wait(self, env: ExpEnv):
         return [s for (_,s) in self.listen_sockets(env)]
 
 
@@ -419,7 +419,7 @@ class MultiSubNIC(NICSim):
     def start_delay(self):
         return 0
 
-class I40eMultiNIC(Simulator):
+class I40eMultiNIC(Simulator):  # TODO Fix typing, e.g., by making this a sublcass of NICSim
     name = ''
 
     def __init__(self):

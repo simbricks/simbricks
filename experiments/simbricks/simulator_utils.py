@@ -33,10 +33,10 @@ def create_basic_hosts(
     num: int,
     name_prefix: str,
     net: NetSim,
-    nic_class: NICSim,
-    host_class: HostSim,
-    nc_class: NodeConfig,
-    app_class: AppConfig,
+    nic_class: tp.Type[NICSim],
+    host_class: tp.Type[HostSim],
+    nc_class: tp.Type[NodeConfig],
+    app_class: tp.Type[AppConfig],
     ip_start: int = 1,
     ip_prefix: int = 24
 ):
@@ -76,9 +76,9 @@ def create_multinic_hosts(
     num: int,
     name_prefix: str,
     net: NetSim,
-    host_class: HostSim,
-    nc_class: NodeConfig,
-    app_class: AppConfig,
+    host_class: tp.Type[HostSim],
+    nc_class: tp.Type[NodeConfig],
+    app_class: tp.Type[AppConfig],
     ip_start: int = 1,
     ip_prefix: int = 24
 ):
