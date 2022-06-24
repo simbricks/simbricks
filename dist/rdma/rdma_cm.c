@@ -22,15 +22,15 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "dist/rdma/rdma.h"
-#include "dist/rdma/net_rdma.h"
-
 #include <rdma/rdma_cma.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "dist/rdma/net_rdma.h"
+#include "dist/rdma/rdma.h"
+
 static struct rdma_event_channel *cm_channel;
-static struct rdma_conn_param conn_param = { };
+static struct rdma_conn_param conn_param = {};
 static struct rdma_cm_id *cm_id;
 
 int RdmaCMListen(struct sockaddr_in *addr) {
@@ -45,7 +45,7 @@ int RdmaCMListen(struct sockaddr_in *addr) {
     return 1;
   }
 
-  if (rdma_bind_addr(listen_id, (struct sockaddr *) addr)) {
+  if (rdma_bind_addr(listen_id, (struct sockaddr *)addr)) {
     perror("RdmaListen: rdma_bind_addr failed");
     return 1;
   }
@@ -115,7 +115,7 @@ int RdmaCMConnect(struct sockaddr_in *addr) {
     return 1;
   }
 
-  if (rdma_resolve_addr(cm_id, NULL, (struct sockaddr *) addr, 5000)) {
+  if (rdma_resolve_addr(cm_id, NULL, (struct sockaddr *)addr, 5000)) {
     perror("RdmaConnect: rdma_resolve_addr failed");
     return 1;
   }
@@ -158,7 +158,7 @@ int RdmaCMConnect(struct sockaddr_in *addr) {
     return 1;
 
   conn_param.initiator_depth = 1;
-  conn_param.retry_count     = 7;
+  conn_param.retry_count = 7;
   if (rdma_connect(cm_id, &conn_param)) {
     perror("RdmaConnect: rdma_connect failed");
     return 1;

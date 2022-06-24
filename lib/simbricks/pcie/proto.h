@@ -89,7 +89,6 @@ struct SimbricksProtoPcieDevIntro {
   uint16_t psi_msix_cap_offset;
 } __attribute__((packed));
 
-
 /** welcome message sent by host to device */
 struct SimbricksProtoPcieHostIntro {
   uint32_t dummy; /* not used, but need to avoid empty struct for standard C */

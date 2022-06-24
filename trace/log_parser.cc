@@ -33,9 +33,8 @@
 
 namespace bio = boost::iostreams;
 
-log_parser::log_parser() : inf(nullptr), gz_file(nullptr), gz_in(nullptr),
-    buf_len(0), buf_pos(0)
-{
+log_parser::log_parser()
+    : inf(nullptr), gz_file(nullptr), gz_in(nullptr), buf_len(0), buf_pos(0) {
   buf = new char[block_size];
 }
 
@@ -125,11 +124,11 @@ bool log_parser::next_event() {
 
 void log_parser::read_coro(coro_t::push_type &sink_) {
   sink = &sink_;
-  while (next_event());
+  while (next_event())
+    ;
 }
 
-void log_parser::yield(std::shared_ptr<event> ev)
-{
+void log_parser::yield(std::shared_ptr<event> ev) {
   got_event = true;
   ev->source = this;
   (*sink)(ev);

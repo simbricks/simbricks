@@ -1,8 +1,8 @@
+#include <signal.h>
 #include <verilated.h>
 #include <verilated_fst_c.h>
 
 #include <iostream>
-#include <signal.h>
 #include <vector>
 
 #include "sims/net/menshen/obj_dir/Vrmt_wrapper.h"
@@ -21,7 +21,7 @@ int synchronized = 0;
 uint64_t sync_period = (500 * 1000ULL);  // 500ns
 uint64_t eth_latency = (500 * 1000ULL);  // 500ns
 int sync_mode = SIMBRICKS_PROTO_SYNC_SIMBRICKS;
-static uint64_t clock_period = 4 * 1000ULL;   // 4ns -> 250MHz
+static uint64_t clock_period = 4 * 1000ULL;  // 4ns -> 250MHz
 uint64_t main_time = 0;
 int exiting = 0;
 EthernetTx *txMAC;
@@ -61,19 +61,16 @@ static void dump_if(Vrmt_wrapper *top) {
   std::cout << "  vlan_drop_flags = " << top->vlan_drop_flags << std::endl;
   std::cout << std::endl;
 
-
   std::cout << "  s_axis_tdata = { ";
   for (size_t i = 0;
-       i < sizeof(top->s_axis_tdata) / sizeof(top->s_axis_tdata[0]);
-       i++) {
+       i < sizeof(top->s_axis_tdata) / sizeof(top->s_axis_tdata[0]); i++) {
     std::cout << top->s_axis_tdata[i] << " ";
   }
   std::cout << "}" << std::endl;
   std::cout << "  s_axis_tkeep = " << top->s_axis_tkeep << std::endl;
   std::cout << "  s_axis_tuser = { ";
   for (size_t i = 0;
-       i < sizeof(top->s_axis_tuser) / sizeof(top->s_axis_tuser[0]);
-       i++) {
+       i < sizeof(top->s_axis_tuser) / sizeof(top->s_axis_tuser[0]); i++) {
     std::cout << top->s_axis_tuser[i] << " ";
   }
   std::cout << "}" << std::endl;
@@ -82,19 +79,16 @@ static void dump_if(Vrmt_wrapper *top) {
   std::cout << "  s_axis_tlast = " << top->s_axis_tlast << std::endl;
   std::cout << std::endl;
 
-
   std::cout << "  m_axis_tdata = { ";
   for (size_t i = 0;
-       i < sizeof(top->m_axis_tdata) / sizeof(top->m_axis_tdata[0]);
-       i++) {
+       i < sizeof(top->m_axis_tdata) / sizeof(top->m_axis_tdata[0]); i++) {
     std::cout << top->m_axis_tdata[i] << " ";
   }
   std::cout << "}" << std::endl;
   std::cout << "  m_axis_tkeep = " << top->m_axis_tkeep << std::endl;
   std::cout << "  m_axis_tuser = { ";
   for (size_t i = 0;
-       i < sizeof(top->m_axis_tuser) / sizeof(top->m_axis_tuser[0]);
-       i++) {
+       i < sizeof(top->m_axis_tuser) / sizeof(top->m_axis_tuser[0]); i++) {
     std::cout << top->m_axis_tuser[i] << " ";
   }
   std::cout << "}" << std::endl;
@@ -116,7 +110,8 @@ class EthernetTx {
   void packet_done(uint16_t port_id) {
     if (port_id >= ports.size()) {
 #ifdef ETH_DEBUG
-      std::cerr << "EthernetTx: invalid port set (" << port_id << "), setting to 0" << std::endl;
+      std::cerr << "EthernetTx: invalid port set (" << port_id
+                << "), setting to 0" << std::endl;
 #endif
       port_id = 0;
     }
@@ -138,7 +133,7 @@ class EthernetTx {
 
     if (top.m_axis_tvalid) {
       /* iterate over all bytes on the bus */
-      uint8_t *txbus = (uint8_t *) &top.m_axis_tdata;
+      uint8_t *txbus = (uint8_t *)&top.m_axis_tdata;
       for (size_t i = 0; i < sizeof(top.m_axis_tdata); i++) {
         if ((top.m_axis_tkeep & (1ULL << i)) != 0) {
           assert(packet_len < 2048);
@@ -205,7 +200,8 @@ class EthernetRx {
       if (packet_off != 0 && !top.s_axis_tready) {
         // no ready signal, can't advance
 #ifdef ETH_DEBUG
-        std::cerr << "eth rx: no ready " << fifo_pos_rd << " " << packet_off << std::endl;
+        std::cerr << "eth rx: no ready " << fifo_pos_rd << " " << packet_off
+                  << std::endl;
 #endif
       } else if (packet_off == fifo_lens[fifo_pos_rd]) {
         // done with packet
@@ -228,7 +224,7 @@ class EthernetRx {
           std::cout << "rx from " << fifo_pos_rd << std::endl;
 #endif
         top.s_axis_tkeep = 0;
-        uint8_t *rdata = (uint8_t *) &top.s_axis_tdata;
+        uint8_t *rdata = (uint8_t *)&top.s_axis_tdata;
         size_t i;
 
         /*if (packet_off == 0) {
@@ -236,13 +232,14 @@ class EthernetRx {
         }*/
         if (packet_off == 0)
           top.s_axis_tuser[0] = fifo_lens[fifo_pos_rd] |
-            (((uint64_t) fifo_ports[fifo_pos_rd]) << 16) |
-            (((uint64_t) fifo_ports[fifo_pos_rd]) << 24);
+                                (((uint64_t)fifo_ports[fifo_pos_rd]) << 16) |
+                                (((uint64_t)fifo_ports[fifo_pos_rd]) << 24);
         else
           top.s_axis_tuser[0] = 0;
 
         for (i = 0; i < sizeof(top.s_axis_tdata) &&
-                    packet_off < fifo_lens[fifo_pos_rd]; i++) {
+                    packet_off < fifo_lens[fifo_pos_rd];
+             i++) {
           rdata[i] = fifo_bufs[fifo_pos_rd][packet_off];
           top.s_axis_tkeep |= (1ULL << i);
           packet_off++;
@@ -298,8 +295,8 @@ int main(int argc, char *argv[]) {
   reset_inputs(top);
   top->aresetn = 0;
   for (int i = 0; i < 16; i++) {
-      top->eval();
-      top->clk = !top->clk;
+    top->eval();
+    top->clk = !top->clk;
   }
   top->aresetn = 1;
 
@@ -321,7 +318,7 @@ int main(int argc, char *argv[]) {
     }
     ports.push_back(np);
   }
-  
+
   txMAC = new EthernetTx(*top);
   rxMAC = new EthernetRx(*top);
 
@@ -362,8 +359,6 @@ int main(int argc, char *argv[]) {
   trace->close();
 #endif
   dump_if(top);
-
-  
 
   return 0;
 }

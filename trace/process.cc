@@ -80,14 +80,13 @@ void MergeEvents(coro_t::push_type &sink,
 
 void Printer(coro_t::pull_type &source) {
   uint64_t ts_off = 0;
-  for (auto ev: source) {
+  for (auto ev : source) {
     std::shared_ptr<EHostCall> hc;
     std::shared_ptr<EHostInstr> hi;
     if ((hi = std::dynamic_pointer_cast<EHostInstr>(ev))) {
       continue;
     } else if ((hc = std::dynamic_pointer_cast<EHostCall>(ev)) &&
-        strcmp(ev->source->label, "C") &&
-        hc->fun == "__sys_sendto") {
+               strcmp(ev->source->label, "C") && hc->fun == "__sys_sendto") {
       std::cout << "---------- REQ START:" << ev->ts << std::endl;
       ts_off = ev->ts;
     }
@@ -101,7 +100,7 @@ void Printer(coro_t::pull_type &source) {
 }
 
 void Consumer(coro_t::pull_type &source) {
-  for (auto ev: source) {
+  for (auto ev : source) {
   }
 }
 
@@ -111,15 +110,15 @@ struct InstStatsData {
   uint64_t tMin;
   uint64_t tMax;
   uint64_t tMean;
-  std::vector <uint64_t> tAll;
+  std::vector<uint64_t> tAll;
 };
 
 void InstStats(coro_t::push_type &sink, coro_t::pull_type &source,
-    struct InstStatsData &data) {
+               struct InstStatsData &data) {
   uint64_t last_ts = 0;
   uint64_t first_ts = 0;
   data.nInsts = 0;
-  for (auto ev: source) {
+  for (auto ev : source) {
     std::shared_ptr<EHostInstr> hi;
     if ((hi = std::dynamic_pointer_cast<EHostInstr>(ev))) {
       if (!last_ts) {
@@ -140,9 +139,9 @@ void InstStats(coro_t::push_type &sink, coro_t::pull_type &source,
         /*if (lat > 4000)
           std::cout << "ILAT: " << lat  << " " << std::hex << hi->pc <<
               std::dec << "  " << hi->ts << std::endl;*/
-        }
+      }
       last_ts = hi->ts;
-      //last_pc = hi->pc;
+      // last_pc = hi->pc;
     }
     sink(ev);
   }
@@ -153,11 +152,11 @@ void InstStats(coro_t::push_type &sink, coro_t::pull_type &source,
     data.tMean = 0;
 }
 
-
 int main(int argc, char *argv[]) {
   if (argc != 5) {
     std::cerr << "Usage: process CLIENT_HLOG CLIENT_NLOG SERVER_HLOG "
-                  "SERVER_CLOG" << std::endl;
+                 "SERVER_CLOG"
+              << std::endl;
     return 1;
   }
 
@@ -211,11 +210,11 @@ int main(int argc, char *argv[]) {
   std::set<InstStatsData *> isds;
   for (auto p : all_parsers) {
     coro_t::pull_type *src = new coro_t::pull_type(
-      boost::bind(&log_parser::read_coro, boost::ref(*p), _1));
-      InstStatsData *isd = new InstStatsData;
-      isd->label = p->label;
+        boost::bind(&log_parser::read_coro, boost::ref(*p), _1));
+    InstStatsData *isd = new InstStatsData;
+    isd->label = p->label;
     coro_t::pull_type *istat = new coro_t::pull_type(
-      boost::bind(InstStats, _1, boost::ref(*src), boost::ref(*isd)));
+        boost::bind(InstStats, _1, boost::ref(*src), boost::ref(*isd)));
     sources.insert(istat);
     isds.insert(isd);
   }
@@ -234,8 +233,8 @@ int main(int argc, char *argv[]) {
     std::cout << "    Instrs: " << isd->nInsts << std::endl;
     std::cout << "    Mean instr time: " << isd->tMean << std::endl;
     for (int i = 0; i <= 100; i += 1)
-      std::cout << "    P[" << i << "] instr time: " <<
-          isd->tAll[isd->tAll.size() * i / 100 - (i == 100 ? 1 : 0)] <<
-          std::endl;
+      std::cout << "    P[" << i << "] instr time: "
+                << isd->tAll[isd->tAll.size() * i / 100 - (i == 100 ? 1 : 0)]
+                << std::endl;
   }
 }

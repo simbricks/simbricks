@@ -28,19 +28,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <simbricks/network/proto.h>
 #include <simbricks/base/generic.h>
-
+#include <simbricks/network/proto.h>
 
 struct SimbricksNetIf {
-    struct SimbricksBaseIf base;
+  struct SimbricksBaseIf base;
 };
 
 void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params);
 int SimbricksNetIfInit(struct SimbricksNetIf *nsif,
                        struct SimbricksBaseIfParams *params,
-                       const char *eth_socket_path,
-                       int *sync_eth);
+                       const char *eth_socket_path, int *sync_eth);
 
 /** Generate queue access functions */
 SIMBRICKS_BASEIF_GENERIC(SimbricksNetIf, SimbricksProtoNetMsg, SimbricksNetIf);

@@ -28,12 +28,10 @@
 #include <stdio.h>
 #include <string.h>
 
-int SimbricksNicIfInit(struct SimbricksNicIf *nicif,
-                       const char *shm_path,
+int SimbricksNicIfInit(struct SimbricksNicIf *nicif, const char *shm_path,
                        struct SimbricksBaseIfParams *netParams,
                        struct SimbricksBaseIfParams *pcieParams,
-                       struct SimbricksProtoPcieDevIntro *di)
-{
+                       struct SimbricksProtoPcieDevIntro *di) {
   struct SimbricksBaseIf *netif = &nicif->net.base;
   struct SimbricksBaseIf *pcieif = &nicif->pcie.base;
 
@@ -97,8 +95,7 @@ int SimbricksNicIfInit(struct SimbricksNicIf *nicif,
   return SimBricksBaseIfEstablish(ests, n_bifs);
 }
 
-int SimbricksNicIfCleanup(struct SimbricksNicIf *nicif)
-{
+int SimbricksNicIfCleanup(struct SimbricksNicIf *nicif) {
   SimbricksBaseIfClose(&nicif->pcie.base);
   SimbricksBaseIfClose(&nicif->net.base);
   /* TODO: unlink? */

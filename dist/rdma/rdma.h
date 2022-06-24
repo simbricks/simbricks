@@ -25,21 +25,18 @@
 #ifndef DIST_RDMA_H_
 #define DIST_RDMA_H_
 
-#include "dist/rdma/net_rdma.h"
-
 #include <infiniband/verbs.h>
+
+#include "dist/rdma/net_rdma.h"
 
 int RdmaCommonInit(struct ibv_context *ctx);
 
 int RdmaCMListen(struct sockaddr_in *addr);
 int RdmaCMConnect(struct sockaddr_in *addr);
-struct ibv_qp *RdmaCMCreateQP(struct ibv_pd *pd,
-                              struct ibv_qp_init_attr *attr);
+struct ibv_qp *RdmaCMCreateQP(struct ibv_pd *pd, struct ibv_qp_init_attr *attr);
 
 int RdmaIBListen(struct sockaddr_in *addr);
 int RdmaIBConnect(struct sockaddr_in *addr);
-struct ibv_qp *RdmaIBCreateQP(struct ibv_pd *pd,
-                              struct ibv_qp_init_attr *attr);
+struct ibv_qp *RdmaIBCreateQP(struct ibv_pd *pd, struct ibv_qp_init_attr *attr);
 
 #endif  // DIST_RDMA_H_
-

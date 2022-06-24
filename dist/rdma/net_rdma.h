@@ -25,12 +25,11 @@
 #ifndef DIST_NET_RDMA_H_
 #define DIST_NET_RDMA_H_
 
-#include "dist/common/base.h"
-
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "dist/common/base.h"
 
 // configuration variables
 extern size_t shm_size;

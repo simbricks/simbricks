@@ -22,14 +22,13 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "dist/rdma/rdma.h"
-#include "dist/rdma/net_rdma.h"
-
 #include <rdma/rdma_cma.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "dist/rdma/net_rdma.h"
+#include "dist/rdma/rdma.h"
 
 struct RdmaIBInitMsg {
   union ibv_gid gid;
@@ -57,7 +56,7 @@ static int SockListen(struct sockaddr_in *addr) {
     return 1;
   }
 
-  if (bind(lfd, (struct sockaddr *) addr, sizeof(*addr))) {
+  if (bind(lfd, (struct sockaddr *)addr, sizeof(*addr))) {
     perror("RdmaIBListen: bind failed");
     return 1;
   }
@@ -81,7 +80,7 @@ static int SockConnect(struct sockaddr_in *addr) {
     return 1;
   }
 
-  if (connect(sock_fd, (struct sockaddr *) addr, sizeof(*addr))) {
+  if (connect(sock_fd, (struct sockaddr *)addr, sizeof(*addr))) {
     perror("RdmaIBConnect: connect failed");
   }
   return 0;
@@ -152,7 +151,6 @@ static int CommonInit() {
   out_msg.qpn = ib_qp->qp_num;
   out_msg.psn = psn_local;
 
-
   if (write(sock_fd, &out_msg, sizeof(out_msg)) != sizeof(out_msg)) {
     perror("CommonInit: write failed");
   }
@@ -165,8 +163,8 @@ static int CommonInit() {
 #ifdef RDMA_DEBUG
   fprintf(stderr, "out: lid=%x qpn=%x psn=%x iid=%lx\n", out_msg.lid,
           out_msg.qpn, out_msg.psn, out_msg.gid.global.interface_id);
-  fprintf(stderr, "in: lid=%x qpn=%x psn=%x iid=%lx\n", in_msg.lid,
-          in_msg.qpn, in_msg.psn, in_msg.gid.global.interface_id);
+  fprintf(stderr, "in: lid=%x qpn=%x psn=%x iid=%lx\n", in_msg.lid, in_msg.qpn,
+          in_msg.psn, in_msg.gid.global.interface_id);
 #endif
 
   // change queue pair to "ready to receive"
@@ -191,13 +189,9 @@ static int CommonInit() {
     attr.ah_attr.grh.sgid_index = ib_sgid_idx;
   }
   if (ibv_modify_qp(ib_qp, &attr,
-                    IBV_QP_STATE |
-                      IBV_QP_AV |
-                      IBV_QP_PATH_MTU |
-                      IBV_QP_DEST_QPN |
-                      IBV_QP_RQ_PSN |
-                      IBV_QP_MAX_DEST_RD_ATOMIC |
-                      IBV_QP_MIN_RNR_TIMER)) {
+                    IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU |
+                        IBV_QP_DEST_QPN | IBV_QP_RQ_PSN |
+                        IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER)) {
     perror("CommonInit: Failed to modify QP to RTR");
     return 1;
   }
@@ -210,12 +204,9 @@ static int CommonInit() {
   attr.sq_psn = psn_local;
   attr.max_rd_atomic = 1;
   if (ibv_modify_qp(ib_qp, &attr,
-                    IBV_QP_STATE |
-                      IBV_QP_TIMEOUT |
-                      IBV_QP_RETRY_CNT |
-                      IBV_QP_RNR_RETRY |
-                      IBV_QP_SQ_PSN |
-                      IBV_QP_MAX_QP_RD_ATOMIC)) {
+                    IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT |
+                        IBV_QP_RNR_RETRY | IBV_QP_SQ_PSN |
+                        IBV_QP_MAX_QP_RD_ATOMIC)) {
     perror("CommonInit: Failed to modify QP to RTS");
     return 1;
   }
@@ -246,17 +237,13 @@ struct ibv_qp *RdmaIBCreateQP(struct ibv_pd *pd,
   }
 
   // transition queue pair from reset to init state
-  struct ibv_qp_attr attr_init = {
-    .qp_state = IBV_QPS_INIT,
-    .pkey_index = 0,
-    .port_num = ib_port,
-    .qp_access_flags = 0
-  };
+  struct ibv_qp_attr attr_init = {.qp_state = IBV_QPS_INIT,
+                                  .pkey_index = 0,
+                                  .port_num = ib_port,
+                                  .qp_access_flags = 0};
   if (ibv_modify_qp(ib_qp, &attr_init,
-                    IBV_QP_STATE |
-                      IBV_QP_PKEY_INDEX |
-                      IBV_QP_PORT |
-                      IBV_QP_ACCESS_FLAGS)) {
+                    IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT |
+                        IBV_QP_ACCESS_FLAGS)) {
     perror("RdmaIBCreateQP: ibv_modify_qp failed (reset -> init)");
     ibv_destroy_qp(ib_qp);
     return NULL;

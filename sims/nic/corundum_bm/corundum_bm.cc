@@ -193,7 +193,8 @@ void EventRing::issueEvent(unsigned type, unsigned source) {
     event->type = type;
     event->source = source;
 #ifdef DEBUG
-    printf("corundum_bm: event ring issue dma addr %lx index %lu len %lu\n", op->dma_addr_, op->tag, op->len_);
+    printf("corundum_bm: event ring issue dma addr %lx index %lu len %lu\n",
+           op->dma_addr_, op->tag, op->len_);
 #endif
     runner->IssueDma(*op);
     this->_currHead++;
@@ -279,7 +280,8 @@ void TxRing::setHeadPtr(ptr_t ptr) {
     op->tag = this->_currTail;
     op->write_ = false;
 #ifdef DEBUG
-  printf("corundum_bm: tx issue dma addr %lx index %lu len %lu\n", op->dma_addr_, op->tag, op->len_);
+    printf("corundum_bm: tx issue dma addr %lx index %lu len %lu\n",
+           op->dma_addr_, op->tag, op->len_);
 #endif
     runner->IssueDma(*op);
     this->_currTail++;
@@ -292,7 +294,8 @@ void TxRing::dmaDone(DMAOp *op) {
       assert(!op->write_);
       Desc *desc = (Desc *)op->data_;
 #ifdef DEBUG
-      printf("corundum_bm: tx dma desc done addr %lx index %lu len %u\n", desc->addr, op->tag, desc->len);
+      printf("corundum_bm: tx dma desc done addr %lx index %lu len %u\n",
+             desc->addr, op->tag, desc->len);
 #endif
       op->type = DMA_TYPE_MEM;
       op->dma_addr_ = desc->addr;
@@ -304,7 +307,8 @@ void TxRing::dmaDone(DMAOp *op) {
     case DMA_TYPE_MEM:
       assert(!op->write_);
 #ifdef DEBUG
-      printf("corundum_bm: tx dma memory done index %lu len %lu\n", op->tag, op->len_);
+      printf("corundum_bm: tx dma memory done index %lu len %lu\n", op->tag,
+             op->len_);
 #endif
       runner->EthSend(op->data_, op->len_);
       updatePtr((ptr_t)op->tag, false);
@@ -329,7 +333,8 @@ void RxRing::dmaDone(DMAOp *op) {
       assert(!op->write_);
       Desc *desc = (Desc *)op->data_;
 #ifdef DEBUG
-      printf("corundum_bm: rx dma desc done addr %lx index %lu len %lu\n", desc->addr, op->tag, op->rx_data->len);
+      printf("corundum_bm: rx dma desc done addr %lx index %lu len %lu\n",
+             desc->addr, op->tag, op->rx_data->len);
 #endif
       op->type = DMA_TYPE_MEM;
       op->dma_addr_ = desc->addr;
@@ -343,7 +348,8 @@ void RxRing::dmaDone(DMAOp *op) {
     case DMA_TYPE_MEM:
       assert(op->write_);
 #ifdef DEBUG
-      printf("corundum_bm: rx dma memory done index %lu len %lu\n", op->tag, op->len_);
+      printf("corundum_bm: rx dma memory done index %lu len %lu\n", op->tag,
+             op->len_);
 #endif
       updatePtr((ptr_t)op->tag, false);
       this->rxCplRing->complete(op->tag, op->len_, false);
@@ -372,7 +378,8 @@ void RxRing::rx(RxData *rx_data) {
   op->tag = this->_currTail;
   op->write_ = false;
 #ifdef DEBUG
-  printf("corundum_bm: rx issue dma addr %lx index %lu len %lu\n", op->dma_addr_, op->tag, op->len_);
+  printf("corundum_bm: rx issue dma addr %lx index %lu len %lu\n",
+         op->dma_addr_, op->tag, op->len_);
 #endif
   runner->IssueDma(*op);
   this->_currTail++;

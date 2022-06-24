@@ -826,10 +826,10 @@ int_ev::int_ev() {
 }  // namespace i40e
 
 class i40e_factory : public nicbm::MultiNicRunner::DeviceFactory {
-  public:
-    virtual nicbm::Runner::Device &create() override {
-      return *new i40e::i40e_bm;
-    }
+ public:
+  virtual nicbm::Runner::Device &create() override {
+    return *new i40e::i40e_bm;
+  }
 };
 
 int main(int argc, char *argv[]) {

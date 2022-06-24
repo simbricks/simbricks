@@ -22,11 +22,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <unistd.h>
-#include <pcap/pcap.h>
-#include <linux/ip.h>
-#include <linux/if_ether.h>
 #include <arpa/inet.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <pcap/pcap.h>
+#include <unistd.h>
 
 #include <cassert>
 #include <climits>
@@ -49,15 +49,15 @@ extern "C" {
 
 struct SimbricksBaseIfParams netParams;
 static pcap_dumper_t *dumpfile = nullptr;
-#define PKT_LEN 1500 //byte
-static uint64_t bit_rate = 100 * 1000ULL * 1000ULL * 1000ULL; // 100 Gbps
-static uint64_t target_tick = 1 * 1000ULL * 1000ULL * 1000ULL * 1000ULL; // 1s
+#define PKT_LEN 1500                                           // byte
+static uint64_t bit_rate = 100 * 1000ULL * 1000ULL * 1000ULL;  // 100 Gbps
+static uint64_t target_tick = 1 * 1000ULL * 1000ULL * 1000ULL * 1000ULL;  // 1s
 static uint64_t last_pkt_sent = 0;
 static uint64_t pkt_recv_num = 0;
 static uint64_t pkt_recv_byte = 0;
 static uint64_t pkt_tx_num = 0;
 static uint64_t pkt_tx_byte = 0;
-static uint64_t period = (1E12 * 8 * PKT_LEN) / bit_rate; // per packet
+static uint64_t period = (1E12 * 8 * PKT_LEN) / bit_rate;  // per packet
 static uint8_t packet[PKT_LEN];
 
 #ifdef NETSWITCH_STAT
@@ -92,7 +92,7 @@ struct MAC {
   }
 };
 
-struct mac_addr{
+struct mac_addr {
   uint8_t addr[6];
 };
 
@@ -108,7 +108,6 @@ struct hash<MAC> {
   }
 };
 }  // namespace std
-
 
 /** Abstract base switch port */
 class Port {
@@ -128,12 +127,11 @@ class Port {
   virtual bool IsSync() = 0;
   virtual void Sync(uint64_t cur_ts) = 0;
   virtual uint64_t NextTimestamp() = 0;
-  virtual enum RxPollState RxPacket(
-      const void *& data, size_t &len, uint64_t cur_ts) = 0;
+  virtual enum RxPollState RxPacket(const void *&data, size_t &len,
+                                    uint64_t cur_ts) = 0;
   virtual void RxDone() = 0;
   virtual bool TxPacket(const void *data, size_t len, uint64_t cur_ts) = 0;
 };
-
 
 /** Normal network switch port (conneting to a NIC) */
 class NetPort : public Port {
@@ -150,8 +148,12 @@ class NetPort : public Port {
     memset(&dest_mac, 0, sizeof(dest_mac));
   }
 
-  NetPort(const NetPort &other) : netifObj_(other.netifObj_),
-      netif_(&netifObj_), rx_(other.rx_), sync_(other.sync_) {}
+  NetPort(const NetPort &other)
+      : netifObj_(other.netifObj_),
+        netif_(&netifObj_),
+        rx_(other.rx_),
+        sync_(other.sync_) {
+  }
 
   virtual bool Connect(const char *path, int sync) override {
     sync_ = sync;
@@ -163,15 +165,16 @@ class NetPort : public Port {
   }
 
   virtual void Sync(uint64_t cur_ts) override {
-    while (SimbricksNetIfOutSync(netif_, cur_ts));
+    while (SimbricksNetIfOutSync(netif_, cur_ts))
+      ;
   }
 
   virtual uint64_t NextTimestamp() override {
     return SimbricksNetIfInTimestamp(netif_);
   }
 
-  virtual enum RxPollState RxPacket(
-      const void *& data, size_t &len, uint64_t cur_ts) override {
+  virtual enum RxPollState RxPacket(const void *&data, size_t &len,
+                                    uint64_t cur_ts) override {
     assert(rx_ == nullptr);
 
     rx_ = SimbricksNetIfInPoll(netif_, cur_ts);
@@ -198,10 +201,10 @@ class NetPort : public Port {
     rx_ = nullptr;
   }
 
-  virtual bool TxPacket(
-      const void *data, size_t len, uint64_t cur_ts) override {
+  virtual bool TxPacket(const void *data, size_t len,
+                        uint64_t cur_ts) override {
     volatile union SimbricksProtoNetMsg *msg_to =
-      SimbricksNetIfOutAlloc(netif_, cur_ts);
+        SimbricksNetIfOutAlloc(netif_, cur_ts);
     if (!msg_to && !sync_) {
       return false;
     } else if (!msg_to && sync_) {
@@ -218,7 +221,6 @@ class NetPort : public Port {
     return true;
   }
 };
-
 
 /** Hosting network switch port (connected to another network) */
 class NetHostPort : public NetPort {
@@ -244,7 +246,7 @@ class NetHostPort : public NetPort {
     if (!sync)
       params.sync_mode = kSimbricksBaseIfSyncDisabled;
     int ret = SimbricksNicIfInit(&nicif_, shm_path.c_str(), &params, nullptr,
-        nullptr);
+                                 nullptr);
     sync_ = SimbricksBaseIfSyncEnabled(&netif_->base);
     return ret == 0;
   }
@@ -253,7 +255,6 @@ class NetHostPort : public NetPort {
     return sync_;
   }
 };
-
 
 /* Global variables */
 static uint64_t cur_ts = 0;
@@ -283,12 +284,12 @@ static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id) {
 
   // log to pcap file if initialized
   if (dumpfile) {
-      memset(&ph, 0, sizeof(ph));
-      ph.ts.tv_sec = cur_ts / 1000000000000ULL;
-      ph.ts.tv_usec = (cur_ts % 1000000000000ULL) / 1000ULL;
-      ph.caplen = pkt_len;
-      ph.len = pkt_len;
-      pcap_dump((unsigned char *)dumpfile, &ph, (unsigned char *)pkt_data);
+    memset(&ph, 0, sizeof(ph));
+    ph.ts.tv_sec = cur_ts / 1000000000000ULL;
+    ph.ts.tv_usec = (cur_ts % 1000000000000ULL) / 1000ULL;
+    ph.caplen = pkt_len;
+    ph.len = pkt_len;
+    pcap_dump((unsigned char *)dumpfile, &ph, (unsigned char *)pkt_data);
   }
   // print sending tick: [packet type] source_IP -> dest_IP len:
 
@@ -296,22 +297,21 @@ static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id) {
   uint16_t eth_proto;
   struct ethhdr *hdr;
   struct iphdr *iph;
-  hdr = (struct ethhdr*)pkt_data;
+  hdr = (struct ethhdr *)pkt_data;
   eth_proto = ntohs(hdr->h_proto);
   iph = (struct iphdr *)(hdr + 1);
   fprintf(stderr, "%20lu: ", cur_ts);
-  if (eth_proto == ETH_P_IP){
+  if (eth_proto == ETH_P_IP) {
     fprintf(stderr, "[ IP] ");
-    
-  } 
-  else if(eth_proto == ETH_P_ARP){
+
+  } else if (eth_proto == ETH_P_ARP) {
     fprintf(stderr, "[ARP] ");
-  } 
-  else{
+  } else {
     fprintf(stderr, "unkwon eth type\n");
   }
 
-  fprintf(stderr, "%8X -> %8X len: %lu\n ", iph->saddr, iph->daddr, iph->tot_len + sizeof(struct ethhdr));
+  fprintf(stderr, "%8X -> %8X len: %lu\n ", iph->saddr, iph->daddr,
+          iph->tot_len + sizeof(struct ethhdr));
 #endif
 
   if (!dest_port.TxPacket(pkt_data, pkt_len, cur_ts))
@@ -326,26 +326,25 @@ static void pollq(Port &port, size_t iport) {
 
 #ifdef NETSWITCH_STAT
   d2n_poll_total += 1;
-  if (stat_flag){
+  if (stat_flag) {
     s_d2n_poll_total += 1;
   }
 #endif
 
 #ifdef NETSWITCH_STAT
-    d2n_poll_suc += 1;
-    if (stat_flag){
-      s_d2n_poll_suc += 1;
-    }
+  d2n_poll_suc += 1;
+  if (stat_flag) {
+    s_d2n_poll_suc += 1;
+  }
 #endif
 
   enum Port::RxPollState poll = port.RxPacket(pkt_data, pkt_len, cur_ts);
   if (poll == Port::kRxPollFail) {
-    return; // do nothing
+    return;  // do nothing
   }
 
-
-  if (poll == Port::kRxPollSuccess) { 
-    //stat received bytes
+  if (poll == Port::kRxPollSuccess) {
+    // stat received bytes
     pkt_recv_num++;
     pkt_recv_byte += pkt_len;
 
@@ -372,7 +371,7 @@ static void pollq(Port &port, size_t iport) {
   } else if (poll == Port::kRxPollSync) {
 #ifdef NETSWITCH_STAT
     d2n_poll_sync += 1;
-    if (stat_flag){
+    if (stat_flag) {
       s_d2n_poll_sync += 1;
     }
 #endif
@@ -381,31 +380,26 @@ static void pollq(Port &port, size_t iport) {
     abort();
   }
   port.RxDone();
-
-
-
 }
 
-
-static void sendq(Port &port, size_t iport){
-  //then send 
-  if (port.IsSync()){
-    while((last_pkt_sent + period) <= cur_ts){
+static void sendq(Port &port, size_t iport) {
+  // then send
+  if (port.IsSync()) {
+    while ((last_pkt_sent + period) <= cur_ts) {
       port.TxPacket(packet, PKT_LEN, last_pkt_sent + period);
       last_pkt_sent += period;
       pkt_tx_num++;
       pkt_tx_byte += PKT_LEN;
     }
-  }
-  else{
+  } else {
     port.TxPacket(packet, PKT_LEN, last_pkt_sent + period);
   }
   // if not sync: send packet
   // else: send packet periodically until allowed time
-  // while(allowed_timestamp){ since_last_send + period = to_send_time <= curtick 
+  // while(allowed_timestamp){ since_last_send + period = to_send_time <=
+  // curtick
   //  txpacket(todest)
   // }
-
 }
 
 int main(int argc, char *argv[]) {
@@ -459,8 +453,8 @@ int main(int argc, char *argv[]) {
         pc = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, 65535,
                                                   PCAP_TSTAMP_PRECISION_NANO);
         if (pc == nullptr) {
-            perror("pcap_open_dead failed");
-            return EXIT_FAILURE;
+          perror("pcap_open_dead failed");
+          return EXIT_FAILURE;
         }
 
         dumpfile = pcap_dump_open(pc, optarg);
@@ -474,13 +468,12 @@ int main(int argc, char *argv[]) {
       case 'b':
         brate = strtol(optarg, NULL, 0);
         fprintf(stderr, "bit rate set to: %d Gbps\n", brate);
-        if (brate == 0){
+        if (brate == 0) {
           period = ULLONG_MAX;
+        } else {
+          bit_rate = brate * 1000ULL * 1000ULL * 1000ULL;
+          period = (1E12 * 8 * PKT_LEN) / bit_rate;  // per packet
         }
-        else{
-          bit_rate = brate * 1000ULL * 1000ULL * 1000ULL; 
-          period = (1E12 * 8 * PKT_LEN) / bit_rate; // per packet
-        }     
         assert(brate < 200);
         break;
 
@@ -498,22 +491,20 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-
   Port *pkt_port = ports.front();
   pkt_port->my_mac.addr[5] = my_num;
-  if (my_num % 2){ // odd num
+  if (my_num % 2) {  // odd num
     pkt_port->dest_mac.addr[5] = my_num - 1;
-  }
-  else{ // even number
+  } else {  // even number
     pkt_port->dest_mac.addr[5] = my_num + 1;
   }
-  struct mac_addr *mac_tmp = (struct mac_addr*)(&packet[0]);
-  mac_tmp->addr[5] = pkt_port->dest_mac.addr[5]; //dest mac
-  mac_tmp = (struct mac_addr*)(&packet[6]);
-  mac_tmp->addr[5] = pkt_port->my_mac.addr[5]; //source mac
+  struct mac_addr *mac_tmp = (struct mac_addr *)(&packet[0]);
+  mac_tmp->addr[5] = pkt_port->dest_mac.addr[5];  // dest mac
+  mac_tmp = (struct mac_addr *)(&packet[6]);
+  mac_tmp->addr[5] = pkt_port->my_mac.addr[5];  // source mac
 
   int kk;
-  for (kk = 12; kk < PKT_LEN - 12; kk++){
+  for (kk = 12; kk < PKT_LEN - 12; kk++) {
     packet[kk] = 0xFF;
   }
 
@@ -524,7 +515,6 @@ int main(int argc, char *argv[]) {
 #ifdef NETSWITCH_STAT
   signal(SIGUSR2, sigusr2_handler);
 #endif
-
 
   printf("start polling\n");
   while (!exiting) {
@@ -551,7 +541,7 @@ int main(int argc, char *argv[]) {
     if (min_ts < ULLONG_MAX) {
       // a bit broken but should probably do
       cur_ts = min_ts;
-      if (cur_ts >= target_tick){
+      if (cur_ts >= target_tick) {
         printf("run to %lu tics\n", cur_ts);
         exiting = 1;
       }
@@ -559,8 +549,10 @@ int main(int argc, char *argv[]) {
   }
 
 #ifdef NETSWITCH_STAT
-  fprintf(stderr, "sent packet: %20lu  [%20lu Byte]\n", pkt_tx_num, pkt_tx_byte);
-  fprintf(stderr, "recv packet: %20lu  [%20lu Byte]\n", pkt_recv_num, pkt_recv_byte);
+  fprintf(stderr, "sent packet: %20lu  [%20lu Byte]\n", pkt_tx_num,
+          pkt_tx_byte);
+  fprintf(stderr, "recv packet: %20lu  [%20lu Byte]\n", pkt_recv_num,
+          pkt_recv_byte);
 
 #endif
 

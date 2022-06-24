@@ -23,7 +23,6 @@
  */
 
 #include "dist/rdma/rdma.h"
-#include "dist/rdma/net_rdma.h"
 
 #include <fcntl.h>
 #include <infiniband/verbs.h>
@@ -32,6 +31,8 @@
 #include <stdlib.h>
 #include <sys/epoll.h>
 #include <unistd.h>
+
+#include "dist/rdma/net_rdma.h"
 
 #define SENDQ_LEN (8 * 1024)
 #define MSG_RXBUFS 512
@@ -73,7 +74,7 @@ static struct ibv_cq *cq;
 static struct ibv_comp_channel *comp_chan;
 static struct ibv_mr *mr_shm;
 static struct ibv_mr *mr_msgs;
-static struct ibv_qp_init_attr qp_attr = { };
+static struct ibv_qp_init_attr qp_attr = {};
 
 static struct NetRdmaMsg msgs[MSG_RXBUFS + MSG_TXBUFS];
 pthread_spinlock_t freelist_spin;
@@ -98,12 +99,12 @@ static void RdmaMsgFree(struct NetRdmaMsg *msg) {
 }
 
 static int RdmMsgRxEnqueue(struct NetRdmaMsg *msg) {
-  struct ibv_sge sge = { };
-  sge.addr = (uintptr_t) msg;
+  struct ibv_sge sge = {};
+  sge.addr = (uintptr_t)msg;
   sge.length = sizeof(*msg);
   sge.lkey = mr_msgs->lkey;
 
-  struct ibv_recv_wr recv_wr = { };
+  struct ibv_recv_wr recv_wr = {};
   recv_wr.wr_id = msg - msgs;
   recv_wr.sg_list = &sge;
   recv_wr.num_sge = 1;
@@ -119,7 +120,7 @@ static int RdmMsgRxEnqueue(struct NetRdmaMsg *msg) {
 static int RdmaMsgRxIntro(struct NetRdmaMsg *msg) {
   if (msg->id >= peer_num) {
     fprintf(stderr, "RdmaMsgRxIntro: invalid peer id in message (%lu)\n",
-        msg->id);
+            msg->id);
     abort();
   }
 
@@ -128,7 +129,7 @@ static int RdmaMsgRxIntro(struct NetRdmaMsg *msg) {
 
   if (peer->intro_valid_remote) {
     fprintf(stderr, "RdmaMsgRxIntro: received multiple messages (%lu)\n",
-        msg->id);
+            msg->id);
     abort();
   }
 
@@ -141,7 +142,7 @@ static int RdmaMsgRxIntro(struct NetRdmaMsg *msg) {
 
   if (BasePeerSetupQueues(peer)) {
     fprintf(stderr, "RdmaMsgRxIntro(%s): queue setup failed\n",
-        peer->sock_path);
+            peer->sock_path);
     abort();
   }
   if (BasePeerSendIntro(peer))
@@ -151,11 +152,11 @@ static int RdmaMsgRxIntro(struct NetRdmaMsg *msg) {
     // now we can send our intro for a listener
     if (peer->is_listener && BaseOpPassIntro(peer)) {
       fprintf(stderr, "RdmaMsgRxIntro(%s): sending l intro failed\n",
-        peer->sock_path);
+              peer->sock_path);
       return 1;
     }
     fprintf(stderr, "RdmaMsgRxIntro(%s): marking peer as ready\n",
-        peer->sock_path);
+            peer->sock_path);
     peer->ready = true;
   }
   return 0;
@@ -209,14 +210,13 @@ int RdmaCommonInit(struct ibv_context *ctx) {
     return 1;
   }
 
-  if (!(mr_shm = ibv_reg_mr(pd, shm_base, shm_size,
-                            IBV_ACCESS_LOCAL_WRITE |
-                            IBV_ACCESS_REMOTE_WRITE))) {
+  if (!(mr_shm =
+            ibv_reg_mr(pd, shm_base, shm_size,
+                       IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE))) {
     perror("RdmaCommonInit: ibv_reg_mr shm failed");
     return 1;
   }
-  if (!(mr_msgs = ibv_reg_mr(pd, msgs, sizeof(msgs),
-                            IBV_ACCESS_LOCAL_WRITE))) {
+  if (!(mr_msgs = ibv_reg_mr(pd, msgs, sizeof(msgs), IBV_ACCESS_LOCAL_WRITE))) {
     perror("RdmaCommonInit: ibv_reg_mr msgs failed");
     return 1;
   }
@@ -384,9 +384,9 @@ int BaseOpPassIntro(struct Peer *peer) {
 
   // connecting peers have sent us an SHM region, need to register this an as MR
   if (!peer->is_listener) {
-    if (!(peer->shm_opaque = ibv_reg_mr(pd, peer->shm_base, peer->shm_size,
-                                        IBV_ACCESS_LOCAL_WRITE |
-                                        IBV_ACCESS_REMOTE_WRITE))) {
+    if (!(peer->shm_opaque =
+              ibv_reg_mr(pd, peer->shm_base, peer->shm_size,
+                         IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE))) {
       perror("BaseOpPassIntro: ibv_reg_mr shm failed");
       return 1;
     }
@@ -407,7 +407,7 @@ int BaseOpPassIntro(struct Peer *peer) {
     return 1;
 
   msg->id = peer - peers;
-  msg->base_addr = (uintptr_t) peer->shm_base;
+  msg->base_addr = (uintptr_t)peer->shm_base;
   struct ibv_mr *mr = peer->shm_opaque;
   msg->rkey = mr->rkey;
   msg->msg_type = kMsgIntro;
@@ -420,11 +420,11 @@ int BaseOpPassIntro(struct Peer *peer) {
   memcpy(msg->intro.data, peer->intro_local, peer->intro_local_len);
 
   struct ibv_sge sge;
-  sge.addr = (uintptr_t) msg;
+  sge.addr = (uintptr_t)msg;
   sge.length = sizeof(*msg);
   sge.lkey = mr_msgs->lkey;
 
-  struct ibv_send_wr send_wr = { };
+  struct ibv_send_wr send_wr = {};
   send_wr.wr_id = msg - msgs;
   send_wr.opcode = IBV_WR_SEND;
   send_wr.send_flags = IBV_SEND_SIGNALED;
@@ -445,8 +445,7 @@ int BaseOpPassIntro(struct Peer *peer) {
 
 int BaseOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
 #ifdef RDMA_DEBUG
-  fprintf(stderr, "BaseOpPassEntries(%s,%u)\n", peer->sock_path,
-          pos);
+  fprintf(stderr, "BaseOpPassEntries(%s,%u)\n", peer->sock_path, pos);
   fprintf(stderr, "  remote_base=%lx local_base=%p\n", peer->remote_base,
           peer->local_base);
 #endif
@@ -458,12 +457,12 @@ int BaseOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
   while (1) {
     uint64_t abs_pos = pos * peer->local_elen;
     struct ibv_sge sge;
-    sge.addr = (uintptr_t) (peer->local_base + abs_pos);
+    sge.addr = (uintptr_t)(peer->local_base + abs_pos);
     sge.length = peer->local_elen * n;
     struct ibv_mr *mr = peer->shm_opaque;
     sge.lkey = mr->lkey;
 
-    struct ibv_send_wr send_wr = { };
+    struct ibv_send_wr send_wr = {};
     send_wr.wr_id = -1ULL;
     send_wr.opcode = IBV_WR_RDMA_WRITE;
     if (triggerSig)
@@ -519,11 +518,11 @@ int BaseOpPassReport() {
 
   while (1) {
     struct ibv_sge sge;
-    sge.addr = (uintptr_t) msg;
+    sge.addr = (uintptr_t)msg;
     sge.length = sizeof(*msg);
     sge.lkey = mr_msgs->lkey;
 
-    struct ibv_send_wr send_wr = { };
+    struct ibv_send_wr send_wr = {};
     send_wr.wr_id = msg - msgs;
     send_wr.opcode = IBV_WR_SEND;
     send_wr.send_flags = IBV_SEND_SIGNALED;

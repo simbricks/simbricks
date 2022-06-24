@@ -28,8 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params)
-{
+void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params) {
   SimbricksBaseIfDefaultParams(params);
   params->in_entries_size = params->out_entries_size = 1536 + 64;
   params->upper_layer_proto = SIMBRICKS_PROTO_ID_NET;
@@ -37,9 +36,7 @@ void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params)
 
 int SimbricksNetIfInit(struct SimbricksNetIf *nsif,
                        struct SimbricksBaseIfParams *params,
-                       const char *eth_socket_path,
-                       int *sync_eth)
-{
+                       const char *eth_socket_path, int *sync_eth) {
   // some threaded code using this interface
   struct SimbricksBaseIfParams params_ = *params;
   struct SimbricksBaseIf *bif = &nsif->base;

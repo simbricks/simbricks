@@ -24,8 +24,7 @@
 
 #include "lib/simbricks/pcie/if.h"
 
-void SimbricksPcieIfDefaultParams(struct SimbricksBaseIfParams *params)
-{
+void SimbricksPcieIfDefaultParams(struct SimbricksBaseIfParams *params) {
   SimbricksBaseIfDefaultParams(params);
   params->upper_layer_proto = SIMBRICKS_PROTO_ID_PCIE;
   params->in_entries_size = params->out_entries_size = 9024 + 64;

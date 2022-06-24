@@ -25,11 +25,11 @@
 #include "lib/simbricks/nicbm/multinic.h"
 
 #include <string.h>
-#include <thread>
-#include <vector>
 
 #include <boost/bind.hpp>
 #include <boost/fiber/all.hpp>
+#include <thread>
+#include <vector>
 
 namespace nicbm {
 
@@ -42,10 +42,10 @@ int MultiNicRunner::CompRunner::NicIfInit() {
   volatile int result = 0;
 
   // NicIfInit will block, so run it in a separate thread and then wait for it
-  std::thread t([this, &ready, &result](){
-      result = Runner::NicIfInit();
-      ready = true; 
-    });
+  std::thread t([this, &ready, &result]() {
+    result = Runner::NicIfInit();
+    ready = true;
+  });
 
   while (!ready)
     YieldPoll();
@@ -57,7 +57,6 @@ MultiNicRunner::CompRunner::CompRunner(Device &dev) : Runner(dev) {
 }
 
 MultiNicRunner::MultiNicRunner(DeviceFactory &factory) : factory_(factory) {
-
 }
 
 int MultiNicRunner::RunMain(int argc, char *argv[]) {
@@ -66,7 +65,8 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
   std::vector<boost::fibers::fiber *> fibers;
   do {
     int end;
-    for (end = start + 1; end < argc && strcmp(argv[end], "--"); end++);
+    for (end = start + 1; end < argc && strcmp(argv[end], "--"); end++)
+      ;
     argv[start] = argv[0];
 
     CompRunner *r = new CompRunner(factory_.create());
@@ -80,9 +80,9 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
     start = end;
   } while (start < argc);
 
-  for (auto f: fibers) {
+  for (auto f : fibers) {
     f->join();
-    delete(f);
+    delete (f);
   }
   return 0;
 }
