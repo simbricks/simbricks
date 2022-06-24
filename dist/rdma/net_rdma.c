@@ -53,7 +53,6 @@ bool ib_connect = false;
 uint8_t ib_port = 1;
 int ib_sgid_idx = -1;
 
-
 static void PrintUsage() {
   fprintf(stderr,
           "Usage: net_rdma [OPTIONS] IP PORT\n"
@@ -117,7 +116,7 @@ static int ParseArgs(int argc, char *argv[]) {
     }
   }
 
-  if (optind + 2  != argc) {
+  if (optind + 2 != argc) {
     PrintUsage();
     return 1;
   }

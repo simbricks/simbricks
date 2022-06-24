@@ -28,8 +28,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <simbricks/base/if.h>
 #include <simbricks/base/generic.h>
+#include <simbricks/base/if.h>
 #include <simbricks/pcie/proto.h>
 
 void SimbricksPcieIfDefaultParams(struct SimbricksBaseIfParams *params);
@@ -40,8 +40,8 @@ struct SimbricksPcieIf {
 
 /** Generate queue access functions for both directions */
 SIMBRICKS_BASEIF_GENERIC(SimbricksPcieIfH2D, SimbricksProtoPcieH2D,
-    SimbricksPcieIf);
+                         SimbricksPcieIf);
 SIMBRICKS_BASEIF_GENERIC(SimbricksPcieIfD2H, SimbricksProtoPcieD2H,
-    SimbricksPcieIf);
+                         SimbricksPcieIf);
 
 #endif  // SIMBRICKS_PCIE_IF_H_

@@ -29,7 +29,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-
 struct Peer {
   /* base address of the local queue we're polling. */
   uint8_t *local_base;
@@ -79,7 +78,6 @@ struct Peer {
 
   // is our local peer a listener?
   bool is_listener;
-
 
   // set true when the queue is ready for polling
   volatile bool ready;

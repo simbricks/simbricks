@@ -84,7 +84,6 @@ struct SockMsg {
   };
 } __attribute__((packed));
 
-
 const char *shm_path = NULL;
 size_t shm_size = 256 * 1024 * 1024ULL;  // 256MB
 
@@ -148,7 +147,7 @@ static int ParseArgs(int argc, char *argv[]) {
     }
   }
 
-  if (optind + 2  != argc) {
+  if (optind + 2 != argc) {
     PrintUsage();
     return 1;
   }
@@ -258,7 +257,7 @@ static int SockListen(struct sockaddr_in *addr) {
     return 1;
   }
 
-  if (bind(lfd, (struct sockaddr *) addr, sizeof(*addr))) {
+  if (bind(lfd, (struct sockaddr *)addr, sizeof(*addr))) {
     perror("RdmaIBListen: bind failed");
     return 1;
   }
@@ -283,7 +282,7 @@ static int SockConnect(struct sockaddr_in *addr) {
     return 1;
   }
 
-  if (connect(sockfd, (struct sockaddr *) addr, sizeof(*addr))) {
+  if (connect(sockfd, (struct sockaddr *)addr, sizeof(*addr))) {
     perror("RdmaIBConnect: connect failed");
   }
 
@@ -298,7 +297,7 @@ static int SockMsgRxIntro(struct SockMsg *msg) {
     abort();
   }
   if (msg->msg_len <
-      offsetof(struct SockMsg, intro.data) +  intro_msg->payload_len) {
+      offsetof(struct SockMsg, intro.data) + intro_msg->payload_len) {
     fprintf(stderr, "SockMsgRxIntro: message too short for payload len\n");
     abort();
   }
@@ -312,7 +311,7 @@ static int SockMsgRxIntro(struct SockMsg *msg) {
             msg->id);
     abort();
   }
-  if (intro_msg->payload_len > (uint32_t) sizeof(peer->intro_remote)) {
+  if (intro_msg->payload_len > (uint32_t)sizeof(peer->intro_remote)) {
     fprintf(stderr, "SockMsgRxIntro: Intro longer than buffer\n");
     abort();
   }
@@ -323,7 +322,7 @@ static int SockMsgRxIntro(struct SockMsg *msg) {
 
   if (BasePeerSetupQueues(peer)) {
     fprintf(stderr, "SockMsgRxIntro(%s): queue setup failed\n",
-        peer->sock_path);
+            peer->sock_path);
     abort();
   }
   if (BasePeerSendIntro(peer))
@@ -423,7 +422,7 @@ static int SockEvent(uint32_t events) {
 
   rx_buf_pos += ret;
 
-  struct SockMsg *msg = (struct SockMsg *) rx_buffer;
+  struct SockMsg *msg = (struct SockMsg *)rx_buffer;
   while (rx_buf_pos >= sizeof(*msg) && rx_buf_pos >= msg->msg_len) {
     if (SockMsgRx(msg))
       return 1;
@@ -451,7 +450,7 @@ static int SockSend(struct SockMsg *msg) {
   msg->msg_id = __sync_fetch_and_add(&msg_id, 1);
   size_t len = msg->msg_len;
   size_t pos = 0;
-  uint8_t *buf = (uint8_t *) msg;
+  uint8_t *buf = (uint8_t *)msg;
   do {
     ssize_t ret = write(sockfd, buf + pos, len - pos);
     if (ret > 0) {
@@ -641,7 +640,7 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
 
   if (BaseListen())
-    return  EXIT_FAILURE;
+    return EXIT_FAILURE;
 
   if (mode_listen) {
     if (SockListen(&addr))

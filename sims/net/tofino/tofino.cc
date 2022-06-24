@@ -41,9 +41,9 @@
 #include <fstream>
 #include <iostream>
 #include <queue>
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
 
 #include <simbricks/base/cxxatomicfix.h>
 extern "C" {
@@ -87,7 +87,8 @@ struct classcomp {
     return lhs.time > rhs.time;
   }
 };
-std::priority_queue<struct event, std::vector<struct event>, classcomp> event_queue;
+std::priority_queue<struct event, std::vector<struct event>, classcomp>
+    event_queue;
 
 static bool get_tofino_log_line(int limit_ms) {
   using std::chrono::system_clock;
@@ -237,8 +238,8 @@ static void recv_from_peer(int port) {
     e.time = msg_from->packet.timestamp;
     e.to_switch = true;
     e.port = port;
-    e.msg = std::string((const char *)msg_from->packet.data,
-        msg_from->packet.len);
+    e.msg =
+        std::string((const char *)msg_from->packet.data, msg_from->packet.len);
 #ifdef DEBUG
     printf("received packet from peer %u at time %llu\n", port, e.time);
 #endif

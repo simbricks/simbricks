@@ -32,9 +32,9 @@
 #include <stdatomic.h>
 #endif
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #include <simbricks/base/proto.h>
 
@@ -117,13 +117,11 @@ struct SimBricksBaseIfEstablishData {
   size_t rx_intro_len;
 };
 
-
 /** Create and map a new shared memory pool with the specified path and size. */
 int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
                                  const char *path, size_t pool_size);
 /** Map existing shared memory pool by file descriptor. */
-int SimbricksBaseIfSHMPoolMapFd(struct SimbricksBaseIfSHMPool *pool,
-                                int fd);
+int SimbricksBaseIfSHMPoolMapFd(struct SimbricksBaseIfSHMPool *pool, int fd);
 /** Map existing shared memory pool by path. */
 int SimbricksBaseIfSHMPoolMap(struct SimbricksBaseIfSHMPool *pool,
                               const char *path);
@@ -131,7 +129,6 @@ int SimbricksBaseIfSHMPoolMap(struct SimbricksBaseIfSHMPool *pool,
 int SimbricksBaseIfSHMPoolUnmap(struct SimbricksBaseIfSHMPool *pool);
 /** Delete but don't unmap shared memory pool. */
 int SimbricksBaseIfSHMPoolUnlink(struct SimbricksBaseIfSHMPool *pool);
-
 
 /** Initialize params struct with default values */
 void SimbricksBaseIfDefaultParams(struct SimbricksBaseIfParams *params);
@@ -158,8 +155,8 @@ int SimbricksBaseIfConnsWait(struct SimbricksBaseIf **base_ifs, unsigned n);
 int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
                              const void *payload, size_t payload_len);
 /** Receive intro. */
-int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if,
-                             void *payload, size_t *payload_len);
+int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
+                             size_t *payload_len);
 /** FD to wait on for intro events. */
 int SimbricksBaseIfIntroFd(struct SimbricksBaseIf *base_if);
 
@@ -190,7 +187,6 @@ static inline uint8_t SimbricksBaseIfInType(
     struct SimbricksBaseIf *base_if,
     volatile union SimbricksProtoBaseMsg *msg) {
   return (msg->header.own_type & ~SIMBRICKS_PROTO_MSG_OWN_MASK);
-
 }
 
 /**
@@ -202,18 +198,17 @@ static inline uint8_t SimbricksBaseIfInType(
  * @return Pointer to the message struct if successful, NULL otherwise.
  */
 static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPeek(
-    struct SimbricksBaseIf *base_if,
-    uint64_t timestamp) {
+    struct SimbricksBaseIf *base_if, uint64_t timestamp) {
   volatile union SimbricksProtoBaseMsg *msg =
-      (volatile union SimbricksProtoBaseMsg *) (void *) (
-        (uint8_t *) base_if->in_queue + base_if->in_pos * base_if->in_elen);
+      (volatile union SimbricksProtoBaseMsg *)(void *)((uint8_t *)
+                                                           base_if->in_queue +
+                                                       base_if->in_pos *
+                                                           base_if->in_elen);
   uint8_t own_type = atomic_load_explicit(
-      (volatile _Atomic(uint8_t) *) &msg->header.own_type,
-      memory_order_acquire);
+      (volatile _Atomic(uint8_t) *)&msg->header.own_type, memory_order_acquire);
 
   /* message not ready */
-  if ((own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) !=
-      SIMBRICKS_PROTO_MSG_OWN_CON)
+  if ((own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) != SIMBRICKS_PROTO_MSG_OWN_CON)
     return NULL;
 
   /* if in sync mode, wait till message is ready */
@@ -233,8 +228,7 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPeek(
  * @return Pointer to the message struct if successful, NULL otherwise.
  */
 static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfInPoll(
-    struct SimbricksBaseIf *base_if,
-    uint64_t timestamp) {
+    struct SimbricksBaseIf *base_if, uint64_t timestamp) {
   volatile union SimbricksProtoBaseMsg *msg =
       SimbricksBaseIfInPeek(base_if, timestamp);
 
@@ -263,9 +257,9 @@ static inline void SimbricksBaseIfInDone(
     struct SimbricksBaseIf *base_if,
     volatile union SimbricksProtoBaseMsg *msg) {
   atomic_store_explicit(
-      (volatile _Atomic(uint8_t) *) &msg->header.own_type,
-      (uint8_t) ((msg->header.own_type & ~SIMBRICKS_PROTO_MSG_OWN_MASK) |
-        SIMBRICKS_PROTO_MSG_OWN_PRO),
+      (volatile _Atomic(uint8_t) *)&msg->header.own_type,
+      (uint8_t)((msg->header.own_type & ~SIMBRICKS_PROTO_MSG_OWN_MASK) |
+                SIMBRICKS_PROTO_MSG_OWN_PRO),
       memory_order_release);
 }
 
@@ -286,8 +280,7 @@ static inline uint64_t SimbricksBaseIfInTimestamp(
  *
  * @param base_if Base interface handle (connected).
  */
-static inline int SimbricksBaseIfInTerminated(
-    struct SimbricksBaseIf *base_if) {
+static inline int SimbricksBaseIfInTerminated(struct SimbricksBaseIf *base_if) {
   return base_if->in_terminated;
 }
 
@@ -300,15 +293,15 @@ static inline int SimbricksBaseIfInTerminated(
  * @return Pointer to the message struct if successful, NULL otherwise.
  */
 static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfOutAlloc(
-    struct SimbricksBaseIf *base_if,
-    uint64_t timestamp) {
+    struct SimbricksBaseIf *base_if, uint64_t timestamp) {
   volatile union SimbricksProtoBaseMsg *msg =
-      (volatile union SimbricksProtoBaseMsg *) (void *) (
-        (uint8_t *) base_if->out_queue + base_if->out_pos * base_if->out_elen);
+      (volatile union SimbricksProtoBaseMsg *)(void *)((uint8_t *)
+                                                           base_if->out_queue +
+                                                       base_if->out_pos *
+                                                           base_if->out_elen);
 
   uint8_t own_type = atomic_load_explicit(
-      (volatile _Atomic(uint8_t) *) &msg->header.own_type,
-      memory_order_acquire);
+      (volatile _Atomic(uint8_t) *)&msg->header.own_type, memory_order_acquire);
   if ((own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) !=
       SIMBRICKS_PROTO_MSG_OWN_PRO) {
     return NULL;
@@ -318,7 +311,7 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfOutAlloc(
   base_if->out_timestamp = timestamp;
 
   base_if->out_pos = (base_if->out_pos + 1) % base_if->out_enum;
-  return msg;  
+  return msg;
 }
 
 /**
@@ -334,8 +327,8 @@ static inline volatile union SimbricksProtoBaseMsg *SimbricksBaseIfOutAlloc(
 static inline void SimbricksBaseIfOutSend(
     struct SimbricksBaseIf *base_if, volatile union SimbricksProtoBaseMsg *msg,
     uint8_t msg_type) {
-  atomic_store_explicit((volatile _Atomic(uint8_t) *) &msg->header.own_type,
-                        (uint8_t) (msg_type | SIMBRICKS_PROTO_MSG_OWN_CON),
+  atomic_store_explicit((volatile _Atomic(uint8_t) *)&msg->header.own_type,
+                        (uint8_t)(msg_type | SIMBRICKS_PROTO_MSG_OWN_CON),
                         memory_order_release);
 }
 
@@ -349,9 +342,9 @@ static inline void SimbricksBaseIfOutSend(
  */
 static inline int SimbricksBaseIfOutSync(struct SimbricksBaseIf *base_if,
                                          uint64_t timestamp) {
-  if (!base_if->sync || (base_if->out_timestamp > 0 &&
-                         timestamp - base_if->out_timestamp <
-                         base_if->params.sync_interval))
+  if (!base_if->sync ||
+      (base_if->out_timestamp > 0 &&
+       timestamp - base_if->out_timestamp < base_if->params.sync_interval))
     return 0;
 
   volatile union SimbricksProtoBaseMsg *msg =
@@ -360,7 +353,7 @@ static inline int SimbricksBaseIfOutSync(struct SimbricksBaseIf *base_if,
     return -1;
 
   SimbricksBaseIfOutSend(base_if, msg, SIMBRICKS_PROTO_MSG_TYPE_SYNC);
-  return 0;  
+  return 0;
 }
 
 /**
@@ -370,8 +363,7 @@ static inline int SimbricksBaseIfOutSync(struct SimbricksBaseIf *base_if,
  * @return Timestamp. Undefined if synchronization is disabled.
  */
 static inline uint64_t SimbricksBaseIfOutNextSync(
-    struct SimbricksBaseIf *base_if)
-{
+    struct SimbricksBaseIf *base_if) {
   if (base_if->out_timestamp == UINT64_MAX)
     return UINT64_MAX;
   return base_if->out_timestamp + base_if->params.sync_interval;
@@ -379,7 +371,7 @@ static inline uint64_t SimbricksBaseIfOutNextSync(
 
 /**
  * Retrieve maximal total message length for outgoing messages.
- * 
+ *
  * @param base_if Base interface handle (connected).
  * @return Maximal message length in bytes.
  */

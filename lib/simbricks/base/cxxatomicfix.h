@@ -32,7 +32,7 @@
  *
  * until then, this needs to be included before the generic header.
  */
- 
+
 #include <atomic>
 #define _Atomic(T) std::atomic<T>
 using std::atomic_load_explicit;

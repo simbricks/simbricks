@@ -28,8 +28,8 @@
 
 namespace i40e {
 
-logger::logger(const std::string &label_, nicbm::Runner *runner_) :
-    label(label_), runner(runner_) {
+logger::logger(const std::string &label_, nicbm::Runner *runner_)
+    : label(label_), runner(runner_) {
   ss << std::hex;
 }
 

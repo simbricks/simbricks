@@ -28,14 +28,14 @@
 #include <assert.h>
 #include <stdint.h>
 
-#define SIMBRICKS_PROTO_MSG_SZCHECK(s) static_assert(sizeof(s) == 64, \
-                                           "SimBrick message size check failed")
+#define SIMBRICKS_PROTO_MSG_SZCHECK(s) \
+  static_assert(sizeof(s) == 64, "SimBrick message size check failed")
 
 #define SIMBRICKS_PROTO_VERSION 1
 
-#define SIMBRICKS_PROTO_ID_BASE   0x00
-#define SIMBRICKS_PROTO_ID_NET    0x01
-#define SIMBRICKS_PROTO_ID_PCIE   0x02
+#define SIMBRICKS_PROTO_ID_BASE 0x00
+#define SIMBRICKS_PROTO_ID_NET 0x01
+#define SIMBRICKS_PROTO_ID_PCIE 0x02
 
 /** Listener requests synchronization */
 #define SIMBRICKS_PROTO_FLAGS_LI_SYNC (1 << 0)
@@ -76,7 +76,6 @@ struct SimbricksProtoListenerIntro {
   uint64_t upper_layer_intro_off;
 } __attribute__((packed));
 
-
 /** Connecter has synchronization enabled */
 #define SIMBRICKS_PROTO_FLAGS_CO_SYNC (1 << 0)
 /** Connecter forces synchronization */
@@ -94,7 +93,6 @@ struct SimbricksProtoConnecterIntro {
   /** offset of upper layer intro from beginning of this message */
   uint64_t upper_layer_intro_off;
 } __attribute__((packed));
-
 
 /** Mask for ownership bit in own_type field */
 #define SIMBRICKS_PROTO_MSG_OWN_MASK 0x80

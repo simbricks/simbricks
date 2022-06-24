@@ -48,8 +48,8 @@ class EHostInstr : public event {
   bool fMemR;
   bool fMemW;
 
-  EHostInstr(uint64_t ts_, uint64_t pc_) : event(ts_), pc(pc_), fMemR(false),
-      fMemW(false) {
+  EHostInstr(uint64_t ts_, uint64_t pc_)
+      : event(ts_), pc(pc_), fMemR(false), fMemW(false) {
   }
 
   virtual ~EHostInstr() {
@@ -63,7 +63,6 @@ class EHostInstr : public event {
 class EHostHalt : public event {
  public:
   uint64_t pc;
-
 
   EHostHalt(uint64_t ts_, uint64_t pc_) : event(ts_), pc(pc_) {
   }

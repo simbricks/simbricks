@@ -116,7 +116,6 @@ int main(int argc, char *argv[]) {
   signal(SIGTERM, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
 
-
   if (argc >= 5)
     params.sync_interval = strtoull(argv[4], NULL, 0) * 1000ULL;
 
