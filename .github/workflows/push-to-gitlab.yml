@@ -1,0 +1,32 @@
+name: push-to-gitlab
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  push-to-gitlab:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: push-to-gitlab
+      shell: bash
+      env:
+        GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
+      run: |
+        git remote add gitlab https://push-to-gitlab:$GITLAB_ACCESS_TOKEN@gitlab.mpi-sws.org/simbricks/simbricks.git
+        
+        # transform GITHUB_REF to better branch_name, which defaults to refs/pull/<pr_number>/merge for pull requests
+        if [ "$GITHUB_EVENT_NAME" == "pull_request" ]
+        then
+          BRANCH_NAME=${GITHUB_REF##*refs/}
+          BRANCH_NAME=${BRANCH_NAME%%/merge*}
+          git checkout -b $BRANCH_NAME
+          git push --force --set-upstream gitlab $BRANCH_NAME
+        else
+          BRANCH_NAME=$GITHUB_REF_NAME
+          git push --set-upstream gitlab $BRANCH_NAME
+        fi
