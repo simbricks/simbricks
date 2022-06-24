@@ -1,5 +1,29 @@
-#ifndef NET_MENSHEN_PORTS_H_
-#define NET_MENSHEN_PORTS_H_
+/*
+ * Copyright 2022 Max Planck Institute for Software Systems, and
+ * National University of Singapore
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+#ifndef PORTS_H_
+#define PORTS_H_
 
 #include <stdint.h>
 
@@ -44,7 +68,7 @@ class NetPort : public Port {
   int sync_;
 
  public:
-  NetPort(struct SimbricksBaseIfParams *params) : params_(params),
+  explicit NetPort(struct SimbricksBaseIfParams *params) : params_(params),
       netif_(&netifObj_), rx_(nullptr), sync_(0) {
     memset(&netifObj_, 0, sizeof(netifObj_));
   }
@@ -52,24 +76,24 @@ class NetPort : public Port {
   NetPort(const NetPort &other) : netifObj_(other.netifObj_),
       netif_(&netifObj_), rx_(other.rx_), sync_(other.sync_) {}
 
-  virtual bool Connect(const char *path, int sync) override {
+  bool Connect(const char *path, int sync) override {
     sync_ = sync;
     return SimbricksNetIfInit(netif_, params_, path, &sync_) == 0;
   }
 
-  virtual bool IsSync() override {
+  bool IsSync() override {
     return sync_;
   }
 
-  virtual void Sync(uint64_t cur_ts) override {
-    while (SimbricksNetIfOutSync(netif_, cur_ts));
+  void Sync(uint64_t cur_ts) override {
+    while (SimbricksNetIfOutSync(netif_, cur_ts)) {}
   }
 
-  virtual uint64_t NextTimestamp() override {
+  uint64_t NextTimestamp() override {
     return SimbricksNetIfInTimestamp(netif_);
   }
 
-  virtual enum RxPollState RxPacket(
+  enum RxPollState RxPacket(
       const void *& data, size_t &len, uint64_t cur_ts) override {
     assert(rx_ == nullptr);
 
@@ -90,14 +114,14 @@ class NetPort : public Port {
     }
   }
 
-  virtual void RxDone() override {
+  void RxDone() override {
     assert(rx_ != nullptr);
 
     SimbricksNetIfInDone(netif_, rx_);
     rx_ = nullptr;
   }
 
-  virtual bool TxPacket(
+  bool TxPacket(
       const void *data, size_t len, uint64_t cur_ts) override {
     volatile union SimbricksProtoNetMsg *msg_to =
       SimbricksNetIfOutAlloc(netif_, cur_ts);
@@ -118,4 +142,4 @@ class NetPort : public Port {
   }
 };
 
-#endif  // NET_MENSHEN_PORTS_H_
+#endif  // PORTS_H_

@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef DIST_UTILS_H_
-#define DIST_UTILS_H_
+#ifndef DIST_COMMON_UTILS_H_
+#define DIST_COMMON_UTILS_H_
 
 #include <stddef.h>
 #include <sys/types.h>
@@ -36,4 +36,4 @@ int UxsocketSendFd(int connfd, void *data, size_t len, int fd);
 int ShmCreate(const char *path, size_t size, void **addr);
 void *ShmMap(int shm_fd, size_t *size);
 
-#endif  // DIST_UTILS_H_
+#endif  // DIST_COMMON_UTILS_H_

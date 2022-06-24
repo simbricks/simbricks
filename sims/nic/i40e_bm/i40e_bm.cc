@@ -827,7 +827,7 @@ int_ev::int_ev() {
 
 class i40e_factory : public nicbm::MultiNicRunner::DeviceFactory {
  public:
-  virtual nicbm::Runner::Device &create() override {
+  nicbm::Runner::Device &create() override {
     return *new i40e::i40e_bm;
   }
 };

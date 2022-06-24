@@ -51,11 +51,11 @@ extern "C" {
 };
 #include <utils/json.hpp>
 
-//#define DEBUG
+// #define DEBUG
 
 using json = nlohmann::json;
 
-typedef long long int ts_t;
+typedef int64_t ts_t;
 
 static const int log_wait_limit_ms = 10;  // 10ms
 static ts_t cur_ts = 0;
@@ -63,7 +63,7 @@ static int exiting = 0;
 static std::vector<struct SimbricksNetIf> nsifs;
 static std::vector<int> tofino_fds;
 static std::ifstream log_ifs;
-static std::string log_line;
+static std::string log_line;  // NOLINT(runtime/string)
 static const int flush_msg_sz = 14;
 static char flush_msg[flush_msg_sz] = {0x0};
 
@@ -174,7 +174,6 @@ static void switch_to_dev(int port) {
   while ((n = recvfrom(tofino_fds.at(port), buf, BUFFER_SIZE, 0,
                        (struct sockaddr *)&addr, &addr_len)) <= 0 ||
          addr.sll_pkttype == PACKET_OUTGOING) {
-    ;
   }
 
   msg_to = SimbricksNetIfOutAlloc(&nsifs[port], cur_ts);
@@ -198,7 +197,7 @@ static void process_event(const struct event &e) {
            e.time);
 #endif
     if (send(tofino_fds.at(e.port), e.msg.data(), e.msg.length(), 0) <
-        (long int)e.msg.length()) {
+        (ssize_t)e.msg.length()) {
       fprintf(stderr, "tofino: failed to forward packet to switch\n");
       abort();
     }

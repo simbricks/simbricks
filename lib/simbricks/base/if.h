@@ -389,4 +389,4 @@ static inline bool SimbricksBaseIfSyncEnabled(struct SimbricksBaseIf *base_if) {
   return base_if->sync;
 }
 
-#endif  // SIMBRICKS_BASEIF_BASEIF_H_
+#endif  // SIMBRICKS_BASE_IF_H_

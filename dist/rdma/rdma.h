@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef DIST_RDMA_H_
-#define DIST_RDMA_H_
+#ifndef DIST_RDMA_RDMA_H_
+#define DIST_RDMA_RDMA_H_
 
 #include <infiniband/verbs.h>
 
@@ -39,4 +39,4 @@ int RdmaIBListen(struct sockaddr_in *addr);
 int RdmaIBConnect(struct sockaddr_in *addr);
 struct ibv_qp *RdmaIBCreateQP(struct ibv_pd *pd, struct ibv_qp_init_attr *attr);
 
-#endif  // DIST_RDMA_H_
+#endif  // DIST_RDMA_RDMA_H_

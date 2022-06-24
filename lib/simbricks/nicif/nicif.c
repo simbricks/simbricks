@@ -93,7 +93,7 @@ int SimbricksNicIfInit(struct SimbricksNicIf *nicif, const char *shm_path,
   }
 
   return SimBricksBaseIfEstablish(ests, n_bifs);
-}
+}  // NOLINT(whitespace/indent)
 
 int SimbricksNicIfCleanup(struct SimbricksNicIf *nicif) {
   SimbricksBaseIfClose(&nicif->pcie.base);

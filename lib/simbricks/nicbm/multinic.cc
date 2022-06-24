@@ -65,8 +65,8 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
   std::vector<boost::fibers::fiber *> fibers;
   do {
     int end;
-    for (end = start + 1; end < argc && strcmp(argv[end], "--"); end++)
-      ;
+    for (end = start + 1; end < argc && strcmp(argv[end], "--"); end++) {
+    }
     argv[start] = argv[0];
 
     CompRunner *r = new CompRunner(factory_.create());
