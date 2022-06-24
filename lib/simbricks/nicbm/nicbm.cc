@@ -41,7 +41,7 @@ extern "C" {
 #include <simbricks/base/proto.h>
 }
 
-//#define DEBUG_NICBM 1
+// #define DEBUG_NICBM 1
 #define STAT_NICBM 1
 #define DMA_MAX_PENDING 64
 

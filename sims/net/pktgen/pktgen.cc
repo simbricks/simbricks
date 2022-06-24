@@ -44,7 +44,7 @@ extern "C" {
 #include <simbricks/nicif/nicif.h>
 };
 
-//#define NETSWITCH_DEBUG
+// #define NETSWITCH_DEBUG
 #define NETSWITCH_STAT
 
 struct SimbricksBaseIfParams netParams;
@@ -155,26 +155,26 @@ class NetPort : public Port {
         sync_(other.sync_) {
   }
 
-  virtual bool Connect(const char *path, int sync) override {
+  bool Connect(const char *path, int sync) override {
     sync_ = sync;
     return SimbricksNetIfInit(netif_, &netParams, path, &sync_) == 0;
   }
 
-  virtual bool IsSync() override {
+  bool IsSync() override {
     return sync_;
   }
 
-  virtual void Sync(uint64_t cur_ts) override {
-    while (SimbricksNetIfOutSync(netif_, cur_ts))
-      ;
+  void Sync(uint64_t cur_ts) override {
+    while (SimbricksNetIfOutSync(netif_, cur_ts)) {
+    }
   }
 
-  virtual uint64_t NextTimestamp() override {
+  uint64_t NextTimestamp() override {
     return SimbricksNetIfInTimestamp(netif_);
   }
 
-  virtual enum RxPollState RxPacket(const void *&data, size_t &len,
-                                    uint64_t cur_ts) override {
+  enum RxPollState RxPacket(const void *&data, size_t &len,
+                            uint64_t cur_ts) override {
     assert(rx_ == nullptr);
 
     rx_ = SimbricksNetIfInPoll(netif_, cur_ts);
@@ -194,15 +194,14 @@ class NetPort : public Port {
     }
   }
 
-  virtual void RxDone() override {
+  void RxDone() override {
     assert(rx_ != nullptr);
 
     SimbricksNetIfInDone(netif_, rx_);
     rx_ = nullptr;
   }
 
-  virtual bool TxPacket(const void *data, size_t len,
-                        uint64_t cur_ts) override {
+  bool TxPacket(const void *data, size_t len, uint64_t cur_ts) override {
     volatile union SimbricksProtoNetMsg *msg_to =
         SimbricksNetIfOutAlloc(netif_, cur_ts);
     if (!msg_to && !sync_) {
@@ -237,7 +236,7 @@ class NetHostPort : public NetPort {
     netif_ = &nicif_.net;
   }
 
-  virtual bool Connect(const char *path, int sync) override {
+  bool Connect(const char *path, int sync) override {
     sync_ = sync;
     std::string shm_path = path;
     shm_path += "-shm";
@@ -251,7 +250,7 @@ class NetHostPort : public NetPort {
     return ret == 0;
   }
 
-  virtual bool IsSync() override {
+  bool IsSync() override {
     return sync_;
   }
 };

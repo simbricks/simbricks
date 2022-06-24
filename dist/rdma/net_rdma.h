@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef DIST_NET_RDMA_H_
-#define DIST_NET_RDMA_H_
+#ifndef DIST_RDMA_NET_RDMA_H_
+#define DIST_RDMA_NET_RDMA_H_
 
 #include <arpa/inet.h>
 #include <stdbool.h>
@@ -43,4 +43,4 @@ int RdmaListen(struct sockaddr_in *addr);
 int RdmaConnect(struct sockaddr_in *addr);
 int RdmaEvent();
 
-#endif  // DIST_NET_RDMA_H_
+#endif  // DIST_RDMA_NET_RDMA_H_

@@ -41,7 +41,7 @@
 #include "dist/common/base.h"
 #include "dist/common/utils.h"
 
-//#define SOCK_DEBUG
+// #define SOCK_DEBUG
 
 #define MAX_PEERS 32
 #define RXBUF_SIZE (1024 * 1024)

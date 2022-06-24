@@ -39,8 +39,8 @@ class MultiNicRunner {
  protected:
   class CompRunner : public Runner {
    protected:
-    virtual void YieldPoll() override;
-    virtual int NicIfInit() override;
+    void YieldPoll() override;
+    int NicIfInit() override;
 
    public:
     explicit CompRunner(Device &dev_);

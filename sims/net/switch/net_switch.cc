@@ -44,7 +44,7 @@ extern "C" {
 #include <simbricks/nicif/nicif.h>
 };
 
-//#define NETSWITCH_DEBUG
+// #define NETSWITCH_DEBUG
 #define NETSWITCH_STAT
 
 struct SimbricksBaseIfParams netParams;
@@ -157,8 +157,8 @@ class NetPort {
   }
 
   void Sync(uint64_t cur_ts) {
-    while (SimbricksNetIfOutSync(&netif_, cur_ts))
-      ;
+    while (SimbricksNetIfOutSync(&netif_, cur_ts)) {
+    }
   }
 
   uint64_t NextTimestamp() {
@@ -226,7 +226,7 @@ class NetListenPort : public NetPort {
       : NetPort(other), pool_(other.pool_) {
   }
 
-  virtual bool Prepare() override {
+  bool Prepare() override {
     if (!Init())
       return false;
 

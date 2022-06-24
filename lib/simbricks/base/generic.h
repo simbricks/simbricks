@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_BASEIF_GENERIC_H_
-#define SIMBRICKS_BASEIF_GENERIC_H_
+#ifndef SIMBRICKS_BASE_GENERIC_H_
+#define SIMBRICKS_BASE_GENERIC_H_
 
 #include <simbricks/base/if.h>
 
@@ -103,4 +103,4 @@
     return SimbricksBaseIfOutMsgLen(&base_if->base);                           \
   }
 
-#endif  // SIMBRICKS_BASEIF_BASEIF_H_
+#endif  // SIMBRICKS_BASE_GENERIC_H_

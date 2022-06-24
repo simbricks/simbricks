@@ -24,10 +24,12 @@
 
 #include "trace/process.h"
 
+#include <algorithm>
 #include <boost/bind.hpp>
 #include <boost/foreach.hpp>
 #include <iostream>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "trace/events.h"
