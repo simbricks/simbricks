@@ -103,7 +103,7 @@ class NICSim(PCIDevSim):
     def __init__(self):
         super().__init__()
 
-    def set_network(self, net):
+    def set_network(self, net: NetSim):
         self.network = net
         net.nics.append(self)
 
@@ -419,7 +419,7 @@ class MultiSubNIC(NICSim):
     def start_delay(self):
         return 0
 
-class I40eMultiNIC(Simulator):  # TODO Fix typing, e.g., by making this a sublcass of NICSim
+class I40eMultiNIC(Simulator):
     name = ''
 
     def __init__(self):

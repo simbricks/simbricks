@@ -22,7 +22,7 @@
 
 import asyncio
 import pathlib
-import typing as tp
+from typing import Optional
 
 from simbricks.runtime.common import *
 import simbricks.experiments as exp
@@ -71,7 +71,7 @@ class LocalParallelRuntime(Runtime):
     def __init__(
         self,
         cores: int,
-        mem: tp.Optional[int] = None,
+        mem: Optional[int] = None,
         verbose=False,
         exec: exectools.Executor = exectools.LocalExecutor()
     ):
