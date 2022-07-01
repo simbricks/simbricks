@@ -30,7 +30,7 @@ from simbricks.experiment.experiment_environment import ExpEnv
 from simbricks.experiment.experiment_output import ExpOutput
 from simbricks.exectools import Executor, SimpleComponent
 from simbricks.proxy import NetProxyConnecter, NetProxyListener, SimProxy
-from simbricks.simulators import HostSim, NICSim, NetSim, PCIDevSim, Simulator
+from simbricks.simulators import HostSim, I40eMultiNIC, NICSim, NetSim, PCIDevSim, Simulator
 import simbricks.utils.graphlib as graphlib
 
 class Experiment(object):
@@ -50,13 +50,13 @@ class Experiment(object):
     simulator is restored in the accurate mode using this checkpoint."""
     no_simbricks = False
     """`true` - No simbricks adapters are used in the simulators."""
+    hosts: tp.List[HostSim] = []
+    pcidevs: tp.List[PCIDevSim] = []
+    networks: tp.List[NetSim] = []
+    metadata = {}
 
     def __init__(self, name: str):
         self.name = name
-        self.hosts: tp.List[HostSim] = []
-        self.pcidevs: tp.List[PCIDevSim] = []
-        self.networks: tp.List[NetSim] = []
-        self.metadata = {}
 
     def add_host(self, sim: HostSim):
         for h in self.hosts:
@@ -64,7 +64,7 @@ class Experiment(object):
                 raise Exception('Duplicate host name')
         self.hosts.append(sim)
 
-    def add_nic(self, sim: NICSim):
+    def add_nic(self, sim: tp.Union[NICSim, I40eMultiNIC]):
         self.add_pcidev(sim)
 
     def add_pcidev(self, sim: PCIDevSim):
@@ -124,7 +124,7 @@ class DistributedExperiment(Experiment):
         return itertools.chain(super().all_simulators(),
                 self.proxies_listen, self.proxies_connect)
 
-    def assign_sim_host(self, sim, host):
+    def assign_sim_host(self, sim: Simulator, host: int):
         """ Assign host ID (< self.num_hosts) for a simulator. """
         assert(host >= 0 and host < self.num_hosts)
         self.host_mapping[sim] = host

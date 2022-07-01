@@ -30,9 +30,12 @@ import pickle
 import fnmatch
 import typing as tp
 
+from simbricks.runtime.common import *
+from simbricks.runtime.distributed import *
+from simbricks.runtime.local import *
+from simbricks.runtime.slurm import *
 import simbricks.exectools as exectools
 import simbricks.experiments as exp
-import simbricks.runtime as runtime
 
 def mkdir_if_not_exists(path):
     if not os.path.exists(path):
@@ -139,19 +142,19 @@ def warn_multi_exec():
 # initialize runtime
 if args.runtime == 'parallel':
     warn_multi_exec()
-    rt = runtime.LocalParallelRuntime(cores=args.cores, mem=args.mem,
+    rt = LocalParallelRuntime(cores=args.cores, mem=args.mem,
             verbose=args.verbose, exec=executors[0])
 elif args.runtime == 'slurm':
-    rt = runtime.SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
+    rt = SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
 elif args.runtime == 'dist':
-    rt = runtime.DistributedSimpleRuntime(executors, verbose=args.verbose)
+    rt = DistributedSimpleRuntime(executors, verbose=args.verbose)
 else:
     warn_multi_exec()
-    rt = runtime.LocalSimpleRuntime(verbose=args.verbose, exec=executors[0])
+    rt = LocalSimpleRuntime(verbose=args.verbose, exec=executors[0])
 
 
 def add_exp(
-    e: exp.Experiment, run: int, prereq: tp.Optional[runtime.Run],
+    e: exp.Experiment, run: int, prereq: tp.Optional[Run],
     create_cp: bool, restore_cp: bool, no_simbricks: bool
 ):
     outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
@@ -174,7 +177,7 @@ def add_exp(
     if args.shmdir is not None:
         env.shm_base = os.path.abspath(shmdir)
 
-    run = runtime.Run(e, run, env, outpath, prereq)
+    run = Run(e, run, env, outpath, prereq)
     rt.add_run(run)
     return run
 
@@ -197,7 +200,7 @@ if not args.pickled:
 
     for e in experiments:
         if args.auto_dist and not isinstance(e, exp.DistributedExperiment):
-            e = runtime.auto_dist(e, executors, args.proxy_type)
+            e = auto_dist(e, executors, args.proxy_type)
         # apply filter if any specified
         if (args.filter) and (len(args.filter) > 0):
             match = False

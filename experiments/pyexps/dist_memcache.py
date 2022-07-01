@@ -112,7 +112,8 @@ for host_type in host_types:
                     ip_prefix=16)
             for s in servers:
                 e.assign_sim_host(s, h_i)
-                e.assign_sim_host(s.pcidevs[0].multinic, h_i)
+                s_multisubnic = next(pcidev for pcidev in s.pcidevs if isinstance(pcidev, sim.MultiSubNIC))
+                e.assign_sim_host(s_multisubnic.multinic, h_i)
 
             clients = create_multinic_hosts(e, m, 'client_%d' % (i,),
                     switch, host_class, node.I40eLinuxNode,
@@ -121,7 +122,8 @@ for host_type in host_types:
             for c in clients:
                 c.wait = True
                 e.assign_sim_host(c, h_i)
-                e.assign_sim_host(c.pcidevs[0].multinic, h_i)
+                c_multisubnic = next(pcidev for pcidev in c.pcidevs if isinstance(pcidev, sim.MultiSubNIC))
+                e.assign_sim_host(c_multisubnic.multinic, h_i)
 
             racks.append((servers, clients))
 
