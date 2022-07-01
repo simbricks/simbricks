@@ -71,6 +71,12 @@ clang-format:
 lint-clang-format:
 	$(CLANG_FORMAT) --dry-run --style=file `cat .lint-files`
 
+lint-yapf:
+	yapf --recursive --diff results/ experiments/
+
+format-yapf:
+	yapf --recursive --in-place results/ experiments/
+
 lint: lint-cpplint lint-clang-format
 lint-all: lint lint-clang-tidy
 
