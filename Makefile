@@ -77,6 +77,12 @@ lint-yapf:
 format-yapf:
 	yapf --recursive --in-place results/ experiments/
 
+lint-isort:
+	isort --diff results/ experiments/
+
+format-isort:
+	isort --overwrite-in-place results/ experiments/
+
 lint: lint-cpplint lint-clang-format
 lint-all: lint lint-clang-tidy
 
