@@ -24,9 +24,11 @@ jobs:
         then
           BRANCH_NAME=${GITHUB_REF##*refs/}
           BRANCH_NAME=${BRANCH_NAME%%/merge*}
+          
           git checkout -b $BRANCH_NAME
           git push --force --set-upstream gitlab $BRANCH_NAME
         else
           BRANCH_NAME=$GITHUB_REF_NAME
+          
           git push --set-upstream gitlab $BRANCH_NAME
         fi
