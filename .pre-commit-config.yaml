@@ -20,4 +20,4 @@ repos:
     rev: 5.10.1
     hooks:
     -   id: isort
-        name: isort (python)
+        name: isort
