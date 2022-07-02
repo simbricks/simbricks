@@ -22,8 +22,6 @@
 
 import json
 import os
-import pathlib
-import shutil
 import sys
 
 # How to use
@@ -37,11 +35,12 @@ num_client = ['1', '4']
 outdir = sys.argv[1]
 
 
+# pylint: disable=redefined-outer-name
 def parse_sim_time(path):
     ret = {}
     if not os.path.exists(path):
         return ret
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     ret['simtime'] = (data['end_time'] - data['start_time']) / 60
@@ -50,15 +49,12 @@ def parse_sim_time(path):
 
 
 for c in num_client:
-    print('%s-client ModES  Epoch' % (c))
+    print(f'{c}-client ModES  Epoch')
     for n in nics:
         line = f'{n}'
         for m in mode:
-            path = '%s/mode-%s-gt-%s-switch-%s-1.json' % (outdir, m, n, c)
+            path = f'{outdir}/mode-{m}-gt-{n}-switch-{c}-1.json'
             data = parse_sim_time(path)
-            if 'simtime' in data:
-                t = data['simtime']
-            else:
-                t = ''
-            line = line + ' ' + f'{t}'
+            t = data.get('simtime', '')
+            line = f'{line} {t}'
         print(line)

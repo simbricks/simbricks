@@ -22,8 +22,6 @@
 
 import json
 import os
-import pathlib
-import shutil
 import sys
 
 # How to use
@@ -35,11 +33,12 @@ num_runs = 8
 outdir = sys.argv[1]
 
 
+# pylint: disable=redefined-outer-name
 def parse_sim_time(path):
     ret = {}
     if not os.path.exists(path):
         return ret
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     ret['simtime'] = (data['end_time'] - data['start_time']) / 60
@@ -51,7 +50,7 @@ total_time = 0
 
 for n in range(1, num_runs + 1):
 
-    path = '%s/p8-gt-ib-sw-Host-1000m-1-%s.json' % (outdir, n)
+    path = f'{outdir}/p8-gt-ib-sw-Host-1000m-1-{n}.json' % (outdir, n)
     data = parse_sim_time(path)
     if 'simtime' in data:
         t = data['simtime']
