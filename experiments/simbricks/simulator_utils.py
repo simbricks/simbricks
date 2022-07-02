@@ -56,12 +56,12 @@ def create_basic_hosts(
         nic.set_network(net)
 
         host = host_class()
-        host.name = '%s.%d' % (name_prefix, i)
+        host.name = f'{name_prefix}.{i}'
 
         node_config = nc_class()
         node_config.prefix = ip_prefix
         ip = ip_start + i
-        node_config.ip = '10.0.%d.%d' % (int(ip / 256), ip % 256)
+        node_config.ip = f'10.0.{int(ip / 256)}.{ip % 256}'
         node_config.app = app_class()
         host.set_config(node_config)
 
@@ -105,12 +105,12 @@ def create_multinic_hosts(
         nic.set_network(net)
 
         host = host_class()
-        host.name = '%s.%d' % (name_prefix, i)
+        host.name = f'{name_prefix}.{i}'
 
         node_config = nc_class()
         node_config.prefix = ip_prefix
         ip = ip_start + i
-        node_config.ip = '10.0.%d.%d' % (int(ip / 256), ip % 256)
+        node_config.ip = f'10.0.{int(ip / 256)}.{ip % 256}'
         node_config.app = app_class()
         host.set_config(node_config)
 
@@ -150,12 +150,12 @@ def create_dctcp_hosts(
         nic.set_network(net)
 
         host = host_class()
-        host.name = '%s.%d' % (name_prefix, i)
+        host.name = f'{name_prefix}.{i}'
         host.cpu_freq = cpu_freq
 
         node_config = nc_class()
         node_config.mtu = mtu
-        node_config.ip = '192.168.64.%d' % (ip_start + i)
+        node_config.ip = f'192.168.64.{ip_start + i}'
         node_config.app = app_class()
         host.set_config(node_config)
 

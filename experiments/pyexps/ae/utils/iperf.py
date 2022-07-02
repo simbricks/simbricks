@@ -22,17 +22,15 @@
 
 import fnmatch
 import glob
-import itertools
 import json
-import os
 import re
-import sys
 
 
 def parse_iperf_run(data, skip=1, use=8):
-    tp_pat = re.compile(
-        r'\[ *\d*\] *([0-9\.]*)- *([0-9\.]*) sec.*Bytes *([0-9\.]*) ([GM])bits.*'
-    )
+    tp_pat = re.compile((
+        r'\[ *\d*\] *([0-9\.]*)'
+        r'- *([0-9\.]*) sec.*Bytes *([0-9\.]*) ([GM])bits.*'
+    ))
     tps_time = {}
     for hn in fnmatch.filter(data['sims'].keys(), 'host.client.*'):
         sim = data['sims'][hn]
@@ -47,7 +45,7 @@ def parse_iperf_run(data, skip=1, use=8):
             if time >= skip + use:
                 continue
 
-            if not time in tps_time:
+            if time not in tps_time:
                 tps_time[time] = []
 
             if m.group(4) == 'G':
@@ -73,7 +71,7 @@ def parse_iperf(basename, skip=1, use=8):
             # skip checkpoints
             continue
 
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         result = parse_iperf_run(data, skip, use)
         if result is not None:

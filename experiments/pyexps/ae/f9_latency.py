@@ -34,6 +34,8 @@
 # $: python3 run.py pyexps/ae/t1_combination.py --filter nf-* --verbose
 ########################################################################
 
+from functools import partial
+
 import simbricks.nodeconfig as node
 import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
@@ -52,28 +54,22 @@ for pci_type in pci_latency:
     net.eth_latency = pci_type
     e.add_network(net)
 
-    host_class = sim.Gem5Host
+    HostClass = sim.Gem5Host
     e.checkpoint = True
 
-    def nic_pci():
+    # pylint: disable=redefined-outer-name
+    def nic_pci(pci_type: int):
         n = sim.I40eNIC()
         n.sync_period = pci_type
         n.pci_latency = pci_type
         return n
 
-    nic_class = nic_pci
-    nc_class = node.I40eLinuxNode
+    NicClass = partial(nic_pci, pci_type)
+    NcClass = node.I40eLinuxNode
 
     # create servers and clients
     servers = create_basic_hosts(
-        e,
-        1,
-        'server',
-        net,
-        nic_class,
-        host_class,
-        nc_class,
-        node.NetperfServer
+        e, 1, 'server', net, NicClass, HostClass, NcClass, node.NetperfServer
     )
 
     clients = create_basic_hosts(
@@ -81,9 +77,9 @@ for pci_type in pci_latency:
         1,
         'client',
         net,
-        nic_class,
-        host_class,
-        nc_class,
+        NicClass,
+        HostClass,
+        NcClass,
         node.NetperfClient,
         ip_start=2
     )

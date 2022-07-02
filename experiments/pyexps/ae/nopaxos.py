@@ -56,10 +56,10 @@ for proto_config in proto_configs:
 
                     # host
                     if host_config == 'qemu':
-                        host_class = sim.QemuHost
+                        HostClass = sim.QemuHost
                         net.sync = False
                     elif host_config == 'gt':
-                        host_class = sim.Gem5Host
+                        HostClass = sim.Gem5Host
                         e.checkpoint = True
                     elif host_config == 'qt':
 
@@ -68,30 +68,30 @@ for proto_config in proto_configs:
                             h.sync = True
                             return h
 
-                        host_class = qemu_timing
+                        HostClass = qemu_timing
                     else:
                         raise NameError(host_config)
 
                     # nic
                     if nic_config == 'ib':
-                        nic_class = sim.I40eNIC
-                        nc_class = node.I40eLinuxNode
+                        NicClass = sim.I40eNIC
+                        NcClass = node.I40eLinuxNode
                     elif nic_config == 'cb':
-                        nic_class = sim.CorundumBMNIC
-                        nc_class = node.CorundumLinuxNode
+                        NicClass = sim.CorundumBMNIC
+                        NcClass = node.CorundumLinuxNode
                     elif nic_config == 'cv':
-                        nic_class = sim.CorundumVerilatorNIC
-                        nc_class = node.CorundumLinuxNode
+                        NicClass = sim.CorundumVerilatorNIC
+                        NcClass = node.CorundumLinuxNode
                     else:
                         raise NameError(nic_config)
 
                     # app
                     if proto_config == 'vr':
-                        replica_class = node.VRReplica
-                        client_class = node.VRClient
+                        ReplicaClass = node.VRReplica
+                        ClientClass = node.VRClient
                     elif proto_config == 'nopaxos':
-                        replica_class = node.NOPaxosReplica
-                        client_class = node.NOPaxosClient
+                        ReplicaClass = node.NOPaxosReplica
+                        ClientClass = node.NOPaxosClient
                     else:
                         raise NameError(proto_config)
 
@@ -102,9 +102,9 @@ for proto_config in proto_configs:
                             1,
                             'sequencer',
                             net,
-                            nic_class,
-                            host_class,
-                            nc_class,
+                            NicClass,
+                            HostClass,
+                            NcClass,
                             node.NOPaxosSequencer,
                             ip_start=100
                         )
@@ -117,10 +117,10 @@ for proto_config in proto_configs:
                         3,
                         'replica',
                         net,
-                        nic_class,
-                        host_class,
-                        nc_class,
-                        replica_class
+                        NicClass,
+                        HostClass,
+                        NcClass,
+                        ReplicaClass
                     )
                     for i in range(len(replicas)):
                         replicas[i].node_config.app.index = i
@@ -133,10 +133,10 @@ for proto_config in proto_configs:
                         num_c,
                         'client',
                         net,
-                        nic_class,
-                        host_class,
-                        nc_class,
-                        client_class,
+                        NicClass,
+                        HostClass,
+                        NcClass,
+                        ClientClass,
                         ip_start=4
                     )
 

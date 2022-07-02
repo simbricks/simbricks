@@ -38,11 +38,11 @@ experiments = []
 e = exp.Experiment('dt-gt-ib-sw')
 net = sim.SwitchNet()
 e.add_network(net)
-host_class = sim.Gem5Host
+HostClass = sim.Gem5Host
 e.checkpoint = False
 
-nic_class = sim.I40eNIC
-nc_class = node.I40eLinuxNode
+NicClass = sim.I40eNIC
+NcClass = node.I40eLinuxNode
 
 # create a host
 servers = create_basic_hosts(
@@ -50,9 +50,9 @@ servers = create_basic_hosts(
     1,
     'server',
     net,
-    nic_class,
-    host_class,
-    nc_class,
+    NicClass,
+    HostClass,
+    NcClass,
     node.IperfUDPServer,
     ip_start=2
 )
@@ -69,9 +69,9 @@ clients = create_basic_hosts(
     1,
     'client',
     net,
-    nic_class,
-    host_class,
-    nc_class,
+    NicClass,
+    HostClass,
+    NcClass,
     node.IperfUDPShortClient,
     ip_start=2
 )

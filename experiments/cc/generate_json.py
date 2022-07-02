@@ -26,12 +26,12 @@ for f in glob.glob('testbed-results/*_*pktgap/*.txt'):
     runk = (mtu, k)
     clients = runmap.get(runk, {})
 
-    with open(f, 'r') as f:
+    with open(f, 'r', encoding='utf-8') as f:
         clients['host.client.' + m.group(3)] = {'stdout': f.readlines()}
     runmap[runk] = clients
 
 for ((mtu, k), clients) in runmap.items():
-    ofn = '%stb-ib-dumbbell-DCTCPm%d-%d-1.json' % (outdir, k, mtu)
+    ofn = f'{outdir}tb-ib-dumbbell-DCTCPm{k}-{mtu}-1.json'
     data = {'sims': clients}
-    with open(ofn, 'w') as outfile:
+    with open(ofn, 'w', encoding='utf-8') as outfile:
         json.dump(data, outfile)

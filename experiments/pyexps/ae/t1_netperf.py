@@ -21,12 +21,13 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ########################################################################
-# This script is for reproducing [Table 1] in the paper.
-# It generates experiments for all combinations of simulation.
+# This script is for reproducing [Table 1] in the paper. It generates
+# experiments for all combinations of simulation.
 #
-# Host type has qemu-kvm(qemu in short), gem5-timing-mode(gt), qemu-timing-mode(qt)
-# Nic type has Intel_i40e behavioral model(ib), corundum behavioral model(cb), corundum verilator(cv)
-# Net type has Switch behavioral model(sw), ns-3(ns3)
+# Host type has qemu-kvm(qemu in short), gem5-timing-mode(gt),
+# qemu-timing-mode(qt) Nic type has Intel_i40e behavioral model(ib), corundum
+# behavioral model(cb), corundum verilator(cv) Net type has Switch behavioral
+# model(sw), ns-3(ns3)
 #
 # In each simulation, two hosts are connected by a switch
 # [HOST_0] - [NIC_0] ---- [SWITCH] ----  [NIC_1] - [HOST_1]
@@ -70,7 +71,7 @@ for host_type in host_types:
 
             # host
             if host_type == 'qemu':
-                host_class = sim.QemuHost
+                HostClass = sim.QemuHost
             elif host_type == 'qt':
 
                 def qemu_timing():
@@ -78,23 +79,23 @@ for host_type in host_types:
                     h.sync = True
                     return h
 
-                host_class = qemu_timing
+                HostClass = qemu_timing
             elif host_type == 'gt':
-                host_class = sim.Gem5Host
+                HostClass = sim.Gem5Host
                 e.checkpoint = True
             else:
                 raise NameError(host_type)
 
             # nic
             if nic_type == 'ib':
-                nic_class = sim.I40eNIC
-                nc_class = node.I40eLinuxNode
+                NicClass = sim.I40eNIC
+                NcClass = node.I40eLinuxNode
             elif nic_type == 'cb':
-                nic_class = sim.CorundumBMNIC
-                nc_class = node.CorundumLinuxNode
+                NicClass = sim.CorundumBMNIC
+                NcClass = node.CorundumLinuxNode
             elif nic_type == 'cv':
-                nic_class = sim.CorundumVerilatorNIC
-                nc_class = node.CorundumLinuxNode
+                NicClass = sim.CorundumVerilatorNIC
+                NcClass = node.CorundumLinuxNode
             else:
                 raise NameError(nic_type)
 
@@ -104,9 +105,9 @@ for host_type in host_types:
                 1,
                 'server',
                 net,
-                nic_class,
-                host_class,
-                nc_class,
+                NicClass,
+                HostClass,
+                NcClass,
                 node.NetperfServer
             )
 
@@ -115,9 +116,9 @@ for host_type in host_types:
                 1,
                 'client',
                 net,
-                nic_class,
-                host_class,
-                nc_class,
+                NicClass,
+                HostClass,
+                NcClass,
                 node.NetperfClient,
                 ip_start=2
             )

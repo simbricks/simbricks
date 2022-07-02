@@ -22,21 +22,22 @@
 
 import asyncio
 import pathlib
+import typing as tp
 
-import simbricks.proxy as proxy
 from simbricks.exectools import Executor
-from simbricks.runtime.common import *
+from simbricks.runtime.common import Run, Runtime
 
 import simbricks.experiments as exp
+from simbricks import proxy
 
 
 class DistributedSimpleRuntime(Runtime):
 
-    def __init__(self, execs, verbose=False):
+    def __init__(self, executors, verbose=False):
         self.runnable = []
         self.complete = []
         self.verbose = verbose
-        self.execs = execs
+        self.executors = executors
 
     def add_run(self, run: Run):
         if not isinstance(run.experiment, exp.DistributedExperiment):
@@ -46,16 +47,16 @@ class DistributedSimpleRuntime(Runtime):
 
     async def do_run(self, run: Run):
         runner = exp.ExperimentDistributedRunner(
-            self.execs, run.experiment, run.env, self.verbose
+            self.executors, run.experiment, run.env, self.verbose
         )
-        for exec in self.execs:
-            await run.prep_dirs(exec)
+        for executor in self.executors:
+            await run.prep_dirs(executor)
         await runner.prepare()
         run.output = await runner.run()
         self.complete.append(run)
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
-        with open(run.outpath, 'w') as f:
+        with open(run.outpath, 'w', encoding='utf-8') as f:
             f.write(run.output.dumps())
 
     def start(self):
@@ -64,7 +65,7 @@ class DistributedSimpleRuntime(Runtime):
 
 
 def auto_dist(
-    e: Experiment, execs: tp.List[Executor], proxy_type: str = 'sockets'
+    e: exp.Experiment, execs: tp.List[Executor], proxy_type: str = 'sockets'
 ):
     """
     Converts an Experiment into a DistributedExperiment.

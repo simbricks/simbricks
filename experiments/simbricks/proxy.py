@@ -29,9 +29,6 @@ class SimProxy(Simulator):
     ip = ''
     listen = False
 
-    def __init__(self):
-        super().__init__()
-
     def full_name(self):
         return 'proxy.' + self.name
 
@@ -46,9 +43,6 @@ class NetProxy(SimProxy):
 
     # Shared memory size in GB
     shm_size = 2048
-
-    def __init__(self):
-        super().__init__()
 
     def start_delay(self):
         return 10
@@ -83,7 +77,7 @@ class NetProxyListener(NetProxy):
         for (nic, local) in self.nics:
             if local:
                 deps.append(nic)
-        for ((net_c, net_l), local) in self.n2ns:
+        for ((_, net_l), local) in self.n2ns:
             if local:
                 deps.append(net_l)
         return deps
@@ -151,7 +145,7 @@ class NetProxyConnecter(NetProxy):
         for (nic, local) in self.nics:
             if not local:
                 deps.append(nic)
-        for ((net_c, net_l), local) in self.n2ns:
+        for ((_, net_l), local) in self.n2ns:
             if not local:
                 deps.append(net_l)
         return deps
@@ -194,9 +188,6 @@ class NetProxyConnecter(NetProxy):
 
 class RDMANetProxyListener(NetProxyListener):
 
-    def __init__(self):
-        super().__init__()
-
     def run_cmd(self, env):
         cmd = f'{env.repodir}/dist/rdma/net_rdma -l '
         cmd += super().run_cmd_base(env)
@@ -204,9 +195,6 @@ class RDMANetProxyListener(NetProxyListener):
 
 
 class RDMANetProxyConnecter(NetProxyConnecter):
-
-    def __init__(self, listener):
-        super().__init__(listener)
 
     def run_cmd(self, env):
         cmd = f'{env.repodir}/dist/rdma/net_rdma '
@@ -216,9 +204,6 @@ class RDMANetProxyConnecter(NetProxyConnecter):
 
 class SocketsNetProxyListener(NetProxyListener):
 
-    def __init__(self):
-        super().__init__()
-
     def run_cmd(self, env):
         cmd = f'{env.repodir}/dist/sockets/net_sockets -l '
         cmd += super().run_cmd_base(env)
@@ -226,9 +211,6 @@ class SocketsNetProxyListener(NetProxyListener):
 
 
 class SocketsNetProxyConnecter(NetProxyConnecter):
-
-    def __init__(self, listener):
-        super().__init__(listener)
 
     def run_cmd(self, env):
         cmd = f'{env.repodir}/dist/sockets/net_sockets '

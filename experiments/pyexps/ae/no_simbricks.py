@@ -33,17 +33,17 @@ for app_type in app_types:
 
     e = exp.Experiment('no_simb-gt-' + app_type)
 
-    host_class = sim.Gem5Host
+    HostClass = sim.Gem5Host
     e.checkpoint = True
     e.no_simbricks = True
 
-    nc_class = node.I40eLinuxNode
+    NcClass = node.I40eLinuxNode
     # create servers and clients
 
-    host = host_class()
+    host = HostClass()
     host.name = 'host.0'
     host.cpu_freq = '3GHz'
-    node_config = nc_class()
+    node_config = NcClass()
     node_config.ip = '10.0.0.1'
     node_config.app = node.NoTraffic()
     node_config.cores = 1

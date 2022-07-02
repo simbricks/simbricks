@@ -43,19 +43,19 @@ experiments = []
 # set network sim
 for n in kinds_of_net:
     if n == 'wire':
-        net_class = sim.WireNet
+        NetClass = sim.WireNet
     if n == 'switch':
-        net_class = sim.SwitchNet
+        NetClass = sim.SwitchNet
     if n == 'dumbbell':
-        net_class = sim.NS3DumbbellNet
+        NetClass = sim.NS3DumbbellNet
     if n == 'bridge':
-        net_class = sim.NS3BridgeNet
+        NetClass = sim.NS3BridgeNet
     if n == 'tofino':
-        net_class = sim.TofinoNet
+        NetClass = sim.TofinoNet
 
     # set nic sim
     for c in kinds_of_nic:
-        net = net_class()
+        net = NetClass()
         e = exp.Experiment('qemu-' + c + '-' + n + '-' + 'TCPs')
         e.add_network(net)
 

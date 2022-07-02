@@ -64,7 +64,7 @@ for host_type in host_types:
 
                 # host
                 if host_type == 'qemu':
-                    host_class = sim.QemuHost
+                    HostClass = sim.QemuHost
                 elif host_type == 'qt':
 
                     def qemu_timing():
@@ -72,45 +72,51 @@ for host_type in host_types:
                         h.sync = True
                         return h
 
-                    host_class = qemu_timing
+                    HostClass = qemu_timing
                 elif host_type == 'gt':
-                    host_class = sim.Gem5Host
+                    HostClass = sim.Gem5Host
                     e.checkpoint = True
                 else:
                     raise NameError(host_type)
 
                 # nic
                 if nic_type == 'ib':
-                    nic_class = sim.I40eNIC
-                    nc_class = node.I40eLinuxNode
+                    NicClass = sim.I40eNIC
+                    NcClass = node.I40eLinuxNode
                 elif nic_type == 'cb':
-                    nic_class = sim.CorundumBMNIC
-                    nc_class = node.CorundumLinuxNode
+                    NicClass = sim.CorundumBMNIC
+                    NcClass = node.CorundumLinuxNode
                 elif nic_type == 'cv':
-                    nic_class = sim.CorundumVerilatorNIC
-                    nc_class = node.CorundumLinuxNode
+                    NicClass = sim.CorundumVerilatorNIC
+                    NcClass = node.CorundumLinuxNode
                 else:
                     raise NameError(nic_type)
 
                 # create servers and clients
-                """
-                servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                        nc_class, node.NoTraffic)
+                # servers = create_basic_hosts(
+                #     e,
+                #     1,
+                #     'server',
+                #     net,
+                #     NicClass,
+                #     HostClass,
+                #     NcClass,
+                #     node.NoTraffic
+                # )
 
-                for s in servers:
-                    s.node_config.cores = num_cores
-                    s.node_config.app.is_sleep = 0
-                    s.node_config.app.is_server = 1
-                """
+                # for s in servers:
+                #     s.node_config.cores = num_cores
+                #     s.node_config.app.is_sleep = 0
+                #     s.node_config.app.is_server = 1
 
                 clients = create_basic_hosts(
                     e,
                     n_client,
                     'client',
                     net,
-                    nic_class,
-                    host_class,
-                    nc_class,
+                    NicClass,
+                    HostClass,
+                    NcClass,
                     node.NoTraffic,
                     ip_start=2
                 )

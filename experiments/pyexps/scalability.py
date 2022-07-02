@@ -37,14 +37,14 @@ for host_config in host_configs:
         e = exp.Experiment('scalability-' + host_config + '-' + str(nc))
 
         if host_config == 'bm':
-            host_class = sim.QemuHost
-            nic_class = sim.CorundumBMNIC
-            nc_class = node.CorundumLinuxNode
+            HostClass = sim.QemuHost
+            NicClass = sim.CorundumBMNIC
+            NcClass = node.CorundumLinuxNode
             net = sim.SwitchNet()
         elif host_config == 'cycle':
-            host_class = sim.Gem5Host
-            nic_class = sim.CorundumVerilatorNIC
-            nc_class = node.CorundumLinuxNode
+            HostClass = sim.Gem5Host
+            NicClass = sim.CorundumVerilatorNIC
+            NcClass = node.CorundumLinuxNode
             net = sim.NS3BridgeNet()
         else:
             raise NameError(host_config)
@@ -56,9 +56,9 @@ for host_config in host_configs:
             1,
             'server',
             net,
-            nic_class,
-            host_class,
-            nc_class,
+            NicClass,
+            HostClass,
+            NcClass,
             node.IperfUDPServer
         )
 
@@ -67,9 +67,9 @@ for host_config in host_configs:
             nc,
             'client',
             net,
-            nic_class,
-            host_class,
-            nc_class,
+            NicClass,
+            HostClass,
+            NcClass,
             node.IperfUDPClient
         )
 

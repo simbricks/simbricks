@@ -29,7 +29,8 @@
 # NIC: Intel i40e behavioral model
 # NET: Switch behavioral model
 #
-# In each simulation, one server host and several clients are connected by a switch
+# In each simulation, one server host and several clients are connected by a
+# switch
 # [HOST_0] - [NIC_0] ---- [SWITCH] ----  [NIC_1] - [HOST_1]
 #  server                  | .....|                client_0
 #                     Client_1  Clinet_n
@@ -83,7 +84,7 @@ for n_client in num_client_types:
 
                 # host
                 if host_type == 'qemu':
-                    host_class = sim.QemuHost
+                    HostClass = sim.QemuHost
                 elif host_type == 'qt':
 
                     def qemu_timing():
@@ -91,23 +92,23 @@ for n_client in num_client_types:
                         h.sync = True
                         return h
 
-                    host_class = qemu_timing
+                    HostClass = qemu_timing
                 elif host_type == 'gt':
-                    host_class = sim.Gem5Host
+                    HostClass = sim.Gem5Host
                     e.checkpoint = True
                 else:
                     raise NameError(host_type)
 
                 # nic
                 if nic_type == 'ib':
-                    nic_class = sim.I40eNIC
-                    nc_class = node.I40eLinuxNode
+                    NicClass = sim.I40eNIC
+                    NcClass = node.I40eLinuxNode
                 elif nic_type == 'cb':
-                    nic_class = sim.CorundumBMNIC
-                    nc_class = node.CorundumLinuxNode
+                    NicClass = sim.CorundumBMNIC
+                    NcClass = node.CorundumLinuxNode
                 elif nic_type == 'cv':
-                    nic_class = sim.CorundumVerilatorNIC
-                    nc_class = node.CorundumLinuxNode
+                    NicClass = sim.CorundumVerilatorNIC
+                    NcClass = node.CorundumLinuxNode
                 else:
                     raise NameError(nic_type)
 
@@ -117,9 +118,9 @@ for n_client in num_client_types:
                     1,
                     'server',
                     net,
-                    nic_class,
-                    host_class,
-                    nc_class,
+                    NicClass,
+                    HostClass,
+                    NcClass,
                     node.IperfUDPServer
                 )
 
@@ -128,9 +129,9 @@ for n_client in num_client_types:
                     n_client,
                     'client',
                     net,
-                    nic_class,
-                    host_class,
-                    nc_class,
+                    NicClass,
+                    HostClass,
+                    NcClass,
                     node.IperfUDPClient,
                     ip_start=2
                 )

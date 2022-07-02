@@ -48,10 +48,12 @@ class Simulator(object):
         """Full name of the simulator."""
         return ''
 
+    # pylint: disable=unused-argument
     def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
         """Commands to run to prepare simulator."""
         return []
 
+    # pylint: disable=unused-argument
     def run_cmd(self, env: ExpEnv) -> tp.Optional[str]:
         """Command to run to execute simulator."""
         return None
@@ -61,10 +63,12 @@ class Simulator(object):
         return []
 
     # Sockets to be cleaned up
+    # pylint: disable=unused-argument
     def sockets_cleanup(self, env: ExpEnv):
         return []
 
     # sockets to wait for indicating the simulator is ready
+    # pylint: disable=unused-argument
     def sockets_wait(self, env: ExpEnv):
         return []
 
@@ -82,9 +86,6 @@ class PCIDevSim(Simulator):
     sync_period = 500
     pci_latency = 500
 
-    def __init__(self):
-        super().__init__()
-
     def full_name(self):
         return 'dev.' + self.name
 
@@ -100,18 +101,16 @@ class NICSim(PCIDevSim):
     mac = None
     eth_latency = 500
 
-    def __init__(self):
-        super().__init__()
-
     def set_network(self, net: NetSim):
         self.network = net
         net.nics.append(self)
 
     def basic_args(self, env, extra=None):
-        cmd = '%s %s %s %d %d %d %d %d' % \
-            (env.dev_pci_path(self), env.nic_eth_path(self),
-                    env.dev_shm_path(self), self.sync_mode, self.start_tick,
-                    self.sync_period, self.pci_latency, self.eth_latency)
+        cmd = (
+            f'{env.dev_pci_path(self)} {env.nic_eth_path(self)}'
+            f' {env.dev_shm_path(self)} {self.sync_mode} {self.sync_period}'
+            f' {self.start_tick} {self.pci_latency} {self.eth_latency}'
+        )
         if self.mac is not None:
             cmd += ' ' + (''.join(reversed(self.mac.split(':'))))
 
@@ -120,9 +119,7 @@ class NICSim(PCIDevSim):
         return cmd
 
     def basic_run_cmd(self, env, name, extra=None):
-        cmd = '%s/%s %s' % \
-            (env.repodir + '/sims/nic', name,
-             self.basic_args(env, extra))
+        cmd = f'{env.repodir}/sims/nic/{name} {self.basic_args(env, extra)}'
         return cmd
 
     def full_name(self):
@@ -235,9 +232,6 @@ class QemuHost(HostSim):
     sync = False
     cpu_freq = '4GHz'
 
-    def __init__(self):
-        super().__init__()
-
     def resreq_cores(self):
         if self.sync:
             return 1
@@ -248,7 +242,6 @@ class QemuHost(HostSim):
         return 8192
 
     def prep_cmds(self, env):
-        to_path = env.hdcopy_path(self)
         return [
             f'{env.qemu_img_path} create -f qcow2 -o '
             f'backing_file="{env.hd_path(self.node_config.disk_image)}" '
@@ -293,7 +286,7 @@ class QemuHost(HostSim):
             cmd += ' '
 
         # qemu does not currently support net direct ports
-        assert (len(self.net_directs) == 0)
+        assert len(self.net_directs) == 0
         return cmd
 
 
@@ -332,7 +325,8 @@ class Gem5Host(HostSim):
             f' {env.gem5_py_path} --caches --l2cache --l3cache '
             '--l1d_size=32kB --l1i_size=32kB --l2_size=2MB --l3_size=32MB '
             '--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=4 --l3_assoc=16 '
-            f'--cacheline_size=64 --cpu-clock={self.cpu_freq} --sys-clock={self.sys_clock} '
+            f'--cacheline_size=64 --cpu-clock={self.cpu_freq}'
+            f' --sys-clock={self.sys_clock} '
             f'--checkpoint-dir={env.gem5_cpdir(self)} '
             f'--kernel={env.gem5_kernel_path} '
             f'--disk-image={env.hd_raw_path(self.node_config.disk_image)} '
@@ -377,9 +371,6 @@ class Gem5Host(HostSim):
 class CorundumVerilatorNIC(NICSim):
     clock_freq = 250  # MHz
 
-    def __init__(self):
-        super().__init__()
-
     def resreq_mem(self):
         # this is a guess
         return 512
@@ -392,17 +383,11 @@ class CorundumVerilatorNIC(NICSim):
 
 class CorundumBMNIC(NICSim):
 
-    def __init__(self):
-        super().__init__()
-
     def run_cmd(self, env):
         return self.basic_run_cmd(env, '/corundum_bm/corundum_bm')
 
 
 class I40eNIC(NICSim):
-
-    def __init__(self):
-        super().__init__()
 
     def run_cmd(self, env):
         return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
@@ -410,9 +395,6 @@ class I40eNIC(NICSim):
 
 class E1000NIC(NICSim):
     debug = False
-
-    def __init__(self):
-        super().__init__()
 
     def run_cmd(self, env):
         cmd = self.basic_run_cmd(env, '/e1000_gem5/e1000_gem5')
@@ -462,7 +444,7 @@ class I40eMultiNIC(Simulator):
                 args += ' -- '
             first = False
             args += sn.basic_args(env)
-        return '%s/sims/nic/i40e_bm/i40e_bm %s' % (env.repodir, args)
+        return f'{env.repodir}/sims/nic/i40e_bm/i40e_bm {args}'
 
     def sockets_cleanup(self, env):
         ss = []
@@ -479,16 +461,14 @@ class I40eMultiNIC(Simulator):
 
 class WireNet(NetSim):
 
-    def __init__(self):
-        super().__init__()
-
     def run_cmd(self, env):
         connects = self.connect_sockets(env)
         assert len(connects) == 2
-        cmd = '%s/sims/net/wire/net_wire %s %s %d %d %d' % \
-                (env.repodir, connects[0][1],
-                        connects[1][1],
-                        self.sync_mode, self.sync_period, self.eth_latency)
+        cmd = (
+            f'{env.repodir}/sims/net/wire/net_wire {connects[0][1]}'
+            f' connects[1][1] {self.sync_mode} {self.sync_period}'
+            f' {self.eth_latency}'
+        )
         if len(env.pcap_file) > 0:
             cmd += ' ' + env.pcap_file
         return cmd
@@ -496,9 +476,6 @@ class WireNet(NetSim):
 
 class SwitchNet(NetSim):
     sync = True
-
-    def __init__(self):
-        super().__init__()
 
     def run_cmd(self, env):
         cmd = env.repodir + '/sims/net/switch/net_switch'
@@ -529,12 +506,12 @@ class TofinoNet(NetSim):
     tofino_log_path = '/tmp/model.ldjson'
     sync = True
 
-    def __init__(self):
-        super().__init__()
-
     def run_cmd(self, env):
-        cmd = env.repodir + '/sims/net/tofino/tofino'
-        cmd += f' -S {self.sync_period} -E {self.eth_latency} -t {self.tofino_log_path}'
+        cmd = f'{env.repodir}/sims/net/tofino/tofino'
+        cmd += (
+            f' -S {self.sync_period} -E {self.eth_latency}'
+            f' -t {self.tofino_log_path}'
+        )
         if not self.sync:
             cmd += ' -u'
         for (_, n) in self.connect_sockets(env):
@@ -544,9 +521,6 @@ class TofinoNet(NetSim):
 
 class NS3DumbbellNet(NetSim):
 
-    def __init__(self):
-        super().__init__()
-
     def run_cmd(self, env):
         ports = ''
         for (n, s) in self.connect_sockets(env):
@@ -555,7 +529,10 @@ class NS3DumbbellNet(NetSim):
             else:
                 ports += '--CosimPortRight=' + s + ' '
 
-        cmd = env.repodir + '/sims/external/ns-3' + '/cosim-run.sh cosim cosim-dumbbell-example ' + ports + ' ' + self.opt
+        cmd = (
+            f'{env.repodir}/sims/external/ns-3'
+            f'/cosim-run.sh cosim cosim-dumbbell-example {ports} {self.opt}'
+        )
         print(cmd)
 
         return cmd
@@ -563,24 +540,21 @@ class NS3DumbbellNet(NetSim):
 
 class NS3BridgeNet(NetSim):
 
-    def __init__(self):
-        super().__init__()
-
     def run_cmd(self, env):
         ports = ''
         for (_, n) in self.connect_sockets(env):
             ports += '--CosimPort=' + n + ' '
 
-        cmd = env.repodir + '/sims/external/ns-3' + '/cosim-run.sh cosim cosim-bridge-example ' + ports + ' ' + self.opt
+        cmd = (
+            f'{env.repodir}/sims/external/ns-3'
+            f'/cosim-run.sh cosim cosim-bridge-example {ports} {self.opt}'
+        )
         print(cmd)
 
         return cmd
 
 
 class NS3SequencerNet(NetSim):
-
-    def __init__(self):
-        super().__init__()
 
     def run_cmd(self, env):
         ports = ''
@@ -593,17 +567,19 @@ class NS3SequencerNet(NetSim):
                 ports += '--ServerPort=' + s + ' '
             else:
                 raise Exception('Wrong NIC type')
-        cmd = env.repodir + '/sims/external/ns-3' + '/cosim-run.sh sequencer sequencer-single-switch-example ' + ports + ' ' + self.opt
+        cmd = (
+            f'{env.repodir}/sims/external/ns-3'
+            f'/cosim-run.sh sequencer sequencer-single-switch-example'
+            f' {ports} {self.opt}'
+        )
         return cmd
 
 
 class FEMUDev(PCIDevSim):
 
-    def __init__(self):
-        super().__init__()
-
     def run_cmd(self, env):
-        cmd = '%s%s %s %s' % \
-            (env.repodir, '/sims/external/femu/femu-simbricks',
-             env.dev_pci_path(self), env.dev_shm_path(self))
+        cmd = (
+            f'{env.repodir}/sims/external/femu/femu-simbricks'
+            f' {env.dev_pci_path(self)} {env.dev_shm_path(self)}'
+        )
         return cmd

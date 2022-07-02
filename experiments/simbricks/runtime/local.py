@@ -22,12 +22,12 @@
 
 import asyncio
 import pathlib
-from typing import Optional
+import typing as tp
 
-import simbricks.exectools as exectools
-from simbricks.runtime.common import *
+from simbricks.runtime.common import Run, Runtime
 
 import simbricks.experiments as exp
+from simbricks import exectools
 
 
 class LocalSimpleRuntime(Runtime):
@@ -36,12 +36,12 @@ class LocalSimpleRuntime(Runtime):
     def __init__(
         self,
         verbose=False,
-        exec: exectools.Executor = exectools.LocalExecutor()
+        executor: exectools.Executor = exectools.LocalExecutor()
     ):
         self.runnable: tp.List[Run] = []
         self.complete: tp.List[Run] = []
         self.verbose = verbose
-        self.exec = exec
+        self.executor = executor
 
     def add_run(self, run: Run):
         self.runnable.append(run)
@@ -49,15 +49,15 @@ class LocalSimpleRuntime(Runtime):
     async def do_run(self, run: Run):
         """Actually executes `run`."""
         runner = exp.ExperimentSimpleRunner(
-            self.exec, run.experiment, run.env, self.verbose
+            self.executor, run.experiment, run.env, self.verbose
         )
-        await run.prep_dirs(self.exec)
+        await run.prep_dirs(self.executor)
         await runner.prepare()
         run.output = await runner.run()
         self.complete.append(run)
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
-        with open(run.outpath, 'w') as f:
+        with open(run.outpath, 'w', encoding='utf-8') as f:
             f.write(run.output.dumps())
 
     def start(self):
@@ -72,9 +72,9 @@ class LocalParallelRuntime(Runtime):
     def __init__(
         self,
         cores: int,
-        mem: Optional[int] = None,
+        mem: tp.Optional[int] = None,
         verbose=False,
-        exec: exectools.Executor = exectools.LocalExecutor()
+        executor: exectools.Executor = exectools.LocalExecutor()
     ):
         self.runs_noprereq: tp.List[Run] = []
         """Runs with no prerequesite runs."""
@@ -84,7 +84,7 @@ class LocalParallelRuntime(Runtime):
         self.cores = cores
         self.mem = mem
         self.verbose = verbose
-        self.exec = exec
+        self.executor = executor
 
     def add_run(self, run: Run):
         if run.experiment.resreq_cores() > self.cores:
@@ -101,15 +101,15 @@ class LocalParallelRuntime(Runtime):
     async def do_run(self, run: Run):
         """Actually executes `run`."""
         runner = exp.ExperimentSimpleRunner(
-            self.exec, run.experiment, run.env, self.verbose
+            self.executor, run.experiment, run.env, self.verbose
         )
-        await run.prep_dirs(exec=self.exec)
+        await run.prep_dirs(executor=self.executor)
         await runner.prepare()
         print('starting run ', run.name())
         run.output = await runner.run()
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
-        with open(run.outpath, 'w') as f:
+        with open(run.outpath, 'w', encoding='utf-8') as f:
             f.write(run.output.dumps())
         print('finished run ', run.name())
         return run
@@ -130,7 +130,7 @@ class LocalParallelRuntime(Runtime):
 
     def enough_resources(self, run: Run):
         """Check if enough cores and mem are available for the run."""
-        exp = run.experiment
+        exp = run.experiment  # pylint: disable=redefined-outer-name
 
         if self.cores is not None:
             enough_cores = (self.cores - self.cores_used) >= exp.resreq_cores()

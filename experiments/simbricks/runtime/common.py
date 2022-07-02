@@ -28,10 +28,10 @@ import shutil
 import typing as tp
 from abc import ABCMeta, abstractmethod
 
-import simbricks.exectools as exectools
 from simbricks.experiment.experiment_environment import ExpEnv
 from simbricks.experiment.experiment_output import ExpOutput
 
+from simbricks import exectools
 from simbricks.experiments import Experiment
 
 
@@ -56,22 +56,22 @@ class Run(object):
     def name(self):
         return self.experiment.name + '.' + str(self.index)
 
-    async def prep_dirs(self, exec=exectools.LocalExecutor()):
+    async def prep_dirs(self, executor=exectools.LocalExecutor()):
         shutil.rmtree(self.env.workdir, ignore_errors=True)
-        await exec.rmtree(self.env.workdir)
+        await executor.rmtree(self.env.workdir)
         shutil.rmtree(self.env.shm_base, ignore_errors=True)
-        await exec.rmtree(self.env.shm_base)
+        await executor.rmtree(self.env.shm_base)
 
         if self.env.create_cp:
             shutil.rmtree(self.env.cpdir, ignore_errors=True)
-            await exec.rmtree(self.env.cpdir)
+            await executor.rmtree(self.env.cpdir)
 
         pathlib.Path(self.env.workdir).mkdir(parents=True, exist_ok=True)
-        await exec.mkdir(self.env.workdir)
+        await executor.mkdir(self.env.workdir)
         pathlib.Path(self.env.cpdir).mkdir(parents=True, exist_ok=True)
-        await exec.mkdir(self.env.cpdir)
+        await executor.mkdir(self.env.cpdir)
         pathlib.Path(self.env.shm_base).mkdir(parents=True, exist_ok=True)
-        await exec.mkdir(self.env.shm_base)
+        await executor.mkdir(self.env.shm_base)
 
 
 class Runtime(metaclass=ABCMeta):

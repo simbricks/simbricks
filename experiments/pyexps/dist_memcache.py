@@ -24,11 +24,11 @@ import math
 import random
 
 import simbricks.nodeconfig as node
-import simbricks.proxy as proxy
 import simbricks.simulators as sim
 from simbricks.simulator_utils import create_multinic_hosts
 
 import simbricks.experiments as exp
+from simbricks import proxy
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4, 8, 16, 32]
@@ -39,7 +39,8 @@ separate_net = True
 nets_per_host = 1
 
 
-def select_servers(i, j, racks, n, n_host):
+# pylint: disable=redefined-outer-name
+def select_servers(i, racks, n, n_host):
     nc = int(n_host / 2)
 
     if n == 1:
@@ -75,7 +76,7 @@ for host_type in host_types:
 
             # host
             if host_type == 'qemu':
-                host_class = sim.QemuHost
+                HostClass = sim.QemuHost
             elif host_type == 'qt':
 
                 def qemu_timing():
@@ -83,9 +84,9 @@ for host_type in host_types:
                     h.sync = True
                     return h
 
-                host_class = qemu_timing
+                HostClass = qemu_timing
             elif host_type == 'gem5':
-                host_class = sim.Gem5Host
+                HostClass = sim.Gem5Host
                 e.checkpoint = False
             else:
                 raise NameError(host_type)
@@ -104,7 +105,7 @@ for host_type in host_types:
                     h_i += 1
 
                 switch = sim.SwitchNet()
-                switch.name = 'switch_%d' % (i,)
+                switch.name = f'switch_{i}'
                 if host_type == 'qemu':
                     switch.sync = False
                 e.add_network(switch)
@@ -117,9 +118,9 @@ for host_type in host_types:
                 servers = create_multinic_hosts(
                     e,
                     m,
-                    'server_%d' % (i,),
+                    f'server_{i}',
                     switch,
-                    host_class,
+                    HostClass,
                     node.I40eLinuxNode,
                     node.MemcachedServer,
                     ip_start=i * n_host + 1,
@@ -136,9 +137,9 @@ for host_type in host_types:
                 clients = create_multinic_hosts(
                     e,
                     m,
-                    'client_%d' % (i,),
+                    f'client_{i}',
                     switch,
-                    host_class,
+                    HostClass,
                     node.I40eLinuxNode,
                     node.MemcachedClient,
                     ip_start=i * n_host + 1 + m,
@@ -157,12 +158,12 @@ for host_type in host_types:
 
                 if h_i != 0:
                     lp = proxy.SocketsNetProxyListener()
-                    lp.name = 'listener-%d' % (i,)
+                    lp.name = f'listener-{i}'
                     e.add_proxy(lp)
                     e.assign_sim_host(lp, h_i)
 
                     cp = proxy.SocketsNetProxyConnecter(lp)
-                    cp.name = 'connecter-%d' % (i,)
+                    cp.name = f'connecter-{i}'
                     e.add_proxy(cp)
                     e.assign_sim_host(cp, 0)
 
@@ -183,7 +184,7 @@ for host_type in host_types:
             for i in range(0, n):
                 for j in range(0, int(n_host / 2)):
                     c = racks[i][1][j]
-                    servers = select_servers(i, j, racks, n, n_host)
+                    servers = select_servers(i, racks, n, n_host)
                     server_ips = [s.node_config.ip for s in servers]
 
                     c.node_config.app.server_ips = server_ips

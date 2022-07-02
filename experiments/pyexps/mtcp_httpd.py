@@ -41,7 +41,7 @@ file_size = 64
 experiments = []
 
 for (nodec, appc, clientc, label) in configs:
-    e = exp.Experiment('qemu-ib-switch-mtcp_httpd-%s' % (label))
+    e = exp.Experiment(f'qemu-ib-switch-mtcp_httpd-{label}')
     e.timeout = 5 * 60
 
     net = sim.SwitchNet()
