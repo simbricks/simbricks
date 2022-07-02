@@ -26,10 +26,14 @@ lint-python:
 	pylint -d missing-module-docstring,missing-class-docstring experiments/ results/
 
 typecheck-python:
-	$(MAKE) typecheck-experiments typecheck-results
+	$(MAKE) typecheck-experiments typecheck-results typecheck-experiments-ae
 
 typecheck-experiments:
 	pytype -j 0 --keep-going --exclude "**/ae/*" -- experiments/
+
+typecheck-experiments-ae:
+	pytype -j 0 --keep-going experiments/pyexps/ae/
+
 
 typecheck-results:
 	pytype -j 0 --keep-going results/
