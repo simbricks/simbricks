@@ -23,7 +23,7 @@
 include mk/subdir_pre.mk
 
 lint-python:
-	pylint experiments/ results/
+	pylint -d missing-module-docstring,missing-class-docstring experiments/ results/
 
 typecheck-python:
 	$(MAKE) typecheck-experiments typecheck-results
