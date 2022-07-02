@@ -23,9 +23,15 @@
 include mk/subdir_pre.mk
 
 lint-python:
-	pylint experiments
+	pylint experiments/ results/
 
 typecheck-python:
+	$(MAKE) typecheck-experiments typecheck-results
+
+typecheck-experiments:
 	pytype -j 0 --keep-going --exclude "**/ae/*" -- experiments/
+
+typecheck-results:
+	pytype -j 0 --keep-going results/
 
 include mk/subdir_post.mk
