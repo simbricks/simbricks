@@ -91,8 +91,8 @@ format-isort:
 		--skip experiments/simbricks/utils/graphlib.py \
 		results/ experiments/
 
-lint: lint-cpplint lint-clang-format
-lint-all: lint lint-clang-tidy
+lint: lint-cpplint lint-clang-format lint-python
+lint-all: lint lint-clang-tidy typecheck-python
 
 help:
 	@echo "Targets:"
