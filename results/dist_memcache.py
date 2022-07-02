@@ -28,6 +28,7 @@ time in hours, and the third column is the gem5 simulation time.
 
 import json
 import sys
+from os.path import exists
 
 if len(sys.argv) != 2:
     print('Usage: dist_memcache.py OUTDIR')
@@ -41,18 +42,18 @@ host_types = ['qt', 'gem5']
 for n_racks in racks:
     l = str(n_racks * n_hosts_per_rack)
     for host_type in host_types:
-        log_path = '%sdist_memcache-%s-%d-%d-1.json' % (
-            basedir, host_type, n_racks, n_hosts_per_rack
+        log_path = (
+            f'{basedir}dist_memcache-{host_type}-{n_racks}-{n_hosts_per_rack}'
+            '-1.json'
         )
-        try:
-            log = open(log_path, 'r')
-        except:
-            diff_time = ''
+        if exists(log):
+            with open(log_path, 'r', encoding='utf-8') as log:
+                exp_log = json.load(log)
+                start_time = exp_log['start_time']
+                end_time = exp_log['end_time']
+                diff_time = float(end_time - start_time) / 60 / 60
         else:
-            exp_log = json.load(log)
-            start_time = exp_log['start_time']
-            end_time = exp_log['end_time']
-            diff_time = float(end_time - start_time) / 60 / 60
+            diff_time = ''
 
         l += '\t' + str(diff_time)
 

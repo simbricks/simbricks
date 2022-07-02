@@ -32,17 +32,18 @@ def transform_internal(ts, component, msg):
         return None
     elif msg.startswith('read device register ') and 'res=' in msg:
         return None
-    elif msg.startswith('our dma') or \
-         msg.startswith('issuing dma') or \
-         msg.startswith('processing ip packet') or \
-         msg.startswith('transmitting non-ip packet') or \
-         msg.startswith('transmitting ip packet'):
+    elif (
+        msg.startswith('our dma') or msg.startswith('issuing dma') or
+        msg.startswith('processing ip packet') or
+        msg.startswith('transmitting non-ip packet') or
+        msg.startswith('transmitting ip packet')
+    ):
         return None
 
-    return (ts + ' ' + msg)
+    return f'{ts} {msg}'
 
 
-def transform_external(ts, component, msg):
+def transform_external(ts, msg):
     if msg.startswith('igbe: requesting restart clock:') or \
        msg == 'igbe: scheduled' or \
        msg == 'igbe: rescheduling next cycle' or \
@@ -51,7 +52,7 @@ def transform_external(ts, component, msg):
     elif msg.startswith('[rxdesc]') or msg.startswith('[txdesc]'):
         msg = msg[9:]
 
-    return (ts + ' ' + msg)
+    return f'{ts} {msg}'
 
 
 if len(sys.argv) != 3:
@@ -62,7 +63,9 @@ if len(sys.argv) != 3:
 outdir = sys.argv[1]
 variant = sys.argv[2]
 
-with open(outdir + '/' + 'pci_validation-' + variant + '-1.json', 'r') as f:
+with open(
+    f'{outdir}/pci_validation-{variant}-1.json', 'r', encoding='utf-8'
+) as f:
     data = json.load(f)
 
 if variant == 'internal':
@@ -80,6 +83,6 @@ for l in it:
     if not m:
         continue
 
-    l = transform(m.group(1), m.group(2), m.group(3).lower())
+    l = transform(m.group(1), m.group(3).lower())
     if l:
         print(l)

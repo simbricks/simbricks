@@ -21,10 +21,8 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
-import os
-import pathlib
-import shutil
 import sys
+from os.path import exists
 
 if len(sys.argv) != 2:
     print('Usage: udp_scale.py OUTDIR')
@@ -35,18 +33,15 @@ types_of_client = [1, 4, 9, 14, 20]
 bw = 1000
 
 for cl in types_of_client:
-    log_path = '%sgt-ib-sw-Host-%dm-%d-1.json' % (basedir, bw, cl)
+    log_path = f'{basedir}gt-ib-sw-Host-{bw}m-{cl}-1.json'
 
-    try:
-        log = open(log_path, 'r')
-    except:
-        diff_time = ''
-    else:
-        exp_log = json.load(log)
-        start_time = exp_log['start_time']
-        end_time = exp_log['end_time']
-        diff_time = (end_time - start_time) / 60  #min
-        diff_time = str(diff_time)
-        log.close()
+    diff_time = ''
+    if exists(log_path):
+        with open(log_path, 'r', encoding='utf-8') as log:
+            exp_log = json.load(log)
+            start_time = exp_log['start_time']
+            end_time = exp_log['end_time']
+            diff_time = (end_time - start_time) / 60  #min
+            diff_time = str(diff_time)
 
-    print('%d\t%s' % (cl, diff_time))
+    print(f'{cl}\t{diff_time}')

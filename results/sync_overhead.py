@@ -22,8 +22,6 @@
 
 import json
 import os
-import pathlib
-import shutil
 import sys
 
 # How to use
@@ -36,11 +34,12 @@ cmd = ['sleep', 'busy']
 outdir = sys.argv[1]
 
 
+# pylint: disable=redefined-outer-name
 def parse_sim_time(path):
     ret = {}
     if not os.path.exists(path):
         return ret
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     ret['simtime'] = (data['end_time'] - data['start_time']) / 60
@@ -52,11 +51,8 @@ print('mode  sleep  busy')
 for m in mode:
     line = m
     for c in cmd:
-        path = '%s/%s-%s-1.json' % (outdir, m, c)
+        path = f'{outdir}/{m}-{c}-1.json'
         data = parse_sim_time(path)
-        if 'simtime' in data:
-            t = data['simtime']
-        else:
-            t = ''
+        t = data.get('simtime', '')
         line = line + ' ' + f'{t}'
     print(line)

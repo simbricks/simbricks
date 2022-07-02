@@ -23,8 +23,6 @@
 import json
 import math
 import os
-import pathlib
-import shutil
 import sys
 
 num_runs = 3
@@ -43,20 +41,18 @@ for bw in types_of_bw:
     std = 0
     all_time = []
     for i in range(1, num_runs + 1):
-        log_path = '%sgt-ib-sw-Load-%dm-%d.json' % (basedir, bw, i)
-        if os.path.exists(log_path):
-            log = open(log_path, 'r')
-            exp_log = json.load(log)
-            start_time = exp_log['start_time']
-            end_time = exp_log['end_time']
-            diff_time = (end_time - start_time) / 60  #min
-            total_time += diff_time
-            all_time.append(diff_time)
-            diff_time = str(diff_time)
+        log_path = f'{basedir}gt-ib-sw-Load-{bw}m-{i}.json'
 
-            log.close()
-        else:
-            diff_time = ''
+        diff_time = ''
+        if os.path.exists(log_path):
+            with open(log_path, 'r', encoding='utf-8') as log:
+                exp_log = json.load(log)
+                start_time = exp_log['start_time']
+                end_time = exp_log['end_time']
+                diff_time = (end_time - start_time) / 60  #min
+                total_time += diff_time
+                all_time.append(diff_time)
+                diff_time = str(diff_time)
 
         #print('%d\t%s' % (bw, diff_time))
 
@@ -69,4 +65,4 @@ for bw in types_of_bw:
     std = std / num_runs
     std = math.sqrt(std)
     #print(str(std))
-    print('%d %s %f' % (bw, avg_time, std))
+    print(f'{bw} {avg_time} {std}')

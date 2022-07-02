@@ -20,7 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import itertools
 import sys
 
 import utils.iperf
@@ -45,7 +44,7 @@ print('\t'.join(['config'] + list(map(str, lats))))
 for (ht, nt, lab) in configs:
     cols = [str(lab)]
     for lat in lats:
-        path_pat = '%spcilat-%s-%s-switch-%d' % (basedir, ht, nt, lat)
+        path_pat = f'{basedir}pcilat-{ht}-{nt}-switch-{lat}'
         res = utils.iperf.parse_iperf(path_pat)
 
         if res['avg'] is None:
