@@ -43,7 +43,7 @@ print('\t'.join(['threshold'] + confignames))
 for k_val in range(0, max_k + 1, k_step):
     line = [str(k_val)]
     for h, mtu in configs:
-        path_pat = '%s%s-ib-dumbbell-DCTCPm%d-%d' % (basedir, h, k_val, mtu)
+        path_pat = f'{basedir}{h}-ib-dumbbell-DCTCPm{k_val}-{mtu}'
         res = utils.iperf.parse_iperf(path_pat)
 
         if res['avg'] is None:
@@ -52,11 +52,12 @@ for k_val in range(0, max_k + 1, k_step):
 
         tp = res['avg']
         # TP * (MTU ) / (MTU - IP (20) - TCP w/option (24))
-        if (h == 'gt' or h == 'qt'):
+        if h in ('gt', 'qt'):
             tp_calib = tp * (mtu) / (mtu - 20 - 24)
         else:
-            # TP * (MTU + ETH(14) + PHY(24)) / (MTU - IP (20) - TCP w/option (24))
+            # TP * (MTU + ETH(14) + PHY(24)) / (MTU - IP (20)
+            # - TCP w/option (24))
             tp_calib = tp * (mtu + 14 + 24) / (mtu - 20 - 24)
-        line.append('%.2f' % (tp_calib))
+        line.append(f'{tp_calib:.2f}')
 
     print('\t'.join(line))

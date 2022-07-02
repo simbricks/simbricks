@@ -25,7 +25,7 @@ import pathlib
 import pickle
 import re
 
-from simbricks.runtime.common import *
+from simbricks.runtime.common import Run, Runtime
 
 
 class SlurmRuntime(Runtime):
@@ -55,17 +55,17 @@ class SlurmRuntime(Runtime):
         print(exp_script)
 
         # write out pickled run
-        with open(exp_path, 'wb') as f:
+        with open(exp_path, 'wb', encoding='utf-8') as f:
             run.prereq = None  # we don't want to pull in the prereq too
             pickle.dump(run, f)
 
         # create slurm batch script
-        with open(exp_script, 'w') as f:
+        with open(exp_script, 'w', encoding='utf-8') as f:
             f.write('#!/bin/sh\n')
-            f.write('#SBATCH -o %s -e %s\n' % (exp_log, exp_log))
+            f.write(f'#SBATCH -o {exp_log} -e {exp_log}\n')
             #f.write('#SBATCH -c %d\n' % (exp.resreq_cores(),))
-            f.write('#SBATCH --mem=%dM\n' % (exp.resreq_mem(),))
-            f.write('#SBATCH --job-name="%s"\n' % (run.name(),))
+            f.write(f'#SBATCH --mem={exp.resreq_mem()}M\n')
+            f.write(f'#SBATCH --job-name="{run.name()}"\n')
             f.write('#SBATCH --exclude=spyder[01-05],spyder16\n')
             f.write('#SBATCH -c 32\n')
             f.write('#SBATCH --nodes=1\n')
@@ -73,16 +73,16 @@ class SlurmRuntime(Runtime):
                 h = int(exp.timeout / 3600)
                 m = int((exp.timeout % 3600) / 60)
                 s = int(exp.timeout % 60)
-                f.write('#SBATCH --time=%02d:%02d:%02d\n' % (h, m, s))
+                f.write(f'#SBATCH --time={h:02d}:{m:02d}:{s:02d}\n')
 
             extra = ''
             if self.verbose:
                 extra = '--verbose'
 
-            f.write('python3 run.py %s --pickled %s\n' % (extra, exp_path))
+            f.write(f'python3 run.py {extra} --pickled {exp_path}\n')
             f.write('status=$?\n')
             if self.cleanup:
-                f.write('rm -rf %s\n' % (run.env.workdir))
+                f.write(f'rm -rf {run.env.workdir}\n')
             f.write('exit $status\n')
 
         return exp_script
@@ -100,7 +100,7 @@ class SlurmRuntime(Runtime):
 
             script = self.prep_run(run)
 
-            stream = os.popen('sbatch %s %s' % (dep_cmd, script))
+            stream = os.popen(f'sbatch {dep_cmd} {script}')
             output = stream.read()
             result = stream.close()
 

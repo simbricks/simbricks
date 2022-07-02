@@ -32,7 +32,10 @@ from asyncio.subprocess import Process
 
 class HostConfig(object):
 
-    def __init__(self, name, ip, mac, sudopwd, other={}):
+    def __init__(self, name, ip, mac, sudopwd, other=None):
+        if other is None:
+            other = {}
+
         self.name = name
         self.ip = ip
         self.used_ip = ip
@@ -170,7 +173,7 @@ class Component(object):
 class SimpleComponent(Component):
 
     def __init__(
-        self, label, cmd_parts, verbose=True, canfail=False, *args, **kwargs
+        self, label, cmd_parts, *args, verbose=True, canfail=False, **kwargs
     ):
         self.label = label
         self.verbose = verbose
@@ -180,12 +183,12 @@ class SimpleComponent(Component):
 
     async def process_out(self, lines, eof):
         if self.verbose:
-            for l in lines:
+            for _ in lines:
                 print(self.label, 'OUT:', lines, flush=True)
 
     async def process_err(self, lines, eof):
         if self.verbose:
-            for l in lines:
+            for _ in lines:
                 print(self.label, 'ERR:', lines, flush=True)
 
     async def terminated(self, rc):
@@ -203,11 +206,14 @@ class SimpleRemoteComponent(SimpleComponent):
         host_name,
         label,
         cmd_parts,
-        cwd=None,
-        ssh_extra_args=[],
         *args,
+        cwd=None,
+        ssh_extra_args=None,
         **kwargs
     ):
+        if ssh_extra_args is None:
+            ssh_extra_args = []
+
         self.host_name = host_name
         self.extra_flags = ssh_extra_args
         # add a wrapper to print the PID
@@ -300,14 +306,14 @@ class Executor(object):
         raise NotImplementedError('Please Implement this method')
 
     # runs the list of commands as strings sequentially
-    async def run_cmdlist(self, label, cmds, verbose=True, host=None):
+    async def run_cmdlist(self, label, cmds, verbose=True):
         i = 0
         for cmd in cmds:
-            cmdC = self.create_component(
+            cmd_c = self.create_component(
                 label + '.' + str(i), shlex.split(cmd), verbose=verbose
             )
-            await cmdC.start()
-            await cmdC.wait()
+            await cmd_c.start()
+            await cmd_c.wait()
 
     async def await_files(self, paths, *args, **kwargs):
         xs = []
@@ -323,7 +329,7 @@ class LocalExecutor(Executor):
 
     async def await_file(self, path, delay=0.05, verbose=False, timeout=30):
         if verbose:
-            print('await_file(%s)' % path)
+            print(f'await_file({path})')
         t = 0
         while not os.path.exists(path):
             if t >= timeout:
@@ -365,18 +371,18 @@ class RemoteExecutor(Executor):
 
     async def await_file(self, path, delay=0.05, verbose=False, timeout=30):
         if verbose:
-            print('%s.await_file(%s) started' % (self.host_name, path))
+            print(f'{self.host_name}.await_file({path}) started')
 
         to_its = timeout / delay
         loop_cmd = (
-            'i=0 ; while [ ! -e %s ] ; do '
-            'if [ $i -ge %u ] ; then exit 1 ; fi ; '
-            'sleep %f ; '
+            f'i=0 ; while [ ! -e {path} ] ; do '
+            f'if [ $i -ge {to_its:u} ] ; then exit 1 ; fi ; '
+            f'sleep {delay} ; '
             'i=$(($i+1)) ; done; exit 0'
         ) % (path, to_its, delay)
         parts = ['/bin/sh', '-c', loop_cmd]
         sc = self.create_component(
-            "%s.await_file('%s')" % (self.host_name, path),
+            f"{self.host_name}.await_file('{path}')",
             parts,
             canfail=False,
             verbose=verbose
@@ -393,9 +399,9 @@ class RemoteExecutor(Executor):
             'UserKnownHostsFile=/dev/null',
             '-o',
             'StrictHostKeyChecking=no'
-        ] + self.scp_extra_args + [path, '%s:%s' % (self.host_name, path)]
+        ] + self.scp_extra_args + [path, f'{self.host_name}:{path}']
         sc = SimpleComponent(
-            "%s.send_file('%s')" % (self.host_name, path),
+            f'{self.host_name}.send_file("{path}")',
             parts,
             canfail=False,
             verbose=verbose
@@ -405,7 +411,7 @@ class RemoteExecutor(Executor):
 
     async def mkdir(self, path, verbose=False):
         sc = self.create_component(
-            "%s.mkdir('%s')" % (self.host_name, path), ['mkdir', '-p', path],
+            f"{self.host_name}.mkdir('{path}')", ['mkdir', '-p', path],
             canfail=False,
             verbose=verbose
         )
@@ -414,7 +420,7 @@ class RemoteExecutor(Executor):
 
     async def rmtree(self, path, verbose=False):
         sc = self.create_component(
-            "%s.rmtree('%s')" % (self.host_name, path), ['rm', '-rf', path],
+            f'{self.host_name}.rmtree("{path}")', ['rm', '-rf', path],
             canfail=False,
             verbose=verbose
         )

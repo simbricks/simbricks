@@ -20,9 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import glob
-import itertools
-import json
 import os
 import sys
 
@@ -35,6 +32,7 @@ basedir = sys.argv[1]
 types_of_host = [2, 8, 16, 32]
 
 
+# pylint: disable=redefined-outer-name
 def time_diff_min(data):
     start_time = data['start_time']
     end_time = data['end_time']
@@ -48,13 +46,13 @@ print('# Number of hosts' + '\t' + 'Sim.Time')
 for workload in types_of_host:
 
     line = [str(workload)]
-    path_pat = '%srun-%d.out' % (basedir, workload)
+    path_pat = f'{basedir}run-{workload}.out'
 
     if not os.path.isfile(path_pat):
         #print("no result file at: " + path_pat)
         line.append(' ')
     else:
-        with open(path_pat, 'r') as f:
+        with open(path_pat, 'r', encoding='utf-8') as f:
             read_lines = f.readlines()
 
             for l in read_lines:
@@ -67,6 +65,6 @@ for workload in types_of_host:
                     #print("end_time: %d" % end_time)
 
             sim_time = (end_time - start_time) / 60
-            line.append('%d' % sim_time)
+            line.append(f'{sim_time}')
 
     print('\t'.join(line))

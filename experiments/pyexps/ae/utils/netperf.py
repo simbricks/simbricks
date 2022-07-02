@@ -30,7 +30,7 @@ def parse_netperf_run(path):
 
     if not os.path.exists(path):
         return ret
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     ret['simtime'] = data['end_time'] - data['start_time']

@@ -21,9 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import glob
-import itertools
 import json
-import os
 import sys
 
 if len(sys.argv) != 2:
@@ -35,6 +33,7 @@ basedir = sys.argv[1]
 types_of_client = [1, 4, 9, 14, 20]
 
 
+# pylint: disable=redefined-outer-name
 def time_diff_min(data):
     start_time = data['start_time']
     end_time = data['end_time']
@@ -48,7 +47,7 @@ print('# Number of hosts' + '\t' + 'Sim.Time')
 for workload in types_of_client:
 
     line = [str(workload)]
-    path_pat = '%shost-gt-ib-sw-1000m-%s' % (basedir, workload)
+    path_pat = f'{basedir}host-gt-ib-sw-1000m-{workload}'
 
     runs = []
     for path in glob.glob(path_pat + '-*.json'):
@@ -56,7 +55,7 @@ for workload in types_of_client:
             # skip checkpoints
             continue
 
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         res = time_diff_min(data)
@@ -66,6 +65,6 @@ for workload in types_of_client:
     if not runs:
         line.append(' ')
     else:
-        line.append('%d' % (sum(runs) / len(runs)))
+        line.append(f'{sum(runs) / len(runs)}')
 
     print('\t'.join(line))

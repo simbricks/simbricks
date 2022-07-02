@@ -20,9 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import glob
-import itertools
-import json
 import os
 import sys
 
@@ -34,19 +31,17 @@ out_file = sys.argv[1]
 
 if not os.path.isfile(out_file):
     print('no result file at: ' + out_file)
-    exit(0)
+    sys.exit()
 
-f = open(out_file, 'r')
-lines = f.readlines()
+with open(out_file, 'r', encoding='utf-8') as f:
+    lines = f.readlines()
 
-for line in lines:
-    if 'start:' in line:
-        start_time = float(line.split()[1])
+    for line in lines:
+        if 'start:' in line:
+            start_time = float(line.split()[1])
 
-    if 'end:' in line:
-        end_time = float(line.split()[1])
+        if 'end:' in line:
+            end_time = float(line.split()[1])
 
-time_diff = end_time - start_time
-print('SimTime: %d (s)' % (time_diff))
-
-f.close()
+    time_diff = end_time - start_time
+    print(f'SimTime: {time_diff} (s)')

@@ -34,20 +34,20 @@ experiments = []
 for msg_size in msg_sizes:
     for stack in stacks:
         e = exp.Experiment(
-            'qemu-ib-switch-rpc-%s-1t-1fpc-%db-0mpc' % (stack, msg_size)
+            f'qemu-ib-switch-rpc-{stack}-1t-1fpc-{msg_size}b-0mpc'
         )
         net = sim.SwitchNet()
         e.add_network(net)
 
         if stack == 'tas':
-            n = node.TASNode
+            N = node.TASNode
         elif stack == 'mtcp':
-            n = node.MtcpNode
+            N = node.MtcpNode
         else:
-            n = node.I40eLinuxNode
+            N = node.I40eLinuxNode
 
         servers = create_basic_hosts(
-            e, 1, 'server', net, sim.I40eNIC, sim.QemuHost, n, node.RPCServer
+            e, 1, 'server', net, sim.I40eNIC, sim.QemuHost, N, node.RPCServer
         )
 
         clients = create_basic_hosts(
@@ -57,7 +57,7 @@ for msg_size in msg_sizes:
             net,
             sim.I40eNIC,
             sim.QemuHost,
-            n,
+            N,
             node.RPCClient,
             ip_start=2
         )

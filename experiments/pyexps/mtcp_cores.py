@@ -36,9 +36,7 @@ msg_size = 64
 experiments = []
 for server_cores in server_cores_configs:
     for stack in stacks:
-        e = exp.Experiment(
-            'qemu-ib-switch-mtcp_cores-%s-%d' % (stack, server_cores)
-        )
+        e = exp.Experiment(f'qemu-ib-switch-mtcp_cores-{stack}-{server_cores}')
         e.timeout = 5 * 60
         # add meta data for output file
         e.metadata['msg_size'] = msg_size
@@ -48,14 +46,14 @@ for server_cores in server_cores_configs:
         e.add_network(net)
 
         if stack == 'tas':
-            n = node.TASNode
+            N = node.TASNode
         elif stack == 'mtcp':
-            n = node.MtcpNode
+            N = node.MtcpNode
         else:
-            n = node.I40eLinuxNode
+            N = node.I40eLinuxNode
 
         servers = create_basic_hosts(
-            e, 1, 'server', net, sim.I40eNIC, sim.QemuHost, n, node.RPCServer
+            e, 1, 'server', net, sim.I40eNIC, sim.QemuHost, N, node.RPCServer
         )
 
         clients = create_basic_hosts(
@@ -65,7 +63,7 @@ for server_cores in server_cores_configs:
             net,
             sim.I40eNIC,
             sim.QemuHost,
-            n,
+            N,
             node.RPCClient,
             ip_start=2
         )
@@ -92,6 +90,6 @@ for server_cores in server_cores_configs:
             if stack == 'linux':
                 h.node_config.disk_image = 'tas'
             elif stack == 'tas':
-                c.node_config.cores += 2
-                c.node_config.fp_cores = 1
+                h.node_config.cores += 2
+                h.node_config.fp_cores = 1
         experiments.append(e)

@@ -20,11 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import itertools
 import os
 import sys
-
-import utils.iperf
 
 if len(sys.argv) != 2:
     print('Usage: ns3-dctcp.py OUTDIR')
@@ -41,27 +38,25 @@ print('\t'.join(['threshold'] + confignames))
 
 for k_val in range(0, max_k + 1, k_step):
     line = [str(k_val)]
-    path_pat = '%sdctcp-modes-tput-4000-%d-50us.dat' % (basedir, k_val)
+    path_pat = f'{basedir}dctcp-modes-tput-4000-{k_val}-50us.dat'
 
     tps = []
 
     if not os.path.isfile(path_pat):
         print('no result file at: ' + path_pat)
-        exit(0)
-    f = open(path_pat, 'r')
-    lines = f.readlines()
+        sys.exit()
+    with open(path_pat, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
 
-    tp = float(lines[1].split()[2]) / 1000
-    tps.append(tp)
+        tp = float(lines[1].split()[2]) / 1000
+        tps.append(tp)
 
-    tp = float(lines[2].split()[2]) / 1000
-    tps.append(tp)
-
-    f.close()
+        tp = float(lines[2].split()[2]) / 1000
+        tps.append(tp)
 
     total_tp = sum(tps)
 
     # TP * (MTU + PPP(2)) / (MTU - IP (20) - TCP w/option (24))
     tp_calib = total_tp * (mtu + 2) / (mtu - 20 - 24)
-    line.append('%.2f' % (tp_calib))
+    line.append(f'{tp_calib:.2f}')
     print('\t'.join(line))

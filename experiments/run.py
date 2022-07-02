@@ -30,15 +30,16 @@ import pickle
 import sys
 import typing as tp
 
-import simbricks.exectools as exectools
-from simbricks.runtime.common import *
-from simbricks.runtime.distributed import *
-from simbricks.runtime.local import *
-from simbricks.runtime.slurm import *
+from simbricks.runtime.common import Run
+from simbricks.runtime.distributed import DistributedSimpleRuntime, auto_dist
+from simbricks.runtime.local import LocalParallelRuntime, LocalSimpleRuntime
+from simbricks.runtime.slurm import SlurmRuntime
 
 import simbricks.experiments as exp
+from simbricks import exectools
 
 
+# pylint: disable=redefined-outer-name
 def mkdir_if_not_exists(path):
     if not os.path.exists(path):
         os.mkdir(path)
@@ -212,9 +213,10 @@ g_dist.add_argument(
 args = parser.parse_args()
 
 
+# pylint: disable=redefined-outer-name
 def load_executors(path):
     """Load hosts list from json file and return list of executors."""
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         hosts = json.load(f)
 
         exs = []
@@ -252,7 +254,10 @@ def warn_multi_exec():
 if args.runtime == 'parallel':
     warn_multi_exec()
     rt = LocalParallelRuntime(
-        cores=args.cores, mem=args.mem, verbose=args.verbose, exec=executors[0]
+        cores=args.cores,
+        mem=args.mem,
+        verbose=args.verbose,
+        executor=executors[0]
     )
 elif args.runtime == 'slurm':
     rt = SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
@@ -260,9 +265,10 @@ elif args.runtime == 'dist':
     rt = DistributedSimpleRuntime(executors, verbose=args.verbose)
 else:
     warn_multi_exec()
-    rt = LocalSimpleRuntime(verbose=args.verbose, exec=executors[0])
+    rt = LocalSimpleRuntime(verbose=args.verbose, executor=executors[0])
 
 
+# pylint: disable=redefined-outer-name
 def add_exp(
     e: exp.Experiment,
     run: int,
@@ -271,15 +277,15 @@ def add_exp(
     restore_cp: bool,
     no_simbricks: bool
 ):
-    outpath = '%s/%s-%d.json' % (args.outdir, e.name, run)
+    outpath = f'{args.outdir}/{e.name}-{run}.json'
     if os.path.exists(outpath) and not args.force:
-        print('skip %s run %d' % (e.name, run))
+        print(f'skip {e.name} run {run}')
         return None
 
-    workdir = '%s/%s/%d' % (args.workdir, e.name, run)
-    cpdir = '%s/%s/%d' % (args.cpdir, e.name, 0)
+    workdir = f'{args.workdir}/{e.name}/{run}'
+    cpdir = f'{args.cpdir}/{e.name}/0'
     if args.shmdir is not None:
-        shmdir = '%s/%s/%d' % (args.shmdir, e.name, run)
+        shmdir = f'{args.shmdir}/{e.name}/{run}'
 
     env = exp.ExpEnv(args.repo, workdir, cpdir)
     env.create_cp = create_cp
@@ -320,17 +326,15 @@ if not args.pickled:
         if (args.filter) and (len(args.filter) > 0):
             match = False
             for f in args.filter:
-                if fnmatch.fnmatch(e.name, f):
-                    match = True
+                match = fnmatch.fnmatch(e.name, f)
+                if match:
                     break
+
             if not match:
                 continue
 
         # if this is an experiment with a checkpoint we might have to create it
-        if e.no_simbricks:
-            no_simbricks = True
-        else:
-            no_simbricks = False
+        no_simbricks = e.no_simbricks
         if e.checkpoint:
             prereq = add_exp(e, 0, None, True, False, no_simbricks)
         else:

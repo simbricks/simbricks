@@ -36,9 +36,9 @@ basedir = sys.argv[1]
 for network in types_of_network:
     for c in num_clients:
         line = [network, str(c)]
-        path = '%s/nopaxos-qt-ib-%s-%s-1.json' % (basedir, network, c)
+        path = f'{basedir}/nopaxos-qt-ib-{network}-{c}-1.json'
         ret = pn.parse_nopaxos_run(c, path)
         if ret is not None:
-            line.append('%d' % ret['throughput'])
-            line.append('%d' % ret['latency'])
+            line.append(f'{ret["throughput"]}')
+            line.append(f'{ret["latency"]}')
             print('\t'.join(line))

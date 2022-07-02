@@ -45,7 +45,7 @@ experiments = []
 for mode in types_of_mode:
     for num_pairs in types_of_num_pairs:
 
-        for h in types_of_host:
+        for host in types_of_host:
             for c in types_of_nic:
 
                 net = sim.SwitchNet()
@@ -53,44 +53,44 @@ for mode in types_of_mode:
                 #net.opt = link_rate_opt + link_latency_opt
 
                 e = exp.Experiment(
-                    f'mode-{mode}-' + h + '-' + c + '-' + 'switch' +
+                    f'mode-{mode}-' + host + '-' + c + '-' + 'switch' +
                     f'-{num_pairs}'
                 )
                 e.add_network(net)
 
                 # host
-                if h == 'qemu':
-                    host_class = sim.QemuHost
-                elif h == 'qt':
+                if host == 'qemu':
+                    HostClass = sim.QemuHost
+                elif host == 'qt':
 
                     def qemu_timing():
                         h = sim.QemuHost()
                         h.sync = True
                         return h
 
-                    host_class = qemu_timing
-                elif h == 'gt':
+                    HostClass = qemu_timing
+                elif host == 'gt':
 
                     def gem5_timing():
                         h = sim.Gem5Host()
                         return h
 
-                    host_class = gem5_timing
+                    HostClass = gem5_timing
                     e.checkpoint = True
                 else:
-                    raise NameError(h)
+                    raise NameError(host)
 
                 # nic
 
                 if c == 'cb':
-                    nic_class = sim.CorundumBMNIC
-                    nc_class = node.CorundumLinuxNode
+                    NicClass = sim.CorundumBMNIC
+                    NcClass = node.CorundumLinuxNode
                 elif c == 'cv':
-                    nic_class = sim.CorundumVerilatorNIC
-                    nc_class = node.CorundumLinuxNode
+                    NicClass = sim.CorundumVerilatorNIC
+                    NcClass = node.CorundumLinuxNode
                 elif c == 'ib':
-                    nic_class = sim.I40eNIC
-                    nc_class = node.I40eDCTCPNode
+                    NicClass = sim.I40eNIC
+                    NcClass = node.I40eDCTCPNode
                 else:
                     raise NameError(c)
 
@@ -99,9 +99,9 @@ for mode in types_of_mode:
                     num_pairs,
                     'server',
                     net,
-                    nic_class,
-                    host_class,
-                    nc_class,
+                    NicClass,
+                    HostClass,
+                    NcClass,
                     node.IperfTCPServer
                 )
                 clients = create_basic_hosts(
@@ -109,9 +109,9 @@ for mode in types_of_mode:
                     num_pairs,
                     'client',
                     net,
-                    nic_class,
-                    host_class,
-                    nc_class,
+                    NicClass,
+                    HostClass,
+                    NcClass,
                     node.IperfTCPClient,
                     ip_start=num_pairs + 1
                 )
@@ -129,10 +129,12 @@ for mode in types_of_mode:
                     i += 1
                     #cl.wait = True
 
-                # All the clients will not poweroff after finishing iperf test except the last one
-                # This is to prevent the simulation gets stuck when one of host exits.
+                # All the clients will not poweroff after finishing iperf test
+                # except the last one. This is to prevent the simulation gets
+                # stuck when one of host exits.
 
-                # The last client waits for the output printed in other hosts, then cleanup
+                # The last client waits for the output printed in other hosts,
+                # then cleanup.
                 clients[num_pairs - 1].node_config.app.is_last = True
                 clients[num_pairs - 1].wait = True
 

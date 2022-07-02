@@ -21,11 +21,11 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import simbricks.nodeconfig as node
-import simbricks.proxy as proxy
 import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
 import simbricks.experiments as exp
+from simbricks import proxy
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4]
@@ -44,7 +44,7 @@ for host_type in host_types:
 
             # host
             if host_type == 'qemu':
-                host_class = sim.QemuHost
+                HostClass = sim.QemuHost
             elif host_type == 'qt':
 
                 def qemu_timing():
@@ -52,9 +52,9 @@ for host_type in host_types:
                     h.sync = True
                     return h
 
-                host_class = qemu_timing
+                HostClass = qemu_timing
             elif host_type == 'gem5':
-                host_class = sim.Gem5Host
+                HostClass = sim.Gem5Host
                 e.checkpoint = True
             else:
                 raise NameError(host_type)
@@ -69,7 +69,7 @@ for host_type in host_types:
             for i in range(0, n):
                 h_i = i if not separate_net else i + 1
                 switch = sim.SwitchNet()
-                switch.name = 'switch_%d' % (i,)
+                switch.name = f'switch_{i}'
                 if host_type == 'qemu':
                     switch.sync = False
                 e.add_network(switch)
@@ -83,10 +83,10 @@ for host_type in host_types:
                     servers = create_basic_hosts(
                         e,
                         1,
-                        'server_%d' % (i,),
+                        f'server_{i}',
                         switch,
                         sim.I40eNIC,
-                        host_class,
+                        HostClass,
                         node.I40eLinuxNode,
                         node.NetperfServer,
                         ip_start=i * (n_client + 1) + 1
@@ -100,10 +100,10 @@ for host_type in host_types:
                 clients = create_basic_hosts(
                     e,
                     m,
-                    'client_%d' % (i,),
+                    f'client_{i}',
                     switch,
                     sim.I40eNIC,
-                    host_class,
+                    HostClass,
                     node.I40eLinuxNode,
                     node.NetperfClient,
                     ip_start=i * (n_client + 1) + 2
@@ -120,12 +120,12 @@ for host_type in host_types:
 
                 if h_i != 0:
                     lp = proxy.SocketsNetProxyListener()
-                    lp.name = 'listener-%d' % (i,)
+                    lp.name = f'listener-{i}'
                     e.add_proxy(lp)
                     e.assign_sim_host(lp, h_i)
 
                     cp = proxy.SocketsNetProxyConnecter(lp)
-                    cp.name = 'connecter-%d' % (i,)
+                    cp.name = f'connecter-{i}'
                     e.add_proxy(cp)
                     e.assign_sim_host(cp, 0)
 

@@ -24,7 +24,6 @@ import json
 import os
 import pathlib
 import re
-import shutil
 import sys
 
 # How to use
@@ -32,42 +31,41 @@ import sys
 #
 
 log_file = sys.argv[1]
-log = open(log_file, 'r')
 
-exp_log = json.load(log)
-run_num = re.split('-|\.', log_file)[-2]
-#Name, starting & ending time
-exp_name = exp_log['exp_name']
+with open(log_file, 'r', encoding='utf-8') as log:
+    exp_log = json.load(log)
+    run_num = re.split(r'-|\.', log_file)[-2]
+    #Name, starting & ending time
+    exp_name = exp_log['exp_name']
 
-p = pathlib.Path(log_file)
-tooutdir = f'/{exp_name}/{run_num}'
-outdir = '/'.join(list(p.parts)[0:-1]) + tooutdir
+    p = pathlib.Path(log_file)
+    tooutdir = f'/{exp_name}/{run_num}'
+    outdir = '/'.join(list(p.parts)[0:-1]) + tooutdir
 
-if not os.path.exists(outdir):
-    raise Exception('no such directory')
+    if not os.path.exists(outdir):
+        raise Exception('no such directory')
 
-start_end_path = os.path.join(outdir, 'start_end.txt')
-start_end_file = open(start_end_path, 'w')
-start_end_file.write('start time: ' + str(exp_log['start_time']) + '\n')
-start_end_file.write('end time: ' + str(exp_log['end_time']) + '\n')
-start_end_file.write('success: ' + str(exp_log['success']))
-start_end_file.close()
+    start_end_path = os.path.join(outdir, 'start_end.txt')
 
-for i in exp_log['sims']:
-    #print(i)
-    simdir = os.path.join(outdir, i)
-    sim_out_file = open(simdir, 'w')
+    with open(start_end_path, 'w', encoding='utf-8') as start_end_file:
+        start_end_file.write('start time: ' + str(exp_log['start_time']) + '\n')
+        start_end_file.write('end time: ' + str(exp_log['end_time']) + '\n')
+        start_end_file.write('success: ' + str(exp_log['success']))
 
-    for j in exp_log['sims'][i]:
-        #print(j)
-        sim_out_file.write(j + '\n')
+        for i in exp_log['sims']:
+            #print(i)
+            simdir = os.path.join(outdir, i)
 
-        if (j == 'class'):
-            sim_out_file.write(exp_log['sims'][i][j] + '\n')
+            with open(simdir, 'w', encoding='utf-8') as sim_out_file:
 
-        else:
+                for j in exp_log['sims'][i]:
+                    #print(j)
+                    sim_out_file.write(j + '\n')
 
-            for k in exp_log['sims'][i][j]:
-                sim_out_file.write(k + '\n')
+                    if j == 'class':
+                        sim_out_file.write(exp_log['sims'][i][j] + '\n')
 
-    sim_out_file.close()
+                    else:
+
+                        for k in exp_log['sims'][i][j]:
+                            sim_out_file.write(k + '\n')

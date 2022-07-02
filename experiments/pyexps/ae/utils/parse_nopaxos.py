@@ -37,25 +37,25 @@ def parse_nopaxos_run(num_c, path):
     tp_pat = re.compile(r'(.*)Total throughput is *([0-9\.]*) ops/sec(.*)')
     lat_pat = re.compile(r'(.*)Median latency is *([0-9\.]*) us(.*)')
 
-    f_log = open(path, 'r')
-    log = json.load(f_log)
+    with open(path, 'r', encoding='utf-8') as f_log:
+        log = json.load(f_log)
 
-    total_tput = 0
-    total_lat = 0
-    for i in range(num_c):
-        sim_name = f'host.client.{i}'
+        total_tput = 0
+        total_lat = 0
+        for i in range(num_c):
+            sim_name = f'host.client.{i}'
 
-        # in this host log stdout
-        for j in log['sims'][sim_name]['stdout']:
-            m_t = tp_pat.match(j)
-            m_l = lat_pat.match(j)
-            if m_l:
-                total_lat += float(m_l.group(2))
-            if m_t:
-                total_tput += int(m_t.group(2))
+            # in this host log stdout
+            for j in log['sims'][sim_name]['stdout']:
+                m_t = tp_pat.match(j)
+                m_l = lat_pat.match(j)
+                if m_l:
+                    total_lat += float(m_l.group(2))
+                if m_t:
+                    total_tput += int(m_t.group(2))
 
-    avg_lat = total_lat / num_c
-    ret['throughput'] = total_tput
-    ret['latency'] = int(avg_lat)
+        avg_lat = total_lat / num_c
+        ret['throughput'] = total_tput
+        ret['latency'] = int(avg_lat)
 
     return ret

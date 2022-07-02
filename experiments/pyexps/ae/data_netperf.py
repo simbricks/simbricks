@@ -23,7 +23,7 @@
 import sys
 from time import gmtime, strftime
 
-from utils.netperf import *
+from utils.netperf import parse_netperf_run
 
 
 def fmt_lat(lat):
@@ -32,20 +32,21 @@ def fmt_lat(lat):
 
     x = float(lat)
     if x >= 1000.:
-        return '%.1f\\,ms' % (x / 1000)
+        return f'{x / 1000:.1f}\\,ms'
     else:
-        return '%d\\,$\\mu$s' % (int(x))
+        return f'{int(x)}\\,$\\mu$s'
 
 
+# pylint: disable=redefined-outer-name
 def fmt_tp(tp):
     if not tp:
         return ''
 
     x = float(tp)
     if x > 1000.:
-        return '%.2f\\,G' % (x / 1000)
+        return f'{x / 1000:.2f}\\,G'
     else:
-        return '%d\\,M' % (int(x))
+        return f'{int(x)}\\,M'
 
 
 hosts = [('qemu', 'QK'), ('qt', 'QT'), ('gt', 'G5')]
@@ -57,7 +58,7 @@ outdir = sys.argv[1]
 for (h, h_l) in hosts:
     for (nic, nic_l) in nics:
         for (net, net_l) in nets:
-            path = '%s/nf-%s-%s-%s-1.json' % (outdir, h, net, nic)
+            path = f'{outdir}/nf-{h}-{net}-{nic}-1.json'
             data = parse_netperf_run(path)
             if 'simtime' in data:
                 t = strftime('%H:%M:%S', gmtime(data['simtime']))
@@ -67,7 +68,4 @@ for (h, h_l) in hosts:
             tp = fmt_tp(data.get('throughput', ''))
             latMean = fmt_lat(data.get('latenyMean', ''))
             latTail = fmt_lat(data.get('latenyTail', ''))
-            print(
-                '  %s & %s & %s & %s & %s & %s \\\\' %
-                (h_l, nic_l, net_l, tp, latMean, t)
-            )
+            print(f'  {h_l} & {nic_l} & {net_l} & {tp} & {latMean} & {t} \\\\')

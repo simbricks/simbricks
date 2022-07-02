@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import io
 import tarfile
 
@@ -27,7 +29,8 @@ import tarfile
 class AppConfig(object):
     """Manages the application to be run on a simulated host."""
 
-    def run_cmds(self, node):
+    # pylint: disable=unused-argument
+    def run_cmds(self, node: NodeConfig):
         return []
 
     def prepare_pre_cp(self):
@@ -69,7 +72,7 @@ class NodeConfig(object):
             cp_es = []
             exit_es = ['poweroff -f']
         else:
-            if (self.nockp):
+            if self.nockp:
                 cp_es = []
             else:
                 cp_es = ['m5 checkpoint']
@@ -81,29 +84,26 @@ class NodeConfig(object):
         return '\n'.join(es)
 
     def make_tar(self, path):
-        tar = tarfile.open(path, 'w:')
+        with tarfile.open(path, 'w:') as tar:
+            # add main run script
+            cfg_i = tarfile.TarInfo('guest/run.sh')
+            cfg_i.mode = 0o777
+            cfg_f = self.strfile(self.config_str())
+            cfg_f.seek(0, io.SEEK_END)
+            cfg_i.size = cfg_f.tell()
+            cfg_f.seek(0, io.SEEK_SET)
+            tar.addfile(tarinfo=cfg_i, fileobj=cfg_f)
+            cfg_f.close()
 
-        # add main run script
-        cfg_i = tarfile.TarInfo('guest/run.sh')
-        cfg_i.mode = 0o777
-        cfg_f = self.strfile(self.config_str())
-        cfg_f.seek(0, io.SEEK_END)
-        cfg_i.size = cfg_f.tell()
-        cfg_f.seek(0, io.SEEK_SET)
-        tar.addfile(tarinfo=cfg_i, fileobj=cfg_f)
-        cfg_f.close()
-
-        # add additional config files
-        for (n, f) in self.config_files().items():
-            f_i = tarfile.TarInfo('guest/' + n)
-            f_i.mode = 0o777
-            f.seek(0, io.SEEK_END)
-            f_i.size = f.tell()
-            f.seek(0, io.SEEK_SET)
-            tar.addfile(tarinfo=f_i, fileobj=f)
-            f.close()
-
-        tar.close()
+            # add additional config files
+            for (n, f) in self.config_files().items():
+                f_i = tarfile.TarInfo('guest/' + n)
+                f_i.mode = 0o777
+                f.seek(0, io.SEEK_END)
+                f_i.size = f.tell()
+                f.seek(0, io.SEEK_SET)
+                tar.addfile(tarinfo=f_i, fileobj=f)
+                f.close()
 
     def prepare_pre_cp(self):
         return [
@@ -150,9 +150,7 @@ class LinuxNode(NodeConfig):
                 self.force_mac_addr
             )
         l.append('ip link set dev ' + self.ifname + ' up')
-        l.append(
-            'ip addr add %s/%d dev %s' % (self.ip, self.prefix, self.ifname)
-        )
+        l.append(f'ip addr add {self.ip}/{self.prefix} dev {self.ifname}')
         return super().prepare_post_cp() + l
 
 
@@ -169,6 +167,7 @@ class CorundumLinuxNode(LinuxNode):
         super().__init__()
         self.drivers.append('/tmp/guest/mqnic.ko')
 
+    # pylint: disable=consider-using-with
     def config_files(self):
         m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
         return {**m, **super().config_files()}
@@ -207,7 +206,7 @@ class MtcpNode(NodeConfig):
             'insmod /root/mtcp/dpdk-iface-kmod/dpdk_iface.ko',
             '/root/mtcp/dpdk-iface-kmod/dpdk_iface_main',
             'ip link set dev dpdk0 up',
-            'ip addr add %s/%d dev dpdk0' % (self.ip, self.prefix)
+            f'ip addr add {self.ip}/{self.prefix} dev dpdk0'
         ]
 
     def config_files(self):
@@ -256,8 +255,10 @@ class TASNode(NodeConfig):
             'insmod /root/dpdk/lib/modules/5.4.46/extra/dpdk/igb_uio.ko',
             '/root/dpdk/sbin/dpdk-devbind -b igb_uio ' + self.pci_dev,
             'cd /root/tas',
-            'tas/tas --ip-addr=%s/%d --fp-cores-max=%d --fp-no-ints &' %
-            (self.ip, self.prefix, self.fp_cores),
+            (
+                f'tas/tas --ip-addr={self.ip}/{self.prefix}'
+                f' --fp-cores-max={self.fp_cores} --fp-no-ints &'
+            ),
             'sleep 1'
         ]
 
@@ -358,7 +359,7 @@ class DctcpClient(AppConfig):
     is_last = False
 
     def run_cmds(self, node):
-        if (self.is_last):
+        if self.is_last:
             return [
                 'sleep 1',
                 f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
@@ -454,10 +455,10 @@ class NoTraffic(AppConfig):
 
     def run_cmds(self, node):
         cmds = []
-        if (self.is_server):
+        if self.is_server:
             cmds.append('sleep infinity')
         else:
-            if (self.is_sleep):
+            if self.is_sleep:
                 cmds.append('sleep 10')
 
             else:
@@ -478,10 +479,15 @@ class NetperfClient(AppConfig):
     duration_lat = 10
 
     def run_cmds(self, node):
-        return ['netserver', 'sleep 0.5',
-                'netperf -H ' + self.server_ip + ' -l ' + str(self.duration_tp),
-                'netperf -H ' + self.server_ip + ' -l ' + str(self.duration_lat) + \
-                    ' -t TCP_RR -- -o mean_latency,p50_latency,p90_latency,p99_latency']
+        return [
+            'netserver',
+            'sleep 0.5',
+            f'netperf -H {self.server_ip} -l {self.duration_tp}',
+            (
+                f'netperf -H {self.server_ip} -l {self.duration_lat} -t TCP_RR'
+                ' -- -o mean_latency,p50_latency,p90_latency,p99_latency'
+            )
+        ]
 
 
 class VRReplica(AppConfig):
@@ -542,9 +548,10 @@ class NOPaxosClient(AppConfig):
 class NOPaxosSequencer(AppConfig):
 
     def run_cmds(self, node):
-        return [
-            '/root/nopaxos/sequencer/sequencer -c /root/nopaxos.config -m nopaxos'
-        ]
+        return [(
+            '/root/nopaxos/sequencer/sequencer -c /root/nopaxos.config'
+            ' -m nopaxos'
+        )]
 
 
 class RPCServer(AppConfig):
@@ -558,8 +565,10 @@ class RPCServer(AppConfig):
             'echoserver_mtcp'
         return [
             'cd /root/tasbench/micro_rpc',
-            './%s %d %d /tmp/guest/mtcp.conf %d %d' %
-            (exe, self.port, self.threads, self.max_flows, self.max_bytes)
+            (
+                f'./{exe} {self.port} {self.threads} /tmp/guest/mtcp.conf'
+                f' {self.max_flows} {self.max_bytes}'
+            )
         ]
 
 
@@ -580,19 +589,13 @@ class RPCClient(AppConfig):
             'testclient_mtcp'
         return [
             'cd /root/tasbench/micro_rpc',
-            './%s %s %d %d /tmp/guest/mtcp.conf %d %d %d %d %d %d &' % (
-                exe,
-                self.server_ip,
-                self.port,
-                self.threads,
-                self.max_bytes,
-                self.max_pending,
-                self.max_flows,
-                self.openall_delay,
-                self.max_msgs_conn,
-                self.max_pend_conns
+            (
+                f'./{exe} {self.server_ip} {self.port} {self.threads}'
+                f' /tmp/guest/mtcp.conf {self.max_bytes} {self.max_pending}'
+                f' {self.max_flows} {self.openall_delay} {self.max_msgs_conn}'
+                f' {self.max_pend_conns} &'
             ),
-            'sleep %d' % (self.time)
+            f'sleep {self.time}'
         ]
 
 
@@ -606,14 +609,22 @@ class HTTPD(AppConfig):
     httpd_dir: str  # TODO added because doesn't originally exist
 
     def prepare_pre_cp(self):
-        return ['mkdir -p /srv/www/htdocs/ /tmp/lighttpd/',
-            'dd if=/dev/zero of=/srv/www/htdocs/file bs=%d count=1' % \
-                (self.file_size)]
+        return [
+            'mkdir -p /srv/www/htdocs/ /tmp/lighttpd/',
+            (
+                f'dd if=/dev/zero of=/srv/www/htdocs/file bs={self.file_size}'
+                ' count=1'
+            )
+        ]
 
     def run_cmds(self, node):
-        return ['cd %s/src/' % (self.httpd_dir),
-            './lighttpd -D -f ../doc/config/%s -n %d -m ./.libs/' % \
-                (self.mtcp_config, self.threads)]
+        return [
+            f'cd {self.httpd_dir}/src/',
+            (
+                f'./lighttpd -D -f ../doc/config/{self.mtcp_config}'
+                f' -n {self.threads} -m ./.libs/'
+            )
+        ]
 
 
 class HTTPDLinux(HTTPD):
@@ -630,9 +641,12 @@ class HTTPDMtcp(HTTPD):
 
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
-            'cp /tmp/guest/mtcp.conf %s/src/mtcp.conf' % (self.httpd_dir),
-            'sed -i "s:^server.document-root =.*:server.document-root = server_root + \\"/htdocs\\":" %s' % \
-                    (self.httpd_dir + '/doc/config/' + self.mtcp_config)
+            f'cp /tmp/guest/mtcp.conf {self.httpd_dir}/src/mtcp.conf',
+            (
+                'sed -i "s:^server.document-root =.*:server.document-root = '
+                'server_root + \\"/htdocs\\":" '
+                f'{self.httpd_dir}/doc/config/{self.mtcp_config}'
+            )
         ]
 
 
@@ -646,10 +660,13 @@ class HTTPC(AppConfig):
     ab_dir: str  # TODO added because doesn't originally exist
 
     def run_cmds(self, node):
-        return ['cd %s/support/' % (self.ab_dir),
-            './ab -N %d -c %d -n %d %s%s' % \
-                (self.threads, self.conns, self.requests, self.server_ip,
-                    self.url)]
+        return [
+            f'cd {self.ab_dir}/support/',
+            (
+                f'./ab -N {self.threads} -c {self.conns} -n {self.requests}'
+                f' {self.server_ip}{self.url}'
+            )
+        ]
 
 
 class HTTPCLinux(HTTPC):
@@ -661,9 +678,8 @@ class HTTPCMtcp(HTTPC):
 
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
-            'cp /tmp/guest/mtcp.conf %s/support/config/mtcp.conf' % \
-                    (self.ab_dir),
-            'rm -f %s/support/config/arp.conf' % (self.ab_dir)
+            f'cp /tmp/guest/mtcp.conf {self.ab_dir}/support/config/mtcp.conf',
+            f'rm -f {self.ab_dir}/support/config/arp.conf'
         ]
 
 
@@ -682,6 +698,8 @@ class MemcachedClient(AppConfig):
     def run_cmds(self, node):
         servers = [ip + ':11211' for ip in self.server_ips]
         servers = ','.join(servers)
-        return [
-            f'memaslap --binary --time 10s --server={servers} --thread={self.threads} --concurrency={self.concurrency} --tps={self.throughput} --verbose'
-        ]
+        return [(
+            f'memaslap --binary --time 10s --server={servers}'
+            f' --thread={self.threads} --concurrency={self.concurrency}'
+            f' --tps={self.throughput} --verbose'
+        )]

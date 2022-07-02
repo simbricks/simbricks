@@ -26,7 +26,6 @@ import shlex
 import traceback
 import typing as tp
 
-import simbricks.utils.graphlib as graphlib
 from simbricks.exectools import Executor, SimpleComponent
 from simbricks.experiment.experiment_environment import ExpEnv
 from simbricks.experiment.experiment_output import ExpOutput
@@ -34,6 +33,7 @@ from simbricks.proxy import NetProxyConnecter, NetProxyListener, SimProxy
 from simbricks.simulators import (
     HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
 )
+from simbricks.utils import graphlib
 
 
 class Experiment(object):
@@ -135,7 +135,7 @@ class DistributedExperiment(Experiment):
 
     def assign_sim_host(self, sim: Simulator, host: int):
         """Assign host ID (< self.num_hosts) for a simulator."""
-        assert (host >= 0 and host < self.num_hosts)
+        assert 0 <= host < self.num_hosts
         self.host_mapping[sim] = host
 
     def all_sims_assigned(self):
@@ -178,17 +178,17 @@ class ExperimentBaseRunner(tp.Generic[T]):
 
         name = sim.full_name()
         if self.verbose:
-            print('%s: starting %s' % (self.exp.name, name))
+            print(f'{self.exp.name}: starting {name}')
 
         run_cmd = sim.run_cmd(self.env)
         if run_cmd is None:
             if self.verbose:
-                print('%s: started dummy %s' % (self.exp.name, name))
+                print(f'{self.exp.name}: started dummy {name}')
             return
 
         # run simulator
-        exec = self.sim_executor(sim)
-        sc = exec.create_component(
+        executor = self.sim_executor(sim)
+        sc = executor.create_component(
             name, shlex.split(run_cmd), verbose=self.verbose, canfail=True
         )
         await sc.start()
@@ -196,15 +196,15 @@ class ExperimentBaseRunner(tp.Generic[T]):
 
         # add sockets for cleanup
         for s in sim.sockets_cleanup(self.env):
-            self.sockets.append((exec, s))
+            self.sockets.append((executor, s))
 
         # Wait till sockets exist
         wait_socks = sim.sockets_wait(self.env)
         if wait_socks:
             if self.verbose:
-                print('%s: waiting for sockets %s' % (self.exp.name, name))
+                print(f'{self.exp.name}: waiting for sockets {name}')
 
-            await exec.await_files(wait_socks, verbose=self.verbose)
+            await executor.await_files(wait_socks, verbose=self.verbose)
 
         # add time delay if required
         delay = sim.start_delay()
@@ -215,7 +215,7 @@ class ExperimentBaseRunner(tp.Generic[T]):
             self.wait_sims.append(sc)
 
         if self.verbose:
-            print('%s: started %s' % (self.exp.name, name))
+            print(f'{self.exp.name}: started {name}')
 
     async def before_wait(self):
         pass
@@ -240,10 +240,10 @@ class ExperimentBaseRunner(tp.Generic[T]):
         # prepare all simulators in parallel
         sims = []
         for sim in self.exp.all_simulators():
-            prep_cmds = [pc for pc in sim.prep_cmds(self.env)]
-            exec = self.sim_executor(sim)
+            prep_cmds = list(sim.prep_cmds(self.env))
+            executor = self.sim_executor(sim)
             sims.append(
-                exec.run_cmdlist(
+                executor.run_cmdlist(
                     'prepare_' + self.exp.name, prep_cmds, verbose=self.verbose
                 )
             )
@@ -252,7 +252,7 @@ class ExperimentBaseRunner(tp.Generic[T]):
     async def wait_for_sims(self):
         """Wait for simulators to terminate (the ones marked to wait on)."""
         if self.verbose:
-            print('%s: waiting for hosts to terminate' % self.exp.name)
+            print(f'{self.exp.name}: waiting for hosts to terminate')
         for sc in self.wait_sims:
             await sc.wait()
 
@@ -279,7 +279,7 @@ class ExperimentBaseRunner(tp.Generic[T]):
 
             await self.before_wait()
             await self.wait_for_sims()
-        except:
+        except:  # pylint: disable=bare-except
             self.out.set_failed()
             traceback.print_exc()
 
@@ -288,7 +288,7 @@ class ExperimentBaseRunner(tp.Generic[T]):
 
             # shut things back down
             if self.verbose:
-                print('%s: cleaning up' % self.exp.name)
+                print(f'{self.exp.name}: cleaning up')
 
             await self.before_cleanup()
 
@@ -304,9 +304,9 @@ class ExperimentBaseRunner(tp.Generic[T]):
 
             # remove all sockets
             scs = []
-            for (exec, sock) in self.sockets:
-                scs.append(exec.rmtree(sock))
-            if len(scs):
+            for (executor, sock) in self.sockets:
+                scs.append(executor.rmtree(sock))
+            if scs:
                 await asyncio.wait(scs)
 
             # add all simulator components to the output
@@ -320,12 +320,12 @@ class ExperimentBaseRunner(tp.Generic[T]):
 class ExperimentSimpleRunner(ExperimentBaseRunner[Experiment]):
     """Simple experiment runner with just one executor."""
 
-    def __init__(self, exec: Executor, *args, **kwargs):
-        self.exec = exec
+    def __init__(self, executor: Executor, *args, **kwargs):
+        self.executor = executor
         super().__init__(*args, **kwargs)
 
     def sim_executor(self, sim: Simulator):
-        return self.exec
+        return self.executor
 
 
 class ExperimentDistributedRunner(ExperimentBaseRunner[DistributedExperiment]):
@@ -342,13 +342,13 @@ class ExperimentDistributedRunner(ExperimentBaseRunner[DistributedExperiment]):
 
     async def prepare(self):
         # make sure all simulators are assigned to an executor
-        assert (self.exp.all_sims_assigned())
+        assert self.exp.all_sims_assigned()
 
         # set IP addresses for proxies based on assigned executors
         for p in itertools.chain(
             self.exp.proxies_listen, self.exp.proxies_connect
         ):
-            exec = self.sim_executor(p)
-            p.ip = exec.ip
+            executor = self.sim_executor(p)
+            p.ip = executor.ip
 
         await super().prepare()

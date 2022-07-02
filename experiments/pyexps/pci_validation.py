@@ -67,9 +67,10 @@ for internal in [True, False]:
     for h in [client, server]:
         h.cpu_type = h.cpu_type_cp = 'TimingSimpleCPU'
         h.variant = 'opt'  # need opt gem5 variant with debug support
-        h.extra_main_args.append(
-            '--debug-flags=SimBricksEthernet,SimBricksPci,EthernetAll,EthernetDesc'
-        )
+        h.extra_main_args.append((
+            '--debug-flags='
+            'SimBricksEthernet,SimBricksPci,EthernetAll,EthernetDesc'
+        ))
         if internal:
             h.add_netdirect(net)
         else:

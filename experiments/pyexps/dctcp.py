@@ -55,27 +55,27 @@ ip_start = '192.168.64.1'
 experiments = []
 
 # set network sim
-net_class = sim.NS3DumbbellNet
+NetClass = sim.NS3DumbbellNet
 
 for mtu in types_of_mtu:
-    for h in types_of_host:
-        for c in types_of_nic:
+    for host in types_of_host:
+        for nic in types_of_nic:
             for k_val in range(0, max_k + 1, k_step):
 
-                net = net_class()
+                net = NetClass()
                 net.opt = link_rate_opt + link_latency_opt + f'--EcnTh={k_val}'
 
                 e = exp.Experiment(
-                    h + '-' + c + '-' + 'dumbbell' + '-' + 'DCTCPm' +
+                    host + '-' + nic + '-' + 'dumbbell' + '-' + 'DCTCPm' +
                     f'{k_val}' + f'-{mtu}'
                 )
                 e.add_network(net)
 
                 freq = cpu_freq
                 # host
-                if h == 'qemu':
-                    host_class = sim.QemuHost
-                elif h == 'qt':
+                if host == 'qemu':
+                    HostClass = sim.QemuHost
+                elif host == 'qt':
                     freq = cpu_freq_qemu
 
                     def qemu_timing():
@@ -83,17 +83,17 @@ for mtu in types_of_mtu:
                         h.sync = True
                         return h
 
-                    host_class = qemu_timing
-                elif h == 'gt':
+                    HostClass = qemu_timing
+                elif host == 'gt':
 
                     def gem5_timing():
                         h = sim.Gem5Host()
                         #h.sys_clock = sys_clock
                         return h
 
-                    host_class = gem5_timing
+                    HostClass = gem5_timing
                     e.checkpoint = True
-                elif h == 'gO3':
+                elif host == 'gO3':
 
                     def gem5_o3():
                         h = sim.Gem5Host()
@@ -101,32 +101,32 @@ for mtu in types_of_mtu:
                         h.sys_clock = sys_clock
                         return h
 
-                    host_class = gem5_o3
+                    HostClass = gem5_o3
                     e.checkpoint = True
                 else:
-                    raise NameError(h)
+                    raise NameError(host)
 
                 # nic
-                if c == 'ib':
-                    nic_class = sim.I40eNIC
-                    nc_class = node.I40eDCTCPNode
-                elif c == 'cb':
-                    nic_class = sim.CorundumBMNIC
-                    nc_class = node.CorundumDCTCPNode
-                elif c == 'cv':
-                    nic_class = sim.CorundumVerilatorNIC
-                    nc_class = node.CorundumDCTCPNode
+                if nic == 'ib':
+                    NicClass = sim.I40eNIC
+                    NcClass = node.I40eDCTCPNode
+                elif nic == 'cb':
+                    NicClass = sim.CorundumBMNIC
+                    NcClass = node.CorundumDCTCPNode
+                elif nic == 'cv':
+                    NicClass = sim.CorundumVerilatorNIC
+                    NcClass = node.CorundumDCTCPNode
                 else:
-                    raise NameError(c)
+                    raise NameError(nic)
 
                 servers = create_dctcp_hosts(
                     e,
                     num_pairs,
                     'server',
                     net,
-                    nic_class,
-                    host_class,
-                    nc_class,
+                    NicClass,
+                    HostClass,
+                    NcClass,
                     node.DctcpServer,
                     freq,
                     mtu
@@ -136,9 +136,9 @@ for mtu in types_of_mtu:
                     num_pairs,
                     'client',
                     net,
-                    nic_class,
-                    host_class,
-                    nc_class,
+                    NicClass,
+                    HostClass,
+                    NcClass,
                     node.DctcpClient,
                     freq,
                     mtu,
@@ -150,10 +150,12 @@ for mtu in types_of_mtu:
                     cl.node_config.app.server_ip = servers[i].node_config.ip
                     i += 1
 
-                # All the clients will not poweroff after finishing iperf test except the last one
-                # This is to prevent the simulation gets stuck when one of host exits.
+                # All the clients will not poweroff after finishing iperf test
+                # except the last one This is to prevent the simulation gets
+                # stuck when one of host exits.
 
-                # The last client waits for the output printed in other hosts, then cleanup
+                # The last client waits for the output printed in other hosts,
+                # then cleanup
                 clients[num_pairs - 1].node_config.app.is_last = True
                 clients[num_pairs - 1].wait = True
 

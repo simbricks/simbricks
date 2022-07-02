@@ -21,9 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import glob
-import itertools
 import json
-import os
 import sys
 
 if len(sys.argv) != 2:
@@ -36,6 +34,7 @@ types_of_workload = ['sleep', 'busy']
 types_of_sync = ['with', 'without']  # with or without simbricks
 
 
+# pylint: disable=redefined-outer-name
 def time_diff_min(data):
     start_time = data['start_time']
     end_time = data['end_time']
@@ -50,9 +49,9 @@ for workload in types_of_workload:
     line = [workload]
     for sync in types_of_sync:
         if sync == 'with':
-            path_pat = '%snoTraf-gt-ib-sw-%s' % (basedir, workload)
+            path_pat = f'{basedir}noTraf-gt-ib-sw-{workload}'
         else:
-            path_pat = '%sno_simb-gt-%s' % (basedir, workload)
+            path_pat = f'{basedir}no_simb-gt-{workload}'
 
         runs = []
         for path in glob.glob(path_pat + '-*.json'):
@@ -60,7 +59,7 @@ for workload in types_of_workload:
                 # skip checkpoints
                 continue
 
-            with open(path, 'r') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
             res = time_diff_min(data)
@@ -70,6 +69,6 @@ for workload in types_of_workload:
         if not runs:
             line.append(' ')
         else:
-            line.append('%d' % (sum(runs) / len(runs)))
+            line.append(f'{sum(runs) / len(runs)}')
 
     print('\t'.join(line))
