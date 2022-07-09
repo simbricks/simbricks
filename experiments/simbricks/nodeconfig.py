@@ -20,8 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import tarfile
 import io
+import tarfile
 
 
 class AppConfig(object):
@@ -145,19 +145,26 @@ class LinuxNode(NodeConfig):
             else:
                 l.append('modprobe ' + d)
         if self.force_mac_addr:
-            l.append('ip link set dev ' + self.ifname + ' address ' +
-                     self.force_mac_addr)
+            l.append(
+                'ip link set dev ' + self.ifname + ' address ' +
+                self.force_mac_addr
+            )
         l.append('ip link set dev ' + self.ifname + ' up')
-        l.append('ip addr add %s/%d dev %s' %
-                (self.ip, self.prefix, self.ifname))
+        l.append(
+            'ip addr add %s/%d dev %s' % (self.ip, self.prefix, self.ifname)
+        )
         return super().prepare_post_cp() + l
 
+
 class I40eLinuxNode(LinuxNode):
+
     def __init__(self):
         super().__init__()
         self.drivers.append('i40e')
 
+
 class CorundumLinuxNode(LinuxNode):
+
     def __init__(self):
         super().__init__()
         self.drivers.append('/tmp/guest/mqnic.ko')
@@ -166,7 +173,9 @@ class CorundumLinuxNode(LinuxNode):
         m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
         return {**m, **super().config_files()}
 
+
 class E1000LinuxNode(LinuxNode):
+
     def __init__(self):
         super().__init__()
         self.drivers.append('e1000')
@@ -194,7 +203,7 @@ class MtcpNode(NodeConfig):
         return super().prepare_post_cp() + [
             'insmod /root/mtcp/dpdk/x86_64-native-linuxapp-gcc/kmod/igb_uio.ko',
             '/root/mtcp/dpdk/usertools/dpdk-devbind.py -b igb_uio ' +
-                self.pci_dev,
+            self.pci_dev,
             'insmod /root/mtcp/dpdk-iface-kmod/dpdk_iface.ko',
             '/root/mtcp/dpdk-iface-kmod/dpdk_iface_main',
             'ip link set dev dpdk0 up',
@@ -202,19 +211,25 @@ class MtcpNode(NodeConfig):
         ]
 
     def config_files(self):
-        m = {'mtcp.conf': self.strfile("io = dpdk\n"
-                "num_cores = " + str(self.cores) + "\n"
-                "num_mem_ch = 4\n"
-                "port = dpdk0\n"
-                "max_concurrency = 4096\n"
-                "max_num_buffers = 4096\n"
-                "rcvbuf = 8192\n"
-                "sndbuf = 8192\n"
-                "tcp_timeout = 10\n"
-                "tcp_timewait = 0\n"
-                "#stat_print = dpdk0\n")}
+        m = {
+            'mtcp.conf':
+                self.strfile(
+                    'io = dpdk\n'
+                    'num_cores = ' + str(self.cores) + '\n'
+                    'num_mem_ch = 4\n'
+                    'port = dpdk0\n'
+                    'max_concurrency = 4096\n'
+                    'max_num_buffers = 4096\n'
+                    'rcvbuf = 8192\n'
+                    'sndbuf = 8192\n'
+                    'tcp_timeout = 10\n'
+                    'tcp_timewait = 0\n'
+                    '#stat_print = dpdk0\n'
+                )
+        }
 
         return {**m, **super().config_files()}
+
 
 class TASNode(NodeConfig):
     disk_image = 'tas'
@@ -241,18 +256,18 @@ class TASNode(NodeConfig):
             'insmod /root/dpdk/lib/modules/5.4.46/extra/dpdk/igb_uio.ko',
             '/root/dpdk/sbin/dpdk-devbind -b igb_uio ' + self.pci_dev,
             'cd /root/tas',
-            'tas/tas --ip-addr=%s/%d --fp-cores-max=%d --fp-no-ints &' % (
-                self.ip, self.prefix, self.fp_cores),
+            'tas/tas --ip-addr=%s/%d --fp-cores-max=%d --fp-no-ints &' %
+            (self.ip, self.prefix, self.fp_cores),
             'sleep 1'
         ]
 
         if self.preload:
-             cmds += ['export LD_PRELOAD=/root/tas/lib/libtas_interpose.so']
+            cmds += ['export LD_PRELOAD=/root/tas/lib/libtas_interpose.so']
         return cmds
 
 
-
 class I40eDCTCPNode(NodeConfig):
+
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
             'mount -t proc proc /proc',
@@ -268,7 +283,6 @@ class I40eDCTCPNode(NodeConfig):
             'sysctl -w net.ipv4.tcp_congestion_control=dctcp',
             'sysctl -w net.ipv4.tcp_ecn=1'
         ]
-
 
     def prepare_post_cp(self):
         return super().prepare_post_cp() + [
@@ -280,7 +294,9 @@ class I40eDCTCPNode(NodeConfig):
             f'ip addr add {self.ip}/{self.prefix} dev eth0',
         ]
 
+
 class CorundumDCTCPNode(NodeConfig):
+
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
             'mount -t proc proc /proc',
@@ -297,7 +313,6 @@ class CorundumDCTCPNode(NodeConfig):
             'sysctl -w net.ipv4.tcp_ecn=1'
         ]
 
-
     def prepare_post_cp(self):
         return super().prepare_post_cp() + [
             'insmod mqnic.ko',
@@ -307,6 +322,7 @@ class CorundumDCTCPNode(NodeConfig):
 
 
 class LinuxFEMUNode(NodeConfig):
+
     def __init__(self):
         self.drivers = ['nvme']
 
@@ -319,31 +335,42 @@ class LinuxFEMUNode(NodeConfig):
                 l.append('modprobe ' + d)
         return super().prepare_post_cp() + l
 
+
 class NVMEFsTest(AppConfig):
+
     def run_cmds(self, node):
-        return ['mount -t proc proc /proc',
-                'mkfs.ext3 /dev/nvme0n1',
-                'mount /dev/nvme0n1 /mnt',
-                'dd if=/dev/urandom of=/mnt/foo bs=1024 count=1024']
+        return [
+            'mount -t proc proc /proc',
+            'mkfs.ext3 /dev/nvme0n1',
+            'mount /dev/nvme0n1 /mnt',
+            'dd if=/dev/urandom of=/mnt/foo bs=1024 count=1024'
+        ]
+
 
 class DctcpServer(AppConfig):
+
     def run_cmds(self, node):
         return ['iperf -s -w 1M -Z dctcp']
+
 
 class DctcpClient(AppConfig):
     server_ip = '192.168.64.1'
     is_last = False
+
     def run_cmds(self, node):
         if (self.is_last):
-            return ['sleep 1',
-                    f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
-                    'sleep 2'
-                    ]
+            return [
+                'sleep 1',
+                f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
+                'sleep 2'
+            ]
         else:
-            return ['sleep 1',
-                    f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
-                    'sleep 20'
-                    ]
+            return [
+                'sleep 1',
+                f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
+                'sleep 20'
+            ]
+
 
 class PingClient(AppConfig):
     server_ip = '192.168.64.1'
@@ -351,13 +378,18 @@ class PingClient(AppConfig):
     def run_cmds(self, node):
         return [f'ping {self.server_ip} -c 100']
 
+
 class IperfTCPServer(AppConfig):
+
     def run_cmds(self, node):
         return ['iperf -s -l 32M -w 32M']
 
+
 class IperfUDPServer(AppConfig):
+
     def run_cmds(self, node):
         return ['iperf -s -u']
+
 
 class IperfTCPClient(AppConfig):
     server_ip = '10.0.0.1'
@@ -366,14 +398,17 @@ class IperfTCPClient(AppConfig):
 
     def run_cmds(self, node):
 
-        cmds = ['sleep 1',
-                'iperf -l 32M -w 32M  -c ' + self.server_ip + ' -i 1 -P ' +
-                str(self.procs)]
+        cmds = [
+            'sleep 1',
+            'iperf -l 32M -w 32M  -c ' + self.server_ip + ' -i 1 -P ' +
+            str(self.procs)
+        ]
         if self.is_last:
             cmds.append('sleep 0.5')
         else:
             cmds.append('sleep 10')
         return cmds
+
 
 class IperfUDPClient(AppConfig):
     server_ip = '10.0.0.1'
@@ -381,8 +416,10 @@ class IperfUDPClient(AppConfig):
     is_last = False
 
     def run_cmds(self, node):
-        cmds = ['sleep 1',
-                'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate]
+        cmds = [
+            'sleep 1',
+            'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate
+        ]
 
         if self.is_last:
             cmds.append('sleep 0.5')
@@ -391,31 +428,30 @@ class IperfUDPClient(AppConfig):
 
         return cmds
 
+
 class IperfUDPShortClient(AppConfig):
     server_ip = '10.0.0.1'
     rate = '150m'
     is_last = False
 
     def run_cmds(self, node):
-        cmds = ['sleep 1',
-                'iperf -c ' + self.server_ip + ' -u -n 1 ']
+        cmds = ['sleep 1', 'iperf -c ' + self.server_ip + ' -u -n 1 ']
 
         return cmds
-
 
 
 class IperfUDPClientSleep(AppConfig):
     server_ip = '10.0.0.1'
     rate = '150m'
+
     def run_cmds(self, node):
-        return ['sleep 1',
-                'sleep 10'
-                ]
+        return ['sleep 1', 'sleep 10']
 
 
 class NoTraffic(AppConfig):
     is_sleep = 1
     is_server = 0
+
     def run_cmds(self, node):
         cmds = []
         if (self.is_server):
@@ -429,42 +465,58 @@ class NoTraffic(AppConfig):
 
         return cmds
 
+
 class NetperfServer(AppConfig):
+
     def run_cmds(self, node):
-        return ['netserver',
-                'sleep infinity']
+        return ['netserver', 'sleep infinity']
+
 
 class NetperfClient(AppConfig):
     server_ip = '10.0.0.1'
     duration_tp = 10
     duration_lat = 10
+
     def run_cmds(self, node):
         return ['netserver', 'sleep 0.5',
                 'netperf -H ' + self.server_ip + ' -l ' + str(self.duration_tp),
                 'netperf -H ' + self.server_ip + ' -l ' + str(self.duration_lat) + \
                     ' -t TCP_RR -- -o mean_latency,p50_latency,p90_latency,p99_latency']
 
+
 class VRReplica(AppConfig):
     index = 0
+
     def run_cmds(self, node):
-        return ['/root/nopaxos/bench/replica -c /root/nopaxos.config -i ' +
-                str(self.index) + ' -m vr']
+        return [
+            '/root/nopaxos/bench/replica -c /root/nopaxos.config -i ' +
+            str(self.index) + ' -m vr'
+        ]
+
 
 class VRClient(AppConfig):
     server_ips = []
+
     def run_cmds(self, node):
         cmds = []
         for ip in self.server_ips:
             cmds.append('ping -c 2 ' + ip)
-        cmds.append('/root/nopaxos/bench/client -c /root/nopaxos.config ' +
-                '-m vr -u 2 -h ' + node.ip)
+        cmds.append(
+            '/root/nopaxos/bench/client -c /root/nopaxos.config ' +
+            '-m vr -u 2 -h ' + node.ip
+        )
         return cmds
+
 
 class NOPaxosReplica(AppConfig):
     index = 0
+
     def run_cmds(self, node):
-        return ['/root/nopaxos/bench/replica -c /root/nopaxos.config -i ' +
-                str(self.index) + ' -m nopaxos']
+        return [
+            '/root/nopaxos/bench/replica -c /root/nopaxos.config -i ' +
+            str(self.index) + ' -m nopaxos'
+        ]
+
 
 class NOPaxosClient(AppConfig):
     server_ips = []
@@ -486,9 +538,13 @@ class NOPaxosClient(AppConfig):
             cmds.append('sleep infinity')
         return cmds
 
+
 class NOPaxosSequencer(AppConfig):
+
     def run_cmds(self, node):
-        return ['/root/nopaxos/sequencer/sequencer -c /root/nopaxos.config -m nopaxos']
+        return [
+            '/root/nopaxos/sequencer/sequencer -c /root/nopaxos.config -m nopaxos'
+        ]
 
 
 class RPCServer(AppConfig):
@@ -500,9 +556,12 @@ class RPCServer(AppConfig):
     def run_cmds(self, node):
         exe = 'echoserver_linux' if not isinstance(node, MtcpNode) else \
             'echoserver_mtcp'
-        return ['cd /root/tasbench/micro_rpc',
-            './%s %d %d /tmp/guest/mtcp.conf %d %d' % (exe, self.port,
-                self.threads, self.max_flows, self.max_bytes)]
+        return [
+            'cd /root/tasbench/micro_rpc',
+            './%s %d %d /tmp/guest/mtcp.conf %d %d' %
+            (exe, self.port, self.threads, self.max_flows, self.max_bytes)
+        ]
+
 
 class RPCClient(AppConfig):
     server_ip = '10.0.0.1'
@@ -519,21 +578,32 @@ class RPCClient(AppConfig):
     def run_cmds(self, node):
         exe = 'testclient_linux' if not isinstance(node, MtcpNode) else \
             'testclient_mtcp'
-        return ['cd /root/tasbench/micro_rpc',
-            './%s %s %d %d /tmp/guest/mtcp.conf %d %d %d %d %d %d &' % (exe,
-                self.server_ip, self.port, self.threads, self.max_bytes,
-                self.max_pending, self.max_flows, self.openall_delay,
-                self.max_msgs_conn, self.max_pend_conns),
-            'sleep %d' % (self.time)]
+        return [
+            'cd /root/tasbench/micro_rpc',
+            './%s %s %d %d /tmp/guest/mtcp.conf %d %d %d %d %d %d &' % (
+                exe,
+                self.server_ip,
+                self.port,
+                self.threads,
+                self.max_bytes,
+                self.max_pending,
+                self.max_flows,
+                self.openall_delay,
+                self.max_msgs_conn,
+                self.max_pend_conns
+            ),
+            'sleep %d' % (self.time)
+        ]
 
 
 ################################################################################
+
 
 class HTTPD(AppConfig):
     threads = 1
     file_size = 64
     mtcp_config = 'lighttpd.conf'
-    httpd_dir: str # TODO added because doesn't originally exist
+    httpd_dir: str  # TODO added because doesn't originally exist
 
     def prepare_pre_cp(self):
         return ['mkdir -p /srv/www/htdocs/ /tmp/lighttpd/',
@@ -545,11 +615,14 @@ class HTTPD(AppConfig):
             './lighttpd -D -f ../doc/config/%s -n %d -m ./.libs/' % \
                 (self.mtcp_config, self.threads)]
 
+
 class HTTPDLinux(HTTPD):
     httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux'
 
+
 class HTTPDLinuxRPO(HTTPD):
     httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux-rop'
+
 
 class HTTPDMtcp(HTTPD):
     httpd_dir = '/root/mtcp/apps/lighttpd-mtcp'
@@ -570,7 +643,7 @@ class HTTPC(AppConfig):
     requests = 10000
     threads = 1
     url = '/file'
-    ab_dir: str # TODO added because doesn't originally exist
+    ab_dir: str  # TODO added because doesn't originally exist
 
     def run_cmds(self, node):
         return ['cd %s/support/' % (self.ab_dir),
@@ -578,8 +651,10 @@ class HTTPC(AppConfig):
                 (self.threads, self.conns, self.requests, self.server_ip,
                     self.url)]
 
+
 class HTTPCLinux(HTTPC):
     ab_dir = '/root/mtcp/apps/ab-linux'
+
 
 class HTTPCMtcp(HTTPC):
     ab_dir = '/root/mtcp/apps/ab-mtcp'
@@ -593,15 +668,20 @@ class HTTPCMtcp(HTTPC):
 
 
 class MemcachedServer(AppConfig):
+
     def run_cmds(self, node):
         return ['memcached -u root -t 1 -c 4096']
+
 
 class MemcachedClient(AppConfig):
     server_ips = ['10.0.0.1']
     threads = 1
     concurrency = 1
     throughput = '1k'
+
     def run_cmds(self, node):
         servers = [ip + ':11211' for ip in self.server_ips]
         servers = ','.join(servers)
-        return [f'memaslap --binary --time 10s --server={servers} --thread={self.threads} --concurrency={self.concurrency} --tps={self.throughput} --verbose']
+        return [
+            f'memaslap --binary --time 10s --server={servers} --thread={self.threads} --concurrency={self.concurrency} --tps={self.throughput} --verbose'
+        ]

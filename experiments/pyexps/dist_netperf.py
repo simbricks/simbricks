@@ -20,11 +20,12 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
-import simbricks.proxy as proxy
 import simbricks.nodeconfig as node
+import simbricks.proxy as proxy
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
+
+import simbricks.experiments as exp
 
 host_types = ['qemu', 'gem5', 'qt']
 nic_types = ['i40e', 'cd_bm', 'cd_verilator']
@@ -34,7 +35,9 @@ experiments = []
 for host_type in host_types:
     for nic_type in nic_types:
         for n in n_clients:
-            e = exp.DistributedExperiment(f'dist_netperf-{host_type}-{nic_type}-{n}', 2)
+            e = exp.DistributedExperiment(
+                f'dist_netperf-{host_type}-{nic_type}-{n}', 2
+            )
 
             net = sim.SwitchNet()
             e.add_network(net)
@@ -44,10 +47,12 @@ for host_type in host_types:
                 host_class = sim.QemuHost
                 net.sync = False
             elif host_type == 'qt':
+
                 def qemu_timing():
                     h = sim.QemuHost()
                     h.sync = True
                     return h
+
                 host_class = qemu_timing
             elif host_type == 'gem5':
                 host_class = sim.Gem5Host
@@ -69,11 +74,28 @@ for host_type in host_types:
                 raise NameError(nic_type)
 
             # create servers and clients
-            servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                    nc_class, node.NetperfServer)
+            servers = create_basic_hosts(
+                e,
+                1,
+                'server',
+                net,
+                nic_class,
+                host_class,
+                nc_class,
+                node.NetperfServer
+            )
 
-            clients = create_basic_hosts(e, n, 'client', net, nic_class, host_class,
-                    nc_class, node.NetperfClient, ip_start = 2)
+            clients = create_basic_hosts(
+                e,
+                n,
+                'client',
+                net,
+                nic_class,
+                host_class,
+                nc_class,
+                node.NetperfClient,
+                ip_start=2
+            )
 
             for c in clients:
                 c.wait = True

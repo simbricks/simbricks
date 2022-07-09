@@ -20,15 +20,14 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 
+import simbricks.experiments as exp
 
 app_types = ['sleep', 'busy']
 
 experiments = []
-
 
 for app_type in app_types:
 
@@ -37,11 +36,10 @@ for app_type in app_types:
     host_class = sim.Gem5Host
     e.checkpoint = True
     e.no_simbricks = True
-            
 
     nc_class = node.I40eLinuxNode
     # create servers and clients
-    
+
     host = host_class()
     host.name = 'host.0'
     node_config = nc_class()
@@ -49,22 +47,17 @@ for app_type in app_types:
     node_config.app = node.NoTraffic()
     node_config.cores = 1
 
-    # is busy 
+    # is busy
     if app_type == 'sleep':
         node_config.app.is_sleep = 1
     else:
         node_config.app.is_sleep = 0
-        
+
     host.set_config(node_config)
     e.add_host(host)
     host.wait = True
 
-
     print(e.name)
-
 
     # add to experiments
     experiments.append(e)
-
-
-

@@ -21,9 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import glob
+import itertools
 import json
 import os
-import itertools
 import sys
 
 if len(sys.argv) != 2:
@@ -34,20 +34,22 @@ basedir = sys.argv[1]
 
 types_of_pci = [10, 50, 100, 500, 1000]
 
-def time_diff_min (data):
+
+def time_diff_min(data):
     start_time = data['start_time']
     end_time = data['end_time']
 
     time_diff_in_min = (end_time - start_time) / 60
     return time_diff_in_min
 
+
 print('# PCI latency (ns)' + '\t' + 'Sim.Time')
 
 for workload in types_of_pci:
-    
+
     line = [str(workload)]
     path_pat = '%spci-gt-ib-sw-%s' % (basedir, workload)
-        
+
     runs = []
     for path in glob.glob(path_pat + '-*.json'):
         if path == path_pat + '-0.json':
@@ -56,11 +58,11 @@ for workload in types_of_pci:
 
         with open(path, 'r') as f:
             data = json.load(f)
-        
+
         res = time_diff_min(data)
         if res is not None:
             runs.append(res)
-    
+
     if not runs:
         line.append(' ')
     else:

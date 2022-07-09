@@ -20,10 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
+
+import simbricks.experiments as exp
 
 e = exp.Experiment('gem5-i40e-pair')
 #e.timeout = 5 * 60
@@ -31,11 +32,28 @@ e.checkpoint = True
 net = sim.SwitchNet()
 e.add_network(net)
 
-servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.Gem5Host,
-        node.I40eLinuxNode, node.IperfTCPServer)
+servers = create_basic_hosts(
+    e,
+    1,
+    'server',
+    net,
+    sim.I40eNIC,
+    sim.Gem5Host,
+    node.I40eLinuxNode,
+    node.IperfTCPServer
+)
 
-clients = create_basic_hosts(e, 2, 'client', net, sim.I40eNIC, sim.Gem5Host,
-        node.I40eLinuxNode, node.IperfTCPClient, ip_start = 2)
+clients = create_basic_hosts(
+    e,
+    2,
+    'client',
+    net,
+    sim.I40eNIC,
+    sim.Gem5Host,
+    node.I40eLinuxNode,
+    node.IperfTCPClient,
+    ip_start=2
+)
 
 for h in servers + clients:
     h.cpu_type = 'TimingSimpleCPU'

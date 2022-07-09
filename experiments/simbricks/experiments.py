@@ -21,21 +21,28 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import asyncio
-import shlex
 import itertools
+import shlex
 import traceback
 import typing as tp
 
+import simbricks.utils.graphlib as graphlib
+from simbricks.exectools import Executor, SimpleComponent
 from simbricks.experiment.experiment_environment import ExpEnv
 from simbricks.experiment.experiment_output import ExpOutput
-from simbricks.exectools import Executor, SimpleComponent
 from simbricks.proxy import NetProxyConnecter, NetProxyListener, SimProxy
-from simbricks.simulators import HostSim, I40eMultiNIC, NICSim, NetSim, PCIDevSim, Simulator
-import simbricks.utils.graphlib as graphlib
+from simbricks.simulators import (
+    HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
+)
+
 
 class Experiment(object):
-    """Describes a simulation experiment. Holds information about the simulators
-    to run and paramaters to configure the experiment."""
+    """
+    Describes a simulation experiment.
+
+    Holds information about the simulators to run and paramaters to configure
+    the experiment.
+    """
     name: str
     """This experiment's name. Can be used to filter multiple experiments to be
     run."""
@@ -43,7 +50,7 @@ class Experiment(object):
     """Timeout for experiment in seconds."""
     checkpoint = False
     """Whether to use checkpoints in experiment.
-    
+
     Can for example be used to speed up booting a host simulator by first
     running in a less accurate mode. Before we then start the application we are
     interested in, a checkpoint is taken and the simulator shut down. Then, the
@@ -80,7 +87,7 @@ class Experiment(object):
         self.networks.append(sim)
 
     def all_simulators(self):
-        """ All simulators used in experiment. """
+        """All simulators used in experiment."""
         return itertools.chain(self.hosts, self.pcidevs, self.networks)
 
     def resreq_mem(self):
@@ -98,8 +105,9 @@ class Experiment(object):
             cores += s.resreq_cores()
         return cores
 
+
 class DistributedExperiment(Experiment):
-    """Describes a distributed simulation experiment. """
+    """Describes a distributed simulation experiment."""
     num_hosts = 1
     """Number of hosts to use."""
     host_mapping: tp.Dict[Simulator, int]
@@ -121,17 +129,17 @@ class DistributedExperiment(Experiment):
             self.proxies_connect.append(proxy)
 
     def all_simulators(self):
-        return itertools.chain(super().all_simulators(),
-                self.proxies_listen, self.proxies_connect)
+        return itertools.chain(
+            super().all_simulators(), self.proxies_listen, self.proxies_connect
+        )
 
     def assign_sim_host(self, sim: Simulator, host: int):
-        """ Assign host ID (< self.num_hosts) for a simulator. """
-        assert(host >= 0 and host < self.num_hosts)
+        """Assign host ID (< self.num_hosts) for a simulator."""
+        assert (host >= 0 and host < self.num_hosts)
         self.host_mapping[sim] = host
 
-
     def all_sims_assigned(self):
-        """ Check if all simulators are assigned to a host. """
+        """Check if all simulators are assigned to a host."""
         for s in self.all_simulators():
             if s not in self.host_mapping:
                 return False
@@ -140,7 +148,9 @@ class DistributedExperiment(Experiment):
 
 T = tp.TypeVar('T', bound=Experiment)
 
+
 class ExperimentBaseRunner(tp.Generic[T]):
+
     def __init__(self, exp: T, env: ExpEnv, verbose: bool):
         self.exp = exp
         self.env = env
@@ -151,7 +161,7 @@ class ExperimentBaseRunner(tp.Generic[T]):
         self.wait_sims = []
 
     def sim_executor(self, sim: Simulator) -> Executor:
-        raise NotImplementedError("Please implement this method")
+        raise NotImplementedError('Please implement this method')
 
     def sim_graph(self):
         sims = self.exp.all_simulators()
@@ -164,7 +174,7 @@ class ExperimentBaseRunner(tp.Generic[T]):
         return graph
 
     async def start_sim(self, sim: Simulator):
-        """ Start a simulator and wait for it to be ready. """
+        """Start a simulator and wait for it to be ready."""
 
         name = sim.full_name()
         if self.verbose:
@@ -178,9 +188,9 @@ class ExperimentBaseRunner(tp.Generic[T]):
 
         # run simulator
         exec = self.sim_executor(sim)
-        sc = exec.create_component(name,
-                    shlex.split(run_cmd), verbose=self.verbose,
-                    canfail=True)
+        sc = exec.create_component(
+            name, shlex.split(run_cmd), verbose=self.verbose, canfail=True
+        )
         await sc.start()
         self.running.append((sim, sc))
 
@@ -216,7 +226,6 @@ class ExperimentBaseRunner(tp.Generic[T]):
     async def after_cleanup(self):
         pass
 
-
     async def prepare(self):
         # generate config tars
         copies = []
@@ -233,12 +242,15 @@ class ExperimentBaseRunner(tp.Generic[T]):
         for sim in self.exp.all_simulators():
             prep_cmds = [pc for pc in sim.prep_cmds(self.env)]
             exec = self.sim_executor(sim)
-            sims.append(exec.run_cmdlist('prepare_' + self.exp.name, prep_cmds,
-                verbose=self.verbose))
+            sims.append(
+                exec.run_cmdlist(
+                    'prepare_' + self.exp.name, prep_cmds, verbose=self.verbose
+                )
+            )
         await asyncio.wait(sims)
 
     async def wait_for_sims(self):
-        """ Wait for simulators to terminate (the ones marked to wait on). """
+        """Wait for simulators to terminate (the ones marked to wait on)."""
         if self.verbose:
             print('%s: waiting for hosts to terminate' % self.exp.name)
         for sc in self.wait_sims:
@@ -282,24 +294,23 @@ class ExperimentBaseRunner(tp.Generic[T]):
 
             # "interrupt, terminate, kill" all processes
             scs = []
-            for _,sc in self.running:
+            for _, sc in self.running:
                 scs.append(sc.int_term_kill())
             await asyncio.wait(scs)
 
             # wait for all processes to terminate
-            for _,sc in self.running:
+            for _, sc in self.running:
                 await sc.wait()
 
             # remove all sockets
             scs = []
-            for (exec,sock) in self.sockets:
+            for (exec, sock) in self.sockets:
                 scs.append(exec.rmtree(sock))
             if len(scs):
                 await asyncio.wait(scs)
-            
 
             # add all simulator components to the output
-            for sim,sc in self.running:
+            for sim, sc in self.running:
                 self.out.add_sim(sim, sc)
 
             await self.after_cleanup()
@@ -307,7 +318,8 @@ class ExperimentBaseRunner(tp.Generic[T]):
 
 
 class ExperimentSimpleRunner(ExperimentBaseRunner[Experiment]):
-    """ Simple experiment runner with just one executor. """
+    """Simple experiment runner with just one executor."""
+
     def __init__(self, exec: Executor, *args, **kwargs):
         self.exec = exec
         super().__init__(*args, **kwargs)
@@ -317,7 +329,8 @@ class ExperimentSimpleRunner(ExperimentBaseRunner[Experiment]):
 
 
 class ExperimentDistributedRunner(ExperimentBaseRunner[DistributedExperiment]):
-    """ Simple experiment runner with just one executor. """
+    """Simple experiment runner with just one executor."""
+
     def __init__(self, execs, *args, **kwargs):
         self.execs = execs
         super().__init__(*args, **kwargs)
@@ -329,11 +342,12 @@ class ExperimentDistributedRunner(ExperimentBaseRunner[DistributedExperiment]):
 
     async def prepare(self):
         # make sure all simulators are assigned to an executor
-        assert(self.exp.all_sims_assigned())
+        assert (self.exp.all_sims_assigned())
 
         # set IP addresses for proxies based on assigned executors
         for p in itertools.chain(
-                self.exp.proxies_listen, self.exp.proxies_connect):
+            self.exp.proxies_listen, self.exp.proxies_connect
+        ):
             exec = self.sim_executor(p)
             p.ip = exec.ip
 

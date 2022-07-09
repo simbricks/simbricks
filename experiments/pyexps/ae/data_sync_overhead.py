@@ -21,9 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import glob
+import itertools
 import json
 import os
-import itertools
 import sys
 
 if len(sys.argv) != 2:
@@ -33,14 +33,16 @@ if len(sys.argv) != 2:
 basedir = sys.argv[1]
 
 types_of_workload = ['sleep', 'busy']
-types_of_sync = ['with', 'without'] # with or without simbricks
+types_of_sync = ['with', 'without']  # with or without simbricks
 
-def time_diff_min (data):
+
+def time_diff_min(data):
     start_time = data['start_time']
     end_time = data['end_time']
 
     time_diff_in_min = (end_time - start_time) / 60
     return time_diff_in_min
+
 
 print('# Workload' + '\t' + 'w/ simbricks' + '\t' + 'w/o simbricks')
 
@@ -51,7 +53,7 @@ for workload in types_of_workload:
             path_pat = '%snoTraf-gt-ib-sw-%s' % (basedir, workload)
         else:
             path_pat = '%sno_simb-gt-%s' % (basedir, workload)
-        
+
         runs = []
         for path in glob.glob(path_pat + '-*.json'):
             if path == path_pat + '-0.json':
@@ -60,11 +62,11 @@ for workload in types_of_workload:
 
             with open(path, 'r') as f:
                 data = json.load(f)
-            
+
             res = time_diff_min(data)
             if res is not None:
                 runs.append(res)
-        
+
         if not runs:
             line.append(' ')
         else:

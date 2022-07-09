@@ -23,12 +23,12 @@
 e1000 NIC, and then with the extracted gem5 e1000 NIC connected through
 SimBricks."""
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
+
+import simbricks.experiments as exp
 
 experiments = []
-
 
 for internal in [True, False]:
     if internal:
@@ -66,8 +66,10 @@ for internal in [True, False]:
 
     for h in [client, server]:
         h.cpu_type = h.cpu_type_cp = 'TimingSimpleCPU'
-        h.variant = 'opt' # need opt gem5 variant with debug support
-        h.extra_main_args.append('--debug-flags=SimBricksEthernet,SimBricksPci,EthernetAll,EthernetDesc')
+        h.variant = 'opt'  # need opt gem5 variant with debug support
+        h.extra_main_args.append(
+            '--debug-flags=SimBricksEthernet,SimBricksPci,EthernetAll,EthernetDesc'
+        )
         if internal:
             h.add_netdirect(net)
         else:

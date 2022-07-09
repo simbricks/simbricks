@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 # iperf UDP Load Scalability test
 # naming convention following host-nic-net
@@ -34,7 +34,7 @@ from simbricks.simulator_utils import create_basic_hosts
 # app: UDPs
 
 host_types = ['gt', 'qt', 'qemu']
-nic_types = ['cv','cb','ib']
+nic_types = ['cv', 'cb', 'ib']
 net_types = ['wire', 'sw', 'br']
 app = ['UDPs']
 
@@ -45,7 +45,6 @@ rate_step = 100
 for r in range(rate_start, rate_end + 1, rate_step):
     rate = f'{r}m'
     rate_types.append(rate)
-    
 
 experiments = []
 
@@ -54,7 +53,10 @@ for rate in rate_types:
         for nic_type in nic_types:
             for net_type in net_types:
 
-                e = exp.Experiment(host_type + '-' + nic_type + '-' + net_type + '-Load-' + rate )
+                e = exp.Experiment(
+                    host_type + '-' + nic_type + '-' + net_type + '-Load-' +
+                    rate
+                )
                 # network
                 if net_type == 'sw':
                     net = sim.SwitchNet()
@@ -70,10 +72,12 @@ for rate in rate_types:
                 if host_type == 'qemu':
                     host_class = sim.QemuHost
                 elif host_type == 'qt':
+
                     def qemu_timing():
                         h = sim.QemuHost()
                         h.sync = True
                         return h
+
                     host_class = qemu_timing
                 elif host_type == 'gt':
                     host_class = sim.Gem5Host
@@ -95,15 +99,41 @@ for rate in rate_types:
                     raise NameError(nic_type)
 
                 # create servers and clients
-                servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                        nc_class, node.IperfUDPServer)
+                servers = create_basic_hosts(
+                    e,
+                    1,
+                    'server',
+                    net,
+                    nic_class,
+                    host_class,
+                    nc_class,
+                    node.IperfUDPServer
+                )
 
                 if rate == '0m':
-                    clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
-                                                     nc_class, node.IperfUDPClientSleep, ip_start=2)
+                    clients = create_basic_hosts(
+                        e,
+                        1,
+                        'client',
+                        net,
+                        nic_class,
+                        host_class,
+                        nc_class,
+                        node.IperfUDPClientSleep,
+                        ip_start=2
+                    )
                 else:
-                    clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
-                                                     nc_class, node.IperfUDPClient, ip_start=2)
+                    clients = create_basic_hosts(
+                        e,
+                        1,
+                        'client',
+                        net,
+                        nic_class,
+                        host_class,
+                        nc_class,
+                        node.IperfUDPClient,
+                        ip_start=2
+                    )
 
                 clients[0].wait = True
                 clients[0].node_config.app.server_ip = servers[0].node_config.ip
@@ -112,9 +142,5 @@ for rate in rate_types:
 
                 print(e.name)
 
-
                 # add to experiments
                 experiments.append(e)
-
-
-

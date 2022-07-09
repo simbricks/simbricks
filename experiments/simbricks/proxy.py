@@ -22,6 +22,7 @@
 
 from simbricks.simulators import Simulator
 
+
 class SimProxy(Simulator):
     name = ''
     # set by the experiment runner
@@ -34,8 +35,9 @@ class SimProxy(Simulator):
     def full_name(self):
         return 'proxy.' + self.name
 
+
 class NetProxy(SimProxy):
-    """ Proxy for connections between NICs and networks. """
+    """Proxy for connections between NICs and networks."""
     # List of tuples (nic, with_listener)
     nics = None
 
@@ -50,6 +52,7 @@ class NetProxy(SimProxy):
 
     def start_delay(self):
         return 10
+
 
 class NetProxyListener(NetProxy):
     port = 12345
@@ -108,7 +111,7 @@ class NetProxyListener(NetProxy):
 
     def run_cmd_base(self, env):
         cmd = (f'-s {env.proxy_shm_path(self)} '
-            f'-S {self.shm_size} ')
+               f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
             cmd += '-C ' if local else '-L '
             cmd += env.nic_eth_path(nic) + ' '
@@ -119,6 +122,7 @@ class NetProxyListener(NetProxy):
 
         cmd += f' 0.0.0.0 {self.port}'
         return cmd
+
 
 class NetProxyConnecter(NetProxy):
     listener = None
@@ -175,7 +179,7 @@ class NetProxyConnecter(NetProxy):
 
     def run_cmd_base(self, env):
         cmd = (f'-s {env.proxy_shm_path(self)} '
-            f'-S {self.shm_size} ')
+               f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
             cmd += '-L ' if local else '-C '
             cmd += env.nic_eth_path(nic) + ' '
@@ -189,6 +193,7 @@ class NetProxyConnecter(NetProxy):
 
 
 class RDMANetProxyListener(NetProxyListener):
+
     def __init__(self):
         super().__init__()
 
@@ -197,7 +202,9 @@ class RDMANetProxyListener(NetProxyListener):
         cmd += super().run_cmd_base(env)
         return cmd
 
+
 class RDMANetProxyConnecter(NetProxyConnecter):
+
     def __init__(self, listener):
         super().__init__(listener)
 
@@ -208,6 +215,7 @@ class RDMANetProxyConnecter(NetProxyConnecter):
 
 
 class SocketsNetProxyListener(NetProxyListener):
+
     def __init__(self):
         super().__init__()
 
@@ -216,7 +224,9 @@ class SocketsNetProxyListener(NetProxyListener):
         cmd += super().run_cmd_base(env)
         return cmd
 
+
 class SocketsNetProxyConnecter(NetProxyConnecter):
+
     def __init__(self, listener):
         super().__init__(listener)
 

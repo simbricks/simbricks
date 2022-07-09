@@ -20,9 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
-import re
 import json
+import re
+import sys
+
 
 def transform_internal(ts, component, msg):
     if not component.startswith('system.pc.simbricks_0'):
@@ -40,6 +41,7 @@ def transform_internal(ts, component, msg):
 
     return (ts + ' ' + msg)
 
+
 def transform_external(ts, component, msg):
     if msg.startswith('igbe: requesting restart clock:') or \
        msg == 'igbe: scheduled' or \
@@ -49,8 +51,8 @@ def transform_external(ts, component, msg):
     elif msg.startswith('[rxdesc]') or msg.startswith('[txdesc]'):
         msg = msg[9:]
 
-        
     return (ts + ' ' + msg)
+
 
 if len(sys.argv) != 3:
     print('Usage: pci_validation.py JSON-DIR VARIANT')

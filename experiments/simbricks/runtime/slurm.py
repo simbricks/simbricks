@@ -20,14 +20,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import pickle
 import os
 import pathlib
+import pickle
 import re
 
 from simbricks.runtime.common import *
 
+
 class SlurmRuntime(Runtime):
+
     def __init__(self, slurmdir, args, verbose=False, cleanup=True):
         self.runnable = []
         self.slurmdir = slurmdir
@@ -42,7 +44,7 @@ class SlurmRuntime(Runtime):
         exp = run.experiment
         e_idx = exp.name + f'-{run.index}' + '.exp'
         exp_path = os.path.join(self.slurmdir, e_idx)
-        
+
         log_idx = exp.name + f'-{run.index}' + '.log'
         exp_log = os.path.join(self.slurmdir, log_idx)
 
@@ -51,10 +53,10 @@ class SlurmRuntime(Runtime):
         print(exp_path)
         print(exp_log)
         print(exp_script)
-        
+
         # write out pickled run
         with open(exp_path, 'wb') as f:
-            run.prereq = None # we don't want to pull in the prereq too
+            run.prereq = None  # we don't want to pull in the prereq too
             pickle.dump(run, f)
 
         # create slurm batch script

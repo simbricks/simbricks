@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 msg_sizes = [64, 1024, 8092]
 stacks = ['linux', 'mtcp']
@@ -35,54 +35,63 @@ connections = 512
 
 experiments = []
 for msg_size in msg_sizes:
-  for stack in stacks:
-    e = exp.Experiment('qemu-ib-switch-mtcp_msgsz-%s-%d' % (stack,msg_size))
-    e.timeout = 5* 60
-    # add meta data for output file
-    e.metadata['msg_size'] = msg_size
-    e.metadata['stack'] = stack
+    for stack in stacks:
+        e = exp.Experiment(
+            'qemu-ib-switch-mtcp_msgsz-%s-%d' % (stack, msg_size)
+        )
+        e.timeout = 5 * 60
+        # add meta data for output file
+        e.metadata['msg_size'] = msg_size
+        e.metadata['stack'] = stack
 
-    net = sim.SwitchNet()
-    e.add_network(net)
+        net = sim.SwitchNet()
+        e.add_network(net)
 
-    if stack == 'tas':
-        n = node.TASNode
-    elif stack == 'mtcp':
-        n = node.MtcpNode
-    else:
-        n = node.I40eLinuxNode
+        if stack == 'tas':
+            n = node.TASNode
+        elif stack == 'mtcp':
+            n = node.MtcpNode
+        else:
+            n = node.I40eLinuxNode
 
-    servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
-            n, node.RPCServer)
+        servers = create_basic_hosts(
+            e, 1, 'server', net, sim.I40eNIC, sim.QemuHost, n, node.RPCServer
+        )
 
-    clients = create_basic_hosts(e, num_clients, 'client', net, sim.I40eNIC,
-            sim.QemuHost, n, node.RPCClient, ip_start = 2)
+        clients = create_basic_hosts(
+            e,
+            num_clients,
+            'client',
+            net,
+            sim.I40eNIC,
+            sim.QemuHost,
+            n,
+            node.RPCClient,
+            ip_start=2
+        )
 
-    for h in servers:
-        h.node_config.cores = server_cores
-        h.node_config.app.threads = server_cores
-        h.node_config.app.max_flows = connections * 4
-        h.sleep = 5
+        for h in servers:
+            h.node_config.cores = server_cores
+            h.node_config.app.threads = server_cores
+            h.node_config.app.max_flows = connections * 4
+            h.sleep = 5
 
+        for c in clients:
+            c.wait = True
+            c.node_config.cores = client_cores
+            c.node_config.app.threads = client_cores
 
+            c.node_config.app.server_ip = servers[0].node_config.ip
+            c.node_config.app.max_msgs_conn = 1
+            c.node_config.app.max_flows = \
+                int(connections / num_clients / client_cores)
 
-    for c in clients:
-        c.wait = True
-        c.node_config.cores = client_cores
-        c.node_config.app.threads = client_cores
+        for h in servers + clients:
+            h.node_config.app.max_bytes = msg_size
 
-        c.node_config.app.server_ip = servers[0].node_config.ip
-        c.node_config.app.max_msgs_conn = 1
-        c.node_config.app.max_flows = \
-            int(connections / num_clients / client_cores)
-
-    for h in servers + clients:
-        h.node_config.app.max_bytes = msg_size
-
-        if stack == 'linux':
-            h.node_config.disk_image = 'tas'
-        elif stack == 'tas':
-            c.node_config.cores += 2
-            c.node_config.fp_cores = 1
-    experiments.append(e)
-
+            if stack == 'linux':
+                h.node_config.disk_image = 'tas'
+            elif stack == 'tas':
+                c.node_config.cores += 2
+                c.node_config.fp_cores = 1
+        experiments.append(e)

@@ -20,16 +20,19 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import fnmatch
 import glob
+import itertools
 import json
 import os
-import fnmatch
 import re
-import itertools
 import sys
 
+
 def parse_iperf_run(data, skip=1, use=8):
-    tp_pat = re.compile(r'\[ *\d*\] *([0-9\.]*)- *([0-9\.]*) sec.*Bytes *([0-9\.]*) ([GM])bits.*')
+    tp_pat = re.compile(
+        r'\[ *\d*\] *([0-9\.]*)- *([0-9\.]*) sec.*Bytes *([0-9\.]*) ([GM])bits.*'
+    )
     tps_time = {}
     for hn in fnmatch.filter(data['sims'].keys(), 'host.client.*'):
         sim = data['sims'][hn]
@@ -50,7 +53,7 @@ def parse_iperf_run(data, skip=1, use=8):
             if m.group(4) == 'G':
                 tps_time[time].append(float(m.group(3)))
             elif m.group(4) == 'M':
-                m_tps = float(m.group(3))/1000
+                m_tps = float(m.group(3)) / 1000
                 tps_time[time].append(m_tps)
 
     tps = []
@@ -58,10 +61,10 @@ def parse_iperf_run(data, skip=1, use=8):
         x = sum(tps_time[t])
         tps.append(x)
 
-
     if len(tps) == 0:
         return None
     return sum(tps) / len(tps)
+
 
 def parse_iperf(basename, skip=1, use=8):
     runs = []
@@ -79,6 +82,7 @@ def parse_iperf(basename, skip=1, use=8):
     if not runs:
         return {'avg': None, 'min': None, 'max': None}
     else:
-        return {'avg': sum(runs) / len(runs), 'min': min(runs),
-                'max': max(runs)}
+        return {
+            'avg': sum(runs) / len(runs), 'min': min(runs), 'max': max(runs)
+        }
     result = {}

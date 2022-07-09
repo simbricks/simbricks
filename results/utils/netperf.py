@@ -21,8 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
-import re
 import os
+import re
+
 
 def parse_netperf_run(path):
     ret = {}
@@ -50,8 +51,6 @@ def parse_netperf_run(path):
         m = tp_pat.match(tp_line)
         ret['throughput'] = float(m.group(1))
 
-
-
     lath_pat = re.compile(r'\s*Mean Latency.*')
     start = None
     i = 0
@@ -64,7 +63,9 @@ def parse_netperf_run(path):
 
     if start is not None:
         lat_line = lines[start + 1]
-        lat_pat = re.compile(r'\s*([-0-9\.]*),([-0-9\.]*),([-0-9\.]*),([-0-9\.]*).*')
+        lat_pat = re.compile(
+            r'\s*([-0-9\.]*),([-0-9\.]*),([-0-9\.]*),([-0-9\.]*).*'
+        )
         m = lat_pat.match(lat_line)
         ret['latenyMean'] = float(m.group(1))
         ret['latenyTail'] = float(m.group(4))

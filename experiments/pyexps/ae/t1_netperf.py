@@ -28,22 +28,22 @@
 # Nic type has Intel_i40e behavioral model(ib), corundum behavioral model(cb), corundum verilator(cv)
 # Net type has Switch behavioral model(sw), ns-3(ns3)
 #
-# In each simulation, two hosts are connected by a switch 
+# In each simulation, two hosts are connected by a switch
 # [HOST_0] - [NIC_0] ---- [SWITCH] ----  [NIC_1] - [HOST_1]
 #  server                                           client
-# 
+#
 # The server host runs netperf server and client host runs TCP_RR and
 # TCP_STREAM test
-# 
+#
 # The command to run all the experiments is:
 # $: python3 run.py pyexps/ae/t1_combination.py --filter nf-* --verbose
 ########################################################################
 
+import simbricks.nodeconfig as node
+import simbricks.simulators as sim
+from simbricks.simulator_utils import create_basic_hosts
 
 import simbricks.experiments as exp
-import simbricks.simulators as sim
-import simbricks.nodeconfig as node
-from simbricks.simulator_utils import create_basic_hosts
 
 host_types = ['qemu', 'gt', 'qt']
 nic_types = ['ib', 'cb', 'cv']
@@ -55,7 +55,9 @@ experiments = []
 for host_type in host_types:
     for nic_type in nic_types:
         for net_type in net_types:
-            e = exp.Experiment('nf-' + host_type + '-' + net_type + '-' + nic_type)
+            e = exp.Experiment(
+                'nf-' + host_type + '-' + net_type + '-' + nic_type
+            )
 
             # network
             if net_type == 'sw':
@@ -70,10 +72,12 @@ for host_type in host_types:
             if host_type == 'qemu':
                 host_class = sim.QemuHost
             elif host_type == 'qt':
+
                 def qemu_timing():
                     h = sim.QemuHost()
                     h.sync = True
                     return h
+
                 host_class = qemu_timing
             elif host_type == 'gt':
                 host_class = sim.Gem5Host
@@ -95,11 +99,28 @@ for host_type in host_types:
                 raise NameError(nic_type)
 
             # create servers and clients
-            servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                    nc_class, node.NetperfServer)
+            servers = create_basic_hosts(
+                e,
+                1,
+                'server',
+                net,
+                nic_class,
+                host_class,
+                nc_class,
+                node.NetperfServer
+            )
 
-            clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
-                    nc_class, node.NetperfClient, ip_start = 2)
+            clients = create_basic_hosts(
+                e,
+                1,
+                'client',
+                net,
+                nic_class,
+                host_class,
+                nc_class,
+                node.NetperfClient,
+                ip_start=2
+            )
 
             for c in clients:
                 c.wait = True

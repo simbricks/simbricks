@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-"""
-Generates an AXI Stream frame joiner wrapper with the specified number of ports
-"""
+"""Generates an AXI Stream frame joiner wrapper with the specified number of
+ports."""
 
 from __future__ import print_function
 
@@ -11,9 +10,9 @@ from jinja2 import Template
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip())
-    parser.add_argument('-p', '--ports',  type=int, default=4, help="number of ports")
-    parser.add_argument('-n', '--name',   type=str, help="module name")
-    parser.add_argument('-o', '--output', type=str, help="output file name")
+    parser.add_argument('-p', '--ports',  type=int, default=4, help='number of ports')
+    parser.add_argument('-n', '--name',   type=str, help='module name')
+    parser.add_argument('-o', '--output', type=str, help='output file name')
 
     args = parser.parse_args()
 
@@ -27,16 +26,16 @@ def generate(ports=4, name=None, output=None):
     n = ports
 
     if name is None:
-        name = "axis_frame_join_wrap_{0}".format(n)
+        name = 'axis_frame_join_wrap_{0}'.format(n)
 
     if output is None:
-        output = name + ".v"
+        output = name + '.v'
 
     print("Opening file '{0}'...".format(output))
 
     output_file = open(output, 'w')
 
-    print("Generating {0} port AXI stream frame joiner wrapper {1}...".format(n, name))
+    print('Generating {0} port AXI stream frame joiner wrapper {1}...'.format(n, name))
 
     cn = int(math.ceil(math.log(n, 2)))
 
@@ -151,8 +150,7 @@ endmodule
         name=name
     ))
 
-    print("Done")
+    print('Done')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
-

@@ -23,12 +23,15 @@
 import asyncio
 import pathlib
 
+import simbricks.proxy as proxy
 from simbricks.exectools import Executor
 from simbricks.runtime.common import *
+
 import simbricks.experiments as exp
-import simbricks.proxy as proxy
+
 
 class DistributedSimpleRuntime(Runtime):
+
     def __init__(self, execs, verbose=False):
         self.runnable = []
         self.complete = []
@@ -42,8 +45,9 @@ class DistributedSimpleRuntime(Runtime):
         self.runnable.append(run)
 
     async def do_run(self, run: Run):
-        runner = exp.ExperimentDistributedRunner(self.execs, run.experiment,
-            run.env, self.verbose)
+        runner = exp.ExperimentDistributedRunner(
+            self.execs, run.experiment, run.env, self.verbose
+        )
         for exec in self.execs:
             await run.prep_dirs(exec)
         await runner.prepare()
@@ -62,9 +66,11 @@ class DistributedSimpleRuntime(Runtime):
 def auto_dist(
     e: Experiment, execs: tp.List[Executor], proxy_type: str = 'sockets'
 ):
-    """ Converts an Experiment into a DistributedExperiment. Assigns network to
-        executor zero, and then round-robin assignment of hosts to executors,
-        while also assigning all nics for a host to the same executor.
+    """
+    Converts an Experiment into a DistributedExperiment.
+
+    Assigns network to executor zero, and then round-robin assignment of hosts
+    to executors, while also assigning all nics for a host to the same executor.
     """
 
     if len(execs) < 2:
