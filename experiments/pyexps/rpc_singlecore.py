@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 msg_sizes = [64, 1024, 8092]
 stacks = ['mtcp', 'tas', 'linux']
@@ -32,38 +32,49 @@ num_clients = 1
 
 experiments = []
 for msg_size in msg_sizes:
-  for stack in stacks:
-    e = exp.Experiment('qemu-ib-switch-rpc-%s-1t-1fpc-%db-0mpc' % (stack,msg_size))
-    net = sim.SwitchNet()
-    e.add_network(net)
+    for stack in stacks:
+        e = exp.Experiment(
+            'qemu-ib-switch-rpc-%s-1t-1fpc-%db-0mpc' % (stack, msg_size)
+        )
+        net = sim.SwitchNet()
+        e.add_network(net)
 
-    if stack == 'tas':
-        n = node.TASNode
-    elif stack == 'mtcp':
-        n = node.MtcpNode
-    else:
-        n = node.I40eLinuxNode
+        if stack == 'tas':
+            n = node.TASNode
+        elif stack == 'mtcp':
+            n = node.MtcpNode
+        else:
+            n = node.I40eLinuxNode
 
-    servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
-            n, node.RPCServer)
+        servers = create_basic_hosts(
+            e, 1, 'server', net, sim.I40eNIC, sim.QemuHost, n, node.RPCServer
+        )
 
-    clients = create_basic_hosts(e, num_clients, 'client', net, sim.I40eNIC,
-            sim.QemuHost, n, node.RPCClient, ip_start = 2)
+        clients = create_basic_hosts(
+            e,
+            num_clients,
+            'client',
+            net,
+            sim.I40eNIC,
+            sim.QemuHost,
+            n,
+            node.RPCClient,
+            ip_start=2
+        )
 
-    for h in servers + clients:
-        h.node_config.cores = 1 if stack != 'tas' else 3
-        h.node_config.fp_cores = 1
-        h.node_config.app.threads = 1
-        h.node_config.app.max_bytes = msg_size
+        for h in servers + clients:
+            h.node_config.cores = 1 if stack != 'tas' else 3
+            h.node_config.fp_cores = 1
+            h.node_config.app.threads = 1
+            h.node_config.app.max_bytes = msg_size
 
-        if stack == 'linux':
-            h.node_config.disk_image = 'tas'
+            if stack == 'linux':
+                h.node_config.disk_image = 'tas'
 
-    servers[0].sleep = 5
+        servers[0].sleep = 5
 
-    for c in clients:
-        c.wait = True
-        c.node_config.app.server_ip = servers[0].node_config.ip
+        for c in clients:
+            c.wait = True
+            c.node_config.app.server_ip = servers[0].node_config.ip
 
-    experiments.append(e)
-
+        experiments.append(e)

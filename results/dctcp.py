@@ -22,6 +22,7 @@
 
 import itertools
 import sys
+
 import utils.iperf
 
 if len(sys.argv) != 2:
@@ -38,7 +39,6 @@ k_step = 16640
 configs = list(itertools.product(types_of_host, mtus))
 confignames = [h + '-' + str(mtu) for h, mtu in configs]
 print('\t'.join(['threshold'] + confignames))
-
 
 for k_val in range(0, max_k + 1, k_step):
     line = [str(k_val)]

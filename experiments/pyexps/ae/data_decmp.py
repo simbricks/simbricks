@@ -21,9 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import glob
+import itertools
 import json
 import os
-import itertools
 import sys
 
 if len(sys.argv) != 2:
@@ -33,23 +33,20 @@ if len(sys.argv) != 2:
 out_file = sys.argv[1]
 
 if not os.path.isfile(out_file):
-    print("no result file at: " + out_file)
+    print('no result file at: ' + out_file)
     exit(0)
 
 f = open(out_file, 'r')
 lines = f.readlines()
 
 for line in lines:
-    if "start:" in line:
+    if 'start:' in line:
         start_time = float(line.split()[1])
 
-    if "end:" in line:
+    if 'end:' in line:
         end_time = float(line.split()[1])
-
 
 time_diff = end_time - start_time
 print('SimTime: %d (s)' % (time_diff))
 
 f.close()
-
-

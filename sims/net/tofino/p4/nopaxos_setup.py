@@ -53,7 +53,7 @@ class l2_switch():
                 if table['type'] in table_types or len(table_types) == 0:
                     try:
                         if verbose:
-                            print("Clearing table {:<40} ... ".
+                            print('Clearing table {:<40} ... '.
                                   format(table['full_name']),
                                   end='', flush=True)
                         table['node'].clear(batch=batching)
@@ -109,7 +109,7 @@ class l2_switch():
                             # no add() etc. Another reason is that the
                             # table is read-only.
                             if verbose:
-                                print("Failed")
+                                print('Failed')
                         finally:
                             if batching:
                                 bfrt.batch_end()
@@ -128,16 +128,16 @@ class l2_switch():
         self.__init__()
 
         # Enable learning on SMAC
-        print("Initializing learning on SMAC ... ", end='', flush=True)
+        print('Initializing learning on SMAC ... ', end='', flush=True)
         try:
             self.p4.IngressDeparser.l2_digest.callback_deregister()
         except:
             pass
         self.p4.IngressDeparser.l2_digest.callback_register(self.learning_cb)
-        print("Done")
+        print('Done')
 
         # Enable aging on SMAC
-        print("Inializing Aging on SMAC ... ", end='', flush=True)
+        print('Inializing Aging on SMAC ... ', end='', flush=True)
         try:
             self.p4.Ingress.smac.idle_table_set_notify(enable=False,
                                                        callback=None)
@@ -149,7 +149,7 @@ class l2_switch():
         #                                           interval = 10000,
         #                                           min_ttl  = 10000,
         #                                           max_ttl  = 60000)
-        print("Done")
+        print('Done')
 
     @staticmethod
     def aging_cb(dev_id, pipe_id, direction, parser_id, entry):
@@ -158,13 +158,13 @@ class l2_switch():
 
         mac_addr = entry.key[b'hdr.ethernet.src_addr']
 
-        print("Aging out: MAC: {}".format(mac(mac_addr)))
+        print('Aging out: MAC: {}'.format(mac(mac_addr)))
 
         entry.remove() # from smac
         try:
             dmac.delete(dst_addr=mac_addr)
         except:
-            print("WARNING: Could not find the matching DMAC entry")
+            print('WARNING: Could not find the matching DMAC entry')
 
     @staticmethod
     def learning_cb(dev_id, pipe_id, direction, parser_id, session, msg):
@@ -172,19 +172,19 @@ class l2_switch():
         dmac = bfrt.nopaxos.pipe.Ingress.dmac
 
         for digest in msg:
-            port     = digest["ingress_port"]
-            mac_move = digest["mac_move"]
-            mac_addr  = digest["src_mac"]
+            port     = digest['ingress_port']
+            mac_move = digest['mac_move']
+            mac_addr  = digest['src_mac']
 
             old_port = port ^ mac_move # Because mac_move = ingress_port ^ port
 
-            print("MAC: {},  Port={}".format(
-                mac(mac_addr), port), end="")
+            print('MAC: {},  Port={}'.format(
+                mac(mac_addr), port), end='')
 
             if mac_move != 0:
-                print("(Move from port={})".format(old_port))
+                print('(Move from port={})'.format(old_port))
             else:
-                print("(New)")
+                print('(New)')
 
             # Since we do not have access to self, we have to use
             # the hardcoded value for the TTL :(
@@ -221,7 +221,7 @@ def set_mcast(num_groups=1, num_sequencers=1):
 ### Setup L2 learning
 sl2 = l2_switch(default_ttl=10000)
 sl2.setup()
-sl2.l2_add_smac_drop(1, "00:00:00:00:00:00")
+sl2.l2_add_smac_drop(1, '00:00:00:00:00:00')
 bfrt.complete_operations()
 
 p4 = bfrt.nopaxos.pipe
@@ -236,5 +236,5 @@ bfrt.complete_operations()
 
 ### Register print out
 print("""******************* SETUP RESULTS *****************""")
-print ("\n reg_cnt:")
+print ('\n reg_cnt:')
 p4.Ingress.reg_cnt.get(REGISTER_INDEX=0, from_hw=True)

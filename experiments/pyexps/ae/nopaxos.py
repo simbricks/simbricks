@@ -20,10 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
+
+import simbricks.experiments as exp
 
 host_configs = ['qt']
 seq_configs = ['swseq', 'ehseq', 'tofino']
@@ -33,7 +34,7 @@ num_client_configs = [1, 2, 3, 4, 5, 6, 8, 10]
 experiments = []
 sync_period = 200
 
-link_rate_opt = '--LinkRate=100Gb/s ' # don't forget space at the end
+link_rate_opt = '--LinkRate=100Gb/s '  # don't forget space at the end
 link_latency_opt = '--LinkLatency=500ns '
 
 for proto_config in proto_configs:
@@ -41,7 +42,10 @@ for proto_config in proto_configs:
         for host_config in host_configs:
             for seq_config in seq_configs:
                 for nic_config in nic_configs:
-                    e = exp.Experiment(proto_config + '-'  + host_config + '-' + nic_config + '-' + seq_config + f'-{num_c}')
+                    e = exp.Experiment(
+                        proto_config + '-' + host_config + '-' + nic_config +
+                        '-' + seq_config + f'-{num_c}'
+                    )
                     if seq_config == 'tofino':
                         net = sim.TofinoNet()
                     else:
@@ -58,10 +62,12 @@ for proto_config in proto_configs:
                         host_class = sim.Gem5Host
                         e.checkpoint = True
                     elif host_config == 'qt':
+
                         def qemu_timing():
                             h = sim.QemuHost()
                             h.sync = True
                             return h
+
                         host_class = qemu_timing
                     else:
                         raise NameError(host_config)
@@ -79,7 +85,6 @@ for proto_config in proto_configs:
                     else:
                         raise NameError(nic_config)
 
-
                     # app
                     if proto_config == 'vr':
                         replica_class = node.VRReplica
@@ -92,25 +97,53 @@ for proto_config in proto_configs:
 
                     # endhost sequencer
                     if seq_config == 'ehseq' and proto_config == 'nopaxos':
-                        sequencer = create_basic_hosts(e, 1, 'sequencer', net, nic_class,
-                                host_class, nc_class, node.NOPaxosSequencer, ip_start = 100)
+                        sequencer = create_basic_hosts(
+                            e,
+                            1,
+                            'sequencer',
+                            net,
+                            nic_class,
+                            host_class,
+                            nc_class,
+                            node.NOPaxosSequencer,
+                            ip_start=100
+                        )
                         sequencer[0].node_config.disk_image = 'nopaxos'
                         sequencer[0].pcidevs[0].sync_period = sync_period
                         sequencer[0].sync_period = sync_period
 
-                    replicas = create_basic_hosts(e, 3, 'replica', net, nic_class,
-                            host_class, nc_class, replica_class)
+                    replicas = create_basic_hosts(
+                        e,
+                        3,
+                        'replica',
+                        net,
+                        nic_class,
+                        host_class,
+                        nc_class,
+                        replica_class
+                    )
                     for i in range(len(replicas)):
                         replicas[i].node_config.app.index = i
                         replicas[i].node_config.disk_image = 'nopaxos'
                         replicas[i].pcidevs[0].sync_period = sync_period
                         replicas[i].sync_period = sync_period
 
-                    clients = create_basic_hosts(e, num_c, 'client', net, nic_class,
-                            host_class, nc_class, client_class, ip_start = 4)
+                    clients = create_basic_hosts(
+                        e,
+                        num_c,
+                        'client',
+                        net,
+                        nic_class,
+                        host_class,
+                        nc_class,
+                        client_class,
+                        ip_start=4
+                    )
 
                     for c in clients:
-                        c.node_config.app.server_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']
+                        c.node_config.app.server_ips = [
+                            '10.0.0.1', '10.0.0.2', '10.0.0.3'
+                        ]
                         if seq_config == 'ehseq':
                             c.node_config.app.server_ips.append('10.0.0.100')
                             c.node_config.app.use_ehseq = True

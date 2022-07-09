@@ -20,25 +20,41 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 e = exp.Experiment('qemu-e1000-pair')
 net = sim.SwitchNet()
 e.add_network(net)
 
-servers = create_basic_hosts(e, 1, 'server', net, sim.E1000NIC, sim.QemuHost,
-        node.E1000LinuxNode, node.IperfTCPServer)
+servers = create_basic_hosts(
+    e,
+    1,
+    'server',
+    net,
+    sim.E1000NIC,
+    sim.QemuHost,
+    node.E1000LinuxNode,
+    node.IperfTCPServer
+)
 
-clients = create_basic_hosts(e, 1, 'client', net, sim.E1000NIC, sim.QemuHost,
-        node.E1000LinuxNode, node.IperfTCPClient, ip_start = 2)
+clients = create_basic_hosts(
+    e,
+    1,
+    'client',
+    net,
+    sim.E1000NIC,
+    sim.QemuHost,
+    node.E1000LinuxNode,
+    node.IperfTCPClient,
+    ip_start=2
+)
 
 for c in clients:
     c.wait = True
     c.node_config.app.server_ip = servers[0].node_config.ip
 
 experiments = [e]
-

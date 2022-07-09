@@ -1,8 +1,8 @@
-import sys
-import os
-import re
 import glob
 import json
+import os
+import re
+import sys
 
 if len(sys.argv) != 2:
     print('Usage: generate_json.py OUTDIR')
@@ -23,7 +23,7 @@ for f in glob.glob('testbed-results/*_*pktgap/*.txt'):
     mtu = int(m.group(1))
     k = int(m.group(2)) * cellsz
 
-    runk = (mtu,k)
+    runk = (mtu, k)
     clients = runmap.get(runk, {})
 
     with open(f, 'r') as f:

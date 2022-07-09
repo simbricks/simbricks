@@ -23,22 +23,22 @@
 ########################################################################
 # This script is for generating the result in 8.1 in the paper.
 #
-# In each simulation, two hosts are connected by a switch 
+# In each simulation, two hosts are connected by a switch
 # [HOST_0] - [NIC_0] ---- [SWITCH] ----  [NIC_1] - [HOST_1]
 #  server                                           client
-# 
+#
 # The server host runs netperf server and client host runs TCP_RR and
 # TCP_STREAM test
-# 
+#
 # The command to run all the experiments is:
 # $: python3 run.py pyexps/ae/corundum_pcilat.py --filter cblat-gt-sw --verbose --force
 ########################################################################
 
+import simbricks.nodeconfig as node
+import simbricks.simulators as sim
+from simbricks.simulator_utils import create_basic_hosts
 
 import simbricks.experiments as exp
-import simbricks.simulators as sim
-import simbricks.nodeconfig as node
-from simbricks.simulator_utils import create_basic_hosts
 
 pci_latency = [1000]
 experiments = []
@@ -60,16 +60,33 @@ for pci_type in pci_latency:
         n.sync_period = pci_type
         n.pci_latency = pci_type
         return n
-    
+
     nic_class = nic_pci
     nc_class = node.CorundumLinuxNode
 
     # create servers and clients
-    servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-            nc_class, node.NetperfServer)
+    servers = create_basic_hosts(
+        e,
+        1,
+        'server',
+        net,
+        nic_class,
+        host_class,
+        nc_class,
+        node.NetperfServer
+    )
 
-    clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
-            nc_class, node.NetperfClient, ip_start = 2)
+    clients = create_basic_hosts(
+        e,
+        1,
+        'client',
+        net,
+        nic_class,
+        host_class,
+        nc_class,
+        node.NetperfClient,
+        ip_start=2
+    )
 
     for s in servers:
         s.pci_latency = pci_type

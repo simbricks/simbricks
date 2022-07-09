@@ -20,16 +20,15 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 host_types = ['gt']
 nic_types = ['ib']
 net_types = ['sw']
-
 
 num_cores = 1
 n_client = 1
@@ -42,22 +41,40 @@ e.add_network(net)
 host_class = sim.Gem5Host
 e.checkpoint = False
 
-
 nic_class = sim.I40eNIC
 nc_class = node.I40eLinuxNode
 
 # create a host
-servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                                    nc_class, node.IperfUDPServer, ip_start=2)
+servers = create_basic_hosts(
+    e,
+    1,
+    'server',
+    net,
+    nic_class,
+    host_class,
+    nc_class,
+    node.IperfUDPServer,
+    ip_start=2
+)
 
 servers[0].node_config.nockp = 1
 servers[0].variant = 'opt'
 servers[0].cpu_freq = '3GHz'
-servers[0].extra_main_args = ['--debug-flags=SimBricksSync,SimBricksPci,SimBricksEthernet']
+servers[0].extra_main_args = [
+    '--debug-flags=SimBricksSync,SimBricksPci,SimBricksEthernet'
+]
 # create a host
-clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
-                                    nc_class, node.IperfUDPShortClient, ip_start=2)
-
+clients = create_basic_hosts(
+    e,
+    1,
+    'client',
+    net,
+    nic_class,
+    host_class,
+    nc_class,
+    node.IperfUDPShortClient,
+    ip_start=2
+)
 
 clients[0].cpu_freq = '3GHz'
 clients[0].variant = 'opt'
@@ -65,14 +82,12 @@ clients[0].node_config.cores = num_cores
 clients[0].node_config.app.is_sleep = 1
 clients[0].node_config.nockp = 1
 clients[0].node_config.app.is_last = True
-clients[0].extra_main_args = ['--debug-flags=SimBricksSync,SimBricksPci,SimBricksEthernet']
+clients[0].extra_main_args = [
+    '--debug-flags=SimBricksSync,SimBricksPci,SimBricksEthernet'
+]
 clients[0].wait = True
 
 print(e.name)
 
-
 # add to experiments
 experiments.append(e)
-
-
-

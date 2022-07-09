@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-"""
-Generates an AXI Stream crosspoint wrapper with the specified number of ports
-"""
+"""Generates an AXI Stream crosspoint wrapper with the specified number of
+ports."""
 
 from __future__ import print_function
 
@@ -11,9 +10,9 @@ from jinja2 import Template
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip())
-    parser.add_argument('-p', '--ports',  type=int, default=[4], nargs='+', help="number of ports")
-    parser.add_argument('-n', '--name',   type=str, help="module name")
-    parser.add_argument('-o', '--output', type=str, help="output file name")
+    parser.add_argument('-p', '--ports',  type=int, default=[4], nargs='+', help='number of ports')
+    parser.add_argument('-n', '--name',   type=str, help='module name')
+    parser.add_argument('-o', '--output', type=str, help='output file name')
 
     args = parser.parse_args()
 
@@ -32,16 +31,16 @@ def generate(ports=4, name=None, output=None):
         m, n = ports
 
     if name is None:
-        name = "axis_crosspoint_wrap_{0}x{1}".format(m, n)
+        name = 'axis_crosspoint_wrap_{0}x{1}'.format(m, n)
 
     if output is None:
-        output = name + ".v"
+        output = name + '.v'
 
     print("Opening file '{0}'...".format(output))
 
     output_file = open(output, 'w')
 
-    print("Generating {0}x{1} port AXI stream crosspoint wrapper {2}...".format(m, n, name))
+    print('Generating {0}x{1} port AXI stream crosspoint wrapper {2}...'.format(m, n, name))
 
     cm = int(math.ceil(math.log(m, 2)))
     cn = int(math.ceil(math.log(n, 2)))
@@ -185,8 +184,7 @@ endmodule
         name=name
     ))
 
-    print("Done")
+    print('Done')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
-

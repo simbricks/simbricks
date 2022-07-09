@@ -22,6 +22,7 @@
 
 import itertools
 import sys
+
 import utils.iperf
 
 if len(sys.argv) != 2:
@@ -41,7 +42,7 @@ configs = [
 
 print('\t'.join(['config'] + list(map(str, lats))))
 
-for (ht,nt,lab) in configs:
+for (ht, nt, lab) in configs:
     cols = [str(lab)]
     for lat in lats:
         path_pat = '%spcilat-%s-%s-switch-%d' % (basedir, ht, nt, lat)

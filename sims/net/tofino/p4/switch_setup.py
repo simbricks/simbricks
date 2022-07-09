@@ -54,7 +54,7 @@ class l2_switch():
                 if table['type'] in table_types or len(table_types) == 0:
                     try:
                         if verbose:
-                            print("Clearing table {:<40} ... ".
+                            print('Clearing table {:<40} ... '.
                                   format(table['full_name']),
                                   end='', flush=True)
                         table['node'].clear(batch=batching)
@@ -110,7 +110,7 @@ class l2_switch():
                             # no add() etc. Another reason is that the
                             # table is read-only.
                             if verbose:
-                                print("Failed")
+                                print('Failed')
                         finally:
                             if batching:
                                 bfrt.batch_end()
@@ -151,16 +151,16 @@ class l2_switch():
             self.p4.Egress.port_vlan_tagged.symmetric_mode_set(False)
 
         # Enable learning on SMAC
-        print("Initializing learning on SMAC ... ", end='', flush=True)
+        print('Initializing learning on SMAC ... ', end='', flush=True)
         try:
             self.p4.IngressDeparser.l2_digest.callback_deregister()
         except:
             pass
         self.p4.IngressDeparser.l2_digest.callback_register(self.learning_cb)
-        print("Done")
+        print('Done')
 
         # Enable aging on SMAC
-        print("Inializing Aging on SMAC ... ", end='', flush=True)
+        print('Inializing Aging on SMAC ... ', end='', flush=True)
         self.p4.Ingress.smac.idle_table_set_notify(enable=False,
                                                    callback=None)
 
@@ -169,7 +169,7 @@ class l2_switch():
                                                    interval = 10000,
                                                    min_ttl  = 10000,
                                                    max_ttl  = 60000)
-        print("Done")
+        print('Done')
 
     @staticmethod
     def aging_cb(dev_id, pipe_id, direction, parser_id, entry):
@@ -179,13 +179,13 @@ class l2_switch():
         vid = entry.key[b'meta.vid']
         mac_addr = entry.key[b'hdr.ethernet.src_addr']
 
-        print("Aging out: VID: {}, MAC: {}".format(vid, mac(mac_addr)))
+        print('Aging out: VID: {}, MAC: {}'.format(vid, mac(mac_addr)))
 
         entry.remove() # from smac
         try:
             dmac.delete(vid=vid, dst_addr=mac_addr)
         except:
-            print("WARNING: Could not find the matching DMAC entry")
+            print('WARNING: Could not find the matching DMAC entry')
 
     @staticmethod
     def learning_cb(dev_id, pipe_id, direction, parser_id, session, msg):
@@ -193,20 +193,20 @@ class l2_switch():
         dmac = bfrt.l2_switch.pipe.Ingress.dmac
 
         for digest in msg:
-            vid      = digest["vid"]
-            port     = digest["ingress_port"]
-            mac_move = digest["mac_move"]
-            mac_addr  = digest["src_mac"]
+            vid      = digest['vid']
+            port     = digest['ingress_port']
+            mac_move = digest['mac_move']
+            mac_addr  = digest['src_mac']
 
             old_port = port ^ mac_move # Because mac_move = ingress_port ^ port
 
-            print("VID: {},  MAC: {},  Port={}".format(
-                vid, mac(mac_addr), port), end="")
+            print('VID: {},  MAC: {},  Port={}'.format(
+                vid, mac(mac_addr), port), end='')
 
             if mac_move != 0:
-                print("(Move from port={})".format(old_port))
+                print('(Move from port={})'.format(old_port))
             else:
-                print("(New)")
+                print('(New)')
 
             # Since we do not have access to self, we have to use
             # the hardcoded value for the TTL :(
@@ -220,9 +220,9 @@ class l2_switch():
 
     def vlan_create(self, vid):
         if vid in self.vlan:
-            raise KeyError("Vlan {} already exists".format(vid))
+            raise KeyError('Vlan {} already exists'.format(vid))
         if not 1 <= vid <= 4095:
-            raise ValueError("Vlan ID {} is incorrect".format(vid))
+            raise ValueError('Vlan ID {} is incorrect'.format(vid))
 
         bfrt.pre.node.entry(MULTICAST_NODE_ID = vid,
                             MULTICAST_RID     = 0xFFFF, # See P4 code
@@ -233,7 +233,7 @@ class l2_switch():
                             MULTICAST_NODE_L1_XID_VALID = [0],
                             MULTICAST_NODE_L1_XID       = [0]).push()
         self.vlan[vid] = {
-            "ports": {}
+            'ports': {}
         }
 
 
@@ -284,15 +284,15 @@ class l2_switch():
         for vid in sorted(vlans):
             print ('| {:>4d} | '.format(vid), end='')
 
-            for p in sorted(self.vlan[vid]["ports"].keys()):
+            for p in sorted(self.vlan[vid]['ports'].keys()):
                 print(p, end='')
-                if self.vlan[vid]["ports"][p]:
-                    print("(T)", end='')
+                if self.vlan[vid]['ports'][p]:
+                    print('(T)', end='')
                 else:
-                    print("(U)", end='')
+                    print('(U)', end='')
             print()
 
-        print( "+------+------------------------------------------")
+        print( '+------+------------------------------------------')
 
     def vlan_port_add(self, vid, dp, tagged=False):
         if vid not in self.vlan:
@@ -340,7 +340,7 @@ class l2_switch():
                     vid << 7 | port, 0, pipe=pipe)
 
         # Update internal state
-        vlan_ports = self.vlan[vid]["ports"]
+        vlan_ports = self.vlan[vid]['ports']
         vlan_ports[dp] = tagged
 
     def vlan_port_delete(self, vid, dp):
@@ -397,7 +397,7 @@ class l2_switch():
             try:
                 default_vid = self.port_vlan_default_get(dp)
                 if default_vid != 0 or show_all:
-                    print("Port %3d : Default VLAN is %4d" % (dp, default_vid))
+                    print('Port %3d : Default VLAN is %4d' % (dp, default_vid))
             except:
                 pass
 
@@ -427,54 +427,54 @@ class l2_switch():
     def l2_print(self, dmac_entry, smac_entry):
         vid      = None
         mac_addr = None
-        port     = "   "
-        pending  = " "
-        valid    = " "
-        static   = " "
-        dst_drop = " "
-        src_drop = " "
-        static   = " "
-        ttl      = "      "
-        dmac_eh_s= "          "
-        smac_eh_s= "          "
+        port     = '   '
+        pending  = ' '
+        valid    = ' '
+        static   = ' '
+        dst_drop = ' '
+        src_drop = ' '
+        static   = ' '
+        ttl      = '      '
+        dmac_eh_s= '          '
+        smac_eh_s= '          '
 
         if dmac_entry is not None:
-            valid    = "Y"
+            valid    = 'Y'
             vid      = dmac_entry.key[b'meta.vid']
             mac_addr = mac(dmac_entry.key[b'hdr.ethernet.dst_addr'])
 
-            if dmac_entry.action.endswith("dmac_drop"):
-                dst_drop = "Y"
+            if dmac_entry.action.endswith('dmac_drop'):
+                dst_drop = 'Y'
             else:
-                dst_drop = " "
-                if dmac_entry.action.endswith("dmac_unicast"):
+                dst_drop = ' '
+                if dmac_entry.action.endswith('dmac_unicast'):
                     port = dmac_entry.data[b'port']
 
         if smac_entry is not None:
-            valid       = "Y"
+            valid       = 'Y'
             ttl         = int(smac_entry.data[b'$ENTRY_TTL'])
             if ttl > 1000 or ttl == 0:
-                ttl = "%6d" % (ttl/1000)
+                ttl = '%6d' % (ttl/1000)
             else:
-                ttl = " 0.%03d" % ttl
+                ttl = ' 0.%03d' % ttl
 
             if dmac_entry is None:
                 vid      = smac_entry.key[b'meta.vid']
                 mac_addr =  mac(smac_entry.key[b'hdr.ethernet.src_addr'])
 
-            if smac_entry.action.endswith("smac_hit"):
+            if smac_entry.action.endswith('smac_hit'):
                 if (dmac_entry is None or
-                    dmac_entry.action.endswith("dmac_miss")):
-                    pending = "Y"
+                    dmac_entry.action.endswith('dmac_miss')):
+                    pending = 'Y'
                     port = smac_entry.data[b'port']
 
                 if smac_entry.data[b'is_static']:
-                    static = "Y"
-            elif smac_entry.action.endswith("smac_drop"):
-                src_drop = "Y"
+                    static = 'Y'
+            elif smac_entry.action.endswith('smac_drop'):
+                src_drop = 'Y'
 
         if dmac_entry or smac_entry:
-            print("| %4d | %s | %3d | %s %s %s | %s  %s | %s |" % (
+            print('| %4d | %s | %3d | %s %s %s | %s  %s | %s |' % (
                 vid, mac_addr, port,
                 valid, pending, static,
                 src_drop, dst_drop,
@@ -537,7 +537,7 @@ sl2.port_vlan_default_set(0, 1)
 sl2.port_vlan_default_set(1, 1)
 sl2.port_vlan_default_set(2, 1)
 sl2.port_vlan_default_set(3, 1)
-sl2.l2_add_smac_drop(1, "00:00:00:00:00:00")
+sl2.l2_add_smac_drop(1, '00:00:00:00:00:00')
 bfrt.complete_operations()
 
 sl2.vlan_show()

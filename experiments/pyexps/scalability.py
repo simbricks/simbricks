@@ -20,10 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
+
+import simbricks.experiments as exp
 
 host_configs = ['bm', 'cycle']
 n_clients = [1, 2, 4, 8]
@@ -50,15 +51,31 @@ for host_config in host_configs:
 
         e.add_network(net)
 
-        servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                nc_class, node.IperfUDPServer)
+        servers = create_basic_hosts(
+            e,
+            1,
+            'server',
+            net,
+            nic_class,
+            host_class,
+            nc_class,
+            node.IperfUDPServer
+        )
 
-        clients = create_basic_hosts(e, nc, 'client', net, nic_class, host_class,
-                nc_class, node.IperfUDPClient)
+        clients = create_basic_hosts(
+            e,
+            nc,
+            'client',
+            net,
+            nic_class,
+            host_class,
+            nc_class,
+            node.IperfUDPClient
+        )
 
         for c in clients:
             c.wait = True
             c.node_config.app.server_ip = servers[0].node_config.ip
-            c.node_config.app.rate = str(target_bandwidth/nc)+'m'
+            c.node_config.app.rate = str(target_bandwidth / nc) + 'm'
 
         experiments.append(e)

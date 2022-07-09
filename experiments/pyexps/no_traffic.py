@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 # iperf TCP_single test
 # naming convention following host-nic-net-app
@@ -34,10 +34,9 @@ from simbricks.simulator_utils import create_basic_hosts
 # app: UDPs
 
 host_types = ['gt', 'qt', 'qemu']
-nic_types = ['cv','cb','ib']
+nic_types = ['cv', 'cb', 'ib']
 net_types = ['sw', 'br']
 app_types = ['sleep', 'busy']
-
 
 num_cores = 1
 n_client = 1
@@ -49,7 +48,10 @@ for host_type in host_types:
         for net_type in net_types:
             for app_type in app_types:
 
-                e = exp.Experiment('noTraf-' + host_type + '-' + nic_type + '-' + net_type + '-' + app_type)
+                e = exp.Experiment(
+                    'noTraf-' + host_type + '-' + nic_type + '-' + net_type +
+                    '-' + app_type
+                )
                 #e.no_simbricks = False
                 # network
                 if net_type == 'sw':
@@ -64,10 +66,12 @@ for host_type in host_types:
                 if host_type == 'qemu':
                     host_class = sim.QemuHost
                 elif host_type == 'qt':
+
                     def qemu_timing():
                         h = sim.QemuHost()
                         h.sync = True
                         return h
+
                     host_class = qemu_timing
                 elif host_type == 'gt':
                     host_class = sim.Gem5Host
@@ -92,35 +96,38 @@ for host_type in host_types:
                 """
                 servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
                         nc_class, node.NoTraffic)
-                
+
                 for s in servers:
                     s.node_config.cores = num_cores
                     s.node_config.app.is_sleep = 0
                     s.node_config.app.is_server = 1
                 """
 
-                
-                clients = create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
-                                                 nc_class, node.NoTraffic, ip_start=2)
+                clients = create_basic_hosts(
+                    e,
+                    n_client,
+                    'client',
+                    net,
+                    nic_class,
+                    host_class,
+                    nc_class,
+                    node.NoTraffic,
+                    ip_start=2
+                )
 
-                clients[n_client-1].wait = True
+                clients[n_client - 1].wait = True
 
                 for c in clients:
-                    
+
                     c.node_config.cores = num_cores
-                    # is busy 
+                    # is busy
                     if app_type == 'sleep':
                         c.node_config.app.is_sleep = 1
                     else:
                         c.node_config.app.is_sleep = 0
                         #c.wait = True
 
-
                 print(e.name)
-
 
                 # add to experiments
                 experiments.append(e)
-
-
-

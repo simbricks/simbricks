@@ -20,10 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from utils.netperf import *
 import sys
-from time import strftime
-from time import gmtime
+from time import gmtime, strftime
+
+from utils.netperf import *
 
 
 def fmt_lat(lat):
@@ -60,7 +60,7 @@ for (h, h_l) in hosts:
             path = '%s/cblat-%s-%s-1.json' % (outdir, h, net)
             data = parse_netperf_run(path)
             if 'simtime' in data:
-                t = strftime("%H:%M:%S", gmtime(data['simtime']))
+                t = strftime('%H:%M:%S', gmtime(data['simtime']))
             else:
                 t = ''
 

@@ -20,9 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
+
+import simbricks.experiments as exp
 
 experiments = []
 
@@ -44,7 +45,6 @@ for h in ['qk', 'gk']:
     host.set_config(node_config)
     e.add_host(host)
     host.wait = True
-
 
     femu = sim.FEMUDev()
     femu.name = 'femu0'

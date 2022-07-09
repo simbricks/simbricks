@@ -22,11 +22,13 @@
 
 import math
 import random
-import simbricks.experiments as exp
-import simbricks.simulators as sim
-import simbricks.proxy as proxy
+
 import simbricks.nodeconfig as node
+import simbricks.proxy as proxy
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_multinic_hosts
+
+import simbricks.experiments as exp
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4, 8, 16, 32]
@@ -35,6 +37,7 @@ experiments = []
 separate_net = True
 
 nets_per_host = 1
+
 
 def select_servers(i, j, racks, n, n_host):
     nc = int(n_host / 2)
@@ -56,115 +59,140 @@ def select_servers(i, j, racks, n, n_host):
     servers_other = random.sample(all_other_servers, k=n_remote)
     return servers_local + servers_other
 
+
 for host_type in host_types:
-  for n in n_nets:
-    for n_host in n_hosts:
-        random.seed(n + 1000 * n_host)
+    for n in n_nets:
+        for n_host in n_hosts:
+            random.seed(n + 1000 * n_host)
 
-        nh = math.ceil(n / nets_per_host)
-        if separate_net:
-            nh += 1
-
-        e = exp.DistributedExperiment(f'dist_memcache-{host_type}-{n}-{n_host}', nh)
-
-        # host
-        if host_type == 'qemu':
-            host_class = sim.QemuHost
-        elif host_type == 'qt':
-            def qemu_timing():
-                h = sim.QemuHost()
-                h.sync = True
-                return h
-            host_class = qemu_timing
-        elif host_type == 'gem5':
-            host_class = sim.Gem5Host
-            e.checkpoint = False
-        else:
-            raise NameError(host_type)
-
-        switch_top = sim.SwitchNet()
-        switch_top.name = 'switch_top'
-        if host_type == 'qemu':
-            switch_top.sync = False
-        e.add_network(switch_top)
-        e.assign_sim_host(switch_top, 0)
-
-        racks = []
-        for i in range(0, n):
-            h_i = int(i / nets_per_host)
+            nh = math.ceil(n / nets_per_host)
             if separate_net:
-                h_i += 1
+                nh += 1
 
-            switch = sim.SwitchNet()
-            switch.name = 'switch_%d' % (i,)
+            e = exp.DistributedExperiment(
+                f'dist_memcache-{host_type}-{n}-{n_host}', nh
+            )
+
+            # host
             if host_type == 'qemu':
-                switch.sync = False
-            e.add_network(switch)
-            e.assign_sim_host(switch, h_i)
+                host_class = sim.QemuHost
+            elif host_type == 'qt':
 
-            switch_top.connect_network(switch)
+                def qemu_timing():
+                    h = sim.QemuHost()
+                    h.sync = True
+                    return h
 
-            # create servers and clients
-            m = int(n_host / 2)
-            servers = create_multinic_hosts(e, m, 'server_%d' % (i,),
-                    switch, host_class, node.I40eLinuxNode,
-                    node.MemcachedServer, ip_start = i * n_host + 1,
-                    ip_prefix=16)
-            for s in servers:
-                e.assign_sim_host(s, h_i)
-                s_multisubnic = next(pcidev for pcidev in s.pcidevs if isinstance(pcidev, sim.MultiSubNIC))
-                e.assign_sim_host(s_multisubnic.multinic, h_i)
+                host_class = qemu_timing
+            elif host_type == 'gem5':
+                host_class = sim.Gem5Host
+                e.checkpoint = False
+            else:
+                raise NameError(host_type)
 
-            clients = create_multinic_hosts(e, m, 'client_%d' % (i,),
-                    switch, host_class, node.I40eLinuxNode,
-                    node.MemcachedClient, ip_start = i * n_host + 1 + m,
-                    ip_prefix=16)
-            for c in clients:
-                c.wait = True
-                e.assign_sim_host(c, h_i)
-                c_multisubnic = next(pcidev for pcidev in c.pcidevs if isinstance(pcidev, sim.MultiSubNIC))
-                e.assign_sim_host(c_multisubnic.multinic, h_i)
+            switch_top = sim.SwitchNet()
+            switch_top.name = 'switch_top'
+            if host_type == 'qemu':
+                switch_top.sync = False
+            e.add_network(switch_top)
+            e.assign_sim_host(switch_top, 0)
 
-            racks.append((servers, clients))
+            racks = []
+            for i in range(0, n):
+                h_i = int(i / nets_per_host)
+                if separate_net:
+                    h_i += 1
 
-            if h_i != 0:
-                lp = proxy.SocketsNetProxyListener()
-                lp.name = 'listener-%d' % (i,)
-                e.add_proxy(lp)
-                e.assign_sim_host(lp, h_i)
+                switch = sim.SwitchNet()
+                switch.name = 'switch_%d' % (i,)
+                if host_type == 'qemu':
+                    switch.sync = False
+                e.add_network(switch)
+                e.assign_sim_host(switch, h_i)
 
-                cp = proxy.SocketsNetProxyConnecter(lp)
-                cp.name = 'connecter-%d' % (i,)
-                e.add_proxy(cp)
-                e.assign_sim_host(cp, 0)
+                switch_top.connect_network(switch)
 
-                lp.add_n2n(switch_top, switch)
+                # create servers and clients
+                m = int(n_host / 2)
+                servers = create_multinic_hosts(
+                    e,
+                    m,
+                    'server_%d' % (i,),
+                    switch,
+                    host_class,
+                    node.I40eLinuxNode,
+                    node.MemcachedServer,
+                    ip_start=i * n_host + 1,
+                    ip_prefix=16
+                )
+                for s in servers:
+                    e.assign_sim_host(s, h_i)
+                    s_multisubnic = next(
+                        pcidev for pcidev in s.pcidevs
+                        if isinstance(pcidev, sim.MultiSubNIC)
+                    )
+                    e.assign_sim_host(s_multisubnic.multinic, h_i)
 
-            for c in clients + servers:
-                if host_type == 'qt':
-                    c.pcidevs[0].start_tick = 580000000000
-                c.extra_deps.append(switch_top)
+                clients = create_multinic_hosts(
+                    e,
+                    m,
+                    'client_%d' % (i,),
+                    switch,
+                    host_class,
+                    node.I40eLinuxNode,
+                    node.MemcachedClient,
+                    ip_start=i * n_host + 1 + m,
+                    ip_prefix=16
+                )
+                for c in clients:
+                    c.wait = True
+                    e.assign_sim_host(c, h_i)
+                    c_multisubnic = next(
+                        pcidev for pcidev in c.pcidevs
+                        if isinstance(pcidev, sim.MultiSubNIC)
+                    )
+                    e.assign_sim_host(c_multisubnic.multinic, h_i)
 
-        all_servers = []
-        all_clients = []
-        for  (s,c) in racks:
-            all_servers += s
-            all_clients += c
+                racks.append((servers, clients))
 
-        # set up client -> server connections
-        for i in range(0, n):
-            for j in range(0, int(n_host / 2)):
-                c = racks[i][1][j]
-                servers = select_servers(i, j, racks, n, n_host)
-                server_ips = [s.node_config.ip for s in servers]
+                if h_i != 0:
+                    lp = proxy.SocketsNetProxyListener()
+                    lp.name = 'listener-%d' % (i,)
+                    e.add_proxy(lp)
+                    e.assign_sim_host(lp, h_i)
 
-                c.node_config.app.server_ips = server_ips
-                c.node_config.app.threads = len(server_ips)
-                c.node_config.app.concurrency = len(server_ips)
-                c.extra_deps += all_servers
+                    cp = proxy.SocketsNetProxyConnecter(lp)
+                    cp.name = 'connecter-%d' % (i,)
+                    e.add_proxy(cp)
+                    e.assign_sim_host(cp, 0)
 
-        for h in all_servers + all_clients:
-            h.node_config.disk_image = 'memcached'
+                    lp.add_n2n(switch_top, switch)
 
-        # add to experiments
-        experiments.append(e)
+                for c in clients + servers:
+                    if host_type == 'qt':
+                        c.pcidevs[0].start_tick = 580000000000
+                    c.extra_deps.append(switch_top)
+
+            all_servers = []
+            all_clients = []
+            for (s, c) in racks:
+                all_servers += s
+                all_clients += c
+
+            # set up client -> server connections
+            for i in range(0, n):
+                for j in range(0, int(n_host / 2)):
+                    c = racks[i][1][j]
+                    servers = select_servers(i, j, racks, n, n_host)
+                    server_ips = [s.node_config.ip for s in servers]
+
+                    c.node_config.app.server_ips = server_ips
+                    c.node_config.app.threads = len(server_ips)
+                    c.node_config.app.concurrency = len(server_ips)
+                    c.extra_deps += all_servers
+
+            for h in all_servers + all_clients:
+                h.node_config.disk_image = 'memcached'
+
+            # add to experiments
+            experiments.append(e)

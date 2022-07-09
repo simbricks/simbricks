@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 # iperf TCP_single test
 # naming convention following host-nic-net-app
@@ -34,7 +34,7 @@ from simbricks.simulator_utils import create_basic_hosts
 # app: UDPs
 
 kinds_of_host = ['qemu']
-kinds_of_nic = ['cv','cb','ib']
+kinds_of_nic = ['cv', 'cb', 'ib']
 kinds_of_net = ['wire', 'switch', 'dumbbell', 'bridge', 'tofino']
 kinds_of_app = ['UDPs']
 
@@ -55,33 +55,80 @@ for n in kinds_of_net:
     if n == 'tofino':
         net_class = sim.TofinoNet
 
-
     # set nic sim
     for c in kinds_of_nic:
         net = net_class()
-        e = exp.Experiment('qemu-'  + c + '-' + n + '-' + 'UDPs')
+        e = exp.Experiment('qemu-' + c + '-' + n + '-' + 'UDPs')
         e.add_network(net)
 
         if c == 'cv':
-            servers = create_basic_hosts(e, 1, 'server', net, sim.CorundumVerilatorNIC, sim.QemuHost,
-                                             node.CorundumLinuxNode, node.IperfUDPServer)
-            clients = create_basic_hosts(e, 1, 'client', net, sim.CorundumVerilatorNIC, sim.QemuHost,
-                                             node.CorundumLinuxNode, node.IperfUDPClient, ip_start = 2)
-
+            servers = create_basic_hosts(
+                e,
+                1,
+                'server',
+                net,
+                sim.CorundumVerilatorNIC,
+                sim.QemuHost,
+                node.CorundumLinuxNode,
+                node.IperfUDPServer
+            )
+            clients = create_basic_hosts(
+                e,
+                1,
+                'client',
+                net,
+                sim.CorundumVerilatorNIC,
+                sim.QemuHost,
+                node.CorundumLinuxNode,
+                node.IperfUDPClient,
+                ip_start=2
+            )
 
         if c == 'cb':
-            servers = create_basic_hosts(e, 1, 'server', net, sim.CorundumBMNIC, sim.QemuHost,
-                                             node.CorundumLinuxNode, node.IperfUDPServer)
-            clients = create_basic_hosts(e, 1, 'client', net, sim.CorundumBMNIC, sim.QemuHost,
-                                             node.CorundumLinuxNode, node.IperfUDPClient, ip_start = 2)
-
-
+            servers = create_basic_hosts(
+                e,
+                1,
+                'server',
+                net,
+                sim.CorundumBMNIC,
+                sim.QemuHost,
+                node.CorundumLinuxNode,
+                node.IperfUDPServer
+            )
+            clients = create_basic_hosts(
+                e,
+                1,
+                'client',
+                net,
+                sim.CorundumBMNIC,
+                sim.QemuHost,
+                node.CorundumLinuxNode,
+                node.IperfUDPClient,
+                ip_start=2
+            )
 
         if c == 'ib':
-            servers = create_basic_hosts(e, 1, 'server', net, sim.I40eNIC, sim.QemuHost,
-                                             node.I40eLinuxNode, node.IperfUDPServer)
-            clients = create_basic_hosts(e, 1, 'client', net, sim.I40eNIC, sim.QemuHost,
-                                             node.I40eLinuxNode, node.IperfUDPClient, ip_start = 2)
+            servers = create_basic_hosts(
+                e,
+                1,
+                'server',
+                net,
+                sim.I40eNIC,
+                sim.QemuHost,
+                node.I40eLinuxNode,
+                node.IperfUDPServer
+            )
+            clients = create_basic_hosts(
+                e,
+                1,
+                'client',
+                net,
+                sim.I40eNIC,
+                sim.QemuHost,
+                node.I40eLinuxNode,
+                node.IperfUDPClient,
+                ip_start=2
+            )
 
         clients[0].wait = True
         clients[0].node_config.app.server_ip = servers[0].node_config.ip
@@ -89,4 +136,3 @@ for n in kinds_of_net:
 
         print(e.name)
         experiments.append(e)
-

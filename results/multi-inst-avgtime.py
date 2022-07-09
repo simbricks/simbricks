@@ -20,20 +20,20 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
+import json
 import os
 import pathlib
 import shutil
-import json
+import sys
 
 # How to use
-# $ python3 modetcp.py paper_data/modetcp 
+# $ python3 modetcp.py paper_data/modetcp
 #
-
 
 num_runs = 8
 
 outdir = sys.argv[1]
+
 
 def parse_sim_time(path):
     ret = {}
@@ -42,13 +42,14 @@ def parse_sim_time(path):
     with open(path, 'r') as f:
         data = json.load(f)
 
-    ret['simtime'] = (data['end_time'] - data['start_time'])/60
+    ret['simtime'] = (data['end_time'] - data['start_time']) / 60
     f.close()
     return ret
 
+
 total_time = 0
 
-for n in range (1, num_runs+1):
+for n in range(1, num_runs + 1):
 
     path = '%s/p8-gt-ib-sw-Host-1000m-1-%s.json' % (outdir, n)
     data = parse_sim_time(path)
@@ -58,10 +59,5 @@ for n in range (1, num_runs+1):
     else:
         t = ''
     print(t)
-avg = total_time/num_runs
+avg = total_time / num_runs
 print('avg: ' + str(avg))
-
-
-
-
-

@@ -21,8 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
-import re
 import os
+import re
+
 
 def parse_nopaxos_run(num_c, path):
 
@@ -45,7 +46,7 @@ def parse_nopaxos_run(num_c, path):
         sim_name = f'host.client.{i}'
 
         # in this host log stdout
-        for j in log["sims"][sim_name]["stdout"]:
+        for j in log['sims'][sim_name]['stdout']:
             m_t = tp_pat.match(j)
             m_l = lat_pat.match(j)
             if m_l:
@@ -53,8 +54,7 @@ def parse_nopaxos_run(num_c, path):
             if m_t:
                 total_tput += int(m_t.group(2))
 
-
-    avg_lat = total_lat/num_c
+    avg_lat = total_lat / num_c
     ret['throughput'] = total_tput
     ret['latency'] = int(avg_lat)
 

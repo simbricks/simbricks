@@ -29,30 +29,30 @@
 # NIC: Intel i40e behavioral model
 # NET: Switch behavioral model
 #
-# In each simulation, one server host and several clients are connected by a switch 
+# In each simulation, one server host and several clients are connected by a switch
 # [HOST_0] - [NIC_0] ---- [SWITCH] ----  [NIC_1] - [HOST_1]
 #  server                  | .....|                client_0
 #                     Client_1  Clinet_n
 #
 # The server host runs iperf UDP server and client host runs UDP test
 # The total aggregated bandwidth sent to the server are fixed to 1000 Mbps
-# 
+#
 # The command to run all the experiments is:
 # $: python3 run.py pyexps/ae/f7_scale.py --filter host-gt-ib-sw-* --verbose
 ########################################################################
 
+import simbricks.nodeconfig as node
+import simbricks.simulators as sim
+from simbricks.simulator_utils import create_basic_hosts
 
 import simbricks.experiments as exp
-import simbricks.simulators as sim
-import simbricks.nodeconfig as node
-from simbricks.simulator_utils import create_basic_hosts
 
 host_types = ['gt']
 nic_types = ['ib']
 net_types = ['sw']
 app = ['Host']
 
-total_rate = 1000 # Mbps
+total_rate = 1000  # Mbps
 num_client_max = 8
 num_client_step = 2
 num_client_types = [1, 4, 9, 14, 20]
@@ -61,14 +61,17 @@ experiments = []
 
 for n_client in num_client_types:
 
-    per_client_rate = int(total_rate/n_client)
+    per_client_rate = int(total_rate / n_client)
     rate = f'{per_client_rate}m'
 
     for host_type in host_types:
         for nic_type in nic_types:
             for net_type in net_types:
 
-                e = exp.Experiment('host-' + host_type + '-' + nic_type + '-' + net_type + '-' + f'{total_rate}m' + f'-{n_client}')
+                e = exp.Experiment(
+                    'host-' + host_type + '-' + nic_type + '-' + net_type +
+                    '-' + f'{total_rate}m' + f'-{n_client}'
+                )
                 # network
                 if net_type == 'sw':
                     net = sim.SwitchNet()
@@ -82,10 +85,12 @@ for n_client in num_client_types:
                 if host_type == 'qemu':
                     host_class = sim.QemuHost
                 elif host_type == 'qt':
+
                     def qemu_timing():
                         h = sim.QemuHost()
                         h.sync = True
                         return h
+
                     host_class = qemu_timing
                 elif host_type == 'gt':
                     host_class = sim.Gem5Host
@@ -107,30 +112,41 @@ for n_client in num_client_types:
                     raise NameError(nic_type)
 
                 # create servers and clients
-                servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                        nc_class, node.IperfUDPServer)
+                servers = create_basic_hosts(
+                    e,
+                    1,
+                    'server',
+                    net,
+                    nic_class,
+                    host_class,
+                    nc_class,
+                    node.IperfUDPServer
+                )
 
-                
-                clients = create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
-                                                 nc_class, node.IperfUDPClient, ip_start=2)
+                clients = create_basic_hosts(
+                    e,
+                    n_client,
+                    'client',
+                    net,
+                    nic_class,
+                    host_class,
+                    nc_class,
+                    node.IperfUDPClient,
+                    ip_start=2
+                )
 
-                clients[n_client-1].node_config.app.is_last = True
-                clients[n_client-1].wait = True
+                clients[n_client - 1].node_config.app.is_last = True
+                clients[n_client - 1].wait = True
 
                 for c in clients:
                     c.node_config.app.server_ip = servers[0].node_config.ip
                     c.node_config.app.rate = rate
                     c.cpu_freq = '3GHz'
                     #c.wait = True
-                
-                servers[0].cpu_freq = '3GHz'
 
+                servers[0].cpu_freq = '3GHz'
 
                 print(e.name)
 
-
                 # add to experiments
                 experiments.append(e)
-
-
-

@@ -19,15 +19,19 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""Experiment, which simulates two hosts, one running a netperf server and the
+"""
+Experiment, which simulates two hosts, one running a netperf server and the
 other a client with the goal of measuring latency and throughput between them.
+
 The goal is to compare different simulators for host, NIC, and the network in
-terms of simulated network throughput and latency."""
+terms of simulated network throughput and latency.
+"""
+
+import simbricks.nodeconfig as node
+import simbricks.simulators as sim
+from simbricks.simulator_utils import create_basic_hosts
 
 import simbricks.experiments as exp
-import simbricks.simulators as sim
-import simbricks.nodeconfig as node
-from simbricks.simulator_utils import create_basic_hosts
 
 host_types = ['qemu', 'gem5', 'qt']
 nic_types = ['i40e', 'cd_bm', 'cd_verilator']
@@ -39,7 +43,9 @@ experiments = []
 for host_type in host_types:
     for nic_type in nic_types:
         for net_type in net_types:
-            e = exp.Experiment('netperf-' + host_type + '-' + net_type + '-' + nic_type)
+            e = exp.Experiment(
+                'netperf-' + host_type + '-' + net_type + '-' + nic_type
+            )
 
             # network
             if net_type == 'switch':
@@ -54,10 +60,12 @@ for host_type in host_types:
             if host_type == 'qemu':
                 host_class = sim.QemuHost
             elif host_type == 'qt':
+
                 def qemu_timing():
                     h = sim.QemuHost()
                     h.sync = True
                     return h
+
                 host_class = qemu_timing
             elif host_type == 'gem5':
                 host_class = sim.Gem5Host
@@ -79,11 +87,28 @@ for host_type in host_types:
                 raise NameError(nic_type)
 
             # create servers and clients
-            servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                    nc_class, node.NetperfServer)
+            servers = create_basic_hosts(
+                e,
+                1,
+                'server',
+                net,
+                nic_class,
+                host_class,
+                nc_class,
+                node.NetperfServer
+            )
 
-            clients = create_basic_hosts(e, 1, 'client', net, nic_class, host_class,
-                    nc_class, node.NetperfClient, ip_start = 2)
+            clients = create_basic_hosts(
+                e,
+                1,
+                'client',
+                net,
+                nic_class,
+                host_class,
+                nc_class,
+                node.NetperfClient,
+                ip_start=2
+            )
 
             for c in clients:
                 c.wait = True

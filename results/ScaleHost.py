@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
+import json
 import os
 import pathlib
 import shutil
-import json
+import sys
 
 if len(sys.argv) != 2:
     print('Usage: udp_scale.py OUTDIR')
@@ -43,12 +43,10 @@ for cl in types_of_client:
         diff_time = ''
     else:
         exp_log = json.load(log)
-        start_time = exp_log["start_time"]
-        end_time = exp_log["end_time"]
-        diff_time = (end_time - start_time)/60 #min
+        start_time = exp_log['start_time']
+        end_time = exp_log['end_time']
+        diff_time = (end_time - start_time) / 60  #min
         diff_time = str(diff_time)
         log.close()
 
     print('%d\t%s' % (cl, diff_time))
-
-

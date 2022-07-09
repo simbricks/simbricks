@@ -20,22 +20,22 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
+import json
 import os
 import pathlib
 import shutil
-import json
+import sys
 
 # How to use
-# $ python3 modetcp.py paper_data/modetcp 
+# $ python3 modetcp.py paper_data/modetcp
 #
-
 
 mode = ['0', '1']
 nics = ['cb', 'cv', 'ib']
 num_client = ['1', '4']
 
 outdir = sys.argv[1]
+
 
 def parse_sim_time(path):
     ret = {}
@@ -44,7 +44,7 @@ def parse_sim_time(path):
     with open(path, 'r') as f:
         data = json.load(f)
 
-    ret['simtime'] = (data['end_time'] - data['start_time'])/60
+    ret['simtime'] = (data['end_time'] - data['start_time']) / 60
     f.close()
     return ret
 
@@ -62,5 +62,3 @@ for c in num_client:
                 t = ''
             line = line + ' ' + f'{t}'
         print(line)
-    
-

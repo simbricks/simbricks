@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 # iperf TCP_multi_client test
 # naming convention following host-nic-net-app
@@ -33,20 +33,18 @@ from simbricks.simulator_utils import create_basic_hosts
 # net:  switch/dumbbell/bridge
 # app: DCTCPm
 
-types_of_host = ['qemu', 'qt','gt']
-types_of_nic = ['ib', 'cv','cb']
+types_of_host = ['qemu', 'qt', 'gt']
+types_of_nic = ['ib', 'cv', 'cb']
 types_of_net = ['switch']
 types_of_app = ['TCPm']
-
 
 types_of_num_pairs = [1, 4]
 types_of_mode = [0, 1]
 
-
 experiments = []
 for mode in types_of_mode:
     for num_pairs in types_of_num_pairs:
-        
+
         for h in types_of_host:
             for c in types_of_nic:
 
@@ -54,29 +52,36 @@ for mode in types_of_mode:
                 net.sync_mode = mode
                 #net.opt = link_rate_opt + link_latency_opt
 
-                e = exp.Experiment( f'mode-{mode}-' + h + '-' + c + '-' + 'switch' + f'-{num_pairs}')
+                e = exp.Experiment(
+                    f'mode-{mode}-' + h + '-' + c + '-' + 'switch' +
+                    f'-{num_pairs}'
+                )
                 e.add_network(net)
 
                 # host
                 if h == 'qemu':
                     host_class = sim.QemuHost
                 elif h == 'qt':
+
                     def qemu_timing():
                         h = sim.QemuHost()
                         h.sync = True
                         return h
+
                     host_class = qemu_timing
                 elif h == 'gt':
+
                     def gem5_timing():
                         h = sim.Gem5Host()
                         return h
+
                     host_class = gem5_timing
                     e.checkpoint = True
                 else:
                     raise NameError(h)
 
                 # nic
-                
+
                 if c == 'cb':
                     nic_class = sim.CorundumBMNIC
                     nc_class = node.CorundumLinuxNode
@@ -89,18 +94,31 @@ for mode in types_of_mode:
                 else:
                     raise NameError(c)
 
-
-                servers = create_basic_hosts(e, num_pairs, 'server', net, nic_class, host_class, 
-                                                nc_class, node.IperfTCPServer)
-                clients = create_basic_hosts(e, num_pairs, 'client', net, nic_class, host_class, 
-                                                nc_class, node.IperfTCPClient, ip_start=num_pairs+1)
+                servers = create_basic_hosts(
+                    e,
+                    num_pairs,
+                    'server',
+                    net,
+                    nic_class,
+                    host_class,
+                    nc_class,
+                    node.IperfTCPServer
+                )
+                clients = create_basic_hosts(
+                    e,
+                    num_pairs,
+                    'client',
+                    net,
+                    nic_class,
+                    host_class,
+                    nc_class,
+                    node.IperfTCPClient,
+                    ip_start=num_pairs + 1
+                )
 
                 for se in servers:
                     se.sync_mode = mode
                     se.pcidevs[0].sync_mode = mode
-
-                
-                
 
                 i = 0
                 for cl in clients:
@@ -110,14 +128,13 @@ for mode in types_of_mode:
                     cl.node_config.app.procs = 2
                     i += 1
                     #cl.wait = True
-                
+
                 # All the clients will not poweroff after finishing iperf test except the last one
                 # This is to prevent the simulation gets stuck when one of host exits.
 
                 # The last client waits for the output printed in other hosts, then cleanup
-                clients[num_pairs-1].node_config.app.is_last = True
-                clients[num_pairs-1].wait = True
+                clients[num_pairs - 1].node_config.app.is_last = True
+                clients[num_pairs - 1].wait = True
 
                 print(e.name)
                 experiments.append(e)
-

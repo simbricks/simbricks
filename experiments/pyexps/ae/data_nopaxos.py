@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import sys
+
 import utils.parse_nopaxos as pn
 
 if len(sys.argv) != 2:

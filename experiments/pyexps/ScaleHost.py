@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.simulators as sim
 import simbricks.nodeconfig as node
+import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
 
+import simbricks.experiments as exp
 
 # iperf UDP test
 # naming convention following host-nic-net-app
@@ -34,11 +34,11 @@ from simbricks.simulator_utils import create_basic_hosts
 # app: UDPs
 
 host_types = ['gt', 'qt', 'qemu']
-nic_types = ['cv','cb','ib']
+nic_types = ['cv', 'cb', 'ib']
 net_types = ['sw', 'br']
 app = ['Host']
 
-total_rate = 1000 # Mbps
+total_rate = 1000  # Mbps
 num_client_max = 8
 num_client_step = 2
 num_client_types = [1, 4, 9, 14, 20]
@@ -46,21 +46,21 @@ num_client_types = [1, 4, 9, 14, 20]
 #    num_client_types.append(n)
 #    print(n)
 
-
-
-
 experiments = []
 
 for n_client in num_client_types:
 
-    per_client_rate = int(total_rate/n_client)
+    per_client_rate = int(total_rate / n_client)
     rate = f'{per_client_rate}m'
 
     for host_type in host_types:
         for nic_type in nic_types:
             for net_type in net_types:
 
-                e = exp.Experiment(host_type + '-' + nic_type + '-' + net_type + '-Host-' + f'{total_rate}m' + f'-{n_client}')
+                e = exp.Experiment(
+                    host_type + '-' + nic_type + '-' + net_type + '-Host-' +
+                    f'{total_rate}m' + f'-{n_client}'
+                )
                 # network
                 if net_type == 'sw':
                     net = sim.SwitchNet()
@@ -74,10 +74,12 @@ for n_client in num_client_types:
                 if host_type == 'qemu':
                     host_class = sim.QemuHost
                 elif host_type == 'qt':
+
                     def qemu_timing():
                         h = sim.QemuHost()
                         h.sync = True
                         return h
+
                     host_class = qemu_timing
                 elif host_type == 'gt':
                     host_class = sim.Gem5Host
@@ -99,27 +101,38 @@ for n_client in num_client_types:
                     raise NameError(nic_type)
 
                 # create servers and clients
-                servers = create_basic_hosts(e, 1, 'server', net, nic_class, host_class,
-                        nc_class, node.IperfUDPServer)
+                servers = create_basic_hosts(
+                    e,
+                    1,
+                    'server',
+                    net,
+                    nic_class,
+                    host_class,
+                    nc_class,
+                    node.IperfUDPServer
+                )
 
-                
-                clients = create_basic_hosts(e, n_client, 'client', net, nic_class, host_class,
-                                                 nc_class, node.IperfUDPClient, ip_start=2)
+                clients = create_basic_hosts(
+                    e,
+                    n_client,
+                    'client',
+                    net,
+                    nic_class,
+                    host_class,
+                    nc_class,
+                    node.IperfUDPClient,
+                    ip_start=2
+                )
 
-                clients[n_client-1].node_config.app.is_last = True
-                clients[n_client-1].wait = True
+                clients[n_client - 1].node_config.app.is_last = True
+                clients[n_client - 1].wait = True
 
                 for c in clients:
                     c.node_config.app.server_ip = servers[0].node_config.ip
                     c.node_config.app.rate = rate
                     #c.wait = True
 
-
                 print(e.name)
-
 
                 # add to experiments
                 experiments.append(e)
-
-
-

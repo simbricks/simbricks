@@ -23,6 +23,7 @@
 import itertools
 import os
 import sys
+
 import utils.iperf
 
 if len(sys.argv) != 2:
@@ -35,7 +36,7 @@ max_k = 199680
 k_step = 16640
 mtu = 4000
 
-confignames = ["ns3-4000"]
+confignames = ['ns3-4000']
 print('\t'.join(['threshold'] + confignames))
 
 for k_val in range(0, max_k + 1, k_step):
@@ -45,21 +46,21 @@ for k_val in range(0, max_k + 1, k_step):
     tps = []
 
     if not os.path.isfile(path_pat):
-        print("no result file at: " + path_pat)
+        print('no result file at: ' + path_pat)
         exit(0)
     f = open(path_pat, 'r')
     lines = f.readlines()
-    
+
     tp = float(lines[1].split()[2]) / 1000
-    tps.append(tp)        
-    
+    tps.append(tp)
+
     tp = float(lines[2].split()[2]) / 1000
-    tps.append(tp)    
+    tps.append(tp)
 
     f.close()
 
     total_tp = sum(tps)
-    
+
     # TP * (MTU + PPP(2)) / (MTU - IP (20) - TCP w/option (24))
     tp_calib = total_tp * (mtu + 2) / (mtu - 20 - 24)
     line.append('%.2f' % (tp_calib))
