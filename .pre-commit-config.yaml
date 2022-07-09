@@ -1,23 +1,37 @@
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.3.0
+  - repo: local
     hooks:
-    -   id: check-yaml
-    -   id: double-quote-string-fixer
-    -   id: end-of-file-fixer
-    -   id: trailing-whitespace
-    -   id: check-ast
--   repo: https://github.com/PyCQA/docformatter
+      - id: format-isort
+        name: format-isort
+        language: python
+        entry: make format-isort
+        pass_filenames: false
+      - id: format-yapf
+        name: format-yapf
+        language: python
+        entry: make format-yapf
+        pass_filenames: false
+  - repo: https://github.com/PyCQA/docformatter
     rev: v1.4
     hooks:
-    - id: docformatter
-      args: [--in-place, --wrap-summaries=80, --wrap-descriptions=80, --pre-summary-newline]
--   repo: https://github.com/pre-commit/mirrors-yapf
-    rev: v0.32.0
+      - id: docformatter
+        args:
+          [
+            --in-place,
+            --wrap-summaries=80,
+            --wrap-descriptions=80,
+            --pre-summary-newline,
+          ]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
     hooks:
-    -   id: yapf
--   repo: https://github.com/pycqa/isort
-    rev: 5.10.1
-    hooks:
-    -   id: isort
-        name: isort
+      - id: double-quote-string-fixer
+        types:
+          - "python"
+      - id: end-of-file-fixer
+        types:
+          - "python"
+      - id: trailing-whitespace
+        types:
+          - "python"
+      - id: check-ast
