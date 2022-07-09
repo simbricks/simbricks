@@ -46,7 +46,7 @@ for n_racks in racks:
             f'{basedir}dist_memcache-{host_type}-{n_racks}-{n_hosts_per_rack}'
             '-1.json'
         )
-        if exists(log):
+        if exists(log_path):
             with open(log_path, 'r', encoding='utf-8') as log:
                 exp_log = json.load(log)
                 start_time = exp_log['start_time']
