@@ -72,16 +72,24 @@ lint-clang-format:
 	$(CLANG_FORMAT) --dry-run --style=file `cat .lint-files`
 
 lint-yapf:
-	yapf --recursive --diff results/ experiments/
+	yapf --recursive --diff \
+		--exclude experiments/simbricks/utils/graphlib.py \
+		-- results/ experiments/
 
 format-yapf:
-	yapf --recursive --in-place results/ experiments/
+	yapf --recursive --in-place \
+		--exclude experiments/simbricks/utils/graphlib.py \
+		-- results/ experiments/
 
 lint-isort:
-	isort --diff results/ experiments/
+	isort --diff \
+		--skip experiments/simbricks/utils/graphlib.py \
+		results/ experiments/
 
 format-isort:
-	isort --overwrite-in-place results/ experiments/
+	isort --overwrite-in-place \
+		--skip experiments/simbricks/utils/graphlib.py \
+		results/ experiments/
 
 lint: lint-cpplint lint-clang-format
 lint-all: lint lint-clang-tidy

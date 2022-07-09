@@ -1,3 +1,4 @@
+exclude: ^experiments/simbricks/utils/graphlib.py$
 repos:
   - repo: local
     hooks:
