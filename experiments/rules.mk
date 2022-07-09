@@ -23,13 +23,18 @@
 include mk/subdir_pre.mk
 
 lint-python:
-	pylint -d missing-module-docstring,missing-class-docstring experiments/ results/
+	pylint -d missing-module-docstring,missing-class-docstring \
+		--ignore-paths experiments/simbricks/utils/graphlib.py \
+	  	experiments/ results/
 
 typecheck-python:
 	$(MAKE) typecheck-experiments typecheck-results typecheck-experiments-ae
 
 typecheck-experiments:
-	pytype -j 0 --keep-going --exclude "**/ae/*" -- experiments/
+	pytype -j 0 --keep-going \
+		--exclude experiments/pyexps/ae/ \
+			experiments/simbricks/utils/graphlib.py \
+		-- experiments/
 
 typecheck-experiments-ae:
 	pytype -j 0 --keep-going experiments/pyexps/ae/
