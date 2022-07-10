@@ -24,10 +24,9 @@ import asyncio
 import pathlib
 import typing as tp
 
-from simbricks.runtime.common import Run, Runtime
-
 import simbricks.experiments as exp
 from simbricks import exectools
+from simbricks.runtime.common import Run, Runtime
 
 
 class LocalSimpleRuntime(Runtime):

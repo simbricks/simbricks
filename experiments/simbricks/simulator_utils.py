@@ -23,10 +23,9 @@
 
 import typing as tp
 
+from simbricks.experiments import Experiment
 from simbricks.nodeconfig import AppConfig, NodeConfig
 from simbricks.simulators import HostSim, I40eMultiNIC, NetSim, NICSim
-
-from simbricks.experiments import Experiment
 
 
 def create_basic_hosts(

@@ -20,12 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import simbricks.experiments as exp
 import simbricks.nodeconfig as node
 import simbricks.simulators as sim
-from simbricks.simulator_utils import create_basic_hosts
-
-import simbricks.experiments as exp
 from simbricks import proxy
+from simbricks.simulator_utils import create_basic_hosts
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4]
