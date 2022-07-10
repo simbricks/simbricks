@@ -24,11 +24,10 @@ import asyncio
 import pathlib
 import typing as tp
 
-from simbricks.exectools import Executor
-from simbricks.runtime.common import Run, Runtime
-
 import simbricks.experiments as exp
 from simbricks import proxy
+from simbricks.exectools import Executor
+from simbricks.runtime.common import Run, Runtime
 
 
 class DistributedSimpleRuntime(Runtime):

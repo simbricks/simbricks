@@ -20,11 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import simbricks.experiments as exp
 import simbricks.nodeconfig as node
 import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
-
-import simbricks.experiments as exp
 
 e = exp.Experiment('qemu-i40e-pair')
 net = sim.SwitchNet()

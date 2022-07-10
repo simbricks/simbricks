@@ -42,11 +42,10 @@
 # $: python3 run.py pyexps/ae/f7_scale.py --filter host-gt-ib-sw-* --verbose
 ########################################################################
 
+import simbricks.experiments as exp
 import simbricks.nodeconfig as node
 import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
-
-import simbricks.experiments as exp
 
 host_types = ['gt']
 nic_types = ['ib']

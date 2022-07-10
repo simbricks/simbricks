@@ -27,11 +27,10 @@ The goal is to compare different simulators for host, NIC, and the network in
 terms of simulated network throughput and latency.
 """
 
+import simbricks.experiments as exp
 import simbricks.nodeconfig as node
 import simbricks.simulators as sim
 from simbricks.simulator_utils import create_basic_hosts
-
-import simbricks.experiments as exp
 
 host_types = ['qemu', 'gem5', 'qt']
 nic_types = ['i40e', 'cd_bm', 'cd_verilator']

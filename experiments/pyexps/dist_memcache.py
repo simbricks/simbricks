@@ -23,12 +23,11 @@
 import math
 import random
 
+import simbricks.experiments as exp
 import simbricks.nodeconfig as node
 import simbricks.simulators as sim
-from simbricks.simulator_utils import create_multinic_hosts
-
-import simbricks.experiments as exp
 from simbricks import proxy
+from simbricks.simulator_utils import create_multinic_hosts
 
 host_types = ['qemu', 'gem5', 'qt']
 n_nets = [1, 2, 3, 4, 8, 16, 32]

@@ -28,10 +28,9 @@ import shutil
 import typing as tp
 from abc import ABCMeta, abstractmethod
 
+from simbricks import exectools
 from simbricks.experiment.experiment_environment import ExpEnv
 from simbricks.experiment.experiment_output import ExpOutput
-
-from simbricks import exectools
 from simbricks.experiments import Experiment
 
 

@@ -30,13 +30,12 @@ import pickle
 import sys
 import typing as tp
 
+import simbricks.experiments as exp
+from simbricks import exectools
 from simbricks.runtime.common import Run
 from simbricks.runtime.distributed import DistributedSimpleRuntime, auto_dist
 from simbricks.runtime.local import LocalParallelRuntime, LocalSimpleRuntime
 from simbricks.runtime.slurm import SlurmRuntime
-
-import simbricks.experiments as exp
-from simbricks import exectools
 
 
 # pylint: disable=redefined-outer-name
