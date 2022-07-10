@@ -27,17 +27,13 @@ lint-python:
 		--ignore-paths experiments/simbricks/utils/graphlib.py \
 	  	experiments/ results/
 
-typecheck-python:
-	$(MAKE) typecheck-experiments typecheck-results typecheck-experiments-ae
+typecheck-python: typecheck-experiments typecheck-results
 
 typecheck-experiments:
 	pytype -j 0 --keep-going \
 		--exclude experiments/pyexps/ae/ \
 			experiments/simbricks/utils/graphlib.py \
 		-- experiments/
-
-typecheck-experiments-ae:
-	pytype -j 0 --keep-going experiments/pyexps/ae/
 
 
 typecheck-results:
