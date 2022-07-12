@@ -23,7 +23,7 @@
 import itertools
 import sys
 
-import utils.iperf
+from results.utils.iperf import parse_iperf
 
 if len(sys.argv) != 2:
     print('Usage: dctcp.py OUTDIR')
@@ -44,7 +44,7 @@ for k_val in range(0, max_k + 1, k_step):
     line = [str(k_val)]
     for h, mtu in configs:
         path_pat = f'{basedir}{h}-ib-dumbbell-DCTCPm{k_val}-{mtu}'
-        res = utils.iperf.parse_iperf(path_pat)
+        res = parse_iperf(path_pat)
 
         if res['avg'] is None:
             line.append('')

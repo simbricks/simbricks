@@ -23,7 +23,7 @@
 import sys
 from time import gmtime, strftime
 
-from utils.netperf import parse_netperf_run
+from results.utils.netperf import parse_netperf_run
 
 
 def fmt_lat(lat):

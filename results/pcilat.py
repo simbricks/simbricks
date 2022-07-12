@@ -22,7 +22,7 @@
 
 import sys
 
-import utils.iperf
+from results.utils.iperf import parse_iperf
 
 if len(sys.argv) != 2:
     print('Usage: pcilat.py OUTDIR')
@@ -45,7 +45,7 @@ for (ht, nt, lab) in configs:
     cols = [str(lab)]
     for lat in lats:
         path_pat = f'{basedir}pcilat-{ht}-{nt}-switch-{lat}'
-        res = utils.iperf.parse_iperf(path_pat)
+        res = parse_iperf(path_pat)
 
         if res['avg'] is None:
             cols.append('')

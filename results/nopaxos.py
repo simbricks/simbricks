@@ -22,7 +22,7 @@
 
 import sys
 
-import utils.parse_nopaxos
+from results.utils.parse_nopaxos import parse_nopaxos_run
 
 if len(sys.argv) != 2:
     print('Usage: nopaxos.py OUTDIR')
@@ -43,7 +43,7 @@ for num_c in num_clients:
     for seq in types_of_seq:
 
         path_pat = f'{basedir}nopaxos-gt-ib-{seq}-{num_c}-1.json'
-        res = utils.parse_nopaxos.parse_nopaxos_run(num_c, path_pat)
+        res = parse_nopaxos_run(num_c, path_pat)
         #print(path_pat)
 
         if ((res['throughput'] is None) or (res['latency'] is None)):
