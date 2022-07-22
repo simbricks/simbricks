@@ -80,11 +80,16 @@ class Simulator(object):
 
 
 class PCIDevSim(Simulator):
-    name = ''
-    sync_mode = 0
-    start_tick = 0
-    sync_period = 500
-    pci_latency = 500
+    """Base class for PCIe device simulators."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.name = ''
+        self.sync_mode = 0
+        self.start_tick = 0
+        self.sync_period = 500
+        self.pci_latency = 500
 
     def full_name(self):
         return 'dev.' + self.name
@@ -97,9 +102,14 @@ class PCIDevSim(Simulator):
 
 
 class NICSim(PCIDevSim):
-    network = None
-    mac = None
-    eth_latency = 500
+    """Base class for NIC simulators."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.network: tp.Optional[NetSim] = None
+        self.mac: tp.Optional[str] = None
+        self.eth_latency = 500
 
     def set_network(self, net: NetSim):
         self.network = net
@@ -134,15 +144,19 @@ class NICSim(PCIDevSim):
 
 class NetSim(Simulator):
     """Base class for network simulators."""
-    name = ''
-    opt = ''
-    sync_mode = 0
-    sync_period = 500
-    eth_latency = 500
-    nics: list[NICSim] = []
-    hosts_direct: list[HostSim] = []
-    net_listen: list[NetSim] = []
-    net_connect: list[NetSim] = []
+
+    def __init__(self):
+        super().__init__()
+
+        self.name = ''
+        self.opt = ''
+        self.sync_mode = 0
+        self.sync_period = 500
+        self.eth_latency = 500
+        self.nics: list[NICSim] = []
+        self.hosts_direct: list[HostSim] = []
+        self.net_listen: list[NetSim] = []
+        self.net_connect: list[NetSim] = []
 
     def full_name(self):
         return 'net.' + self.name
@@ -179,25 +193,27 @@ class NetSim(Simulator):
 
 
 class HostSim(Simulator):
-    node_config: NodeConfig
-    """Config for the simulated host. """
-    name = ''
-    wait = False
-    """
-    `True` - Wait for process of simulator to exit.
-    `False` - Don't wait and instead stop the process.
-    """
-    sleep = 0
-    cpu_freq = '8GHz'
-
-    sync_mode = 0
-    sync_period = 500
-    pci_latency = 500
+    """Base class for host simulators."""
 
     def __init__(self):
+        super().__init__()
+        self.node_config: tp.Optional[NodeConfig] = None
+        """Config for the simulated host. """
+        self.name = ''
+        self.wait = False
+        """
+        `True` - Wait for process of simulator to exit.
+        `False` - Don't wait and instead stop the process.
+        """
+        self.sleep = 0
+        self.cpu_freq = '8GHz'
+
+        self.sync_mode = 0
+        self.sync_period = 500
+        self.pci_latency = 500
+
         self.pcidevs: tp.List[PCIDevSim] = []
         self.net_directs: tp.List[NetSim] = []
-        super().__init__()
 
     def full_name(self):
         return 'host.' + self.name
@@ -229,8 +245,13 @@ class HostSim(Simulator):
 
 
 class QemuHost(HostSim):
-    sync = False
-    cpu_freq = '4GHz'
+    """Qemu host simulator."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.sync = False
+        self.cpu_freq = '4GHz'
 
     def resreq_cores(self):
         if self.sync:
@@ -291,12 +312,13 @@ class QemuHost(HostSim):
 
 
 class Gem5Host(HostSim):
-    cpu_type_cp = 'X86KvmCPU'
-    cpu_type = 'TimingSimpleCPU'
-    sys_clock = '1GHz'
+    """Gem5 host simulator."""
 
     def __init__(self):
         super().__init__()
+        self.cpu_type_cp = 'X86KvmCPU'
+        self.cpu_type = 'TimingSimpleCPU'
+        self.sys_clock = '1GHz'
         self.extra_main_args = []
         self.extra_config_args = []
         self.variant = 'fast'
@@ -369,7 +391,10 @@ class Gem5Host(HostSim):
 
 
 class CorundumVerilatorNIC(NICSim):
-    clock_freq = 250  # MHz
+
+    def __init__(self):
+        super().__init__()
+        self.clock_freq = 250  # MHz
 
     def resreq_mem(self):
         # this is a guess
@@ -394,7 +419,10 @@ class I40eNIC(NICSim):
 
 
 class E1000NIC(NICSim):
-    debug = False
+
+    def __init__(self):
+        super().__init__()
+        self.debug = False
 
     def run_cmd(self, env):
         cmd = self.basic_run_cmd(env, '/e1000_gem5/e1000_gem5')
@@ -404,12 +432,11 @@ class E1000NIC(NICSim):
 
 
 class MultiSubNIC(NICSim):
-    name = ''
-    multinic = None
 
     def __init__(self, mn):
-        self.multinic = mn
         super().__init__()
+        self.name = ''
+        self.multinic = mn
 
     def full_name(self):
         return self.multinic.full_name() + '.' + self.name
@@ -422,11 +449,11 @@ class MultiSubNIC(NICSim):
 
 
 class I40eMultiNIC(Simulator):
-    name = ''
 
     def __init__(self):
-        self.subnics = []
         super().__init__()
+        self.subnics = []
+        self.name = ''
 
     def create_subnic(self):
         sn = MultiSubNIC(self)
@@ -475,7 +502,10 @@ class WireNet(NetSim):
 
 
 class SwitchNet(NetSim):
-    sync = True
+
+    def __init__(self):
+        super().__init__()
+        self.sync = True
 
     def run_cmd(self, env):
         cmd = env.repodir + '/sims/net/switch/net_switch'
@@ -503,8 +533,11 @@ class SwitchNet(NetSim):
 
 
 class TofinoNet(NetSim):
-    tofino_log_path = '/tmp/model.ldjson'
-    sync = True
+
+    def __init__(self):
+        super().__init__()
+        self.tofino_log_path = '/tmp/model.ldjson'
+        self.sync = True
 
     def run_cmd(self, env):
         cmd = f'{env.repodir}/sims/net/tofino/tofino'

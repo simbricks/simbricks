@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import io
 import tarfile
+import typing as tp
 
 
 class AppConfig(object):
@@ -47,25 +48,27 @@ class AppConfig(object):
 
 
 class NodeConfig(object):
-    """Manages the configuration for a node."""
-    sim = 'qemu'
-    """Name of simulator to run."""
-    ip = '10.0.0.1'
-    """IP address."""
-    prefix = 24
-    """IP prefix."""
-    cores = 1
-    """Number of cores to be simulated."""
-    memory = 8 * 1024
-    """Amount of system memory in MB."""
-    disk_image = 'base'
-    """Disk image to use."""
-    app: AppConfig = None
-    """App to be run on simulated host."""
-    mtu = 1500
-    """Networking MTU."""
-    nockp = 0
-    """Do not make checkpoint in Gem5."""
+
+    def __init__(self):
+        """Manages the configuration for a node."""
+        self.sim = 'qemu'
+        """Name of simulator to run."""
+        self.ip = '10.0.0.1'
+        """IP address."""
+        self.prefix = 24
+        """IP prefix."""
+        self.cores = 1
+        """Number of cores to be simulated."""
+        self.memory = 8 * 1024
+        """Amount of system memory in MB."""
+        self.disk_image = 'base'
+        """Disk image to use."""
+        self.mtu = 1500
+        """Networking MTU."""
+        self.nockp = 0
+        """Do not make checkpoint in Gem5."""
+        self.app: tp.Optional[AppConfig] = None
+        """App to be run on simulated host."""
 
     def config_str(self):
         if self.sim == 'qemu':
@@ -131,9 +134,10 @@ class NodeConfig(object):
 
 
 class LinuxNode(NodeConfig):
-    ifname = 'eth0'
 
     def __init__(self):
+        super().__init__()
+        self.ifname = 'eth0'
         self.drivers = []
         self.force_mac_addr = None
 
@@ -181,10 +185,13 @@ class E1000LinuxNode(LinuxNode):
 
 
 class MtcpNode(NodeConfig):
-    disk_image = 'mtcp'
-    pci_dev = '0000:00:02.0'
-    memory = 16 * 1024
-    num_hugepages = 4096
+
+    def __init__(self):
+        super().__init__()
+        self.disk_image = 'mtcp'
+        self.pci_dev = '0000:00:02.0'
+        self.memory = 16 * 1024
+        self.num_hugepages = 4096
 
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
@@ -231,12 +238,15 @@ class MtcpNode(NodeConfig):
 
 
 class TASNode(NodeConfig):
-    disk_image = 'tas'
-    pci_dev = '0000:00:02.0'
-    memory = 16 * 1024
-    num_hugepages = 4096
-    fp_cores = 1
-    preload = True
+
+    def __init__(self):
+        super().__init__()
+        self.disk_image = 'tas'
+        self.pci_dev = '0000:00:02.0'
+        self.memory = 16 * 1024
+        self.num_hugepages = 4096
+        self.fp_cores = 1
+        self.preload = True
 
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
@@ -325,6 +335,7 @@ class CorundumDCTCPNode(NodeConfig):
 class LinuxFEMUNode(NodeConfig):
 
     def __init__(self):
+        super().__init__()
         self.drivers = ['nvme']
 
     def prepare_post_cp(self):
@@ -355,8 +366,11 @@ class DctcpServer(AppConfig):
 
 
 class DctcpClient(AppConfig):
-    server_ip = '192.168.64.1'
-    is_last = False
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '192.168.64.1'
+        self.is_last = False
 
     def run_cmds(self, node):
         if self.is_last:
@@ -374,7 +388,10 @@ class DctcpClient(AppConfig):
 
 
 class PingClient(AppConfig):
-    server_ip = '192.168.64.1'
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '192.168.64.1'
 
     def run_cmds(self, node):
         return [f'ping {self.server_ip} -c 100']
@@ -393,9 +410,12 @@ class IperfUDPServer(AppConfig):
 
 
 class IperfTCPClient(AppConfig):
-    server_ip = '10.0.0.1'
-    procs = 1
-    is_last = False
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '10.0.0.1'
+        self.procs = 1
+        self.is_last = False
 
     def run_cmds(self, node):
 
@@ -412,9 +432,12 @@ class IperfTCPClient(AppConfig):
 
 
 class IperfUDPClient(AppConfig):
-    server_ip = '10.0.0.1'
-    rate = '150m'
-    is_last = False
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '10.0.0.1'
+        self.rate = '150m'
+        self.is_last = False
 
     def run_cmds(self, node):
         cmds = [
@@ -431,9 +454,12 @@ class IperfUDPClient(AppConfig):
 
 
 class IperfUDPShortClient(AppConfig):
-    server_ip = '10.0.0.1'
-    rate = '150m'
-    is_last = False
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '10.0.0.1'
+        self.rate = '150m'
+        self.is_last = False
 
     def run_cmds(self, node):
         cmds = ['sleep 1', 'iperf -c ' + self.server_ip + ' -u -n 1 ']
@@ -442,16 +468,22 @@ class IperfUDPShortClient(AppConfig):
 
 
 class IperfUDPClientSleep(AppConfig):
-    server_ip = '10.0.0.1'
-    rate = '150m'
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '10.0.0.1'
+        self.rate = '150m'
 
     def run_cmds(self, node):
         return ['sleep 1', 'sleep 10']
 
 
 class NoTraffic(AppConfig):
-    is_sleep = 1
-    is_server = 0
+
+    def __init__(self):
+        super().__init__()
+        self.is_sleep = 1
+        self.is_server = 0
 
     def run_cmds(self, node):
         cmds = []
@@ -474,9 +506,12 @@ class NetperfServer(AppConfig):
 
 
 class NetperfClient(AppConfig):
-    server_ip = '10.0.0.1'
-    duration_tp = 10
-    duration_lat = 10
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '10.0.0.1'
+        self.duration_tp = 10
+        self.duration_lat = 10
 
     def run_cmds(self, node):
         return [
@@ -491,7 +526,10 @@ class NetperfClient(AppConfig):
 
 
 class VRReplica(AppConfig):
-    index = 0
+
+    def __init__(self):
+        super().__init__()
+        self.index = 0
 
     def run_cmds(self, node):
         return [
@@ -501,7 +539,10 @@ class VRReplica(AppConfig):
 
 
 class VRClient(AppConfig):
-    server_ips = []
+
+    def __init__(self):
+        super().__init__()
+        self.server_ips = []
 
     def run_cmds(self, node):
         cmds = []
@@ -515,7 +556,10 @@ class VRClient(AppConfig):
 
 
 class NOPaxosReplica(AppConfig):
-    index = 0
+
+    def __init__(self):
+        super().__init__()
+        self.index = 0
 
     def run_cmds(self, node):
         return [
@@ -525,9 +569,12 @@ class NOPaxosReplica(AppConfig):
 
 
 class NOPaxosClient(AppConfig):
-    server_ips = []
-    is_last = False
-    use_ehseq = False
+
+    def __init__(self):
+        super().__init__()
+        self.server_ips = []
+        self.is_last = False
+        self.use_ehseq = False
 
     def run_cmds(self, node):
         cmds = []
@@ -555,10 +602,13 @@ class NOPaxosSequencer(AppConfig):
 
 
 class RPCServer(AppConfig):
-    port = 1234
-    threads = 1
-    max_flows = 1234
-    max_bytes = 1024
+
+    def __init__(self):
+        super().__init__()
+        self.port = 1234
+        self.threads = 1
+        self.max_flows = 1234
+        self.max_bytes = 1024
 
     def run_cmds(self, node):
         exe = 'echoserver_linux' if not isinstance(node, MtcpNode) else \
@@ -573,16 +623,19 @@ class RPCServer(AppConfig):
 
 
 class RPCClient(AppConfig):
-    server_ip = '10.0.0.1'
-    port = 1234
-    threads = 1
-    max_flows = 128
-    max_bytes = 1024
-    max_pending = 1
-    openall_delay = 2
-    max_msgs_conn = 0
-    max_pend_conns = 8
-    time = 25
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '10.0.0.1'
+        self.port = 1234
+        self.threads = 1
+        self.max_flows = 128
+        self.max_bytes = 1024
+        self.max_pending = 1
+        self.openall_delay = 2
+        self.max_msgs_conn = 0
+        self.max_pend_conns = 8
+        self.time = 25
 
     def run_cmds(self, node):
         exe = 'testclient_linux' if not isinstance(node, MtcpNode) else \
@@ -603,10 +656,13 @@ class RPCClient(AppConfig):
 
 
 class HTTPD(AppConfig):
-    threads = 1
-    file_size = 64
-    mtcp_config = 'lighttpd.conf'
-    httpd_dir: str  # TODO added because doesn't originally exist
+
+    def __init__(self):
+        super().__init__()
+        self.threads = 1
+        self.file_size = 64
+        self.mtcp_config = 'lighttpd.conf'
+        self.httpd_dir = ''  # TODO added because doesn't originally exist
 
     def prepare_pre_cp(self):
         return [
@@ -628,16 +684,25 @@ class HTTPD(AppConfig):
 
 
 class HTTPDLinux(HTTPD):
-    httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux'
+
+    def __init__(self):
+        super().__init__()
+        self.httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux'
 
 
 class HTTPDLinuxRPO(HTTPD):
-    httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux-rop'
+
+    def __init__(self):
+        super().__init__()
+        self.httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux-rop'
 
 
 class HTTPDMtcp(HTTPD):
-    httpd_dir = '/root/mtcp/apps/lighttpd-mtcp'
-    mtcp_config = 'm-lighttpd.conf'
+
+    def __init__(self):
+        super().__init__()
+        self.httpd_dir = '/root/mtcp/apps/lighttpd-mtcp'
+        self.mtcp_config = 'm-lighttpd.conf'
 
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
@@ -651,13 +716,16 @@ class HTTPDMtcp(HTTPD):
 
 
 class HTTPC(AppConfig):
-    server_ip = '10.0.0.1'
-    conns = 1000
-    #requests = 10000000
-    requests = 10000
-    threads = 1
-    url = '/file'
-    ab_dir: str  # TODO added because doesn't originally exist
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '10.0.0.1'
+        self.conns = 1000
+        #self.requests = 10000000
+        self.requests = 10000
+        self.threads = 1
+        self.url = '/file'
+        self.ab_dir = ''  # TODO added because doesn't originally exist
 
     def run_cmds(self, node):
         return [
@@ -670,11 +738,17 @@ class HTTPC(AppConfig):
 
 
 class HTTPCLinux(HTTPC):
-    ab_dir = '/root/mtcp/apps/ab-linux'
+
+    def __init__(self):
+        super().__init__()
+        self.ab_dir = '/root/mtcp/apps/ab-linux'
 
 
 class HTTPCMtcp(HTTPC):
-    ab_dir = '/root/mtcp/apps/ab-mtcp'
+
+    def __init__(self):
+        super().__init__()
+        self.ab_dir = '/root/mtcp/apps/ab-mtcp'
 
     def prepare_pre_cp(self):
         return super().prepare_pre_cp() + [
@@ -690,10 +764,13 @@ class MemcachedServer(AppConfig):
 
 
 class MemcachedClient(AppConfig):
-    server_ips = ['10.0.0.1']
-    threads = 1
-    concurrency = 1
-    throughput = '1k'
+
+    def __init__(self):
+        super().__init__()
+        self.server_ips = ['10.0.0.1']
+        self.threads = 1
+        self.concurrency = 1
+        self.throughput = '1k'
 
     def run_cmds(self, node):
         servers = [ip + ':11211' for ip in self.server_ips]
