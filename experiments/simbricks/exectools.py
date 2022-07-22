@@ -27,6 +27,7 @@ import re
 import shlex
 import shutil
 import signal
+import typing as tp
 from asyncio.subprocess import Process
 
 
@@ -45,8 +46,6 @@ class HostConfig(object):
 
 
 class Component(object):
-    proc: Process
-    terminate_future: asyncio.Task[int]
 
     def __init__(self, cmd_parts, with_stdin=False):
         self.is_ready = False
@@ -57,6 +56,9 @@ class Component(object):
         self.cmd_parts = cmd_parts
         #print(cmd_parts)
         self.with_stdin = with_stdin
+
+        self._proc: tp.Optional[Process] = None
+        self._terminate_future: tp.Optional[asyncio.Task[int]] = None
 
     def _parse_buf(self, buf, data):
         if data is not None:
@@ -100,19 +102,19 @@ class Component(object):
     async def _waiter(self):
         out_handlers = asyncio.ensure_future(
             asyncio.wait([
-                self._read_stream(self.proc.stdout, self._consume_out),
-                self._read_stream(self.proc.stderr, self._consume_err)
+                self._read_stream(self._proc.stdout, self._consume_out),
+                self._read_stream(self._proc.stderr, self._consume_err)
             ])
         )
-        rc = await self.proc.wait()
+        rc = await self._proc.wait()
         await out_handlers
         await self.terminated(rc)
         return rc
 
     async def send_input(self, bs, eof=False):
-        self.proc.stdin.write(bs)
+        self._proc.stdin.write(bs)
         if eof:
-            self.proc.stdin.close()
+            self._proc.stdin.close()
 
     async def start(self):
         if self.with_stdin:
@@ -120,38 +122,38 @@ class Component(object):
         else:
             stdin = None
 
-        self.proc = await asyncio.create_subprocess_exec(
+        self._proc = await asyncio.create_subprocess_exec(
             *self.cmd_parts,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             stdin=stdin,
         )
-        self.terminate_future = asyncio.ensure_future(self._waiter())
+        self._terminate_future = asyncio.ensure_future(self._waiter())
         await self.started()
 
     async def wait(self):
-        await self.terminate_future
+        await self._terminate_future
 
     async def interrupt(self):
-        if self.terminate_future.done():
+        if self._terminate_future.done():
             return
-        self.proc.send_signal(signal.SIGINT)
+        self._proc.send_signal(signal.SIGINT)
 
     async def terminate(self):
-        if self.terminate_future.done():
+        if self._terminate_future.done():
             return
-        self.proc.terminate()
+        self._proc.terminate()
 
     async def kill(self):
-        self.proc.kill()
+        self._proc.kill()
 
     async def int_term_kill(self, delay=5):
         await self.interrupt()
-        _, pending = await asyncio.wait([self.terminate_future], timeout=delay)
+        _, pending = await asyncio.wait([self._terminate_future], timeout=delay)
         if len(pending) != 0:
             print('terminating')
             await self.terminate()
-            _,pending = await asyncio.wait([self.terminate_future],
+            _,pending = await asyncio.wait([self._terminate_future],
                     timeout=delay)
             if len(pending) != 0:
                 print('killing')
@@ -199,7 +201,6 @@ class SimpleComponent(Component):
 
 
 class SimpleRemoteComponent(SimpleComponent):
-    pid_fut: asyncio.Future
 
     def __init__(
         self,
@@ -231,7 +232,10 @@ class SimpleRemoteComponent(SimpleComponent):
 
         # wrap up command in ssh invocation
         parts = self._ssh_cmd(remote_parts)
+
         super().__init__(label, parts, *args, **kwargs)
+
+        self._pid_fut: tp.Optional[asyncio.Future] = None
 
     def _ssh_cmd(self, parts):
         """SSH invocation of command for this host."""
@@ -245,34 +249,34 @@ class SimpleRemoteComponent(SimpleComponent):
 
     async def start(self):
         """Start this command (includes waiting for its pid."""
-        self.pid_fut = asyncio.get_running_loop().create_future()
+        self._pid_fut = asyncio.get_running_loop().create_future()
         await super().start()
-        await self.pid_fut
+        await self._pid_fut
 
     async def process_out(self, lines, eof):
         """Scans output and set PID future once PID line found."""
-        if not self.pid_fut.done():
+        if not self._pid_fut.done():
             newlines = []
             pid_re = re.compile(r'^PID\s+(\d+)\s*$')
             for l in lines:
                 m = pid_re.match(l)
                 if m:
                     pid = int(m.group(1))
-                    self.pid_fut.set_result(pid)
+                    self._pid_fut.set_result(pid)
                 else:
                     newlines.append(l)
             lines = newlines
 
-            if eof and not self.pid_fut.done():
+            if eof and not self._pid_fut.done():
                 # cancel PID future if it's not going to happen
                 print('PID not found but EOF already found:', self.label)
-                self.pid_fut.cancel()
+                self._pid_fut.cancel()
         await super().process_out(lines, eof)
 
     async def _kill_cmd(self, sig):
         """Send signal to command by running ssh kill -$sig $PID."""
         cmd_parts = self._ssh_cmd([
-            'kill', '-' + sig, str(self.pid_fut.result())
+            'kill', '-' + sig, str(self._pid_fut.result())
         ])
         proc = await asyncio.create_subprocess_exec(*cmd_parts)
         await proc.wait()
@@ -288,7 +292,9 @@ class SimpleRemoteComponent(SimpleComponent):
 
 
 class Executor(object):
-    ip = None
+
+    def __init__(self):
+        self.ip = None
 
     def create_component(self, label, parts, **kwargs) -> SimpleComponent:
         raise NotImplementedError('Please Implement this method')
@@ -354,6 +360,8 @@ class LocalExecutor(Executor):
 class RemoteExecutor(Executor):
 
     def __init__(self, host_name, workdir):
+        super().__init__()
+
         self.host_name = host_name
         self.cwd = workdir
         self.ssh_extra_args = []

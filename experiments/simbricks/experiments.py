@@ -29,7 +29,7 @@ import typing as tp
 from simbricks.exectools import Executor, SimpleComponent
 from simbricks.experiment.experiment_environment import ExpEnv
 from simbricks.experiment.experiment_output import ExpOutput
-from simbricks.proxy import NetProxyConnecter, NetProxyListener, SimProxy
+from simbricks.proxy import NetProxyConnecter, NetProxyListener
 from simbricks.simulators import (
     HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
 )
@@ -43,27 +43,29 @@ class Experiment(object):
     Holds information about the simulators to run and paramaters to configure
     the experiment.
     """
-    name: str
-    """This experiment's name. Can be used to filter multiple experiments to be
-    run."""
-    timeout: int
-    """Timeout for experiment in seconds."""
-    checkpoint = False
-    """Whether to use checkpoints in experiment.
 
-    Can for example be used to speed up booting a host simulator by first
-    running in a less accurate mode. Before we then start the application we are
-    interested in, a checkpoint is taken and the simulator shut down. Then, the
-    simulator is restored in the accurate mode using this checkpoint."""
-    no_simbricks = False
-    """`true` - No simbricks adapters are used in the simulators."""
-    hosts: tp.List[HostSim] = []
-    pcidevs: tp.List[PCIDevSim] = []
-    networks: tp.List[NetSim] = []
-    metadata = {}
-
-    def __init__(self, name: str):
+    def __init__(self, name: str, timeout: int = 0):
         self.name = name
+        """
+        This experiment's name. Can be used to filter multiple experiments to be
+        run.
+        """
+        self.timeout = timeout
+        """Timeout for experiment in seconds."""
+        self.checkpoint = False
+        """Whether to use checkpoints in experiment.
+
+        Can for example be used to speed up booting a host simulator by first
+        running in a less accurate mode. Before we then start the application we
+        are interested in, a checkpoint is taken and the simulator shut down.
+        Then, the simulator is restored in the accurate mode using this
+        checkpoint."""
+        self.no_simbricks = False
+        """`true` - No simbricks adapters are used in the simulators."""
+        self.hosts: tp.List[HostSim] = []
+        self.pcidevs: tp.List[PCIDevSim] = []
+        self.networks: tp.List[NetSim] = []
+        self.metadata = {}
 
     def add_host(self, sim: HostSim):
         for h in self.hosts:
@@ -108,25 +110,21 @@ class Experiment(object):
 
 class DistributedExperiment(Experiment):
     """Describes a distributed simulation experiment."""
-    num_hosts = 1
-    """Number of hosts to use."""
-    host_mapping: tp.Dict[Simulator, int]
-    """Mapping from simulator to host ID."""
-    proxies_listen: tp.List[NetProxyListener]
-    proxies_connect: tp.List[NetProxyConnecter]
 
     def __init__(self, name: str, num_hosts: int):
-        self.num_hosts = num_hosts
-        self.host_mapping = {}
-        self.proxies_listen = []
-        self.proxies_connect = []
         super().__init__(name)
+        self.num_hosts = num_hosts
+        """Number of hosts to use."""
+        self.host_mapping: tp.Dict[Simulator, int] = {}
+        """Mapping from simulator to host ID."""
+        self.proxies_listen: tp.List[NetProxyListener] = []
+        self.proxies_connect: tp.List[NetProxyConnecter] = []
 
-    def add_proxy(self, proxy: SimProxy):
+    def add_proxy(self, proxy: tp.Union[NetProxyListener, NetProxyConnecter]):
         if proxy.listen:
-            self.proxies_listen.append(proxy)
+            self.proxies_listen.append(tp.cast(NetProxyListener, proxy))
         else:
-            self.proxies_connect.append(proxy)
+            self.proxies_connect.append(tp.cast(NetProxyConnecter, proxy))
 
     def all_simulators(self):
         return itertools.chain(
@@ -152,7 +150,7 @@ T = tp.TypeVar('T', bound=Experiment)
 class ExperimentBaseRunner(tp.Generic[T]):
 
     def __init__(self, exp: T, env: ExpEnv, verbose: bool):
-        self.exp = exp
+        self.exp: T = exp
         self.env = env
         self.verbose = verbose
         self.out = ExpOutput(exp)

@@ -20,14 +20,19 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.simulators import Simulator
+import typing as tp
+
+from simbricks.simulators import NICSim, Simulator
 
 
 class SimProxy(Simulator):
-    name = ''
-    # set by the experiment runner
-    ip = ''
-    listen = False
+
+    def __init__(self):
+        super().__init__()
+        self.name = ''
+        # set by the experiment runner
+        self.ip = ''
+        self.listen = False
 
     def full_name(self):
         return 'proxy.' + self.name
@@ -35,29 +40,29 @@ class SimProxy(Simulator):
 
 class NetProxy(SimProxy):
     """Proxy for connections between NICs and networks."""
-    # List of tuples (nic, with_listener)
-    nics = None
 
-    # List of tuples ((netL,netC), with_listener)
-    n2ns = None
-
-    # Shared memory size in GB
-    shm_size = 2048
+    def __init__(self):
+        super().__init__()
+        self.nics: tp.List[tp.Tuple[NICSim, bool]] = []
+        """List of tuples (nic, with_listener)"""
+        self.n2ns: tp.List[tp.Tuple[tp.Tuple[NetProxyListener,
+                                             NetProxyConnecter],
+                                    bool]] = []
+        """List of tuples ((netL,netC), with_listener)"""
+        self.shm_size = 2048
+        """Shared memory size in GB"""
 
     def start_delay(self):
         return 10
 
 
 class NetProxyListener(NetProxy):
-    port = 12345
-    connecter = None
-    listen = True
 
     def __init__(self):
         super().__init__()
+        self.port = 12345
+        self.connecter = None
         self.listen = True
-        self.nics = []
-        self.n2ns = []
 
     def add_nic(self, nic):
         self.nics.append((nic, True))
@@ -119,9 +124,8 @@ class NetProxyListener(NetProxy):
 
 
 class NetProxyConnecter(NetProxy):
-    listener = None
 
-    def __init__(self, listener):
+    def __init__(self, listener: NetProxyListener):
         super().__init__()
         self.listener = listener
         listener.connecter = self
