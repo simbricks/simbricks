@@ -308,8 +308,15 @@ if not args.pickled:
     for path in args.experiments:
         modname, _ = os.path.splitext(os.path.basename(path))
 
+        class ExperimentModuleLoadError(Exception):
+            pass
+
         spec = importlib.util.spec_from_file_location(modname, path)
+        if spec is None:
+            raise ExperimentModuleLoadError('spec is None')
         mod = importlib.util.module_from_spec(spec)
+        if spec.loader is None:
+            raise ExperimentModuleLoadError('spec.loader is None')
         spec.loader.exec_module(mod)
         experiments += mod.experiments
 
