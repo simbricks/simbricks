@@ -30,18 +30,17 @@ for h in ['qk', 'gk']:
     e = exp.Experiment('femutest-' + h)
     e.checkpoint = False
 
-    if h == 'gk':
-        host = sim.Gem5Host()
-        host.cpu_type = 'X86KvmCPU'
-    elif h == 'qk':
-        host = sim.QemuHost()
-    host.name = 'host.0'
     node_config = node.LinuxFEMUNode()
     node_config.app = node.NVMEFsTest()
     node_config.cores = 1
-
     node_config.app.is_sleep = 1
-    host.set_config(node_config)
+
+    if h == 'gk':
+        host = sim.Gem5Host(node_config)
+        host.cpu_type = 'X86KvmCPU'
+    elif h == 'qk':
+        host = sim.QemuHost(node_config)
+    host.name = 'host.0'
     e.add_host(host)
     host.wait = True
 

@@ -39,8 +39,6 @@ for app_type in app_types:
     NcClass = node.I40eLinuxNode
     # create servers and clients
 
-    host = HostClass()
-    host.name = 'host.0'
     node_config = NcClass()
     node_config.ip = '10.0.0.1'
     node_config.app = node.NoTraffic()
@@ -52,7 +50,9 @@ for app_type in app_types:
     else:
         node_config.app.is_sleep = 0
 
-    host.set_config(node_config)
+    host = HostClass(node_config)
+    host.name = 'host.0'
+
     e.add_host(host)
     host.wait = True
 
