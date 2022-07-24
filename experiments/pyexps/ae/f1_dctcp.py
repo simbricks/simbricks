@@ -89,16 +89,16 @@ for mtu in types_of_mtu:
                 elif host == 'qt':
                     freq = cpu_freq_qemu
 
-                    def qemu_timing():
-                        h = sim.QemuHost()
+                    def qemu_timing(node_config: node.NodeConfig):
+                        h = sim.QemuHost(node_config)
                         h.sync = True
                         return h
 
                     HostClass = qemu_timing
                 elif host == 'gt':
 
-                    def gem5_timing():
-                        h = sim.Gem5Host()
+                    def gem5_timing(node_config: node.NodeConfig):
+                        h = sim.Gem5Host(node_config)
                         #h.sys_clock = sys_clock
                         return h
 
@@ -106,8 +106,8 @@ for mtu in types_of_mtu:
                     e.checkpoint = True
                 elif host == 'gO3':
 
-                    def gem5_o3():
-                        h = sim.Gem5Host()
+                    def gem5_o3(node_config: node.NodeConfig):
+                        h = sim.Gem5Host(node_config)
                         h.cpu_type = 'DerivO3CPU'
                         h.sys_clock = sys_clock
                         return h

@@ -86,8 +86,8 @@ for n_client in num_client_types:
                     HostClass = sim.QemuHost
                 elif host_type == 'qt':
 
-                    def qemu_timing():
-                        h = sim.QemuHost()
+                    def qemu_timing(node_config: node.NodeConfig):
+                        h = sim.QemuHost(node_config)
                         h.sync = True
                         return h
 

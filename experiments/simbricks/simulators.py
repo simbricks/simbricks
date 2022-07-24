@@ -195,9 +195,9 @@ class NetSim(Simulator):
 class HostSim(Simulator):
     """Base class for host simulators."""
 
-    def __init__(self):
+    def __init__(self, node_config: NodeConfig):
         super().__init__()
-        self.node_config: tp.Optional[NodeConfig] = None
+        self.node_config = node_config
         """Config for the simulated host. """
         self.name = ''
         self.wait = False
@@ -229,9 +229,6 @@ class HostSim(Simulator):
         net.hosts_direct.append(self)
         self.net_directs.append(net)
 
-    def set_config(self, nc: NodeConfig):
-        self.node_config = nc
-
     def dependencies(self):
         deps = []
         for dev in self.pcidevs:
@@ -247,8 +244,8 @@ class HostSim(Simulator):
 class QemuHost(HostSim):
     """Qemu host simulator."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, node_config: NodeConfig):
+        super().__init__(node_config)
 
         self.sync = False
         self.cpu_freq = '4GHz'
@@ -314,18 +311,15 @@ class QemuHost(HostSim):
 class Gem5Host(HostSim):
     """Gem5 host simulator."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, node_config: NodeConfig):
+        node_config.sim = 'gem5'
+        super().__init__(node_config)
         self.cpu_type_cp = 'X86KvmCPU'
         self.cpu_type = 'TimingSimpleCPU'
         self.sys_clock = '1GHz'
         self.extra_main_args = []
         self.extra_config_args = []
         self.variant = 'fast'
-
-    def set_config(self, nc):
-        nc.sim = 'gem5'
-        super().set_config(nc)
 
     def resreq_cores(self):
         return 1

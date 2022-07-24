@@ -54,15 +54,14 @@ def create_basic_hosts(
         #nic.name = '%s.%d' % (name_prefix, i)
         nic.set_network(net)
 
-        host = host_class()
-        host.name = f'{name_prefix}.{i}'
-
         node_config = nc_class()
         node_config.prefix = ip_prefix
         ip = ip_start + i
         node_config.ip = f'10.0.{int(ip / 256)}.{ip % 256}'
         node_config.app = app_class()
-        host.set_config(node_config)
+
+        host = host_class(node_config)
+        host.name = f'{name_prefix}.{i}'
 
         host.add_nic(nic)
         e.add_nic(nic)
@@ -103,15 +102,14 @@ def create_multinic_hosts(
         #nic.name = '%s.%d' % (name_prefix, i)
         nic.set_network(net)
 
-        host = host_class()
-        host.name = f'{name_prefix}.{i}'
-
         node_config = nc_class()
         node_config.prefix = ip_prefix
         ip = ip_start + i
         node_config.ip = f'10.0.{int(ip / 256)}.{ip % 256}'
         node_config.app = app_class()
-        host.set_config(node_config)
+
+        host = host_class(node_config)
+        host.name = f'{name_prefix}.{i}'
 
         host.add_nic(nic)
         e.add_host(host)
@@ -148,15 +146,14 @@ def create_dctcp_hosts(
         #nic.name = '%s.%d' % (name_prefix, i)
         nic.set_network(net)
 
-        host = host_class()
-        host.name = f'{name_prefix}.{i}'
-        host.cpu_freq = cpu_freq
-
         node_config = nc_class()
         node_config.mtu = mtu
         node_config.ip = f'192.168.64.{ip_start + i}'
         node_config.app = app_class()
-        host.set_config(node_config)
+
+        host = host_class(node_config)
+        host.name = f'{name_prefix}.{i}'
+        host.cpu_freq = cpu_freq
 
         host.add_nic(nic)
         e.add_nic(nic)

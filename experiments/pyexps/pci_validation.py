@@ -39,18 +39,18 @@ for internal in [True, False]:
     net = sim.SwitchNet()
     e.add_network(net)
 
-    server = sim.Gem5Host()
-    server.name = 'server'
+    # server
     nc_server = node.E1000LinuxNode()
     nc_server.prefix = 24
     nc_server.ip = '10.0.0.1'
     nc_server.force_mac_addr = '00:90:00:00:00:01'
     nc_server.app = node.NetperfServer()
-    server.set_config(nc_server)
+
+    server = sim.Gem5Host(nc_server)
+    server.name = 'server'
     e.add_host(server)
 
-    client = sim.Gem5Host()
-    client.name = 'client'
+    # client
     nc_client = node.E1000LinuxNode()
     nc_client.prefix = 24
     nc_client.ip = '10.0.0.2'
@@ -59,7 +59,9 @@ for internal in [True, False]:
     nc_client.app.server_ip = '10.0.0.1'
     nc_client.app.duration_tp = -1000000
     nc_client.app.duration_lat = -1000
-    client.set_config(nc_client)
+
+    client = sim.Gem5Host(nc_client)
+    client.name = 'client'
     client.wait = True
     e.add_host(client)
 

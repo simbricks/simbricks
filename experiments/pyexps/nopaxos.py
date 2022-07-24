@@ -62,8 +62,8 @@ for proto_config in proto_configs:
                         e.checkpoint = True
                     elif host_config == 'qt':
 
-                        def qemu_timing():
-                            h = sim.QemuHost()
+                        def qemu_timing(node_config: node.NodeConfig):
+                            h = sim.QemuHost(node_config)
                             h.sync = True
                             return h
 
