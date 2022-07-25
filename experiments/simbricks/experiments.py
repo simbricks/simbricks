@@ -44,13 +44,13 @@ class Experiment(object):
     the experiment.
     """
 
-    def __init__(self, name: str, timeout: int = 0):
+    def __init__(self, name: str):
         self.name = name
         """
         This experiment's name. Can be used to filter multiple experiments to be
         run.
         """
-        self.timeout = timeout
+        self.timeout: tp.Optional[int] = None
         """Timeout for experiment in seconds."""
         self.checkpoint = False
         """Whether to use checkpoints in experiment.
