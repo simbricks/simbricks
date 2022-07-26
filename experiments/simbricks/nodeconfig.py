@@ -51,6 +51,7 @@ class NodeConfig(object):
 
     def __init__(self):
         """Manages the configuration for a node."""
+        super().__init__()
         self.sim = 'qemu'
         """Name of simulator to run."""
         self.ip = '10.0.0.1'
