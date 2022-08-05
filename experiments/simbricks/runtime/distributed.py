@@ -33,8 +33,8 @@ from simbricks.runtime.common import Run, Runtime
 class DistributedSimpleRuntime(Runtime):
 
     def __init__(self, executors, verbose=False):
-        self.runnable = []
-        self.complete = []
+        self.runnable: tp.List[Run] = []
+        self.complete: tp.List[Run] = []
         self.verbose = verbose
         self.executors = executors
 
@@ -46,7 +46,11 @@ class DistributedSimpleRuntime(Runtime):
 
     async def do_run(self, run: Run):
         runner = exp.ExperimentDistributedRunner(
-            self.executors, run.experiment, run.env, self.verbose
+            self.executors,
+            # we ensure the correct type in add_run()
+            tp.cast(exp.DistributedExperiment, run.experiment),
+            run.env,
+            self.verbose
         )
         for executor in self.executors:
             await run.prep_dirs(executor)
