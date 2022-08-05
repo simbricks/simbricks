@@ -37,34 +37,32 @@ from simbricks.utils import graphlib
 
 
 class Experiment(object):
-    """
-    Describes a simulation experiment.
-
-    Holds information about the simulators to run and paramaters to configure
-    the experiment.
-    """
+    """Base class for all simulation experiments."""
 
     def __init__(self, name: str):
         self.name = name
         """
-        This experiment's name. Can be used to filter multiple experiments to be
-        run.
+        This experiment's name. Can be used to run only a selection of
+        experiments.
         """
         self.timeout: tp.Optional[int] = None
         """Timeout for experiment in seconds."""
         self.checkpoint = False
         """Whether to use checkpoints in experiment.
 
-        Can for example be used to speed up booting a host simulator by first
-        running in a less accurate mode. Before we then start the application we
-        are interested in, a checkpoint is taken and the simulator shut down.
-        Then, the simulator is restored in the accurate mode using this
-        checkpoint."""
+        Using this property we can, for example, speed up booting a host
+        simulator by first running in a less accurate mode. Before we then start
+        the measurement we are interested in, a checkpoint is taken and the
+        simulator shut down, a check point created, and finally restored in the
+        accurate mode using this checkpoint."""
         self.no_simbricks = False
-        """`true` - No simbricks adapters are used in the simulators."""
+        """If `true`, no simbricks adapters are used in any of the simulators."""
         self.hosts: tp.List[HostSim] = []
+        """The host simulators to run."""
         self.pcidevs: tp.List[PCIDevSim] = []
+        """The PCIe device simulators to run."""
         self.networks: tp.List[NetSim] = []
+        """The network simulators to run."""
         self.metadata = {}
 
     def add_host(self, sim: HostSim):
@@ -150,7 +148,7 @@ T = tp.TypeVar('T', bound=Experiment)
 class ExperimentBaseRunner(tp.Generic[T]):
 
     def __init__(self, exp: T, env: ExpEnv, verbose: bool):
-        self.exp: T = exp
+        self.exp = exp
         self.env = env
         self.verbose = verbose
         self.out = ExpOutput(exp)
