@@ -316,7 +316,7 @@ class ExperimentBaseRunner(ABC):
 class ExperimentSimpleRunner(ExperimentBaseRunner):
     """Simple experiment runner with just one executor."""
 
-    def __init__(self, executor: Executor, exp: Experiment, *args, **kwargs):
+    def __init__(self, executor: Executor, *args, **kwargs):
         self.executor = executor
         super().__init__(*args, **kwargs)
 
@@ -329,7 +329,7 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
 
     def __init__(self, execs, exp: DistributedExperiment, *args, **kwargs):
         self.execs = execs
-        super().__init__(*args, **kwargs)
+        super().__init__(exp, *args, **kwargs)
         self.exp = exp  # overrides the type in the base class
         assert self.exp.num_hosts <= len(execs)
 
