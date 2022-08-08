@@ -49,13 +49,13 @@ class Experiment(object):
         self.timeout: tp.Optional[int] = None
         """Timeout for experiment in seconds."""
         self.checkpoint = False
-        """Whether to use checkpoints in experiment.
+        """Whether to use checkpoints in the experiment.
 
         Using this property we can, for example, speed up booting a host
         simulator by first running in a less accurate mode. Before we then start
-        the measurement we are interested in, a checkpoint is taken and the
-        simulator shut down, a check point created, and finally restored in the
-        accurate mode using this checkpoint."""
+        the measurement we are interested in, a checkpoint is taken, the
+        simulator shut down and finally restored in the accurate mode using this
+        checkpoint."""
         self.no_simbricks = False
         """If `true`, no simbricks adapters are used in any of the
         simulators."""
