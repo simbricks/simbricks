@@ -33,10 +33,10 @@ Currently SimBricks includes the following simulators:
 
 Depending on how you plan to use SimBricks, there are different ways to start
 using it. The quickest way to get started just running SimBricks is with our
-pre-built Docker container images. However, if you plan to make changes to
-SimBricks, you will have to build SimBricks from source, either through Docker,
-or on your local machine. The different ways are listed below in order of
-increasing effort required.
+[pre-built Docker container images](https://hub.docker.com/u/simbricks).
+However, if you plan to make changes to SimBricks, you will have to build
+SimBricks from source, either through Docker, or on your local machine. The
+different ways are listed below in order of increasing effort required.
 
 **Please refer to
 [our documentation](https://simbricks.readthedocs.io/en/latest/) for more
@@ -84,8 +84,8 @@ simulation directly from your browser.
 
 ### Building Docker Images
 
-If you prefer to build the Docker images locally you will need `git`, `make`, and
-`docker build` installed on your system. Other dependencies should not be
+If you prefer to build the Docker images locally you will need `git`, `make`,
+and `docker build` installed on your system. Other dependencies should not be
 required. Now you are ready to build the docker images (depending on your system
 this will likely take 15-45 minutes):
 
@@ -102,13 +102,13 @@ main `simbricks/simbricks` image.
 
 **We recommend this approach if you plan to modify or extend SimBricks.**
 
-This repository is pre-configured with a
-[Visual Studio Code Development Container](https://code.visualstudio.com/docs/remote/containers)
-that includes all required dependencies for building and working on SimBricks.
-If you have Docker set up and the vscode remote containers extension installed,
-you can just open a freshly cloned simbricks repo in vscode and vscode will
-display a prompt to re-open the folder in the container. The vscode terminals
-will also automatically run any commands inside of the container.
+This repository is pre-configured with a [Visual Studio Code Development
+Container] (https://code.visualstudio.com/docs/remote/containers) that includes
+all required dependencies for building and working on SimBricks. If you have
+Docker set up and the vscode remote containers extension installed, you can just
+open a freshly cloned simbricks repo in VSCode and VSCode will display a prompt
+to re-open the folder in the container. The VSCode terminals will also
+automatically run any commands inside of the container.
 
 To compile the core SimBricks components simply run `make` (with `-jN` to
 use multiple cores). Note that by default, we do not build the Verilator
@@ -118,13 +118,14 @@ libraries. These can be enabled by setting `ENABLE_VERILATOR=y ENABLE_RDMA=y`
 on the `make` command-line or by creating `mk/local.mk` and inserting those
 settings there.
 
-The previous step only builds the simulators directly in the SimBricks
+The previous step only builds the simulators directly contained in the SimBricks
 repository. You likely also want to build at least some of the external
-simulators, such as gem5, QEMU, or ns-3. You can either build all external
-simulators by running `make -jN external` (this could take multiple hours
-depending on your machine), or build them individually by running e.g.
-`make -jN sims/external/qemu/ready` (replace `qemu` with `gem5`, `ns-3`,
-or `femu` as desired).
+simulators, such as gem5, QEMU, or ns-3. First, make sure their corresponding
+submodules are intialized via `git submodule update --init`. You can either
+build all external simulators by running `make -jN external` (this could take
+multiple hours depending on your machine), or build them individually by running
+e.g. `make -jN sims/external/qemu/ready` (replace `qemu` with `gem5`, `ns-3`, or
+`femu` as desired).
 
 Next, to actually run simulations, you will also need to build the disk images
 with `make -jN build-images` (note this requires QEMU to be built first).
