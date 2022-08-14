@@ -1,4 +1,5 @@
 {
+	"initializeCommand": "docker pull simbricks/simbricks-build",
 	"image": "simbricks/simbricks-build:latest",
 	"runArgs": [
 		"--device=/dev/kvm"
