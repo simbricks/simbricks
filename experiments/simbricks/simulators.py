@@ -487,7 +487,7 @@ class WireNet(NetSim):
         assert len(connects) == 2
         cmd = (
             f'{env.repodir}/sims/net/wire/net_wire {connects[0][1]}'
-            f' connects[1][1] {self.sync_mode} {self.sync_period}'
+            f' {connects[1][1]} {self.sync_mode} {self.sync_period}'
             f' {self.eth_latency}'
         )
         if len(env.pcap_file) > 0:
