@@ -1,3 +1,5 @@
+<img src="doc/simbricks.svg" alt="SimBricks Logo" width="300" />
+
 # SimBricks
 
 [![CI pipeline status](https://gitlab.mpi-sws.org/simbricks/simbricks/badges/main/pipeline.svg)](https://gitlab.mpi-sws.org/simbricks/simbricks/-/commits/main)
