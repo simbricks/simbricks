@@ -120,7 +120,7 @@ class Component(object):
         if self.with_stdin:
             stdin = asyncio.subprocess.PIPE
         else:
-            stdin = None
+            stdin = asyncio.subprocess.DEVNULL
 
         self._proc = await asyncio.create_subprocess_exec(
             *self.cmd_parts,
