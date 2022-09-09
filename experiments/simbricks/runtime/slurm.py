@@ -20,10 +20,12 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
 import os
 import pathlib
 import pickle
 import re
+import typing as tp
 
 from simbricks.runtime.common import Run, Runtime
 
@@ -32,11 +34,13 @@ class SlurmRuntime(Runtime):
 
     def __init__(self, slurmdir, args, verbose=False, cleanup=True):
         super().__init__()
-        self.runnable = []
+        self.runnable: tp.List[Run] = []
         self.slurmdir = slurmdir
         self.args = args
         self.verbose = verbose
         self.cleanup = cleanup
+
+        self._start_task: asyncio.Task
 
     def add_run(self, run: Run):
         self.runnable.append(run)
@@ -88,7 +92,7 @@ class SlurmRuntime(Runtime):
 
         return exp_script
 
-    async def start(self):
+    async def _do_start(self):
         pathlib.Path(self.slurmdir).mkdir(parents=True, exist_ok=True)
 
         jid_re = re.compile(r'Submitted batch job ([0-9]+)')
@@ -111,6 +115,23 @@ class SlurmRuntime(Runtime):
             m = jid_re.search(output)
             run.job_id = int(m.group(1))
 
+    async def start(self):
+        self._start_task = asyncio.create_task(self._do_start())
+        try:
+            await self._start_task
+        except asyncio.CancelledError:
+            # stop all runs that have already been scheduled
+            # (existing slurm job id)
+            job_ids = []
+            for run in self.runnable:
+                if run.job_id:
+                    job_ids.append(str(run.job_id))
+
+            scancel_process = await asyncio.create_subprocess_shell(
+                f"scancel {' '.join(job_ids)}"
+            )
+            await scancel_process.wait()
+
     def interrupt(self):
-        return super().interrupt()
-        # TODO implement this
+        super().interrupt()
+        self._start_task.cancel()
