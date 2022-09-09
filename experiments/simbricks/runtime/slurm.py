@@ -31,6 +31,7 @@ from simbricks.runtime.common import Run, Runtime
 class SlurmRuntime(Runtime):
 
     def __init__(self, slurmdir, args, verbose=False, cleanup=True):
+        super().__init__()
         self.runnable = []
         self.slurmdir = slurmdir
         self.args = args
@@ -87,7 +88,7 @@ class SlurmRuntime(Runtime):
 
         return exp_script
 
-    def start(self):
+    async def start(self):
         pathlib.Path(self.slurmdir).mkdir(parents=True, exist_ok=True)
 
         jid_re = re.compile(r'Submitted batch job ([0-9]+)')
@@ -109,3 +110,7 @@ class SlurmRuntime(Runtime):
 
             m = jid_re.search(output)
             run.job_id = int(m.group(1))
+
+    def interrupt(self):
+        return super().interrupt()
+        # TODO implement this

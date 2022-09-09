@@ -37,32 +37,49 @@ class LocalSimpleRuntime(Runtime):
         verbose=False,
         executor: exectools.Executor = exectools.LocalExecutor()
     ):
+        super().__init__()
         self.runnable: tp.List[Run] = []
         self.complete: tp.List[Run] = []
         self.verbose = verbose
         self.executor = executor
+        self._running: tp.Optional[asyncio.Task] = None
 
     def add_run(self, run: Run):
         self.runnable.append(run)
 
     async def do_run(self, run: Run):
         """Actually executes `run`."""
-        runner = ExperimentSimpleRunner(
-            self.executor, run.experiment, run.env, self.verbose
-        )
-        await run.prep_dirs(self.executor)
-        await runner.prepare()
-        run.output = await runner.run()
+        try:
+            runner = ExperimentSimpleRunner(
+                self.executor, run.experiment, run.env, self.verbose
+            )
+            await run.prep_dirs(self.executor)
+            await runner.prepare()
+        except asyncio.CancelledError:
+            # it is safe to just exit here because we are not running any
+            # simulators yet
+            return
+
+        run.output = await runner.run()  # already handles CancelledError
         self.complete.append(run)
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
         with open(run.outpath, 'w', encoding='utf-8') as f:
             f.write(run.output.dumps())
 
-    def start(self):
+    async def start(self):
         """Execute the runs defined in `self.runnable`."""
         for run in self.runnable:
-            asyncio.run(self.do_run(run))
+            if self._interrupted:
+                return
+
+            self._running = asyncio.create_task(self.do_run(run))
+            await self._running
+
+    def interrupt(self):
+        super().interrupt()
+        if self._running:
+            self._running.cancel()
 
 
 class LocalParallelRuntime(Runtime):
@@ -75,6 +92,7 @@ class LocalParallelRuntime(Runtime):
         verbose=False,
         executor: exectools.Executor = exectools.LocalExecutor()
     ):
+        super().__init__()
         self.runs_noprereq: tp.List[Run] = []
         """Runs with no prerequesite runs."""
         self.runs_prereq: tp.List[Run] = []
@@ -180,6 +198,10 @@ class LocalParallelRuntime(Runtime):
         while self.pending_jobs:
             await self.wait_completion()
 
-    def start(self):
+    async def start(self):
         """Execute all defined runs."""
         asyncio.run(self.do_start())
+
+    def interrupt(self):
+        return super().interrupt()
+        # TODO implement this

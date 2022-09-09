@@ -47,7 +47,7 @@ class HostConfig(object):
 
 class Component(object):
 
-    def __init__(self, cmd_parts, with_stdin=False):
+    def __init__(self, cmd_parts: tp.List[str], with_stdin=False):
         self.is_ready = False
         self.stdout = []
         self.stdout_buf = bytearray()
@@ -57,8 +57,8 @@ class Component(object):
         #print(cmd_parts)
         self.with_stdin = with_stdin
 
-        self._proc: tp.Optional[Process] = None
-        self._terminate_future: tp.Optional[asyncio.Task[int]] = None
+        self._proc: Process
+        self._terminate_future: asyncio.Task
 
     def _parse_buf(self, buf, data):
         if data is not None:
@@ -76,21 +76,21 @@ class Component(object):
             lines.append(buf.decode('utf-8'))
         return lines
 
-    async def _consume_out(self, data):
+    async def _consume_out(self, data: bytes):
         eof = len(data) == 0
         ls = self._parse_buf(self.stdout_buf, data)
         if len(ls) > 0 or eof:
             await self.process_out(ls, eof=eof)
             self.stdout = self.stdout + ls
 
-    async def _consume_err(self, data):
+    async def _consume_err(self, data: bytes):
         eof = len(data) == 0
         ls = self._parse_buf(self.stderr_buf, data)
         if len(ls) > 0 or eof:
             await self.process_err(ls, eof=eof)
             self.stderr = self.stderr + ls
 
-    async def _read_stream(self, stream, fn):
+    async def _read_stream(self, stream: asyncio.StreamReader, fn):
         while True:
             bs = await stream.readline()
             if bs:
@@ -109,7 +109,6 @@ class Component(object):
         rc = await self._proc.wait()
         await out_handlers
         await self.terminated(rc)
-        return rc
 
     async def send_input(self, bs, eof=False):
         self._proc.stdin.write(bs)
@@ -128,36 +127,52 @@ class Component(object):
             stderr=asyncio.subprocess.PIPE,
             stdin=stdin,
         )
-        self._terminate_future = asyncio.ensure_future(self._waiter())
+        self._terminate_future = asyncio.create_task(self._waiter())
         await self.started()
 
     async def wait(self):
-        await self._terminate_future
+        """
+        Wait for running process to finish and output to be collected.
+
+        On cancellation, the `CancelledError` is propagated but this component
+        keeps running.
+        """
+        await asyncio.shield(self._terminate_future)
 
     async def interrupt(self):
-        if self._terminate_future.done():
-            return
-        self._proc.send_signal(signal.SIGINT)
+        """Sends an interrupt signal."""
+        if self._proc.returncode is None:
+            self._proc.send_signal(signal.SIGINT)
 
     async def terminate(self):
-        if self._terminate_future.done():
-            return
-        self._proc.terminate()
+        """Sends a terminate signal."""
+        if self._proc.returncode is None:
+            self._proc.terminate()
 
     async def kill(self):
-        self._proc.kill()
+        """Sends a kill signal."""
+        if self._proc.returncode is None:
+            self._proc.kill()
 
     async def int_term_kill(self, delay=5):
+        """Attempts to stop this component by sending signals in the following
+        order: interrupt, terminate, kill."""
         await self.interrupt()
-        _, pending = await asyncio.wait([self._terminate_future], timeout=delay)
+        _, pending = await asyncio.wait([self._proc.wait()], timeout=delay)
         if len(pending) != 0:
-            print('terminating')
+            print(
+                f'terminating component {self.cmd_parts[0]} '
+                f'pid {self._proc.pid}'
+            )
             await self.terminate()
-            _,pending = await asyncio.wait([self._terminate_future],
-                    timeout=delay)
+            _, pending = await asyncio.wait([self._proc.wait()], timeout=delay)
             if len(pending) != 0:
-                print('killing')
+                print(
+                    f'killing component {self.cmd_parts[0]} '
+                    f'pid {self._proc.pid}'
+                )
                 await self.kill()
+                await self._proc.wait()
 
     async def started(self):
         pass
@@ -248,7 +263,7 @@ class SimpleRemoteComponent(SimpleComponent):
         ] + self.extra_flags + [self.host_name, '--'] + parts
 
     async def start(self):
-        """Start this command (includes waiting for its pid."""
+        """Start this command (includes waiting for its pid)."""
         self._pid_fut = asyncio.get_running_loop().create_future()
         await super().start()
         await self._pid_fut

@@ -34,6 +34,7 @@ from simbricks.runtime.common import Run, Runtime
 class DistributedSimpleRuntime(Runtime):
 
     def __init__(self, executors, verbose=False):
+        super().__init__()
         self.runnable: tp.List[Run] = []
         self.complete: tp.List[Run] = []
         self.verbose = verbose
@@ -63,9 +64,13 @@ class DistributedSimpleRuntime(Runtime):
         with open(run.outpath, 'w', encoding='utf-8') as f:
             f.write(run.output.dumps())
 
-    def start(self):
+    async def start(self):
         for run in self.runnable:
             asyncio.run(self.do_run(run))
+
+    def interrupt(self):
+        return super().interrupt()
+        # TODO implement this
 
 
 def auto_dist(

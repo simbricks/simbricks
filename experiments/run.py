@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import argparse
+import asyncio
 import fnmatch
 import importlib
 import importlib.util
@@ -29,6 +30,7 @@ import os
 import pickle
 import sys
 import typing as tp
+from signal import SIGINT, signal
 
 from simbricks.exectools import LocalExecutor, RemoteExecutor
 from simbricks.experiment.experiment_environment import ExpEnv
@@ -355,4 +357,13 @@ else:
         with open(path, 'rb') as f:
             rt.add_run(pickle.load(f))
 
-rt.start()
+
+# register interrupt handler
+def handle_interrupt(signalnum: int, handler: int):
+    # pylint: disable=unused-argument
+    rt.interrupt()
+
+
+signal(SIGINT, handle_interrupt)
+
+asyncio.run(rt.start())
