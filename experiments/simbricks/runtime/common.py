@@ -51,6 +51,8 @@ class Run(object):
         self.outpath = outpath
         self.output: tp.Optional[ExpOutput] = None
         self.prereq = prereq
+        self.job_id: tp.Optional[int] = None
+        """Slurm job id."""
 
     def name(self):
         return self.experiment.name + '.' + str(self.index)
