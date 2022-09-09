@@ -36,6 +36,7 @@ class ExpOutput(object):
         self.end_time = None
         self.sims = {}
         self.success = True
+        self.interrupted = False
 
     def set_start(self):
         self.start_time = time.time()
@@ -45,6 +46,10 @@ class ExpOutput(object):
 
     def set_failed(self):
         self.success = False
+
+    def set_interrupted(self):
+        self.success = False
+        self.interrupted = True
 
     def add_sim(self, sim, comp):
         obj = {

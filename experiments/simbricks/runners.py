@@ -27,7 +27,7 @@ import traceback
 import typing as tp
 from abc import ABC, abstractmethod
 
-from simbricks.exectools import Executor, SimpleComponent
+from simbricks.exectools import Component, Executor, SimpleComponent
 from simbricks.experiment.experiment_environment import ExpEnv
 from simbricks.experiment.experiment_output import ExpOutput
 from simbricks.experiments import DistributedExperiment, Experiment
@@ -44,7 +44,7 @@ class ExperimentBaseRunner(ABC):
         self.out = ExpOutput(exp)
         self.running: tp.List[tp.Tuple[Simulator, SimpleComponent]] = []
         self.sockets = []
-        self.wait_sims = []
+        self.wait_sims: tp.List[Component] = []
 
     @abstractmethod
     def sim_executor(self, sim: Simulator) -> Executor:
@@ -166,6 +166,10 @@ class ExperimentBaseRunner(ABC):
 
             await self.before_wait()
             await self.wait_for_sims()
+        except asyncio.CancelledError:
+            if self.verbose:
+                print(f'{self.exp.name}: interrupted')
+            self.out.set_interrupted()
         except:  # pylint: disable=bare-except
             self.out.set_failed()
             traceback.print_exc()

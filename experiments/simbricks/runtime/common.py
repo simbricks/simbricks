@@ -76,10 +76,24 @@ class Run(object):
 class Runtime(metaclass=ABCMeta):
     """Base class for managing the execution of multiple runs."""
 
+    def __init__(self) -> None:
+        self._interrupted = False
+        """Indicates whether interrupt has been signaled."""
+
     @abstractmethod
     def add_run(self, run: Run):
         pass
 
     @abstractmethod
-    def start(self):
+    async def start(self):
         pass
+
+    @abstractmethod
+    def interrupt(self):
+        """
+        Signals an interrupt request.
+
+        As a consequence all currently running simulators should be stopped
+        cleanly and their output collected.
+        """
+        self._interrupted = True
