@@ -28,7 +28,7 @@ import shutil
 import typing as tp
 from abc import ABCMeta, abstractmethod
 
-from simbricks import exectools
+from simbricks.exectools import LocalExecutor
 from simbricks.experiment.experiment_environment import ExpEnv
 from simbricks.experiment.experiment_output import ExpOutput
 from simbricks.experiments import Experiment
@@ -55,7 +55,7 @@ class Run(object):
     def name(self):
         return self.experiment.name + '.' + str(self.index)
 
-    async def prep_dirs(self, executor=exectools.LocalExecutor()):
+    async def prep_dirs(self, executor=LocalExecutor()):
         shutil.rmtree(self.env.workdir, ignore_errors=True)
         await executor.rmtree(self.env.workdir)
         shutil.rmtree(self.env.shm_base, ignore_errors=True)

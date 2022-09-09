@@ -24,9 +24,10 @@ import asyncio
 import pathlib
 import typing as tp
 
-import simbricks.experiments as exp
 from simbricks import proxy
 from simbricks.exectools import Executor
+from simbricks.experiments import DistributedExperiment, Experiment
+from simbricks.runners import ExperimentDistributedRunner
 from simbricks.runtime.common import Run, Runtime
 
 
@@ -39,16 +40,16 @@ class DistributedSimpleRuntime(Runtime):
         self.executors = executors
 
     def add_run(self, run: Run):
-        if not isinstance(run.experiment, exp.DistributedExperiment):
+        if not isinstance(run.experiment, DistributedExperiment):
             raise RuntimeError('Only distributed experiments supported')
 
         self.runnable.append(run)
 
     async def do_run(self, run: Run):
-        runner = exp.ExperimentDistributedRunner(
+        runner = ExperimentDistributedRunner(
             self.executors,
             # we ensure the correct type in add_run()
-            tp.cast(exp.DistributedExperiment, run.experiment),
+            tp.cast(DistributedExperiment, run.experiment),
             run.env,
             self.verbose
         )
@@ -68,7 +69,7 @@ class DistributedSimpleRuntime(Runtime):
 
 
 def auto_dist(
-    e: exp.Experiment, execs: tp.List[Executor], proxy_type: str = 'sockets'
+    e: Experiment, execs: tp.List[Executor], proxy_type: str = 'sockets'
 ):
     """
     Converts an Experiment into a DistributedExperiment.
@@ -92,7 +93,7 @@ def auto_dist(
         raise RuntimeError('Unknown proxy type specified')
 
     # Create the distributed experiment
-    de = exp.DistributedExperiment(e.name, 2)
+    de = DistributedExperiment(e.name, 2)
     de.timeout = e.timeout
     de.checkpoint = e.checkpoint
     de.no_simbricks = e.no_simbricks
