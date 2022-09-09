@@ -30,8 +30,9 @@ import pickle
 import sys
 import typing as tp
 
-import simbricks.experiments as exp
-from simbricks import exectools
+from simbricks.exectools import LocalExecutor, RemoteExecutor
+from simbricks.experiment.experiment_environment import ExpEnv
+from simbricks.experiments import DistributedExperiment, Experiment
 from simbricks.runtime.common import Run
 from simbricks.runtime.distributed import DistributedSimpleRuntime, auto_dist
 from simbricks.runtime.local import LocalParallelRuntime, LocalSimpleRuntime
@@ -221,9 +222,9 @@ def load_executors(path):
         exs = []
         for h in hosts:
             if h['type'] == 'local':
-                ex = exectools.LocalExecutor()
+                ex = LocalExecutor()
             elif h['type'] == 'remote':
-                ex = exectools.RemoteExecutor(h['host'], h['workdir'])
+                ex = RemoteExecutor(h['host'], h['workdir'])
                 if 'ssh_args' in h:
                     ex.ssh_extra_args += h['ssh_args']
                 if 'scp_args' in h:
@@ -236,7 +237,7 @@ def load_executors(path):
 
 
 if args.hosts is None:
-    executors = [exectools.LocalExecutor()]
+    executors = [LocalExecutor()]
 else:
     executors = load_executors(args.hosts)
 
@@ -269,7 +270,7 @@ else:
 
 # pylint: disable=redefined-outer-name
 def add_exp(
-    e: exp.Experiment,
+    e: Experiment,
     run: int,
     prereq: tp.Optional[Run],
     create_cp: bool,
@@ -286,7 +287,7 @@ def add_exp(
     if args.shmdir is not None:
         shmdir = f'{args.shmdir}/{e.name}/{run}'
 
-    env = exp.ExpEnv(args.repo, workdir, cpdir)
+    env = ExpEnv(args.repo, workdir, cpdir)
     env.create_cp = create_cp
     env.restore_cp = restore_cp
     env.no_simbricks = no_simbricks
@@ -326,7 +327,7 @@ if not args.pickled:
         sys.exit(0)
 
     for e in experiments:
-        if args.auto_dist and not isinstance(e, exp.DistributedExperiment):
+        if args.auto_dist and not isinstance(e, DistributedExperiment):
             e = auto_dist(e, executors, args.proxy_type)
         # apply filter if any specified
         if (args.filter) and (len(args.filter) > 0):

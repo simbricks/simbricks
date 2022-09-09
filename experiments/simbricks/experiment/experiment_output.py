@@ -23,11 +23,13 @@
 import json
 import time
 
+from simbricks.experiments import Experiment
+
 
 class ExpOutput(object):
     """Manages an experiment's output."""
 
-    def __init__(self, exp):
+    def __init__(self, exp: Experiment):
         self.exp_name = exp.name
         self.metadata = exp.metadata
         self.start_time = None

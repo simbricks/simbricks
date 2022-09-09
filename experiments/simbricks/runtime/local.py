@@ -24,8 +24,8 @@ import asyncio
 import pathlib
 import typing as tp
 
-import simbricks.experiments as exp
 from simbricks import exectools
+from simbricks.runners import ExperimentSimpleRunner
 from simbricks.runtime.common import Run, Runtime
 
 
@@ -47,7 +47,7 @@ class LocalSimpleRuntime(Runtime):
 
     async def do_run(self, run: Run):
         """Actually executes `run`."""
-        runner = exp.ExperimentSimpleRunner(
+        runner = ExperimentSimpleRunner(
             self.executor, run.experiment, run.env, self.verbose
         )
         await run.prep_dirs(self.executor)
@@ -99,7 +99,7 @@ class LocalParallelRuntime(Runtime):
 
     async def do_run(self, run: Run):
         """Actually executes `run`."""
-        runner = exp.ExperimentSimpleRunner(
+        runner = ExperimentSimpleRunner(
             self.executor, run.experiment, run.env, self.verbose
         )
         await run.prep_dirs(executor=self.executor)
