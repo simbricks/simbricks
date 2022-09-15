@@ -22,20 +22,13 @@
 
 include mk/subdir_pre.mk
 
-lib_simbricks := $(lib_dir)libsimbricks.a
+lib_pcie := $(d)libpcie.a
 
-libsimbricks_objs :=
+OBJS := $(addprefix $(d),if.o)
 
-$(eval $(call subdir,base))
-$(eval $(call subdir,mem))
-$(eval $(call subdir,network))
-$(eval $(call subdir,pcie))
-$(eval $(call subdir,nicif))
-$(eval $(call subdir,nicbm))
+libsimbricks_objs += $(OBJS)
 
-$(lib_simbricks): $(libsimbricks_objs)
-	$(AR) rcs $@ $(libsimbricks_objs)
+$(lib_pcie): $(OBJS)
 
-CLEAN := $(lib_simbricks)
-ALL := $(lib_simbricks)
+CLEAN := $(lib_pcie) $(OBJS)
 include mk/subdir_post.mk
