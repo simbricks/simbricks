@@ -22,7 +22,12 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,basicmem))
-$(eval $(call subdir,netmem))
+bin_netmem := $(d)netmem
 
+OBJS := $(d)netmem.o
+
+$(bin_netmem): $(OBJS) $(lib_mem) $(lib_netif) $(lib_base)
+
+CLEAN := $(bin_netmem) $(OBJS)
+ALL := $(bin_netmem)
 include mk/subdir_post.mk
