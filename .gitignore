@@ -8,6 +8,7 @@
 __pycache__/
 _vimrc_local.vim
 sims/mem/basicmem/basicmem
+sims/mem/memnic/memnic
 sims/mem/netmem/netmem
 sims/nic/corundum/corundum_verilator
 sims/nic/corundum/obj_dir
