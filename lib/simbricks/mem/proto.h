@@ -48,7 +48,7 @@ struct SimbricksProtoMemHostIntro {
 
 /** Mask for type value in own_type field */
 #define SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP 0x40
-#define SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP 0x40
+#define SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP 0x41
 
 struct SimbricksProtoMemM2HReadcomp {
   uint64_t req_id;
