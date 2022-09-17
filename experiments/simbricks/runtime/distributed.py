@@ -69,8 +69,12 @@ class DistributedSimpleRuntime(Runtime):
             asyncio.run(self.do_run(run))
 
     def interrupt(self):
-        return super().interrupt()
         # TODO implement this
+        super().interrupt()
+        print(
+            'Ctrl+C handling for DistributedRuntime not yet implemented. '
+            'You need to kill the processes manually.'
+        )
 
 
 def auto_dist(
