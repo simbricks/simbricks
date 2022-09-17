@@ -1,0 +1,14 @@
+name: lint-clang-format
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-clang-format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: |
+        make lint-clang-format
