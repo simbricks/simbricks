@@ -94,6 +94,9 @@ class PCIDevSim(Simulator):
     def full_name(self):
         return 'dev.' + self.name
 
+    def is_nic(self):
+        return False
+
     def sockets_cleanup(self, env):
         return [env.dev_pci_path(self), env.dev_shm_path(self)]
 
@@ -134,6 +137,9 @@ class NICSim(PCIDevSim):
 
     def full_name(self):
         return 'nic.' + self.name
+
+    def is_nic(self):
+        return True
 
     def sockets_cleanup(self, env):
         return super().sockets_cleanup(env) + [env.nic_eth_path(self)]
@@ -214,6 +220,10 @@ class HostSim(Simulator):
 
         self.pcidevs: tp.List[PCIDevSim] = []
         self.net_directs: tp.List[NetSim] = []
+
+    @property
+    def nics(self):
+        return filter(lambda pcidev: pcidev.is_nic(), self.pcidevs)
 
     def full_name(self):
         return 'host.' + self.name
