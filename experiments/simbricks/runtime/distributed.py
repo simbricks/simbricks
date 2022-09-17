@@ -140,14 +140,14 @@ def auto_dist(
     for h in e.hosts:
         de.add_host(h)
         de.assign_sim_host(h, k)
-        for nic in h.nics:  # TODO h.nics does not exist in class HostSim
+        for nic in h.nics:
             de.assign_sim_host(nic, k)
 
             if k != 0:
                 cp.add_nic(nic)
         k = (k + 1) % 2
 
-    for nic in e.nics:  # TODO: e.nics does not exist in class Experiment
+    for nic in e.nics:
         de.add_nic(nic)
 
     return de

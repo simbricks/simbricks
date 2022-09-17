@@ -59,6 +59,10 @@ class Experiment(object):
         """The network simulators to run."""
         self.metadata = {}
 
+    @property
+    def nics(self):
+        return filter(lambda pcidev: pcidev.is_nic(), self.pcidevs)
+
     def add_host(self, sim: HostSim):
         for h in self.hosts:
             if h.name == sim.name:
