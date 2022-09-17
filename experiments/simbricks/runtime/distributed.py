@@ -40,6 +40,8 @@ class DistributedSimpleRuntime(Runtime):
         self.verbose = verbose
         self.executors = executors
 
+        self._running: asyncio.Task
+
     def add_run(self, run: Run):
         if not isinstance(run.experiment, DistributedExperiment):
             raise RuntimeError('Only distributed experiments supported')
@@ -54,10 +56,17 @@ class DistributedSimpleRuntime(Runtime):
             run.env,
             self.verbose
         )
-        for executor in self.executors:
-            await run.prep_dirs(executor)
-        await runner.prepare()
-        run.output = await runner.run()
+
+        try:
+            for executor in self.executors:
+                await run.prep_dirs(executor)
+            await runner.prepare()
+        except asyncio.CancelledError:
+            # it is safe to just exit here because we are not running any
+            # simulators yet
+            return
+
+        run.output = await runner.run()  # already handles CancelledError
         self.complete.append(run)
 
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
@@ -66,15 +75,16 @@ class DistributedSimpleRuntime(Runtime):
 
     async def start(self):
         for run in self.runnable:
-            asyncio.run(self.do_run(run))
+            if self._interrupted:
+                return
+
+            self._running = asyncio.create_task(self.do_run(run))
+            await self._running
 
     def interrupt(self):
-        # TODO implement this
         super().interrupt()
-        print(
-            'Ctrl+C handling for DistributedRuntime not yet implemented. '
-            'You need to kill the processes manually.'
-        )
+        if self._running:
+            self._running.cancel()
 
 
 def auto_dist(
