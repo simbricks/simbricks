@@ -357,13 +357,7 @@ else:
         with open(path, 'rb') as f:
             rt.add_run(pickle.load(f))
 
-
 # register interrupt handler
-def handle_interrupt(signalnum: int, handler: int):
-    # pylint: disable=unused-argument
-    rt.interrupt()
-
-
-signal(SIGINT, handle_interrupt)
+signal(SIGINT, lambda *_: rt.interrupt())
 
 asyncio.run(rt.start())
