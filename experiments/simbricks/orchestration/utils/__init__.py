@@ -1,4 +1,4 @@
-# Copyright 2021 Max Planck Institute for Software Systems, and
+# Copyright 2022 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -19,41 +19,3 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-import simbricks.orchestration.experiments as exp
-import simbricks.orchestration.nodeconfig as node
-import simbricks.orchestration.simulators as sim
-from simbricks.orchestration.simulator_utils import create_basic_hosts
-
-e = exp.Experiment('qemu-e1000-pair')
-net = sim.SwitchNet()
-e.add_network(net)
-
-servers = create_basic_hosts(
-    e,
-    1,
-    'server',
-    net,
-    sim.E1000NIC,
-    sim.QemuHost,
-    node.E1000LinuxNode,
-    node.IperfTCPServer
-)
-
-clients = create_basic_hosts(
-    e,
-    1,
-    'client',
-    net,
-    sim.E1000NIC,
-    sim.QemuHost,
-    node.E1000LinuxNode,
-    node.IperfTCPClient,
-    ip_start=2
-)
-
-for c in clients:
-    c.wait = True
-    c.node_config.app.server_ip = servers[0].node_config.ip
-
-experiments = [e]

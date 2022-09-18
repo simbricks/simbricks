@@ -41,10 +41,10 @@ The command to run all the experiments is:
 $: python3 run.py pyexps/ae/f1_dctcp.py --filter gt-ib-* --force --verbose
 """
 
-import simbricks.experiments as exp
-import simbricks.nodeconfig as node
-import simbricks.simulators as sim
-from simbricks.simulator_utils import create_dctcp_hosts
+import simbricks.orchestration.experiments as exp
+import simbricks.orchestration.nodeconfig as node
+import simbricks.orchestration.simulators as sim
+from simbricks.orchestration.simulator_utils import create_dctcp_hosts
 
 types_of_host = ['gt']
 types_of_nic = ['ib']

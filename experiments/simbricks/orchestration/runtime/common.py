@@ -28,10 +28,10 @@ import shutil
 import typing as tp
 from abc import ABCMeta, abstractmethod
 
-from simbricks.exectools import LocalExecutor
-from simbricks.experiment.experiment_environment import ExpEnv
-from simbricks.experiment.experiment_output import ExpOutput
-from simbricks.experiments import Experiment
+from simbricks.orchestration.exectools import LocalExecutor
+from simbricks.orchestration.experiment.experiment_environment import ExpEnv
+from simbricks.orchestration.experiment.experiment_output import ExpOutput
+from simbricks.orchestration.experiments import Experiment
 
 
 class Run(object):

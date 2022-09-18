@@ -200,7 +200,7 @@ for more interactive discussions or to answer quick questions.
     - `sims/net/menshen`: RTL simulation with verilator for the
       [Menshen RMT Pipeline](https://isolation.quest/).
 - `experiments/`: Python Orchestration scripts for running simulations.
-  - `experiments/simbricks/`: Orchestration framework implementation.
+  - `experiments/simbricks/orchestration/`: Orchestration framework implementation.
   - `experiments/run.py`: Main script for running a simulation.
   - `experiments/pyexps/`: Example simulation configurations.
 - `images/`: Infrastructure to build disk images for hosts in SimBricks.

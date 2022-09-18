@@ -27,7 +27,7 @@ import pickle
 import re
 import typing as tp
 
-from simbricks.runtime.common import Run, Runtime
+from simbricks.orchestration.runtime.common import Run, Runtime
 
 
 class SlurmRuntime(Runtime):

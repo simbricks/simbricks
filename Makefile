@@ -73,22 +73,22 @@ lint-clang-format:
 
 lint-yapf:
 	yapf --recursive --diff \
-		--exclude experiments/simbricks/utils/graphlib.py \
+		--exclude experiments/simbricks/orchestration/utils/graphlib.py \
 		-- results/ experiments/
 
 format-yapf:
 	yapf --recursive --in-place \
-		--exclude experiments/simbricks/utils/graphlib.py \
+		--exclude experiments/simbricks/orchestration/utils/graphlib.py \
 		-- results/ experiments/
 
 lint-isort:
 	isort --diff \
-		--skip experiments/simbricks/utils/graphlib.py \
+		--skip experiments/simbricks/orchestration/utils/graphlib.py \
 		results/ experiments/
 
 format-isort:
 	isort --overwrite-in-place \
-		--skip experiments/simbricks/utils/graphlib.py \
+		--skip experiments/simbricks/orchestration/utils/graphlib.py \
 		results/ experiments/
 
 lint: lint-cpplint lint-clang-format lint-python

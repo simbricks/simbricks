@@ -23,9 +23,9 @@
 e1000 NIC, and then with the extracted gem5 e1000 NIC connected through
 SimBricks."""
 
-import simbricks.experiments as exp
-import simbricks.nodeconfig as node
-import simbricks.simulators as sim
+import simbricks.orchestration.experiments as exp
+import simbricks.orchestration.nodeconfig as node
+import simbricks.orchestration.simulators as sim
 
 experiments = []
 
