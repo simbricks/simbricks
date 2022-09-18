@@ -20,9 +20,9 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.nodeconfig as node
-import simbricks.simulators as sim
+import simbricks.orchestration.experiments as exp
+import simbricks.orchestration.nodeconfig as node
+import simbricks.orchestration.simulators as sim
 
 app_types = ['sleep', 'busy']
 

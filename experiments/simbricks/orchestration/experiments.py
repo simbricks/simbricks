@@ -23,8 +23,8 @@
 import itertools
 import typing as tp
 
-from simbricks.proxy import NetProxyConnecter, NetProxyListener
-from simbricks.simulators import (
+from simbricks.orchestration.proxy import NetProxyConnecter, NetProxyListener
+from simbricks.orchestration.simulators import (
     HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
 )
 

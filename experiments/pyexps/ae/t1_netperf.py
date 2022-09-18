@@ -40,10 +40,10 @@
 # $: python3 run.py pyexps/ae/t1_combination.py --filter nf-* --verbose
 ########################################################################
 
-import simbricks.experiments as exp
-import simbricks.nodeconfig as node
-import simbricks.simulators as sim
-from simbricks.simulator_utils import create_basic_hosts
+import simbricks.orchestration.experiments as exp
+import simbricks.orchestration.nodeconfig as node
+import simbricks.orchestration.simulators as sim
+from simbricks.orchestration.simulator_utils import create_basic_hosts
 
 host_types = ['qemu', 'gt', 'qt']
 nic_types = ['ib', 'cb', 'cv']

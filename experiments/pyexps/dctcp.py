@@ -20,10 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.experiments as exp
-import simbricks.nodeconfig as node
-import simbricks.simulators as sim
-from simbricks.simulator_utils import create_dctcp_hosts
+import simbricks.orchestration.experiments as exp
+import simbricks.orchestration.nodeconfig as node
+import simbricks.orchestration.simulators as sim
+from simbricks.orchestration.simulator_utils import create_dctcp_hosts
 
 # iperf TCP_multi_client test
 # naming convention following host-nic-net-app

@@ -26,8 +26,8 @@ from __future__ import annotations
 import math
 import typing as tp
 
-from simbricks.experiment.experiment_environment import ExpEnv
-from simbricks.nodeconfig import NodeConfig
+from simbricks.orchestration.experiment.experiment_environment import ExpEnv
+from simbricks.orchestration.nodeconfig import NodeConfig
 
 
 class Simulator(object):

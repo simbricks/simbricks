@@ -24,13 +24,13 @@ include mk/subdir_pre.mk
 
 lint-python:
 	pylint -d missing-module-docstring,missing-class-docstring \
-		--ignore-paths experiments/simbricks/utils/graphlib.py \
+		--ignore-paths experiments/simbricks/orchestration/utils/graphlib.py \
 	  	experiments/ results/
 
 typecheck-python:
 	pytype -j 0 --keep-going \
 		--exclude experiments/pyexps/ae/ \
-			experiments/simbricks/utils/graphlib.py \
+			experiments/simbricks/orchestration/utils/graphlib.py \
 		-- experiments/ results/
 
 include mk/subdir_post.mk

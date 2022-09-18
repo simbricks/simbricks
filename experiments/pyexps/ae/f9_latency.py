@@ -36,10 +36,10 @@
 
 from functools import partial
 
-import simbricks.experiments as exp
-import simbricks.nodeconfig as node
-import simbricks.simulators as sim
-from simbricks.simulator_utils import create_basic_hosts
+import simbricks.orchestration.experiments as exp
+import simbricks.orchestration.nodeconfig as node
+import simbricks.orchestration.simulators as sim
+from simbricks.orchestration.simulator_utils import create_basic_hosts
 
 pci_latency = [10, 50, 100, 500, 1000]
 experiments = []

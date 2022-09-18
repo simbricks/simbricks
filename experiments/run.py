@@ -32,13 +32,19 @@ import sys
 import typing as tp
 from signal import SIGINT, signal
 
-from simbricks.exectools import LocalExecutor, RemoteExecutor
-from simbricks.experiment.experiment_environment import ExpEnv
-from simbricks.experiments import DistributedExperiment, Experiment
-from simbricks.runtime.common import Run
-from simbricks.runtime.distributed import DistributedSimpleRuntime, auto_dist
-from simbricks.runtime.local import LocalParallelRuntime, LocalSimpleRuntime
-from simbricks.runtime.slurm import SlurmRuntime
+from simbricks.orchestration.exectools import LocalExecutor, RemoteExecutor
+from simbricks.orchestration.experiment.experiment_environment import ExpEnv
+from simbricks.orchestration.experiments import (
+    DistributedExperiment, Experiment
+)
+from simbricks.orchestration.runtime.common import Run
+from simbricks.orchestration.runtime.distributed import (
+    DistributedSimpleRuntime, auto_dist
+)
+from simbricks.orchestration.runtime.local import (
+    LocalParallelRuntime, LocalSimpleRuntime
+)
+from simbricks.orchestration.runtime.slurm import SlurmRuntime
 
 
 # pylint: disable=redefined-outer-name

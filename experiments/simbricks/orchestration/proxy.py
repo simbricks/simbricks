@@ -22,7 +22,7 @@
 
 import typing as tp
 
-from simbricks.simulators import NICSim, Simulator
+from simbricks.orchestration.simulators import NICSim, Simulator
 
 
 class SimProxy(Simulator):
