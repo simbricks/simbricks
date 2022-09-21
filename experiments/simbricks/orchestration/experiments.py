@@ -25,7 +25,7 @@ import typing as tp
 
 from simbricks.orchestration.proxy import NetProxyConnecter, NetProxyListener
 from simbricks.orchestration.simulators import (
-    HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
+    HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, MemDevSim, Simulator
 )
 
 
@@ -55,6 +55,8 @@ class Experiment(object):
         """The host simulators to run."""
         self.pcidevs: tp.List[PCIDevSim] = []
         """The PCIe device simulators to run."""
+        self.memdevs: tp.List[MemDevSim] = []
+        """The memory device simulators to run."""
         self.networks: tp.List[NetSim] = []
         """The network simulators to run."""
         self.metadata = {}
@@ -78,6 +80,12 @@ class Experiment(object):
                 raise Exception('Duplicate pcidev name')
         self.pcidevs.append(sim)
 
+    def add_memdev(self, sim: MemDevSim):
+        for d in self.memdevs:
+            if d.name == sim.name:
+                raise Exception('Duplicate memdev name')
+        self.memdevs.append(sim)
+
     def add_network(self, sim: NetSim):
         for n in self.networks:
             if n.name == sim.name:
@@ -86,7 +94,8 @@ class Experiment(object):
 
     def all_simulators(self):
         """All simulators used in experiment."""
-        return itertools.chain(self.hosts, self.pcidevs, self.networks)
+        return itertools.chain(self.hosts, self.pcidevs, self.memdevs,
+                self.networks)
 
     def resreq_mem(self):
         """Memory required to run all simulators used in this experiment."""

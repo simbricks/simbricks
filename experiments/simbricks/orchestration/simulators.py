@@ -198,6 +198,30 @@ class NetSim(Simulator):
         return [s for (_, s) in self.listen_sockets(env)]
 
 
+class MemDevSim(Simulator):
+    """Base class for memory device simulators."""
+    def __init__(self):
+        super().__init__()
+
+        self.name = ''
+        self.sync_mode = 0
+        self.start_tick = 0
+        self.sync_period = 500
+        self.mem_latency = 500
+        self.addr = 0xe000000000000000
+        self.size = 1024 * 1024 * 1024 # 1GB
+        self.as_id = 0
+
+    def full_name(self):
+        return 'mem.' + self.name
+
+    def sockets_cleanup(self, env):
+        return [env.dev_mem_path(self), env.dev_shm_path(self)]
+
+    def sockets_wait(self, env):
+        return [env.dev_mem_path(self)]
+
+
 class HostSim(Simulator):
     """Base class for host simulators."""
 
@@ -217,9 +241,11 @@ class HostSim(Simulator):
         self.sync_mode = 0
         self.sync_period = 500
         self.pci_latency = 500
+        self.mem_latency = 500
 
         self.pcidevs: tp.List[PCIDevSim] = []
         self.net_directs: tp.List[NetSim] = []
+        self.memdevs: tp.List[MemDevSim] = []
 
     @property
     def nics(self):
@@ -235,6 +261,10 @@ class HostSim(Simulator):
         dev.name = self.name + '.' + dev.name
         self.pcidevs.append(dev)
 
+    def add_memdev(self, dev: MemDevSim):
+        dev.name = self.name + '.' + dev.name
+        self.memdevs.append(dev)
+
     def add_netdirect(self, net: NetSim):
         net.hosts_direct.append(self)
         self.net_directs.append(net)
@@ -245,6 +275,8 @@ class HostSim(Simulator):
             deps.append(dev)
             if isinstance(dev, NICSim):
                 deps.append(dev.network)
+        for dev in self.memdevs:
+            deps.append(dev)
         return deps
 
     def wait_terminate(self):
@@ -315,6 +347,8 @@ class QemuHost(HostSim):
 
         # qemu does not currently support net direct ports
         assert len(self.net_directs) == 0
+        # qemu does not currently support mem device ports
+        assert len(self.memdevs) == 0
         return cmd
 
 
@@ -372,6 +406,17 @@ class Gem5Host(HostSim):
             cmd += (
                 f'--simbricks-pci=connect:{env.dev_pci_path(dev)}'
                 f':latency={self.pci_latency}ns'
+                f':sync_interval={self.sync_period}ns'
+            )
+            if cpu_type == 'TimingSimpleCPU':
+                cmd += ':sync'
+            cmd += ' '
+
+        for dev in self.memdevs:
+            cmd += (
+                f'--simbricks-mem={dev.size}@{dev.addr}@{dev.as_id}@'
+                f'connect:{env.dev_mem_path(dev)}'
+                f':latency={self.mem_latency}ns'
                 f':sync_interval={self.sync_period}ns'
             )
             if cpu_type == 'TimingSimpleCPU':
@@ -618,5 +663,16 @@ class FEMUDev(PCIDevSim):
         cmd = (
             f'{env.repodir}/sims/external/femu/femu-simbricks'
             f' {env.dev_pci_path(self)} {env.dev_shm_path(self)}'
+        )
+        return cmd
+
+
+class BasicMemDev(MemDevSim):
+    def run_cmd(self, env):
+        cmd = (
+            f'{env.repodir}/sims/mem/basicmem/basicmem'
+            f' {env.dev_mem_path(self)} {env.dev_shm_path(self)}'
+            f' {self.sync_mode} {self.start_tick} {self.sync_period}'
+            f' {self.mem_latency}'
         )
         return cmd
