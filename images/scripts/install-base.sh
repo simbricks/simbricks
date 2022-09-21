@@ -20,4 +20,5 @@ apt-get -y install \
     netcat \
     ethtool \
     tcpdump \
-    pciutils
+    pciutils \
+    busybox
