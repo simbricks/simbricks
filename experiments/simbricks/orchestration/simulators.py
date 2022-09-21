@@ -198,7 +198,8 @@ class NetSim(Simulator):
         return [s for (_, s) in self.listen_sockets(env)]
 
 
-class MemDevSim(Simulator):
+# FIXME: Class hierarchy is broken here as an ugly hack
+class MemDevSim(NICSim):
     """Base class for memory device simulators."""
     def __init__(self):
         super().__init__()
@@ -220,6 +221,27 @@ class MemDevSim(Simulator):
 
     def sockets_wait(self, env):
         return [env.dev_mem_path(self)]
+
+class NetMemSim(NICSim):
+    """Base class for netork memory simulators."""
+    def __init__(self):
+        super().__init__()
+
+        self.name = ''
+        self.sync_mode = 0
+        self.start_tick = 0
+        self.sync_period = 500
+        self.eth_latency = 500
+
+    def full_name(self):
+        return 'netmem.' + self.name
+
+    def sockets_cleanup(self, env):
+        return [env.nic_eth_path(self), env.dev_shm_path(self)]
+
+    def sockets_wait(self, env):
+        return [env.nic_eth_path(self)]
+
 
 
 class HostSim(Simulator):
@@ -674,5 +696,34 @@ class BasicMemDev(MemDevSim):
             f' {env.dev_mem_path(self)} {env.dev_shm_path(self)}'
             f' {self.sync_mode} {self.start_tick} {self.sync_period}'
             f' {self.mem_latency}'
+        )
+        return cmd
+
+class MemNIC(MemDevSim):
+
+    def run_cmd(self, env):
+        cmd = (
+            f'{env.repodir}/sims/mem/memnic/memnic'
+            f' {env.dev_mem_path(self)} {env.nic_eth_path(self)}'
+            f' {env.dev_shm_path(self)}'
+            f' {self.sync_mode} {self.start_tick} {self.sync_period}'
+            f' {self.mem_latency} {self.eth_latency}'
+        )
+        return cmd
+
+    def sockets_cleanup(self, env):
+        return super().sockets_cleanup(env) + [env.nic_eth_path(self)]
+
+    def sockets_wait(self, env):
+        return super().sockets_wait(env) + [env.nic_eth_path(self)]
+
+class NetMem(NetMemSim):
+
+    def run_cmd(self, env):
+        cmd = (
+            f'{env.repodir}/sims/mem/netmem/netmem'
+            f' {env.nic_eth_path(self)} {env.dev_shm_path(self)}'
+            f' {self.sync_mode} {self.start_tick} {self.sync_period}'
+            f'  {self.eth_latency}'
         )
         return cmd

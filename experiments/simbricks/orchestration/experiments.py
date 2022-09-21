@@ -25,7 +25,8 @@ import typing as tp
 
 from simbricks.orchestration.proxy import NetProxyConnecter, NetProxyListener
 from simbricks.orchestration.simulators import (
-    HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, MemDevSim, Simulator
+    HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, MemDevSim, NetMemSim,
+    Simulator
 )
 
 
@@ -84,6 +85,9 @@ class Experiment(object):
         for d in self.memdevs:
             if d.name == sim.name:
                 raise Exception('Duplicate memdev name')
+        self.memdevs.append(sim)
+
+    def add_netmem(self, sim: NetMemSim):
         self.memdevs.append(sim)
 
     def add_network(self, sim: NetSim):
