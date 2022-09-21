@@ -23,6 +23,7 @@
 import itertools
 import typing as tp
 
+from simbricks.orchestration import simulators
 from simbricks.orchestration.proxy import NetProxyConnecter, NetProxyListener
 from simbricks.orchestration.simulators import (
     HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
@@ -57,6 +58,10 @@ class Experiment(object):
         """The host simulators to run."""
         self.pcidevs: tp.List[PCIDevSim] = []
         """The PCIe device simulators to run."""
+        self.memdevs: tp.List[simulators.MemDevSim] = []
+        """The memory device simulators to run."""
+        self.netmems: tp.List[simulators.NetMemSim] = []
+        """The network memory simulators to run."""
         self.networks: tp.List[NetSim] = []
         """The network simulators to run."""
         self.metadata = {}
@@ -83,6 +88,18 @@ class Experiment(object):
                 raise ValueError('Duplicate pcidev name')
         self.pcidevs.append(sim)
 
+    def add_memdev(self, sim: simulators.MemDevSim):
+        for d in self.memdevs:
+            if d.name == sim.name:
+                raise ValueError('Duplicate memdev name')
+        self.memdevs.append(sim)
+
+    def add_netmem(self, sim: simulators.NetMemSim):
+        for d in self.netmems:
+            if d.name == sim.name:
+                raise ValueError('Duplicate netmems name')
+        self.netmems.append(sim)
+
     def add_network(self, sim: NetSim):
         """Add a network simulator to the experiment."""
         for n in self.networks:
@@ -92,7 +109,9 @@ class Experiment(object):
 
     def all_simulators(self):
         """Returns all simulators defined to run in this experiment."""
-        return itertools.chain(self.hosts, self.pcidevs, self.networks)
+        return itertools.chain(
+            self.hosts, self.pcidevs, self.memdevs, self.netmems, self.networks
+        )
 
     def resreq_mem(self):
         """Memory required to run all simulators in this experiment."""
