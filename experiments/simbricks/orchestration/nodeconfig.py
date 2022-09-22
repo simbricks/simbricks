@@ -70,6 +70,8 @@ class NodeConfig(object):
         """Do not make checkpoint in Gem5."""
         self.app: tp.Optional[AppConfig] = None
         """App to be run on simulated host."""
+        self.kcmd_append = ''
+        """String to be appended to kernel command line."""
 
     def config_str(self):
         if self.sim == 'qemu':

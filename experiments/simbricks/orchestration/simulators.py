@@ -332,6 +332,11 @@ class QemuHost(HostSim):
 
     def run_cmd(self, env):
         accel = ',accel=kvm:tcg' if not self.sync else ''
+        if self.node_config.kcmd_append:
+            kcmd_append = ' ' + self.node_config.kcmd_append
+        else:
+            kcmd_append = ''
+
         cmd = (
             f'{env.qemu_path} -machine q35{accel} -serial mon:stdio '
             '-cpu Skylake-Server -display none -nic none '
@@ -340,7 +345,7 @@ class QemuHost(HostSim):
             f'-drive file={env.cfgtar_path(self)},if=ide,index=1,media=disk,'
             'driver=raw '
             '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
-            'init=/home/ubuntu/guestinit.sh rw" '
+            'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" '
             f'-m {self.node_config.memory} -smp {self.node_config.cores} '
         )
 
@@ -417,6 +422,9 @@ class Gem5Host(HostSim):
             f'--num-cpus={self.node_config.cores} '
             '--ddio-enabled --ddio-way-part=8 --mem-type=DDR4_2400_16x4 '
         )
+
+        if self.node_config.kcmd_append:
+            cmd += f'--command-line-append="{self.node_config.kcmd_append}" '
 
         if env.create_cp:
             cmd += '--max-checkpoints=1 '
