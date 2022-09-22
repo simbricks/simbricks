@@ -41,9 +41,13 @@ extern "C" {
 #include <simbricks/mem/if.h>
 };
 
+#define BASICMEM_DEBUG 1
 
 static int exiting = 0;
 static uint64_t cur_ts = 0;
+uint8_t *mem_array;
+uint64_t size;
+uint64_t base_addr;
 
 static void sigint_handler(int dummy) {
   exiting = 1;
@@ -99,19 +103,77 @@ bool MemifInit(struct SimbricksMemIf *memif, const char *shm_path,
   return true;
 }
 
+volatile union SimbricksProtoMemM2H* M2HAlloc(SimbricksMemIf *memif, uint64_t cur_ts) {
+
+  volatile union SimbricksProtoMemM2H *msg_to;
+  bool first = true;
+  while ((msg_to = SimbricksMemIfM2HOutAlloc(memif, cur_ts)) == NULL){
+    if (first) {
+      fprintf(stderr, "M2HAlloc: warning waiting for entry (%zu)\n",
+              memif->base.out_pos);
+      first = false;
+    }
+  }
+
+  if (!first){
+    fprintf(stderr, "D2HAlloc: entry successfully allocated\n");
+  }
+
+  return msg_to;
+}
+
+
 void PollH2M(struct SimbricksMemIf *memif, uint64_t cur_ts) {
   volatile union SimbricksProtoMemH2M *msg = SimbricksMemIfH2MInPoll(memif, cur_ts);
 
   if (msg == NULL){
     return;
   }
+
+  int i;
   uint8_t type;
+  uint64_t addr, len;
+  volatile uint8_t *data;
+  volatile union SimbricksProtoMemM2H *msg_to; 
 
   type = SimbricksMemIfH2MInType(memif, msg);
   switch (type) {
     case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
+      addr = msg->read.addr;
+      len = msg->read.len;
+
+      msg_to = M2HAlloc(memif, cur_ts);
+      msg_to->readcomp.req_id = msg->read.req_id;
+      memcpy((void *)msg_to->readcomp.data, &mem_array[addr], len);
+
+
+      SimbricksMemIfM2HOutSend(memif, msg_to, SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP);
+
+#if BASICMEM_DEBUG 
+      printf("received H2M read. Sending read comp msg\n");
+#endif
       break;
     case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
+      addr = msg->write.addr;
+      len = msg->write.len;
+      data = msg->write.data;
+      
+      for (i = 0; i < (int)len; i++){
+        mem_array[addr + i] = data[i];
+      }
+
+      msg_to = M2HAlloc(memif, cur_ts);
+      msg_to->writecomp.req_id = msg->write.req_id;
+      SimbricksMemIfM2HOutSend(memif, msg_to, SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP);
+
+#if BASICMEM_DEBUG 
+      printf("received H2M write addr: %lu size: %d\n", addr, msg->write.len);
+      for (i = 0; i < (int)len; i++){
+        printf("%X ", msg->write.data[i]);
+      }
+      printf("\n");
+
+#endif
       break;
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
       break;
@@ -124,6 +186,10 @@ void PollH2M(struct SimbricksMemIf *memif, uint64_t cur_ts) {
 
 int main(int argc, char *argv[]) {
   
+  
+
+  int asid = 0;
+
   signal(SIGINT, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
 
@@ -135,25 +201,33 @@ int main(int argc, char *argv[]) {
   
   SimbricksMemIfDefaultParams(&memParams);
 
-  if (argc < 2 || argc > 7) {
+  if (argc < 6 || argc > 10) {
     fprintf(stderr,
-            "Usage: basicmem MEM-SOCKET "
+            "Usage: basicmem [SIZE] [BASE-ADDR] [ASID] [MEM-SOCKET] "
             "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [MEM-LATENCY]\n");
     return -1;
   }
-  if (argc >= 5)
-     cur_ts = strtoull(argv[4], NULL, 0);
-  if (argc >= 6)
-    memParams.sync_interval =  strtoull(argv[5], NULL, 0) * 1000ULL;
-  if (argc >= 7)
-    memParams.link_latency = strtoull(argv[6], NULL, 0) * 1000ULL;
+  if (argc >= 8)
+     cur_ts = strtoull(argv[7], NULL, 0);
+  if (argc >= 9)
+    memParams.sync_interval =  strtoull(argv[8], NULL, 0) * 1000ULL;
+  if (argc >= 10)
+    memParams.link_latency = strtoull(argv[9], NULL, 0) * 1000ULL;
 
-  memParams.sock_path = argv[1];
-  shmPath = argv[2];
+  size = strtoull(argv[1], NULL, 0);
+  base_addr = strtoull(argv[2], NULL, 0);
+  asid = atoi(argv[3]);
+  memParams.sock_path = argv[4];
+  shmPath = argv[5];
 
   memParams.sync_mode = kSimbricksBaseIfSyncOptional;
   memParams.blocking_conn = false;
   memif.base.sync = sync_mem;
+
+  mem_array = (uint8_t *) malloc(size * sizeof(uint8_t));
+  if (!mem_array){
+    perror("no array allocated\n");
+  }
 
   if (!MemifInit(&memif, shmPath, &memParams)){
     return EXIT_FAILURE;
