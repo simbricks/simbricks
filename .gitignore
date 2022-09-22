@@ -23,6 +23,9 @@ sims/net/menshen/obj_dir
 sims/net/tofino/tofino
 doc/doxygen
 doc/_build
+images/farmem/Module.symvers
+images/farmem/modules.order
+images/farmem/farmem.mod*
 images/kernel/kheaders/
 images/mqnic/Module.symvers
 images/mqnic/modules.order
