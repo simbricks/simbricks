@@ -21,4 +21,5 @@ apt-get -y install \
     ethtool \
     tcpdump \
     pciutils \
-    busybox
+    busybox \
+    numactl
