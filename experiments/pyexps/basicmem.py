@@ -32,7 +32,8 @@ class MemTest(node.AppConfig):
 
     def run_cmds(self, node):
         return [
-            f'busybox devmem 0x{self.addr:x} 64 0x42'
+            f'busybox devmem 0x{self.addr:x} 64 0x42',
+            f'busybox devmem 0x{self.addr:x} 64'
         ]
 
 
