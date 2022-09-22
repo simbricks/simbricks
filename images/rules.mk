@@ -50,13 +50,16 @@ kheader_dir := $(d)kernel/kheaders
 kheader_tar := $(d)kheaders.tar.bz2
 mqnic_dir := $(d)mqnic
 mqnic_mod := $(mqnic_dir)/mqnic.ko
+farmem_dir := $(d)farmem
+farmem_mod := $(farmem_dir)/farmem.ko
 m5_bin := $(d)m5
 guest_init := $(d)/scripts/guestinit.sh
 
-build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod)
+build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod) \
+  $(farmem_mod)
 
 build-images-min: $(IMAGES_MIN) $(RAW_IMAGES_MIN) $(vmlinux) $(bz_image) \
-    $(mqnic_mod)
+    $(mqnic_mod) $(farmem_mod)
 
 # only converts existing images to raw
 convert-images-raw:
@@ -180,10 +183,17 @@ $(mqnic_mod): $(vmlinux)
 	$(MAKE) -C $(kernel_dir) M=$(abspath $(mqnic_dir)) modules
 	touch $@
 
+################################################
+# farmem kernel module
+
+$(farmem_mod): $(vmlinux)
+	$(MAKE) -C $(kernel_dir) M=$(abspath $(farmem_dir)) modules
+	touch $@
 
 CLEAN := $(addprefix $(d), mqnic/mqnic.ko mqnic/*.o mqnic/.*.cmd mqnic/*.mod \
-    mqnic/mqnic.mod.c mqnic/Module.symvers mqnic/modules.order)
-
+    mqnic/mqnic.mod.c mqnic/Module.symvers mqnic/modules.order \
+    farmem/farmem.ko farmem/*.o farmem/.*.cmd farmem/*.mod \
+    farmem/farmem.mod.c farmem/Module.symvers farmem/modules.order)
 DISTCLEAN := $(kernel_dir) $(packer) $(bz_image) $(vmlinux) $(kheader_dir) \
     $(foreach i,$(IMAGES),$(dir $(i)) $(subst output-,input-,$(dir $(i)))) \
     $(d)packer_cache $(d)kheaders.tar.bz2
