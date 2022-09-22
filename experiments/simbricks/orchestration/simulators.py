@@ -693,6 +693,7 @@ class BasicMemDev(MemDevSim):
     def run_cmd(self, env):
         cmd = (
             f'{env.repodir}/sims/mem/basicmem/basicmem'
+            f' {self.size} {self.addr} {self.as_id}' 
             f' {env.dev_mem_path(self)} {env.dev_shm_path(self)}'
             f' {self.sync_mode} {self.start_tick} {self.sync_period}'
             f' {self.mem_latency}'
