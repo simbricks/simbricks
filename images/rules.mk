@@ -23,7 +23,7 @@
 include mk/subdir_pre.mk
 
 PACKER_VERSION := 1.7.0
-KERNEL_VERSION := 5.4.46
+KERNEL_VERSION := 5.15.93
 
 BASE_IMAGE := $(d)output-base/base
 MEMCACHED_IMAGE := $(d)output-memcached/memcached
@@ -171,7 +171,6 @@ $(kernel_dir)/.config: $(kernel_pardir)/config-$(KERNEL_VERSION)
 	wget -O - https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$(KERNEL_VERSION).tar.xz | \
 	    tar xJf - -C $(kernel_pardir)
 	cd $(kernel_dir) && patch -p1 < ../linux-$(KERNEL_VERSION)-timers-gem5.patch
-	cd $(kernel_dir) && patch -p1 < ../linux-$(KERNEL_VERSION)-new-binutils.patch
 	cp $< $@
 
 ################################################
