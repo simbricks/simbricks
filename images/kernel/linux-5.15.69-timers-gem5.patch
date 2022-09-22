@@ -1,0 +1,70 @@
+diff -ur linux-5.15.69.old/arch/x86/kernel/apic/apic.c linux-5.15.69/arch/x86/kernel/apic/apic.c
+--- linux-5.15.69.old/arch/x86/kernel/apic/apic.c	2022-09-20 12:39:46.000000000 +0200
++++ linux-5.15.69/arch/x86/kernel/apic/apic.c	2022-09-22 12:30:20.240719422 +0200
+@@ -1001,6 +1001,8 @@
+ 		return -1;
+ 	}
+ 
++
++        printk(KERN_ERR " calibrated lapic_timer_period=%u\n", lapic_timer_period);
+ 	return 0;
+ }
+ 
+@@ -2957,3 +2959,13 @@
+ 	return 0;
+ }
+ early_param("apic_extnmi", apic_set_extnmi);
++
++static int __init lapic_set_timer_period(char *arg)
++{
++  if (!arg || kstrtouint(arg, 10, &lapic_timer_period)) {
++    return -EINVAL;
++  }
++  return 0;
++}
++
++early_param("lapic_timer_period", lapic_set_timer_period);
+diff -ur linux-5.15.69.old/arch/x86/kernel/tsc.c linux-5.15.69/arch/x86/kernel/tsc.c
+--- linux-5.15.69.old/arch/x86/kernel/tsc.c	2022-09-20 12:39:46.000000000 +0200
++++ linux-5.15.69/arch/x86/kernel/tsc.c	2022-09-22 12:30:20.240719422 +0200
+@@ -53,6 +53,8 @@
+ static u64 art_to_tsc_offset;
+ struct clocksource *art_related_clocksource;
+ 
++static unsigned long tsc_override_freq = 0;
++
+ struct cyc2ns {
+ 	struct cyc2ns_data data[2];	/*  0 + 2*16 = 32 */
+ 	seqcount_latch_t   seq;		/* 32 + 4    = 36 */
+@@ -870,6 +872,8 @@
+ {
+ 	unsigned long flags, fast_calibrate = cpu_khz_from_cpuid();
+ 
++	if (tsc_override_freq)
++		return tsc_override_freq;
+ 	if (!fast_calibrate)
+ 		fast_calibrate = cpu_khz_from_msr();
+ 	if (!fast_calibrate) {
+@@ -877,6 +881,7 @@
+ 		fast_calibrate = quick_pit_calibrate();
+ 		local_irq_restore(flags);
+ 	}
++        pr_warn("calibrated TSC: tsc_freq=%lu\n", fast_calibrate);
+ 	return fast_calibrate;
+ }
+ 
+@@ -1575,3 +1580,14 @@
+ 	return 0;
+ }
+ #endif
++
++
++static int __init tsc_set_override_freq(char *arg)
++{
++  if (!arg || kstrtoul(arg, 10, &tsc_override_freq)) {
++    return -EINVAL;
++  }
++  return 0;
++}
++
++early_param("tsc_override_freq", tsc_set_override_freq);
