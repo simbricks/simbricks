@@ -26,7 +26,7 @@ bin_memnic := $(d)memnic
 
 OBJS := $(d)memnic.o
 
-$(bin_memnic): $(OBJS) $(lib_mem) $(lib_netif) $(lib_base)
+$(bin_memnic): $(OBJS) $(lib_mem) $(lib_netif) $(lib_base) $(lib_nicif)
 
 CLEAN := $(bin_memnic) $(OBJS)
 ALL := $(bin_memnic)
