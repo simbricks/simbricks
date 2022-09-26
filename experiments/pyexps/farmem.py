@@ -42,7 +42,7 @@ class FarMemTest(node.AppConfig):
             'mount -t sysfs sysfs /sys',
             'free -m',
             (f'insmod /tmp/guest/farmem.ko base_addr=0x{self.addr:x} '
-                f'size=0x{self.size:x} nnid=1'),
+                f'size=0x{self.size:x} nnid=1 drain_node=1'),
             'free -m',
             'numactl -H',
             'sleep 2'
@@ -58,6 +58,7 @@ for h in ['gk']:
     mem.addr = 0x2000000000 #0x2000000000000000
 
     node_config = node.NodeConfig()
+    node_config.mem = 512
     node_config.nockp = True
     node_config.kcmd_append += 'numa=fake=2'
     node_config.app = FarMemTest(mem.addr, mem.size)
