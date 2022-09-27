@@ -36,17 +36,31 @@
 #include <iostream>
 #include <vector>
 
-#include <simbricks/base/cxxatomicfix.h>
+#include <arpa/inet.h>
+#include <netinet/udp.h>
+#include <linux/ip.h>
+#include <linux/if_ether.h>
 
+#include <simbricks/base/cxxatomicfix.h>
 extern "C" {
-#include <simbricks/mem/if.h>
-#include <simbricks/nicif/nicif.h>
-#include <simbricks/base/proto.h>
+#include <simbricks/network/if.h>
+#include <simbricks/mem/memop.h>
 };
 
+#define NETMEM_DEBUG 1
 
-static int exiting = 0;
+static int exiting = 0, sync_mem = 1;
 static uint64_t cur_ts = 0;
+uint8_t *mem_array;
+uint64_t size;
+uint64_t base_addr;
+
+union mac_addr_{
+  uint64_t mac_64;
+  uint8_t mac_byte[6];
+}; 
+
+union mac_addr_ mac_addr;
 
 static void sigint_handler(int dummy) {
   exiting = 1;
@@ -56,32 +70,54 @@ static void sigusr1_handler(int dummy) {
     fprintf(stderr, "main_time = %lu\n", cur_ts);
 }
 
-void handlePacket(SimbricksNetIf *netif, volatile struct SimbricksProtoNetMsgPacket *packet)
-{
-  volatile union SimbricksProtoMemM2H *m2h_msg = (SimbricksProtoMemM2H *)malloc(sizeof(SimbricksProtoMemM2H));
-  volatile struct SimbricksProtoMemM2HWritecomp *wc = &m2h_msg->writecomp;
-  wc->req_id = 1;
-  volatile union SimbricksProtoNetMsg *msg = SimbricksNetIfOutAlloc(netif, cur_ts);
-  if (msg == NULL)
-    return;
-  volatile struct SimbricksProtoNetMsgPacket *net_packet = &msg->packet;
-  memcpy((void*)net_packet->data, (void*)m2h_msg, sizeof(SimbricksProtoMemM2H));
-  packet->port = 0;
-  packet->len = sizeof(SimbricksProtoMemM2H);
-  SimbricksNetIfOutSend(netif, msg, SIMBRICKS_PROTO_NET_MSG_PACKET);
-};
 
-void PollN2M(SimbricksNetIf *netif, uint64_t cur_ts) {
+
+
+void PollN2M(struct SimbricksNetIf *netif, uint64_t cur_ts) {
+  
   volatile union SimbricksProtoNetMsg *msg = SimbricksNetIfInPoll(netif, cur_ts);
+  
   if (msg == NULL){
     return;
   }
-  uint8_t type;
+
+  int i;
+  uint8_t type, type_mem;
+  uint64_t addr, len;
+  volatile uint8_t *data;
+  volatile union SimbricksProtoNetMsg *msg_to; 
+  volatile struct SimbricksProtoNetMsgPacket *packet = &msg->packet;
 
   type = SimbricksNetIfInType(netif, msg);
   switch (type) {
     case SIMBRICKS_PROTO_NET_MSG_PACKET:
-      handlePacket(netif, &msg->packet);
+      printf("received network packet\n");
+      struct ethhdr *eth_hdr;
+      struct iphdr *ip_hdr;
+      struct udphdr *udp_hdr;
+      struct MemOp *memop;
+      void *data;
+
+      eth_hdr = (struct ethhdr *)packet->data;
+      ip_hdr = (struct iphdr *)(eth_hdr + 1);
+      udp_hdr = (struct udphdr *)(ip_hdr + 1);
+      memop = (struct MemOp *)(udp_hdr + 1);
+      data = (void *)(memop + 1);
+
+      type_mem = memop->OpType;
+      switch (type_mem) {
+        case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
+          printf("NetMem received read request\n");
+          break;
+        case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
+          printf("NetMem received write request\n");
+          break;
+        
+        default:
+          fprintf(stderr, "ForwardToETH: unsupported type=%u\n", type);
+      }
+
+
       break;
 
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
@@ -96,62 +132,104 @@ void PollN2M(SimbricksNetIf *netif, uint64_t cur_ts) {
 
 int main(int argc, char *argv[]) {
   
+  int asid = 0;
+
   signal(SIGINT, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
 
-  int sync_net = 1;
-  uint64_t ts_a = 0;
-  const char *shmPath;
-
+  uint64_t next_ts = 0;
   struct SimbricksBaseIfParams netParams;
-
-  struct SimbricksNicIf netif;
+  struct SimbricksNetIf netif;
+  const char *shmPath;
   
   SimbricksNetIfDefaultParams(&netParams);
 
-  if (argc < 4 || argc > 7) {
+  if (argc < 7 || argc > 11) {
     fprintf(stderr,
-            "Usage: netmem ETH-SOCKET"
-            "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD]"
-            "[ETH-LATENCY]\n");
+            "Usage: netmem [SIZE] [BASE-ADDR] [ASID] [ETH-SOCKET] "
+            "[SHM] [MAC-ADDR] [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [ETH-LATENCY]\n");
     return -1;
   }
+  if (argc >= 9)
+     cur_ts = strtoull(argv[8], NULL, 0);
+  if (argc >= 10)
+    netParams.sync_interval =  strtoull(argv[9], NULL, 0) * 1000ULL;
+  if (argc >= 11)
+    netParams.link_latency = strtoull(argv[10], NULL, 0) * 1000ULL;
 
-  if (argc >= 5)
-     cur_ts = strtoull(argv[4], NULL, 0);
-  if (argc >= 6)
-    netParams.sync_interval =
-         strtoull(argv[5], NULL, 0) * 1000ULL;
-  if (argc >= 7)
-    netParams.link_latency = strtoull(argv[6], NULL, 0) * 1000ULL;
-
-  netParams.sock_path = argv[1];
-  shmPath = argv[2];
+  size = strtoull(argv[1], NULL, 0);
+  base_addr = strtoull(argv[2], NULL, 0);
+  asid = atoi(argv[3]);
+  netParams.sock_path = argv[4];
+  shmPath = argv[5];
+  mac_addr.mac_64 = strtoull(argv[6], NULL, 16);
+  printf("mac_byte: %lx\n", mac_addr.mac_64);
+  printf("mac_8: %X:%X:%X:%X:%X:%X\n", mac_addr.mac_byte[0], mac_addr.mac_byte[1],mac_addr.mac_byte[2],mac_addr.mac_byte[3],mac_addr.mac_byte[4],mac_addr.mac_byte[5]);
 
   netParams.sync_mode = kSimbricksBaseIfSyncOptional;
+  netParams.blocking_conn = false;
+  //netif.base.sync = sync_mem;
 
-  netif.net.base.sync = sync_net;
+  mem_array = (uint8_t *) malloc(size * sizeof(uint8_t));
 
-  if(SimbricksNicIfInit(&netif, shmPath, &netParams,  NULL, NULL)){
-    fprintf(stderr, "nicif init error happens");
-    return -1;
+  if (!mem_array){
+    perror("no array allocated\n");
   }
 
-  fprintf(stderr, "start polling\n");
-  while (!exiting){
+  size_t shm_size = 0;
+  shm_size += netParams.in_num_entries * netParams.in_entries_size;
+  shm_size += netParams.out_num_entries * netParams.out_entries_size;
 
-    while (SimbricksNetIfOutSync(&netif.net, cur_ts)) {
-      fprintf(stderr, "warn: SimbricksNicifSync failed (netif=%lu)\n", cur_ts);
+  std::string shm_path_ = shmPath;
+  struct SimbricksBaseIfSHMPool pool_;
+  memset(&pool_, 0, sizeof(pool_));
+  
+  if (SimbricksBaseIfInit(&netif.base, &netParams)){
+    perror("Init: SimbricksBaseIfInit failed\n");
+    return EXIT_FAILURE;
+  }
+  
+  if (SimbricksBaseIfSHMPoolCreate(&pool_, shm_path_.c_str(), shm_size) !=
+      0) {
+      perror("NetMemIfInit: SimbricksBaseIfSHMPoolCreate failed");
+      return false;
+    }
+
+
+  if (SimbricksBaseIfListen(&netif.base, &pool_)){
+    perror("SimbricksBaseIfConnect failed");
+    return false;
+  }
+  
+  struct SimBricksBaseIfEstablishData ests[1];
+  struct SimbricksProtoNetIntro intro;
+  ests[0].base_if = &netif.base;
+  ests[0].tx_intro = &intro;
+  ests[0].tx_intro_len = sizeof(intro);
+  ests[0].rx_intro = &intro;
+  ests[0].rx_intro_len = sizeof(intro);
+
+  if (SimBricksBaseIfEstablish(ests, 1)) {
+    fprintf(stderr, "SimBricksBaseIfEstablish failed\n");
+    return false;
+  }
+  sync_mem = SimbricksBaseIfSyncEnabled(&netif.base);
+
+  printf("start polling\n");
+  while (!exiting){
+    while (SimbricksNetIfOutSync(&netif, cur_ts)) {
+        //fprintf(stderr, "warn: SimbricksNetIfSync failed (t=%lu)\n", cur_ts);
     }
 
     do {
-      PollN2M(&netif.net, cur_ts);
-      ts_a = SimbricksNetIfInTimestamp(&netif.net);
-    } while (!exiting && 
-             ((sync_net && ts_a <= cur_ts)));
+      
+      PollN2M(&netif, cur_ts);
 
-    if (sync_net)
-      cur_ts = ts_a;
+      if (sync_mem){
+        next_ts = SimbricksNetIfInTimestamp(&netif);
+      }
+
+    } while (!exiting && next_ts <= cur_ts);
 
   }
   return 0;
