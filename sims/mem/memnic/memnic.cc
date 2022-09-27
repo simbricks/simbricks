@@ -38,7 +38,7 @@
 
 
 #include <arpa/inet.h>
-#include<netinet/udp.h>
+#include <netinet/udp.h>
 #include <linux/ip.h>
 #include <linux/if_ether.h>
 
@@ -57,8 +57,13 @@ static uint64_t cur_ts = 0;
 uint16_t src_port = 1;
 uint16_t dest_port = 1;
 uint32_t ip_addr = 0x0F0E0D0C;
-uint64_t mac_addr = 0;
 
+union mac_addr_{
+  uint64_t mac_64;
+  uint8_t mac_byte[6];
+};
+
+union mac_addr_ mac_addr;
 
 static void sigint_handler(int dummy) {
   exiting = 1;
@@ -177,10 +182,15 @@ void ForwardToETH(SimbricksNetIf *netif, volatile union SimbricksProtoMemH2M *da
   volatile struct SimbricksProtoNetMsgPacket *packet = &msg->packet;
 
   // Add Ethernet header
-  struct ethhdr *eth_hdr = (struct ethhdr *)packet->data;
-  uint64_t dest_mac = 0xFFFFFFFF;
-  memcpy(eth_hdr->h_source, &mac_addr, sizeof(uint64_t));
-  memcpy(eth_hdr->h_dest, &dest_mac, sizeof(uint64_t)); // Keep destination to broadcast for now
+  struct ethhdr *eth_hdr = (struct ethhdr *)packet->data;  
+
+  //memcpy(eth_hdr->h_source, mac_addr.mac_byte, ETH_ALEN);
+  int i = 0;
+  for (i = 0; i < ETH_ALEN; i++){
+    eth_hdr->h_source[i] = mac_addr.mac_byte[i];
+    eth_hdr->h_dest[i] = 0xFF; // Keep destination to broadcast for now
+  }
+  
   eth_hdr->h_proto = htons(ETH_P_IP);
 
   // Add IP header
@@ -191,7 +201,7 @@ void ForwardToETH(SimbricksNetIf *netif, volatile union SimbricksProtoMemH2M *da
   if (type == SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE){
     ip_hdr->tot_len += data->write.len;
   }
-
+  ip_hdr->tot_len = htons(ip_hdr->tot_len);
   // Add UDP header
   struct udphdr *udp_hdr = (struct udphdr *)(ip_hdr + 1);
   udp_hdr->uh_sport = src_port;
@@ -201,6 +211,9 @@ void ForwardToETH(SimbricksNetIf *netif, volatile union SimbricksProtoMemH2M *da
     udp_hdr->uh_ulen += data->write.len;
   }
   udp_hdr->uh_sum = 0; // To update later
+
+  packet->len = sizeof(struct ethhdr) + sizeof(struct iphdr) +
+                 sizeof(struct udphdr) + sizeof(struct MemOp);
 
   // Fill the MemOps struct in the payload
   struct MemOp *memop = (struct MemOp *)(udp_hdr + 1);
@@ -221,10 +234,12 @@ void ForwardToETH(SimbricksNetIf *netif, volatile union SimbricksProtoMemH2M *da
       memop->len = data->write.len;
       payload = (void *)(memop + 1);
       memcpy((void *)payload, (void *)data->write.data, data->write.len);
+      packet->len += data->write.len;
       break;
 
     default:
       fprintf(stderr, "ForwardToETH: unsupported type=%u\n", type);
+    
 
   }
   
@@ -312,10 +327,12 @@ void PollH2M(struct SimbricksMemIf *memif, SimbricksNetIf *netif, uint64_t cur_t
   switch (type) {
     
     case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
+      printf("received read request\n");
       ForwardToETH(netif, msg, type);
       break;
 
     case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
+      printf("received write request\n");
       ForwardToETH(netif, msg, type);
       break;
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
@@ -372,7 +389,9 @@ int main(int argc, char *argv[]) {
   memParams.sock_path = argv[1];
   netParams.sock_path = argv[2];
   shmPath = argv[3];
-  mac_addr = strtoull(argv[4], NULL, 16);
+  mac_addr.mac_64 = strtoull(argv[4], NULL, 16);
+  printf("mac_addr=%lx\n", mac_addr.mac_64);
+  printf("mac_8: %X:%X:%X:%X:%X:%X\n", mac_addr.mac_byte[0], mac_addr.mac_byte[1],mac_addr.mac_byte[2],mac_addr.mac_byte[3],mac_addr.mac_byte[4],mac_addr.mac_byte[5]);
 
   memParams.sync_mode = kSimbricksBaseIfSyncOptional;
   netParams.sync_mode = kSimbricksBaseIfSyncOptional;
