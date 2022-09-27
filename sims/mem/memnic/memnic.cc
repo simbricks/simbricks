@@ -36,17 +36,29 @@
 #include <iostream>
 #include <vector>
 
+
+#include <arpa/inet.h>
+#include<netinet/udp.h>
+#include <linux/ip.h>
+#include <linux/if_ether.h>
+
 #include <simbricks/base/cxxatomicfix.h>
 
 extern "C" {
 #include <simbricks/mem/if.h>
 #include <simbricks/nicif/nicif.h>
-#include <simbricks/base/proto.h>
+#include <simbricks/mem/memop.h>
 };
 
+#define MEMNIC_DEBUG 1
 
 static int exiting = 0;
 static uint64_t cur_ts = 0;
+uint16_t src_port = 1;
+uint16_t dest_port = 1;
+uint32_t ip_addr = 0x0F0E0D0C;
+uint64_t mac_addr = 0;
+
 
 static void sigint_handler(int dummy) {
   exiting = 1;
@@ -56,36 +68,45 @@ static void sigusr1_handler(int dummy) {
     fprintf(stderr, "main_time = %lu\n", cur_ts);
 }
 
-bool MemifInit(struct SimbricksMemIf *memif, const char *shm_path,
-                struct SimbricksBaseIfParams *memParams) {
-  
+bool MemNicIfInit(struct SimbricksMemIf *memif, struct SimbricksNetIf *netif,
+                  const char *shm_path,
+                  struct SimbricksBaseIfParams *memParams,
+                  struct SimbricksBaseIfParams *netParams) {
+
   struct SimbricksBaseIf *membase = &memif->base;
+  struct SimbricksBaseIf *netbase = &netif->base;
+
+  // first allocate pool
+  size_t shm_size = 0;
+  if (memParams){
+    shm_size += memParams->in_num_entries * memParams->in_entries_size;
+    shm_size += memParams->out_num_entries * memParams->out_entries_size;
+  }
+  if (netParams){
+    shm_size += netParams->in_num_entries * netParams->in_entries_size;
+    shm_size += netParams->out_num_entries * netParams->out_entries_size;
+  }
+  
+  std::string shm_path_ = shm_path;
   struct SimbricksBaseIfSHMPool pool_;
   memset(&pool_, 0, sizeof(pool_));
-  
-  struct SimBricksBaseIfEstablishData ests[1];
-  struct SimbricksProtoMemHostIntro intro;
+
+  if (SimbricksBaseIfSHMPoolCreate(&pool_, shm_path_.c_str(), shm_size) !=
+      0) {
+      perror("MemNicIfInit: SimbricksBaseIfSHMPoolCreate failed");
+      return false;
+    }
+
+  struct SimBricksBaseIfEstablishData ests[2];
+  struct SimbricksProtoMemHostIntro mem_intro;
+  struct SimbricksProtoNetIntro net_intro;
   unsigned n_bifs = 0;
 
-  memset(&intro, 0, sizeof(intro));
-  ests[n_bifs].base_if = membase;
-  ests[n_bifs].tx_intro = &intro;
-  ests[n_bifs].tx_intro_len = sizeof(intro);
-  ests[n_bifs].rx_intro = &intro;
-  ests[n_bifs].rx_intro_len = sizeof(intro);
-  n_bifs++;
-  
+  memset(&net_intro, 0, sizeof(net_intro));
+
+  // MemIf Init
   if (SimbricksBaseIfInit(membase, memParams)) {
-    perror("Init: SimbricksBaseIfInit failed");
-  }
-
-  std::string shm_path_ = shm_path;
-
-  if (SimbricksBaseIfSHMPoolCreate(
-          &pool_, shm_path_.c_str(),
-          SimbricksBaseIfSHMSize(&membase->params)) != 0) {
-    perror("MemifInit: SimbricksBaseIfSHMPoolCreate failed");
-    return false;
+    perror("MemIfInit: SimbricksBaseIfInit failed");
   }
 
   if (SimbricksBaseIfListen(membase, &pool_) != 0) {
@@ -93,7 +114,35 @@ bool MemifInit(struct SimbricksMemIf *memif, const char *shm_path,
     return false;
   }
 
-  if (SimBricksBaseIfEstablish(ests, 1)) {
+  memset(&mem_intro, 0, sizeof(mem_intro));
+  ests[n_bifs].base_if = membase;
+  ests[n_bifs].tx_intro = &mem_intro;
+  ests[n_bifs].tx_intro_len = sizeof(mem_intro);
+  ests[n_bifs].rx_intro = &mem_intro;
+  ests[n_bifs].rx_intro_len = sizeof(mem_intro);
+  n_bifs++;
+
+  // NetIf Init
+  if (SimbricksBaseIfInit(netbase, netParams)) {
+    perror("NetIfInit: SimbricksBaseIfInit failed");
+  }
+
+  if (SimbricksBaseIfListen(netbase, &pool_) != 0) {
+    perror("NetIfInit: SimbricksBaseIfListen failed");
+    return false;
+  }
+
+  memset(&net_intro, 0, sizeof(net_intro));
+  ests[n_bifs].base_if = netbase;
+  ests[n_bifs].tx_intro = &net_intro;
+  ests[n_bifs].tx_intro_len = sizeof(net_intro);
+  ests[n_bifs].rx_intro = &net_intro;
+  ests[n_bifs].rx_intro_len = sizeof(net_intro);
+  n_bifs++;
+
+
+
+  if (SimBricksBaseIfEstablish(ests, 2)) {
     fprintf(stderr, "SimBricksBaseIfEstablish failed\n");
     return false;
   }
@@ -102,36 +151,120 @@ bool MemifInit(struct SimbricksMemIf *memif, const char *shm_path,
   return true;
 }
 
-void EthSend(SimbricksNetIf *netif, volatile union SimbricksProtoMemH2M *data, size_t len) {
+static inline int SimbricksMemNicIfSync(struct SimbricksMemIf *memif,
+                                        struct SimbricksNetIf *netif,
+                                        uint64_t cur_ts) {
+  return ((SimbricksMemIfM2HOutSync(memif, cur_ts) == 0 &&
+           SimbricksNetIfOutSync(netif, cur_ts) == 0)
+              ? 0
+              : -1);
+}
+
+static inline uint64_t SimbricksMemNicIfNextTimestamp(
+    struct SimbricksMemIf *memif, struct SimbricksNetIf *netif) {
+  uint64_t net_in = SimbricksNetIfInTimestamp(netif);
+  uint64_t mem_in = SimbricksMemIfH2MInTimestamp(memif);
+
+  return (net_in < mem_in ? net_in : mem_in);
+}
+
+void ForwardToETH(SimbricksNetIf *netif, volatile union SimbricksProtoMemH2M *data, uint8_t type) {
+  
   volatile union SimbricksProtoNetMsg *msg = SimbricksNetIfOutAlloc(netif, cur_ts);
   if (msg == NULL)
     return;
+
   volatile struct SimbricksProtoNetMsgPacket *packet = &msg->packet;
-  packet->port = 0;
-  packet->len = len;
-  memcpy((void *)packet->data, (void *)data, len);
+
+  // Add Ethernet header
+  struct ethhdr *eth_hdr = (struct ethhdr *)packet->data;
+  uint64_t dest_mac = 0xFFFFFFFF;
+  memcpy(eth_hdr->h_source, &mac_addr, sizeof(uint64_t));
+  memcpy(eth_hdr->h_dest, &dest_mac, sizeof(uint64_t)); // Keep destination to broadcast for now
+  eth_hdr->h_proto = htons(ETH_P_IP);
+
+  // Add IP header
+  struct iphdr *ip_hdr = (struct iphdr *)(eth_hdr + 1);
+  ip_hdr->daddr = 0xFFFFFFFF;
+  ip_hdr->saddr = ip_addr;
+  ip_hdr->tot_len = sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(struct MemOp);
+  if (type == SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE){
+    ip_hdr->tot_len += data->write.len;
+  }
+
+  // Add UDP header
+  struct udphdr *udp_hdr = (struct udphdr *)(ip_hdr + 1);
+  udp_hdr->uh_sport = src_port;
+  udp_hdr->uh_dport = dest_port;
+  udp_hdr->uh_ulen = sizeof(struct udphdr) + sizeof(struct MemOp);
+  if (type == SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE){
+    udp_hdr->uh_ulen += data->write.len;
+  }
+  udp_hdr->uh_sum = 0; // To update later
+
+  // Fill the MemOps struct in the payload
+  struct MemOp *memop = (struct MemOp *)(udp_hdr + 1);
+  void *payload;
+  switch (type) {
+    case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
+      memop->OpType = type;
+      memop->req_id = data->read.req_id;
+      memop->as_id = data->read.as_id;
+      memop->addr = data->read.addr;
+      memop->len = data->read.len;
+      break;
+    case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
+      memop->OpType = type;
+      memop->req_id = data->write.req_id;
+      memop->as_id = data->write.as_id;
+      memop->addr = data->write.addr;
+      memop->len = data->write.len;
+      payload = (void *)(memop + 1);
+      memcpy((void *)payload, (void *)data->write.data, data->write.len);
+      break;
+
+    default:
+      fprintf(stderr, "ForwardToETH: unsupported type=%u\n", type);
+
+  }
+  
+
   SimbricksNetIfOutSend(netif, msg, SIMBRICKS_PROTO_NET_MSG_PACKET);
 }
 
-void EthRx(SimbricksMemIf *memif, volatile struct SimbricksProtoNetMsgPacket *packet) {
-  uint8_t type;
+
+void ForwardToMEM(SimbricksMemIf *memif, volatile struct SimbricksProtoNetMsgPacket *packet) {
+
   volatile union SimbricksProtoMemM2H *msg = SimbricksMemIfM2HOutAlloc(memif, cur_ts);
+
   if (msg == NULL)
     return;
-  volatile struct SimbricksProtoMemM2HReadcomp *rc;
-  volatile struct SimbricksProtoMemM2HWritecomp *wc;
-  type = SimbricksMemIfM2HInType(memif, msg);
   
+  
+  uint8_t type;
+  struct ethhdr *eth_hdr = (struct ethhdr *)packet->data;
+  struct iphdr *ip_hdr = (struct iphdr *)(eth_hdr + 1);
+  struct udphdr *udp_hdr = (struct udphdr *)(ip_hdr + 1);
+  struct MemOp *memop = (struct MemOp *)(udp_hdr + 1);
+  void *data = (void *)(memop + 1);
+
+  type = memop->OpType;
+
   switch (type){
     case SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP:
+      volatile struct SimbricksProtoMemM2HReadcomp *rc;
       rc = &msg->readcomp;
-      memcpy((void*)msg, (void*)packet->data, packet->len);
+      rc->req_id = memop->req_id;
+
+      memcpy((void*)rc->data, (void*)data, memop->len);
       SimbricksMemIfM2HOutSend(memif, msg, SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP);
       break;
   
     case SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP:
+      volatile struct SimbricksProtoMemM2HWritecomp *wc;
       wc = &msg->writecomp;
-      memcpy((void*)msg, (void *)packet->data, packet->len);
+      wc->req_id = memop->req_id;
+
       SimbricksMemIfM2HOutSend(memif, msg, SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP);
       break;
 
@@ -144,7 +277,7 @@ void EthRx(SimbricksMemIf *memif, volatile struct SimbricksProtoNetMsgPacket *pa
 
 }
 
-void PollM2H(struct SimbricksMemIf *memif, SimbricksNetIf *netif, uint64_t cur_ts) {
+void PollN2M(SimbricksNetIf *netif, struct SimbricksMemIf *memif, uint64_t cur_ts) {
   volatile union SimbricksProtoNetMsg *msg = SimbricksNetIfInPoll(netif, cur_ts);
   if (msg == NULL){
     return;
@@ -154,14 +287,14 @@ void PollM2H(struct SimbricksMemIf *memif, SimbricksNetIf *netif, uint64_t cur_t
   type = SimbricksNetIfInType(netif, msg);
   switch (type) {
     case SIMBRICKS_PROTO_NET_MSG_PACKET:
-      EthRx(memif, &msg->packet);
+      ForwardToMEM(memif, &msg->packet);
       break;
 
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
       break;
 
     default:
-      fprintf(stderr, "poll_m2h: unsupported type=%u\n", type);
+      fprintf(stderr, "poll_n2m: unsupported type=%u\n", type);
   }
 
   SimbricksNetIfInDone(netif, msg);
@@ -170,7 +303,7 @@ void PollM2H(struct SimbricksMemIf *memif, SimbricksNetIf *netif, uint64_t cur_t
 void PollH2M(struct SimbricksMemIf *memif, SimbricksNetIf *netif, uint64_t cur_ts) {
   volatile union SimbricksProtoMemH2M *msg = SimbricksMemIfH2MInPoll(memif, cur_ts);
 
-  if (msg == NULL){
+  if (msg == NULL) {
     return;
   }
   uint8_t type;
@@ -179,11 +312,11 @@ void PollH2M(struct SimbricksMemIf *memif, SimbricksNetIf *netif, uint64_t cur_t
   switch (type) {
     
     case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
-      EthSend(netif, msg, sizeof(SimbricksProtoMemH2M));
+      ForwardToETH(netif, msg, type);
       break;
 
     case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
-      EthSend(netif, msg, sizeof(SimbricksProtoMemH2M));
+      ForwardToETH(netif, msg, type);
       break;
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
       break;
@@ -200,54 +333,56 @@ int main(int argc, char *argv[]) {
   signal(SIGUSR1, sigusr1_handler);
 
   int sync_mem = 1, sync_net = 1;
-  uint64_t ts_a = 0;
-  uint64_t ts_b = 0;
+
+  uint64_t ts_mem = 0;
+  uint64_t ts_net = 0;
   const char *shmPath;
 
   struct SimbricksBaseIfParams memParams;
   struct SimbricksBaseIfParams netParams;
 
   struct SimbricksMemIf memif;
-  struct SimbricksNicIf netif;
+  struct SimbricksNetIf netif;
   
   SimbricksMemIfDefaultParams(&memParams);
   SimbricksNetIfDefaultParams(&netParams);
 
+  printf("sizeof(struct SimbricksProtoMemH2MWrite): %lu\n",
+         sizeof(struct SimbricksProtoMemH2MWrite));
+
+  
   if (argc < 4 || argc > 10) {
     fprintf(stderr,
             "Usage: memnic MEM-SOCKET NET-SOCKET"
-            "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [MEM-LATENCY]"
+            "SHM [MAC-ADDR] [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [MEM-LATENCY]"
             "[ETH-LATENCY]\n");
     return -1;
   }
 
-  if (argc >= 6)
-     cur_ts = strtoull(argv[5], NULL, 0);
   if (argc >= 7)
-    memParams.sync_interval = netParams.sync_interval =
-         strtoull(argv[6], NULL, 0) * 1000ULL;
+     cur_ts = strtoull(argv[6], NULL, 0);
   if (argc >= 8)
-    memParams.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
+    memParams.sync_interval = netParams.sync_interval =
+         strtoull(argv[7], NULL, 0) * 1000ULL;
   if (argc >= 9)
-    netParams.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+    memParams.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+  if (argc >= 10)
+    netParams.link_latency = strtoull(argv[9], NULL, 0) * 1000ULL;
 
   memParams.sock_path = argv[1];
   netParams.sock_path = argv[2];
   shmPath = argv[3];
+  mac_addr = strtoull(argv[4], NULL, 16);
 
   memParams.sync_mode = kSimbricksBaseIfSyncOptional;
   netParams.sync_mode = kSimbricksBaseIfSyncOptional;
   memParams.blocking_conn = false;
   memif.base.sync = sync_mem;
-  netif.net.base.sync = sync_net;
+  netif.base.sync = sync_net;
 
-  if(SimbricksNicIfInit(&netif, shmPath, &netParams,  NULL, NULL)){
-    fprintf(stderr, "nicif init error happens");
-    return -1;
-  }
 
-  if (!MemifInit(&memif, shmPath, &memParams)){
-    fprintf(stderr, "memif init error happens");
+  if (!MemNicIfInit(&memif, &netif, shmPath, &memParams, &netParams)){
+    fprintf(stderr, "MemNicIf init error happens");
     return -1;
   }
 
@@ -255,28 +390,30 @@ int main(int argc, char *argv[]) {
 
   fprintf(stderr, "start polling\n");
   while (!exiting){
-    while (SimbricksMemIfM2HOutSync(&memif, cur_ts)) {
-      fprintf(stderr, "warn: SimbricksMemnetifSync failed (memif=%lu)\n", cur_ts);
+    while (SimbricksMemNicIfSync(&memif, &netif, cur_ts)) {
+      fprintf(stderr, "warn: SimbricksMemNicIfSync failed (memif=%lu)\n", cur_ts);
     }
-    while (SimbricksNetIfOutSync(&netif.net, cur_ts)) {
-      fprintf(stderr, "warn: SimbricksNicifSync failed (netif=%lu)\n", cur_ts);
-    }
-    
+
     do {
-      PollH2M(&memif, &netif.net, cur_ts);
-      PollM2H(&memif, &netif.net, cur_ts);
-      ts_a = SimbricksMemIfH2MInTimestamp(&memif);
-      ts_b = SimbricksNetIfInTimestamp(&netif.net);
+      PollH2M(&memif, &netif, cur_ts);
+      PollN2M(&netif, &memif, cur_ts);
+
+      ts_mem = SimbricksMemIfH2MInTimestamp(&memif);
+      ts_net = SimbricksNetIfInTimestamp(&netif);
+
     } while (!exiting && 
-             ((sync_mem && ts_a <= cur_ts) || (sync_net && ts_b <= cur_ts)));
+             ((sync_mem && ts_mem <= cur_ts) || (sync_net && ts_net <= cur_ts)));
 
     if (sync_mem && sync_net)
-      cur_ts = ts_a <= ts_b ? ts_a : ts_b;
+      cur_ts = ts_mem <= ts_net ? ts_mem : ts_net;
     else if (sync_mem)
-      cur_ts = ts_a;
+      cur_ts = ts_mem;
     else if (sync_net)
-      cur_ts = ts_b;
+      cur_ts = ts_net;
 
   }
+
+  // Todo: cleanup
+
   return 0;
 }

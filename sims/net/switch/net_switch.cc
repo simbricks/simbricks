@@ -321,10 +321,19 @@ static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id,
   hdr = (struct ethhdr *)pkt_data;
   eth_proto = ntohs(hdr->h_proto);
   iph = (struct iphdr *)(hdr + 1);
-  uint64_t dmac = (*(uint64_t *)hdr->h_dest) & 0xFFFFFFFFFFULL;
-  uint64_t smac = (*(uint64_t *)hdr->h_source) & 0xFFFFFFFFFFULL;
-  fprintf(stderr, "%20lu: [P %zu -> %zu] %lx -> %lx ", cur_ts, iport_id,
-          port_id, smac, dmac);
+  int i;
+
+  fprintf(stderr, "%20lu: [P %zu -> %zu] ", cur_ts, iport_id,
+          port_id);
+  fprintf(stderr, "src_mac: ");
+  for (i = 0; i < ETH_ALEN; i++){
+    fprintf(stderr, "%X:", hdr->h_source[i]);
+  }
+  fprintf(stderr, " -> ");
+  for (i = 0; i < ETH_ALEN; i++){
+    fprintf(stderr, "%X:", hdr->h_dest[i]);
+  }
+  
   if (eth_proto == ETH_P_IP) {
     fprintf(stderr, "[ IP] ");
     fprintf(stderr, "%8X -> %8X len: %lu\n", iph->saddr, iph->daddr,
