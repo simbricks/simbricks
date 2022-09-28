@@ -54,6 +54,7 @@ static uint64_t cur_ts = 0;
 uint8_t *mem_array;
 uint64_t size;
 uint64_t base_addr;
+uint32_t ip_addr = 0x0A0B0C0D;
 
 union mac_addr_{
   uint64_t mac_64;
@@ -71,7 +72,98 @@ static void sigusr1_handler(int dummy) {
 }
 
 
+int HandleRequest (SimbricksNetIf *netif, volatile struct SimbricksProtoNetMsgPacket *packet){
+  
+  volatile union SimbricksProtoNetMsg *msg_to = SimbricksNetIfOutAlloc(netif, cur_ts);
+  if (msg_to == NULL){
+    return 0;
+  }
+  volatile struct SimbricksProtoNetMsgPacket *packet_to = &msg_to->packet;
 
+  uint8_t type;
+  uint16_t pkt_len = sizeof(struct ethhdr) + sizeof(struct iphdr) +
+                     sizeof(struct udphdr) + sizeof(struct MemOp);
+  uint16_t ip_total_len;
+  struct ethhdr *eth_hdr = (struct ethhdr *)packet->data;
+  struct iphdr *ip_hdr = (struct iphdr *)(eth_hdr + 1);
+  struct udphdr *udp_hdr = (struct udphdr *)(ip_hdr + 1);
+  struct MemOp *memop = (struct MemOp *)(udp_hdr + 1);
+  void *data = (void *)(memop + 1);
+
+  struct ethhdr *to_eth_hdr = (struct ethhdr *)packet_to->data;
+  struct iphdr *to_ip_hdr = (struct iphdr *)(to_eth_hdr + 1);
+  struct udphdr *to_udp_hdr = (struct udphdr *)(to_ip_hdr + 1);
+  struct MemOp *to_memop = (struct MemOp *)(to_udp_hdr + 1);
+  void *to_data = (void *)(to_memop + 1);
+
+  type = memop->OpType;
+  // Add Ethernet Header
+  to_eth_hdr->h_proto = eth_hdr->h_proto;
+  memcpy(to_eth_hdr->h_dest, eth_hdr->h_source, ETH_ALEN);
+  memcpy(to_eth_hdr->h_source, mac_addr.mac_byte, ETH_ALEN);
+
+  // Add IP header
+  to_ip_hdr->saddr = ip_addr;
+  to_ip_hdr->daddr = ip_hdr->saddr;
+  ip_total_len = sizeof(struct iphdr) + sizeof(struct udphdr) +
+                  sizeof(struct MemOp);
+
+  if (type == SIMBRICKS_PROTO_MEM_H2M_MSG_READ){
+    ip_total_len += memop->len;
+  }
+  to_ip_hdr->tot_len = htons(ip_total_len);
+
+  // Add UDP header
+  to_udp_hdr->uh_sport = udp_hdr->uh_dport;
+  to_udp_hdr->uh_dport = udp_hdr->uh_sport;
+  to_udp_hdr->uh_ulen = sizeof(struct udphdr) + sizeof(struct MemOp);
+  if (type == SIMBRICKS_PROTO_MEM_H2M_MSG_READ){
+    to_udp_hdr->uh_ulen += memop->len;
+  }
+
+  packet_to->len = pkt_len;
+
+  // Fill MemOp structure
+  to_memop->req_id = memop->req_id;
+  to_memop->as_id = memop->as_id;
+  to_memop->addr = memop->addr;
+  to_memop->len = memop->len;
+
+  switch (type) {
+    case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
+      printf("received read request\n");
+      // send read complete message
+      to_memop->OpType = SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP;
+
+      memcpy((void *)to_data, &mem_array[memop->addr], memop->len);
+
+      packet_to->len += memop->len;
+      break;
+    case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
+      printf("received write request\n");
+      // write the data in local memory
+      memcpy(&mem_array[memop->addr], data, memop->len);
+
+      // send write complete message
+      to_memop->OpType = SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP;
+
+      // printf("to_eth_source: ");
+      // for (i = 0; i < ETH_ALEN; i++) {
+      //   printf("%X: ", to_eth_hdr->h_source[i]);
+      // }
+      // printf("--> to_eth_dest: ");
+      // for (i = 0; i < ETH_ALEN; i++) {
+      //   printf("%X: ", to_eth_hdr->h_dest[i]);
+      // }
+      break;
+    default:
+      fprintf(stderr, "poll_n2m: unsupported type=%u\n", type);
+  }
+
+  SimbricksNetIfOutSend(netif, msg_to, SIMBRICKS_PROTO_NET_MSG_PACKET);
+  return 1;
+
+}
 
 void PollN2M(struct SimbricksNetIf *netif, uint64_t cur_ts) {
   
@@ -81,43 +173,17 @@ void PollN2M(struct SimbricksNetIf *netif, uint64_t cur_ts) {
     return;
   }
 
-  int i;
-  uint8_t type, type_mem;
-  uint64_t addr, len;
-  volatile uint8_t *data;
-  volatile union SimbricksProtoNetMsg *msg_to; 
+
+  uint8_t type;  
   volatile struct SimbricksProtoNetMsgPacket *packet = &msg->packet;
 
   type = SimbricksNetIfInType(netif, msg);
   switch (type) {
     case SIMBRICKS_PROTO_NET_MSG_PACKET:
       printf("received network packet\n");
-      struct ethhdr *eth_hdr;
-      struct iphdr *ip_hdr;
-      struct udphdr *udp_hdr;
-      struct MemOp *memop;
-      void *data;
-
-      eth_hdr = (struct ethhdr *)packet->data;
-      ip_hdr = (struct iphdr *)(eth_hdr + 1);
-      udp_hdr = (struct udphdr *)(ip_hdr + 1);
-      memop = (struct MemOp *)(udp_hdr + 1);
-      data = (void *)(memop + 1);
-
-      type_mem = memop->OpType;
-      switch (type_mem) {
-        case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
-          printf("NetMem received read request\n");
-          break;
-        case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
-          printf("NetMem received write request\n");
-          break;
-        
-        default:
-          fprintf(stderr, "ForwardToETH: unsupported type=%u\n", type);
+      if (!HandleRequest(netif, packet)){
+        return;
       }
-
-
       break;
 
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
@@ -230,6 +296,8 @@ int main(int argc, char *argv[]) {
       }
 
     } while (!exiting && next_ts <= cur_ts);
+
+    cur_ts = next_ts;
 
   }
   return 0;
