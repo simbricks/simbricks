@@ -245,7 +245,8 @@ int main(int argc, char *argv[]) {
 
     } while (!exiting && next_ts <= cur_ts);
 
-    cur_ts = next_ts;
+    cur_ts =  next_ts;
+
   }
   return 0;
 }
