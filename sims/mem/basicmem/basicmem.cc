@@ -157,10 +157,7 @@ void PollH2M(struct SimbricksMemIf *memif, uint64_t cur_ts) {
       addr = msg->write.addr;
       len = msg->write.len;
       data = msg->write.data;
-      
-      for (i = 0; i < (int)len; i++){
-        mem_array[addr + i] = data[i];
-      }
+      memcpy(&mem_array[addr], (void*)data, len);
 
       msg_to = M2HAlloc(memif, cur_ts);
       msg_to->writecomp.req_id = msg->write.req_id;
