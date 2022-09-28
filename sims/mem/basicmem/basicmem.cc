@@ -218,8 +218,7 @@ int main(int argc, char *argv[]) {
   shmPath = argv[5];
 
   memParams.sync_mode = kSimbricksBaseIfSyncOptional;
-  memParams.blocking_conn = false;
-  memif.base.sync = sync_mem;
+  memParams.blocking_conn = true;
 
   mem_array = (uint8_t *) malloc(size * sizeof(uint8_t));
   if (!mem_array){
