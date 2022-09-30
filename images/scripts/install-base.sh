@@ -22,4 +22,5 @@ apt-get -y install \
     tcpdump \
     pciutils \
     busybox \
-    numactl
+    numactl \
+    sysbench
