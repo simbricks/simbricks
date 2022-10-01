@@ -125,11 +125,11 @@ class NetPort {
     kRxPollSync = 2,
   };
   struct SimbricksNetIf netif_;
+  const char *path_;
 
  protected:
   volatile union SimbricksProtoNetMsg *rx_;
   int sync_;
-  const char *path_;
 
   bool Init() {
     struct SimbricksBaseIfParams params = netParams;
@@ -471,6 +471,9 @@ int main(int argc, char *argv[]) {
   int bad_option = 0;
   int sync_eth = 1;
   pcap_t *pc = nullptr;
+  int netmem_idx = 0;
+  size_t port_i;
+  std::string netmem_name;
 
   SimbricksNetIfDefaultParams(&netParams);
 
@@ -518,6 +521,7 @@ int main(int argc, char *argv[]) {
         char *token;
         int idx;
         struct table_entry ent;
+        
 
         token = strtok(optarg, ",");
         idx = 0;
@@ -548,7 +552,27 @@ int main(int argc, char *argv[]) {
           printf("mac_byte: %lx\n", ent.node_mac.ether_addr_64);
         #endif
         map_table.push_back(ent);
+        
+        // we match this mac address with port number manualy 
+        // and statically generate mac table for netmems.
 
+        netmem_name = std::string("netmem") + std::to_string(netmem_idx);
+         for (port_i = 0; port_i < ports.size(); port_i++) {
+            auto &port = *ports[port_i];
+            std::string sockpath = port.path_;
+            if (sockpath.find(netmem_name) != std::string::npos){
+              printf("port id for %s is %lu\n", netmem_name.c_str(), port_i);
+              uint8_t *temp = (uint8_t *) malloc(6);
+              memcpy(temp, (const uint8_t *)ent.node_mac.ether_addr_octet, 6);
+
+              MAC node_mac((const uint8_t *) temp);
+              mac_table.insert({node_mac,port_i});
+              printf("mac_8: %X:%X:%X:%X:%X:%X\n", node_mac.data[0], node_mac.data[1], node_mac.data[2], node_mac.data[3], node_mac.data[4], node_mac.data[5]);
+
+            }
+          }
+
+        netmem_idx++;
         break;
 
       default:
@@ -562,7 +586,11 @@ int main(int argc, char *argv[]) {
   //   printf("as_id: %d vaddr_start: %lu  vadd_end: %lu phys_start: %lu\n", i.as_id, i.vaddr_start, i.vaddr_end, i.phys_start);
   //       printf("mac_byte: %lx\n", i.node_mac.ether_addr_64);
   // }
+  for (auto& i: mac_table){
+    printf("port id: %d: ", i.second);
+      printf("mac_8: %X:%X:%X:%X:%X:%X\n", i.first.data[0], i.first.data[1],i.first.data[2],i.first.data[3],i.first.data[4],i.first.data[5]);
 
+  }
 
   if (ports.empty() || bad_option) {
     fprintf(stderr,
