@@ -1,4 +1,4 @@
-# Copyright 2022 Max Planck Institute for Software Systems, and
+# Copyright 2021 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -22,9 +22,14 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,basicmem))
-$(eval $(call subdir,memnic))
-$(eval $(call subdir,memswitch))
-$(eval $(call subdir,netmem))
+bin_memswitch := $(d)memswitch
 
+OBJS := $(d)memswitch.o
+
+$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
+
+$(bin_memswitch): $(OBJS) $(lib_netif) $(lib_nicif)  $(lib_base) -lpcap
+
+CLEAN := $(bin_memswitch) $(OBJS)
+ALL := $(bin_memswitch)
 include mk/subdir_post.mk
