@@ -623,6 +623,43 @@ class SwitchNet(NetSim):
         return cleanup
 
 
+class MemSwitchNet(NetSim):
+
+    def __init__(self):
+        super().__init__()
+        self.sync = True
+        """ AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START """
+        self.mem_map = []
+
+    def run_cmd(self, env):
+        cmd = env.repodir + '/sims/mem/memswitch/memswitch'
+        cmd += f' -S {self.sync_period} -E {self.eth_latency}'
+
+        if not self.sync:
+            cmd += ' -u'
+
+        if len(env.pcap_file) > 0:
+            cmd += ' -p ' + env.pcap_file
+        for (_, n) in self.connect_sockets(env):
+            cmd += ' -s ' + n
+        for (_, n) in self.listen_sockets(env):
+            cmd += ' -h ' + n
+        for m in self.mem_map:
+            cmd += ' -m ' + f' {m[0]},{m[1]},{m[2]},'
+            cmd += (''.join(reversed(m[3].split(':'))))
+            cmd += f',{m[4]}'
+        return cmd
+
+    def sockets_cleanup(self, env):
+        # cleanup here will just have listening eth sockets, switch also creates
+        # shm regions for each with a "-shm" suffix
+        cleanup = []
+        for s in super().sockets_cleanup(env):
+            cleanup.append(s)
+            cleanup.append(s + '-shm')
+        return cleanup
+
+
 class TofinoNet(NetSim):
 
     def __init__(self):
