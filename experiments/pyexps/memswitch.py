@@ -20,7 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from click import command
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
@@ -55,13 +54,13 @@ for h in ['gk']:
 
     netmem1 = sim.NetMem()
     netmem1.mac = '00:00:00:00:00:02'
-    netmem1.name = 'netmem1'
+    netmem1.name = 'netmem0'
 
     netmem2 = sim.NetMem()
     netmem2.mac = '00:00:00:00:00:03'
-    netmem2.name = 'netmem2'
+    netmem2.name = 'netmem1'
 
-    netmem2.addr = mem.addr +netmem1.size
+    netmem2.addr = mem.addr + netmem1.size
 
     node_config = node.NodeConfig()
     node_config.nockp = True
@@ -87,7 +86,7 @@ for h in ['gk']:
 
     mem.set_network(net)
     netmem1.set_network(net)
-    netmem2.set_network(net);
+    netmem2.set_network(net)
     e.add_memdev(mem)
 
     host.add_memdev(mem)
