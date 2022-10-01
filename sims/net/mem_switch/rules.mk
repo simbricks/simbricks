@@ -22,12 +22,14 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,wire))
-$(eval $(call subdir,tap))
-$(eval $(call subdir,switch))
-$(eval $(call subdir,mem_switch))
-$(eval $(call subdir,pktgen))
-$(eval $(call subdir,menshen))
-$(eval $(call subdir,tofino))
+bin_mem_switch := $(d)mem_switch
 
+OBJS := $(d)mem_switch.o
+
+$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
+
+$(bin_mem_switch): $(OBJS) $(lib_netif) $(lib_nicif)  $(lib_base) -lpcap
+
+CLEAN := $(bin_mem_switch) $(OBJS)
+ALL := $(bin_mem_switch)
 include mk/subdir_post.mk
