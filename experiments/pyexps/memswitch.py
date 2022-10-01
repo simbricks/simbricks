@@ -20,6 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from click import command
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
@@ -28,17 +29,20 @@ experiments = []
 num_of_netmem =[1, 2, 3, 4]
 
 class MemTest(node.AppConfig):
-    def __init__(self, addr):
-        self.addr = addr
+    def __init__(self):
+        self.addr = []
 
     def run_cmds(self, node):
-        return [
-            f'busybox devmem 0x{self.addr:x} 64 0x42',
-            f'busybox devmem 0x{self.addr:x} 64'
-        ]
+        commands = []
+        for addr in self.addr:
+            commands.append(f'busybox devmem 0x{addr:x} 64 0x42')
+            commands.append(f'busybox devmem 0x{addr:x} 64')
+
+        return commands
 
 # AS_ID,VADDR_START(include),VADDR_END(not include),MEMNODE_MAC,PHYS_START
-sw_mem_map = [(0, 0, 1073741824, '00:00:00:00:00:02', 0)]
+sw_mem_map = [(0, 0, 1024*1024*1024, '00:00:00:00:00:02', 0),
+            (0, 1024*1024*1024, 1024*1024*1024*2, '00:00:00:00:00:03', 1024*1024*1024)]
 
 for h in ['gk']:
     e = exp.Experiment('memsw-' + h)
@@ -49,13 +53,21 @@ for h in ['gk']:
     mem.addr = 0x2000000000 #0x2000000000000000
     mem.mac = '00:00:00:00:00:01'
 
-    netmem = sim.NetMem()
-    netmem.mac = '00:00:00:00:00:02'
-    
+    netmem1 = sim.NetMem()
+    netmem1.mac = '00:00:00:00:00:02'
+    netmem1.name = 'netmem1'
+
+    netmem2 = sim.NetMem()
+    netmem2.mac = '00:00:00:00:00:03'
+    netmem2.name = 'netmem2'
+
+    netmem2.addr = mem.addr +netmem1.size
 
     node_config = node.NodeConfig()
     node_config.nockp = True
-    node_config.app = MemTest(mem.addr)
+    node_config.app = MemTest()
+    node_config.app.addr.append(mem.addr)
+    node_config.app.addr.append(mem.addr+netmem1.size)
 
     net = sim.MemSwitchNet()
     for tp in sw_mem_map:
@@ -74,7 +86,8 @@ for h in ['gk']:
     host.wait = True
 
     mem.set_network(net)
-    netmem.set_network(net)
+    netmem1.set_network(net)
+    netmem2.set_network(net);
     e.add_memdev(mem)
 
     host.add_memdev(mem)

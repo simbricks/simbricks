@@ -42,9 +42,10 @@
 extern "C" {
 #include <simbricks/network/if.h>
 #include <simbricks/nicif/nicif.h>
+#include <simbricks/mem/memop.h>
 };
 
-// #define NETSWITCH_DEBUG
+#define NETSWITCH_DEBUG
 #define NETSWITCH_STAT
 
 struct SimbricksBaseIfParams netParams;
@@ -71,7 +72,7 @@ union ether_addr
 } __attribute__ ((__packed__));
 
 struct table_entry {
-  int as_id;
+  uint64_t as_id;
   uint64_t vaddr_start;
   uint64_t vaddr_end;
   union ether_addr node_mac;
@@ -95,6 +96,11 @@ struct MAC {
       }
     }
     return true;
+  }
+
+  MAC operator=(const uint8_t *other) const {
+    MAC mac(other);
+    return mac;
   }
 };
 namespace std {
@@ -394,9 +400,11 @@ static void switch_pkt(NetPort &port, size_t iport) {
     // Get MAC addresses
     MAC dst((const uint8_t *)pkt_data), src((const uint8_t *)pkt_data + 6);
     // MAC learning
+
     if (!(src == bcast_addr)) {
       mac_table[src] = iport;
     }
+
     // L2 forwarding
     auto i = mac_table.find(dst);
     if (i != mac_table.end()) {
@@ -405,10 +413,42 @@ static void switch_pkt(NetPort &port, size_t iport) {
         forward_pkt(pkt_data, pkt_len, eport, iport);
     } else {
       // Broadcast
-      for (size_t eport = 0; eport < ports.size(); eport++) {
-        if (eport != iport) {
-          // Do not forward to ingress port
-          forward_pkt(pkt_data, pkt_len, eport, iport);
+      struct ethhdr *eth_hdr = (struct ethhdr*)pkt_data;
+      struct MemOp *memop = (struct MemOp *)(((const uint8_t *)pkt_data) +42);
+      for (size_t i = 0; i < map_table.size(); i++)
+      {
+        if (memop->as_id == map_table[i].as_id &&
+          memop->addr >= map_table[i].vaddr_start && 
+          memop->addr <= map_table[i].vaddr_end){
+            for (int k = 0; k < ETH_ALEN; k++){
+              eth_hdr->h_dest[k] = map_table[i].node_mac.ether_addr_octet[k]; 
+            }
+            dst = eth_hdr->h_dest;
+            auto k = mac_table.find(dst);
+            if (k != mac_table.end()) {
+              size_t eport = k->second;
+              if (eport != iport){
+                #ifdef NETSWITCH_DEBUG
+                  printf("Forwarding memop to netmem");
+                #endif
+                forward_pkt(pkt_data, pkt_len, eport, iport);
+              }
+            }else {
+              #ifdef NETSWITCH_DEBUG
+                printf("Dest netmem is not in the mac table, broadcast first\n");
+              #endif
+              for (size_t eport = 0; eport < ports.size(); eport++) {
+                if (eport != iport) {
+                  // Do not forward to ingress port
+                  forward_pkt(pkt_data, pkt_len, eport, iport);
+                }
+              }
+            }
+          break;
+        }
+        if (i == map_table.size()-1)
+        {
+          fprintf(stderr, "Dest netmem is unavaliable.");
         }
       }
     }
@@ -503,9 +543,10 @@ int main(int argc, char *argv[]) {
           
           token = strtok(NULL, ",");
         }
-        printf("as_id: %d vaddr_start: %lu  vadd_end: %lu phys_start: %lu\n", ent.as_id, ent.vaddr_start, ent.vaddr_end, ent.phys_start);
-        printf("mac_byte: %lx\n", ent.node_mac.ether_addr_64);
-
+        #ifdef NETSWITCH_DEBUG
+          printf("as_id: %lu vaddr_start: %lu  vadd_end: %lu phys_start: %lu\n", ent.as_id, ent.vaddr_start, ent.vaddr_end, ent.phys_start);
+          printf("mac_byte: %lx\n", ent.node_mac.ether_addr_64);
+        #endif
         map_table.push_back(ent);
 
         break;
