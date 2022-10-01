@@ -1,6 +1,7 @@
 dist/*/*.c
 dist/*/*.h
 sims/mem/*/*.c
+sims/mem/*/*.cc
 sims/net/*/*.c
 sims/net/*/*.cc
 sims/nic/corundum/*.cc
