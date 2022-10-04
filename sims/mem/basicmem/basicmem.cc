@@ -150,7 +150,7 @@ void PollH2M(struct SimbricksMemIf *memif, uint64_t cur_ts) {
       SimbricksMemIfM2HOutSend(memif, msg_to, SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP);
 
 #if BASICMEM_DEBUG 
-      printf("received H2M read. Sending read comp msg\n");
+      printf("received H2M read. addr: 0x%lx size: 0x%lx\n", addr, len);
 #endif
       break;
     case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
