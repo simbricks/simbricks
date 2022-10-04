@@ -98,4 +98,6 @@ class Runtime(metaclass=ABCMeta):
         As a consequence all currently running simulators should be stopped
         cleanly and their output collected.
         """
+        if self._interrupted:
+            return
         self._interrupted = True
