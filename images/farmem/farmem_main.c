@@ -2,6 +2,7 @@
 #include<linux/kernel.h>
 #include <linux/memory_hotplug.h>
 #include <linux/vmalloc.h>
+#include <linux/pfn_t.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Antoine Kaufmann");
@@ -41,7 +42,9 @@ static void do_drain_node(int nid)
       0);
     if (p)
       eaten += PAGE_SIZE;
-  } while (p);
+  }
+  /* Local memory is drained before farmem, therefore the following works. Tested on kernel 5.15.69.*/
+  while (p && pfn_t_to_phys(page_to_pfn_t(p)) < base_addr);
 
   printk(KERN_INFO "drained %lu bytes\n", eaten);
 }
@@ -68,6 +71,10 @@ static int __init farmem_mod_init(void)
     printk(KERN_ALERT "adding memory failed: %d\n", rc);
   }
   node_set_online(nnid);
+
+  /* Some local memory still remains usable, drain again to get it all. */
+  if (drain_node)
+    do_drain_node(nnid);
 
   return 0;
 }
