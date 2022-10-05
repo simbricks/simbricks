@@ -415,11 +415,19 @@ static void switch_pkt(NetPort &port, size_t iport) {
       // Broadcast
       struct ethhdr *eth_hdr = (struct ethhdr*)pkt_data;
       struct MemOp *memop = (struct MemOp *)(((const uint8_t *)pkt_data) +42);
+      uint64_t phy_addr = 0;
+
       for (size_t i = 0; i < map_table.size(); i++)
       {
         if (memop->as_id == map_table[i].as_id &&
           memop->addr >= map_table[i].vaddr_start && 
           memop->addr <= map_table[i].vaddr_end){
+
+            // Translate the virtual address to physical address
+            phy_addr = map_table[i].phys_start + (memop->addr - map_table[i].vaddr_start);
+            memop->addr = phy_addr;
+
+            // modify the destination MAC address
             for (int k = 0; k < ETH_ALEN; k++){
               eth_hdr->h_dest[k] = map_table[i].node_mac.ether_addr_octet[k]; 
             }
