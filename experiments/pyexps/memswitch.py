@@ -28,15 +28,53 @@ experiments = []
 num_of_netmem =[1, 2, 3, 4]
 
 class MemTest(node.AppConfig):
-    idx = 0
-    def __init__(self):
-        self.addr = []
+
+    def __init__(
+        self, 
+        disagg_addr: int,
+        idx: int,
+        disagg_size: int,
+        disaggregated: bool,
+        time_limit: int
+    ):
+        self.disagg_addr = disagg_addr
+        self.idx = idx
+        self.disagg_size = disagg_size
+        self.disaggregated = disaggregated
+        self.time_limit = time_limit
+
+    def config_files(self):
+        m = {'farmem.ko': open('../images/farmem/farmem.ko', 'rb')}
+        return {**m, **super().config_files()}
 
     def run_cmds(self, node):
-        commands = []
-        for addr in self.addr:
-            commands.append(f'busybox devmem 0x{addr:x} 64 0x{42 + self.idx} ')
-            commands.append(f'busybox devmem 0x{addr:x} 64')
+        commands = [
+            'mount -t proc proc /proc',
+            'mount -t sysfs sysfs /sys',
+            'free -m',
+            (
+                f'insmod /tmp/guest/farmem.ko base_addr=0x{self.disagg_addr:x} '
+                f'size=0x{self.disagg_size:x} nnid=1 drain_node=1'
+            ),
+            'free -m',
+            'numactl -H',
+            (
+                f'numactl --membind={1 if self.disaggregated else 0} '
+                'sysbench '
+                f'--time={self.time_limit} '
+                '--validate=on '
+                '--histogram=on '
+                'memory '
+                '--memory-oper=write '
+                '--memory-block-size=16M '
+                '--memory-access-mode=rnd '
+                '--memory-total-size=1K run'
+            )
+        ]
+
+        # for addr in self.addr:
+        #     commands.append(f'busybox devmem 0x{addr:x} 64 0x{42 + self.idx} ')
+        #     commands.append(f'busybox devmem 0x{addr:x} 64')
 
         return commands
 
@@ -55,9 +93,9 @@ sw_mem_map = [(0, 0, 1024*1024*1024, '00:00:00:00:00:04', 0),
             (2, 0, 512*1024*1024, '00:00:00:00:00:04', 1024*1024*1024),
             (2, 512*1024*1024, 1024*1024*1024, '00:00:00:00:00:05', 1024*1024*1024)]
 
-for h in ['gk']:
+for h in ['gk', 'gt']:
     e = exp.Experiment('memsw-' + h)
-    e.checkpoint = False
+    e.checkpoint = True
 
     # Add three MemNics for each host
     mem0 = sim.MemNIC()
@@ -82,31 +120,28 @@ for h in ['gk']:
     netmem0 = sim.NetMem()
     netmem0.mac = '00:00:00:00:00:04'
     netmem0.name = 'netmem0'
-    netmem0.size = 0x40000000
+    netmem0.size = 0x80000000
 
     netmem1 = sim.NetMem()
     netmem1.mac = '00:00:00:00:00:05'
     netmem1.name = 'netmem1'
-    netmem1.size = 0x40000000
+    netmem1.size = 0x80000000
 
     ###
     node_config0 = node.NodeConfig()
-    node_config0.nockp = True
-    node_config0.app = MemTest()
-    node_config0.app.addr.append(mem0.addr)
-    node_config0.app.idx = 0
+    node_config0.kcmd_append += 'numa=fake=2'
+    #node_config0.nockp = True
+    node_config0.app = MemTest(mem0.addr, 0, mem0.size, True, 5)
 
     node_config1 = node.NodeConfig()
-    node_config1.nockp = True
-    node_config1.app = MemTest()
-    node_config1.app.addr.append(mem0.addr)
-    node_config1.app.idx = 1
+    node_config1.kcmd_append += 'numa=fake=2'
+    #node_config1.nockp = True
+    node_config1.app = MemTest(mem1.addr, 1, mem1.size, True, 5)
 
     node_config2 = node.NodeConfig()
-    node_config2.nockp = True
-    node_config2.app = MemTest()
-    node_config2.app.addr.append(mem0.addr)
-    node_config2.app.idx = 2
+    node_config2.kcmd_append += 'numa=fake=2'
+    #node_config2.nockp = True
+    node_config2.app = MemTest(mem2.addr, 2, mem2.size, True, 5)
 
     net = sim.MemSwitchNet()
     for tp in sw_mem_map:
@@ -121,6 +156,14 @@ for h in ['gk']:
             h.variant = 'opt'
             return h
         HostClass = gem5_kvm
+
+    if h == 'gt':
+        def gem5_timing(node_config: node.NodeConfig):
+            h = sim.Gem5Host(node_config)
+            h.cpu_type = 'TimingSimpleCPU'
+            h.variant = 'opt'
+            return h
+        HostClass = gem5_timing
 
     elif h == 'qk':
         HostClass = sim.QemuHost
