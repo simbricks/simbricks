@@ -17,6 +17,7 @@ sims/nic/i40e_bm/i40e_bm
 sims/net/wire/net_wire
 sims/net/tap/net_tap
 sims/net/switch/net_switch
+sims/net/mem_switch/mem_switch
 sims/net/menshen/menshen_hw
 sims/net/menshen/obj_dir
 sims/net/tofino/tofino
