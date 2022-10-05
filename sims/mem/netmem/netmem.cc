@@ -47,7 +47,7 @@ extern "C" {
 #include <simbricks/mem/memop.h>
 };
 
-#define NETMEM_DEBUG 1
+//#define NETMEM_DEBUG 1
 
 static int exiting = 0, sync_mem = 1;
 static uint64_t cur_ts = 0;
@@ -131,7 +131,7 @@ int HandleRequest (SimbricksNetIf *netif, volatile struct SimbricksProtoNetMsgPa
 
   switch (type) {
     case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
-      printf("received read request\n");
+      //printf("received read request\n");
       // send read complete message
       to_memop->OpType = SIMBRICKS_PROTO_MEM_M2H_MSG_READCOMP;
 
@@ -140,7 +140,7 @@ int HandleRequest (SimbricksNetIf *netif, volatile struct SimbricksProtoNetMsgPa
       packet_to->len += memop->len;
       break;
     case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
-      printf("received write request\n");
+      //printf("received write request\n");
       // write the data in local memory
       memcpy(&mem_array[memop->addr], data, memop->len);
 
@@ -180,7 +180,7 @@ void PollN2M(struct SimbricksNetIf *netif, uint64_t cur_ts) {
   type = SimbricksNetIfInType(netif, msg);
   switch (type) {
     case SIMBRICKS_PROTO_NET_MSG_PACKET:
-      printf("received network packet\n");
+      //printf("received network packet\n");
       if (!HandleRequest(netif, packet)){
         return;
       }

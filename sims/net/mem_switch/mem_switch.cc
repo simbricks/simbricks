@@ -45,7 +45,7 @@ extern "C" {
 #include <simbricks/mem/memop.h>
 };
 
-#define NETSWITCH_DEBUG
+//#define NETSWITCH_DEBUG
 #define NETSWITCH_STAT
 
 struct SimbricksBaseIfParams netParams;

@@ -50,7 +50,7 @@ extern "C" {
 #include <simbricks/mem/memop.h>
 };
 
-#define MEMNIC_DEBUG 1
+//#define MEMNIC_DEBUG 1
 
 static int exiting = 0;
 static uint64_t cur_ts = 0;
@@ -327,12 +327,12 @@ void PollH2M(struct SimbricksMemIf *memif, SimbricksNetIf *netif, uint64_t cur_t
   switch (type) {
     
     case SIMBRICKS_PROTO_MEM_H2M_MSG_READ:
-      printf("received read request\n");
+      //printf("received read request\n");
       ForwardToETH(netif, msg, type);
       break;
 
     case SIMBRICKS_PROTO_MEM_H2M_MSG_WRITE:
-      printf("received write request\n");
+      //printf("received write request\n");
       ForwardToETH(netif, msg, type);
       break;
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
@@ -363,9 +363,6 @@ int main(int argc, char *argv[]) {
   
   SimbricksMemIfDefaultParams(&memParams);
   SimbricksNetIfDefaultParams(&netParams);
-
-  printf("sizeof(struct SimbricksProtoMemH2MWrite): %lu\n",
-         sizeof(struct SimbricksProtoMemH2MWrite));
 
   
   if (argc < 4 || argc > 10) {
