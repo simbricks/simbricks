@@ -26,6 +26,7 @@ import simbricks.orchestration.simulators as sim
 
 experiments = []
 num_of_netmem =[1, 2, 3, 4]
+num_mem_lat = [500, 100, 20] #ns
 
 class MemTest(node.AppConfig):
 
@@ -68,7 +69,7 @@ class MemTest(node.AppConfig):
                 '--memory-oper=write '
                 '--memory-block-size=16M '
                 '--memory-access-mode=rnd '
-                '--memory-total-size=1K run'
+                '--memory-total-size=0 run'
             )
         ]
 
@@ -93,111 +94,118 @@ sw_mem_map = [(0, 0, 1024*1024*1024, '00:00:00:00:00:04', 0),
             (2, 0, 512*1024*1024, '00:00:00:00:00:04', 1024*1024*1024),
             (2, 512*1024*1024, 1024*1024*1024, '00:00:00:00:00:05', 1024*1024*1024)]
 
-for h in ['gk', 'gt']:
-    e = exp.Experiment('memsw-' + h)
-    e.checkpoint = True
+for mem_lat in num_mem_lat:
+    for h in ['gk', 'gt']:
+        e = exp.Experiment('memsw-' + h + f'-{mem_lat}')
+        e.checkpoint = True
 
-    # Add three MemNics for each host
-    mem0 = sim.MemNIC()
-    mem0.name = 'mem0'
-    mem0.addr = 0x2000000000 #0x2000000000000000
-    mem0.mac = '00:00:00:00:00:01'
-    mem0.as_id = 0
+        # Add three MemNics for each host
+        mem0 = sim.MemNIC()
+        mem0.name = 'mem0'
+        mem0.addr = 0x2000000000 #0x2000000000000000
+        mem0.mac = '00:00:00:00:00:01'
+        mem0.as_id = 0
+        mem0.sync_period = mem_lat
+        mem0.mem_latency = mem_lat
 
-    mem1 = sim.MemNIC()
-    mem1.name = 'mem1'
-    mem1.addr = 0x2000000000 #0x2000000000000000
-    mem1.mac = '00:00:00:00:00:02'
-    mem1.as_id = 1
+        mem1 = sim.MemNIC()
+        mem1.name = 'mem1'
+        mem1.addr = 0x2000000000 #0x2000000000000000
+        mem1.mac = '00:00:00:00:00:02'
+        mem1.as_id = 1
+        mem1.sync_period = mem_lat
+        mem1.mem_latency = mem_lat
 
-    mem2 = sim.MemNIC()
-    mem2.name = 'mem2'
-    mem2.addr = 0x2000000000 #0x2000000000000000
-    mem2.mac = '00:00:00:00:00:03'
-    mem2.as_id = 2
+        mem2 = sim.MemNIC()
+        mem2.name = 'mem2'
+        mem2.addr = 0x2000000000 #0x2000000000000000
+        mem2.mac = '00:00:00:00:00:03'
+        mem2.as_id = 2
+        mem2.sync_period = mem_lat
+        mem2.mem_latency = mem_lat
 
-    # Add two NetMes
-    netmem0 = sim.NetMem()
-    netmem0.mac = '00:00:00:00:00:04'
-    netmem0.name = 'netmem0'
-    netmem0.size = 0x80000000
+        # Add two NetMes
+        netmem0 = sim.NetMem()
+        netmem0.mac = '00:00:00:00:00:04'
+        netmem0.name = 'netmem0'
+        netmem0.size = 0x80000000
 
-    netmem1 = sim.NetMem()
-    netmem1.mac = '00:00:00:00:00:05'
-    netmem1.name = 'netmem1'
-    netmem1.size = 0x80000000
+        netmem1 = sim.NetMem()
+        netmem1.mac = '00:00:00:00:00:05'
+        netmem1.name = 'netmem1'
+        netmem1.size = 0x80000000
 
-    ###
-    node_config0 = node.NodeConfig()
-    node_config0.kcmd_append += 'numa=fake=2'
-    #node_config0.nockp = True
-    node_config0.app = MemTest(mem0.addr, 0, mem0.size, True, 5)
+        ###
+        node_config0 = node.NodeConfig()
+        node_config0.kcmd_append += 'numa=fake=2'
+        #node_config0.nockp = True
+        node_config0.app = MemTest(mem0.addr, 0, mem0.size, True, 1)
 
-    node_config1 = node.NodeConfig()
-    node_config1.kcmd_append += 'numa=fake=2'
-    #node_config1.nockp = True
-    node_config1.app = MemTest(mem1.addr, 1, mem1.size, True, 5)
+        node_config1 = node.NodeConfig()
+        node_config1.kcmd_append += 'numa=fake=2'
+        #node_config1.nockp = True
+        node_config1.app = MemTest(mem1.addr, 1, mem1.size, True, 1)
 
-    node_config2 = node.NodeConfig()
-    node_config2.kcmd_append += 'numa=fake=2'
-    #node_config2.nockp = True
-    node_config2.app = MemTest(mem2.addr, 2, mem2.size, True, 5)
+        node_config2 = node.NodeConfig()
+        node_config2.kcmd_append += 'numa=fake=2'
+        #node_config2.nockp = True
+        node_config2.app = MemTest(mem2.addr, 2, mem2.size, True, 1)
 
-    net = sim.MemSwitchNet()
-    for tp in sw_mem_map:
-        net.mem_map.append(tp)
+        net = sim.MemSwitchNet()
+        for tp in sw_mem_map:
+            net.mem_map.append(tp)
 
-    e.add_network(net)
+        e.add_network(net)
 
-    if h == 'gk':
-        def gem5_kvm(node_config: node.NodeConfig):
-            h = sim.Gem5Host(node_config)
-            h.cpu_type = 'X86KvmCPU'
-            h.variant = 'opt'
-            return h
-        HostClass = gem5_kvm
+        if h == 'gk':
+            def gem5_kvm(node_config: node.NodeConfig):
+                h = sim.Gem5Host(node_config)
+                h.cpu_type = 'X86KvmCPU'
+                h.variant = 'opt'
+                return h
+            HostClass = gem5_kvm
 
-    if h == 'gt':
-        def gem5_timing(node_config: node.NodeConfig):
-            h = sim.Gem5Host(node_config)
-            h.cpu_type = 'TimingSimpleCPU'
-            h.variant = 'opt'
-            return h
-        HostClass = gem5_timing
+        if h == 'gt':
+            def gem5_timing(node_config: node.NodeConfig):
+                h = sim.Gem5Host(node_config)
+                h.cpu_type = 'TimingSimpleCPU'
+                h.variant = 'opt'
+                return h
+            HostClass = gem5_timing
 
-    elif h == 'qk':
-        HostClass = sim.QemuHost
+        elif h == 'qk':
+            HostClass = sim.QemuHost
+        
+        # Add hosts
+        host_0 = HostClass(node_config0)
+        host_1 = HostClass(node_config1)
+        host_2 = HostClass(node_config2)
     
-    # Add hosts
-    host_0 = HostClass(node_config0)
-    host_1 = HostClass(node_config1)
-    host_2 = HostClass(node_config2)
-  
-    host_0.name = 'host.0'
-    host_1.name = 'host.1'
-    host_2.name = 'host.2'
+        host_0.name = 'host.0'
+        host_1.name = 'host.1'
+        host_2.name = 'host.2'
 
-    e.add_host(host_0)
-    e.add_host(host_1)
-    e.add_host(host_2)
+        e.add_host(host_0)
+        e.add_host(host_1)
+        e.add_host(host_2)
 
-    host_0.wait = True
-    host_1.wait = True
-    host_2.wait = True
+        host_0.wait = True
+        host_1.wait = True
+        host_2.wait = True
 
-    mem0.set_network(net)
-    mem1.set_network(net)
-    mem2.set_network(net)
-    e.add_memdev(mem0)
-    e.add_memdev(mem1)
-    e.add_memdev(mem2)
+        mem0.set_network(net)
+        mem1.set_network(net)
+        mem2.set_network(net)
+        e.add_memdev(mem0)
+        e.add_memdev(mem1)
+        e.add_memdev(mem2)
 
-    host_0.add_memdev(mem0)
-    host_1.add_memdev(mem1)
-    host_2.add_memdev(mem2)
+        host_0.add_memdev(mem0)
+        host_1.add_memdev(mem1)
+        host_2.add_memdev(mem2)
 
-    netmem0.set_network(net)
-    netmem1.set_network(net)
+        netmem0.set_network(net)
+        netmem1.set_network(net)
 
 
-    experiments.append(e)
+        experiments.append(e)
