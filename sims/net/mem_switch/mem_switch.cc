@@ -45,7 +45,7 @@ extern "C" {
 #include <simbricks/mem/memop.h>
 };
 
-//#define NETSWITCH_DEBUG
+// #define NETSWITCH_DEBUG
 #define NETSWITCH_STAT
 
 struct SimbricksBaseIfParams netParams;
@@ -569,18 +569,28 @@ int main(int argc, char *argv[]) {
             auto &port = *ports[port_i];
             std::string sockpath = port.path_;
             if (sockpath.find(netmem_name) != std::string::npos){
-              printf("port id for %s is %lu\n", netmem_name.c_str(), port_i);
               uint8_t *temp = (uint8_t *) malloc(6);
               memcpy(temp, (const uint8_t *)ent.node_mac.ether_addr_octet, 6);
-
               MAC node_mac((const uint8_t *) temp);
-              mac_table.insert({node_mac,port_i});
-              printf("mac_8: %X:%X:%X:%X:%X:%X\n", node_mac.data[0], node_mac.data[1], node_mac.data[2], node_mac.data[3], node_mac.data[4], node_mac.data[5]);
-
+              bool exisiting = false;
+              for (auto iter = mac_table.begin(); iter != mac_table.end(); ++iter) {
+                if (iter->first == node_mac){
+                  exisiting = true;
+                  break;
+                }
+              }
+              if (exisiting){
+                break;
+              }else {
+                printf("port id for %s is %lu\n", netmem_name.c_str(), port_i);
+                mac_table.insert({node_mac,port_i});
+                printf("mac_8: %X:%X:%X:%X:%X:%X\n", node_mac.data[0], node_mac.data[1], node_mac.data[2], node_mac.data[3], node_mac.data[4], node_mac.data[5]);
+                netmem_idx++;
+              }
             }
           }
 
-        netmem_idx++;
+        
         break;
 
       default:
