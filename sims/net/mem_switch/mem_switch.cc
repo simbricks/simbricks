@@ -572,14 +572,14 @@ int main(int argc, char *argv[]) {
               uint8_t *temp = (uint8_t *) malloc(6);
               memcpy(temp, (const uint8_t *)ent.node_mac.ether_addr_octet, 6);
               MAC node_mac((const uint8_t *) temp);
-              bool exisiting = false;
+              bool existing = false;
               for (auto iter = mac_table.begin(); iter != mac_table.end(); ++iter) {
                 if (iter->first == node_mac){
-                  exisiting = true;
+                  existing = true;
                   break;
                 }
               }
-              if (exisiting){
+              if (existing){
                 break;
               }else {
                 printf("port id for %s is %lu\n", netmem_name.c_str(), port_i);
