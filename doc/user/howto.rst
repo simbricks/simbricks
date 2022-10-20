@@ -21,14 +21,21 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+.. _sec-howto:
+
 ###################################
 How To
 ###################################
 
 
+.. _sec-howto-createrun:
+
 ******************************
 Create and Run an Experiment
 ******************************
+
+
+.. _sec-howto-nodeconfig:
 
 ********************************
 Add a Node or Application Config
