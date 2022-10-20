@@ -1,5 +1,5 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
+  Copyright 2022 Max Planck Institute for Software Systems, and
   National University of Singapore
 ..
   Permission is hereby granted, free of charge, to any person obtaining
@@ -22,5 +22,17 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ###################################
-Simbricks Troubleshooting
+Troubleshooting
 ###################################
+
+************************************
+Is my Simulation Stuck or just Slow?
+************************************
+
+************************************
+Understanding Simulation Performance
+************************************
+
+******************************
+Getting Help
+******************************
