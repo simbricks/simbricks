@@ -29,3 +29,4 @@ Simulators
    :maxdepth: 2
    :caption: Contents:
 
+   simulators/gem5
