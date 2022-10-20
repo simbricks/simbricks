@@ -33,6 +33,9 @@ Is my Simulation Stuck or just Slow?
 Understanding Simulation Performance
 ************************************
 
+
+.. _sec-troubleshoot-getting-help:
+
 ******************************
 Getting Help
 ******************************
