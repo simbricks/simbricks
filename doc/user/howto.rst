@@ -1,5 +1,5 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
+  Copyright 2022 Max Planck Institute for Software Systems, and
   National University of Singapore
 ..
   Permission is hereby granted, free of charge, to any person obtaining
@@ -22,13 +22,26 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ###################################
-Getting Started
+How To
 ###################################
 
+
 ******************************
-Overview
+Create and Run an Experiment
+******************************
+
+********************************
+Add a Node or Application Config
+********************************
+
+******************************
+Add a Custom Image
 ******************************
 
 ******************************
-Resources
+Integrate a New Simulator
+******************************
+
+******************************
+Add a New Interface
 ******************************

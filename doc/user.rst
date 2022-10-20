@@ -30,5 +30,7 @@ User Guide
    :caption: Contents:
 
    user/quickstart
-   user/parameters
+   user/install
+   user/orchestration
+   user/howto
    user/troubleshooting
