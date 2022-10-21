@@ -30,7 +30,7 @@ from simbricks.orchestration.simulators import (
 
 
 class Experiment(object):
-    """Base class for all simulation experiments."""
+    """Base class for all simulation experiments. Contains the simulators to be run and experiment-wide parameters."""
 
     def __init__(self, name: str):
         self.name = name
@@ -41,13 +41,9 @@ class Experiment(object):
         self.timeout: tp.Optional[int] = None
         """Timeout for experiment in seconds."""
         self.checkpoint = False
-        """Whether to use checkpoints in the experiment.
+        """Whether to use checkpoint and restore for simulators.
 
-        Using this property we can, for example, speed up booting a host
-        simulator by first running in a less accurate mode. Before we then start
-        the measurement we are interested in, a checkpoint is taken, the
-        simulator shut down and finally restored in the accurate mode using this
-        checkpoint."""
+        The most common use-case for this is accelerating host simulator startup by first running in a less accurate mode, then checkpointing the system state after boot and running simulations from there."""
         self.no_simbricks = False
         """If `true`, no simbricks adapters are used in any of the
         simulators."""
@@ -64,39 +60,43 @@ class Experiment(object):
         return filter(lambda pcidev: pcidev.is_nic(), self.pcidevs)
 
     def add_host(self, sim: HostSim):
+        """Add a host simulator to the experiment."""
         for h in self.hosts:
             if h.name == sim.name:
                 raise Exception('Duplicate host name')
         self.hosts.append(sim)
 
     def add_nic(self, sim: tp.Union[NICSim, I40eMultiNIC]):
+        """Add a NIC simulator to the experiment."""
         self.add_pcidev(sim)
 
     def add_pcidev(self, sim: PCIDevSim):
+        """Add a PCIe device simulator to the experiment."""
         for d in self.pcidevs:
             if d.name == sim.name:
                 raise Exception('Duplicate pcidev name')
         self.pcidevs.append(sim)
 
     def add_network(self, sim: NetSim):
+        """Add a network simulator to the experiment."""
         for n in self.networks:
             if n.name == sim.name:
                 raise Exception('Duplicate net name')
         self.networks.append(sim)
 
     def all_simulators(self):
-        """All simulators used in experiment."""
+        """Returns all simulators defined to run in this experiment."""
         return itertools.chain(self.hosts, self.pcidevs, self.networks)
 
     def resreq_mem(self):
-        """Memory required to run all simulators used in this experiment."""
+        """Memory required to run all simulators in this experiment."""
         mem = 0
         for s in self.all_simulators():
             mem += s.resreq_mem()
         return mem
 
     def resreq_cores(self):
-        """Number of Cores required to run all simulators used in this
+        """Number of Cores required to run all simulators in this
         experiment."""
         cores = 0
         for s in self.all_simulators():
