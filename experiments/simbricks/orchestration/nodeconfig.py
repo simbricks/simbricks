@@ -27,31 +27,41 @@ import tarfile
 import typing as tp
 
 
-class AppConfig(object):
-    """Manages the application to be run on a simulated host."""
+class AppConfig():
+    """Defines the application to run on a node or host."""
 
     # pylint: disable=unused-argument
-    def run_cmds(self, node: NodeConfig):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        """Commands to run for this application."""
         return []
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
+        """Commands to run to prepare this application before checkpointing."""
         return []
 
-    def prepare_post_cp(self):
+    def prepare_post_cp(self) -> tp.List[str]:
+        """Commands to run to prepare this application after checkpoint
+        restore."""
         return []
 
-    def config_files(self):
+    def config_files(self) -> tp.Set[str, tp.IO]:
+        """Additional files to put inside the node, for example, necessary
+        config files or kernel modules.
+        
+        Specified in the following format: `filename_inside_node`: `IO_handle_to
+        read_file`"""
         return {}
 
-    def strfile(self, s):
+    def strfile(self, s: str):
+        """Helper function to convert a string to an IO handle for usage in
+        `config_files()`."""
         return io.BytesIO(bytes(s, encoding='UTF-8'))
 
 
-class NodeConfig(object):
+class NodeConfig():
+    """Defines the configuration of a node or host."""
 
     def __init__(self):
-        """Manages the configuration for a node."""
-        super().__init__()
         self.sim = 'qemu'
         """Name of simulator to run."""
         self.ip = '10.0.0.1'
@@ -69,9 +79,9 @@ class NodeConfig(object):
         self.nockp = 0
         """Do not make checkpoint in Gem5."""
         self.app: tp.Optional[AppConfig] = None
-        """App to be run on simulated host."""
+        """Application to run on simulated host."""
 
-    def config_str(self):
+    def config_str(self) -> str:
         if self.sim == 'qemu':
             cp_es = []
             exit_es = ['poweroff -f']
@@ -109,7 +119,8 @@ class NodeConfig(object):
                 tar.addfile(tarinfo=f_i, fileobj=f)
                 f.close()
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
+        """Commands to run to prepare node before checkpointing."""
         return [
             'set -x',
             'export HOME=/root',
@@ -118,19 +129,29 @@ class NodeConfig(object):
                 '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"'
         ]
 
-    def prepare_post_cp(self):
+    def prepare_post_cp(self) -> tp.List[str]:
+        """Commands to run to prepare node after checkpoint restore."""
         return []
 
-    def run_cmds(self):
+    def run_cmds(self) -> tp.List[str]:
+        """Commands to run on node."""
         return self.app.run_cmds(self)
 
-    def cleanup_cmds(self):
+    def cleanup_cmds(self) -> tp.List[str]:
+        """Commands to run to cleanup node."""
         return []
 
-    def config_files(self):
+    def config_files(self) -> tp.Set[str, tp.IO]:
+        """Additional files to put inside the node, for example, necessary
+        config files or kernel modules.
+        
+        Specified in the following format: `filename_inside_node`: `IO_handle_to
+        read_file`"""
         return self.app.config_files()
 
-    def strfile(self, s):
+    def strfile(self, s: str):
+        """Helper function to convert a string to an IO handle for usage in
+        `config_files()`."""
         return io.BytesIO(bytes(s, encoding='UTF-8'))
 
 
@@ -349,6 +370,12 @@ class LinuxFEMUNode(NodeConfig):
         return super().prepare_post_cp() + l
 
 
+class IdleHost(AppConfig):
+
+    def run_cmds(self, node):
+        return ['sleep infinity']
+
+
 class NVMEFsTest(AppConfig):
 
     def run_cmds(self, node):
@@ -390,12 +417,12 @@ class DctcpClient(AppConfig):
 
 class PingClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self, server_ip: str = '192.168.64.1'):
         super().__init__()
-        self.server_ip = '192.168.64.1'
+        self.server_ip = server_ip
 
     def run_cmds(self, node):
-        return [f'ping {self.server_ip} -c 100']
+        return [f'ping {self.server_ip} -c 10']
 
 
 class IperfTCPServer(AppConfig):
