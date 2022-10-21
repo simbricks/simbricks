@@ -113,8 +113,10 @@ class NICSim(PCIDevSim):
         self.network: tp.Optional[NetSim] = None
         self.mac: tp.Optional[str] = None
         self.eth_latency = 500
+        """Ethernet latency in nanoseconds from this NIC to the network component."""
 
     def set_network(self, net: NetSim):
+        """Connect this NIC to a network simulator."""
         self.network = net
         net.nics.append(self)
 
@@ -158,7 +160,9 @@ class NetSim(Simulator):
         self.opt = ''
         self.sync_mode = 0
         self.sync_period = 500
+        """Synchronization period in nanoseconds from this network to connected components."""
         self.eth_latency = 500
+        """Ethernet latency in nanoseconds from this network to connected components."""
         self.nics: list[NICSim] = []
         self.hosts_direct: list[HostSim] = []
         self.net_listen: list[NetSim] = []
@@ -204,12 +208,12 @@ class HostSim(Simulator):
     def __init__(self, node_config: NodeConfig):
         super().__init__()
         self.node_config = node_config
-        """Config for the simulated host. """
+        """System configuration for this simulated host. """
         self.name = ''
         self.wait = False
         """
-        `True` - Wait for process of simulator to exit.
-        `False` - Don't wait and instead stop the process.
+        `True` - Wait for this simulator to finish execution.
+        `False` - Don't wait and instead shutdown the simulator as soon as all other awaited simulators have completed execution.
         """
         self.sleep = 0
         self.cpu_freq = '8GHz'
@@ -229,13 +233,16 @@ class HostSim(Simulator):
         return 'host.' + self.name
 
     def add_nic(self, dev: NICSim):
+        """Add a NIC to this host."""
         self.add_pcidev(dev)
 
     def add_pcidev(self, dev: PCIDevSim):
+        """Add a PCIe device to this host."""
         dev.name = self.name + '.' + dev.name
         self.pcidevs.append(dev)
 
     def add_netdirect(self, net: NetSim):
+        """Add a direct connection to a network to this host."""
         net.hosts_direct.append(self)
         self.net_directs.append(net)
 

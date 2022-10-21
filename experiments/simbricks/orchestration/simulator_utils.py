@@ -19,7 +19,7 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""Provides utility functions for assembling host simulators."""
+"""Provides helper functions for assembling multiple host simulators."""
 
 import typing as tp
 
@@ -47,7 +47,7 @@ def create_basic_hosts(
     parameters.
 
     Args:
-        `num`: number of hosts to create
+        num: number of hosts to create
     """
 
     hosts: tp.List[HostSim] = []
