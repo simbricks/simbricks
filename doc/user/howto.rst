@@ -34,6 +34,36 @@ How To
 Create and Run an Experiment
 ******************************
 
+Experiments are defined in a declarative fashion inside Python modules using classes. Basically, create a `.py` file and add a global variable ``experiments``, a list which contains multiple instances of the class :class:`simbricks.orchestration.experiments.Experiment`, each one describing a standalone experiment. This is very helpful if you wish to evaluate your work in different environments, for example, you may want to swap out some simulator or investigate multiple topologies with different scale.
+
+The class :class:`~simbricks.orchestration.experiments.Experiment` provides methods to add the simulators you wish to run. All available simulators can be found in the module :mod:`simbricks.orchestration.simulators`. Instantiating :class:`~simbricks.orchestration.simulators.HostSim` requires you to specify a :class:`~simbricks.orchestration.nodeconfig.NodeConfig`, which contains the configuration for your host, for example its networking settings, how much system memory it should have, and most importantly, which application to run by assigning an :class:`~simbricks.orchestration.nodeconfig.AppConfig`. You can find predefined classes for node and app configs in the module :mod:`simbricks.orchestration.nodeconfig`, feel free to add new ones or just create a new class locally in your experiment's module.
+
+The last step to complete your virtual testbed is to specify which virtual components connect to each other. You do this by invoking the respective methods on the simulators you have instantiated. See the different simulator types' base classes in the module :mod:`~simbricks.orchestration.simulators` for more information. A simple and complete experiment module in which a client host pings a server can be found :ref:`below <simple_ping_experiment>`.
+
+If you plan to simulate a topology with multiple hosts, it may be helpful to take a look at the module :mod:`simbricks.orchestration.simulator_utils` in which we provide some helper functions to reduce the amount of code you have to write.
+
+Finally, to run your experiment invoke ``/experiments/run.py`` and provide the path to your experiment module. In our docker containers you can just use the following command from anywhere:
+
+.. code-block:: bash
+
+  $ simbricks-run --verbose --force <path_to_your_module.py>
+
+``--verbose`` prints all simulators' output to the terminal and ``--force`` forces execution even if there already exist result files for the same experiment. If ``simbricks-run`` is not available, you can always do 
+
+.. code-block:: bash
+  
+  # from the repository's root directory
+  $ cd experiments
+  $ python run.py --verbose --force <path_to_your_module.py>
+
+While running, you can interrupt the experiment using CTRL+C in your terminal. This will cleanly stop all simulators and collect their output in a JSON file in the directory ``experiments/out/<experiment_name>``. These are the necessary basics to create and run your first experiment. Have fun.
+
+.. literalinclude:: /../experiments/pyexps/simple_ping.py
+  :linenos:
+  :lines: 25-
+  :language: python
+  :name: simple_ping_experiment
+  :caption: A simple experiment with a client host pinging a server, both are connected through a switch. The setup of the two hosts could be simplified by using :func:`~simbricks.orchestration.simulator_utils.create_basic_hosts`.
 
 .. _sec-howto-nodeconfig:
 
@@ -52,3 +82,29 @@ Integrate a New Simulator
 ******************************
 Add a New Interface
 ******************************
+
+.. autoclass:: simbricks.orchestration.experiments.Experiment
+  :members: add_host, add_pcidev, add_nic, add_network
+
+.. automodule:: simbricks.orchestration.simulators
+
+  .. autoclass:: simbricks.orchestration.simulators.HostSim
+    :members: add_pcidev, add_nic, add_netdirect
+
+  .. autoclass:: simbricks.orchestration.simulators.NICSim
+    :members: set_network
+
+  .. autoclass:: simbricks.orchestration.simulators.NetSim
+    :members: connect_network
+
+
+.. automodule:: simbricks.orchestration.nodeconfig
+
+  .. autoclass:: simbricks.orchestration.nodeconfig.NodeConfig
+    :members:
+    
+  .. autoclass:: simbricks.orchestration.nodeconfig.AppConfig
+    :members:
+
+.. automodule:: simbricks.orchestration.simulator_utils
+  :members:
