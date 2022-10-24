@@ -79,6 +79,20 @@ Add a Custom Image
 Integrate a New Simulator
 ******************************
 
+The simulator to be integrated should have its SimBricks adapter ready. Here we assume you already implemented SimBricks adapter for the simulator. Please refer to :ref:`Simulator Adapters <Simulator Adapters>` Section for more detail about how a SimBricks adapter works and how someone can implement it.
+
+The next step is to add the command for launching the simulator to the orchestration framework. The class :class:`~simbricks.orchestration.simulators.Simulator` in ``experiments/simbricks/orchestration/simulators.py``, provides methods to set the command and configure the parameters to the simulator. There are several child classes inheriting from class :class:`~simbricks.orchestration.simulators.Simulator` including :class:`~simbricks.orchestration.simulators.PCIDevSim`, :class:`~simbricks.orchestration.simulators.NICSim`, :class:`~simbricks.orchestration.simulators.NetSim`, :class:`~simbricks.orchestration.simulators.HostSim` etc. You can create a new class for your simulator inheriting from one of these classes according to the simulator's category. 
+Below is an example of adding a class for ``NS3`` simulator.
+
+.. literalinclude:: /../experiments/simbricks/orchestration/simulators.py
+  :linenos:
+  :lineno-start: 585
+  :lines: 585 - 598
+  :language: python
+  :name: NS3 simulator class
+  :caption: NS3 simulator class
+
+
 ******************************
 Add a New Interface
 ******************************
