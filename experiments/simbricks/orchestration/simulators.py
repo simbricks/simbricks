@@ -35,6 +35,7 @@ class Simulator(object):
 
     def __init__(self):
         self.extra_deps = []
+        self.name = ''
 
     def resreq_cores(self):
         """Number of cores required for this simulator."""
@@ -58,7 +59,7 @@ class Simulator(object):
         """Command to run to execute simulator."""
         return None
 
-    def dependencies(self):
+    def dependencies(self) -> tp.List[Simulator]:
         """Other simulators this one depends on."""
         return []
 
@@ -85,7 +86,6 @@ class PCIDevSim(Simulator):
     def __init__(self):
         super().__init__()
 
-        self.name = ''
         self.sync_mode = 0
         self.start_tick = 0
         self.sync_period = 500
@@ -156,7 +156,6 @@ class NetSim(Simulator):
     def __init__(self):
         super().__init__()
 
-        self.name = ''
         self.opt = ''
         self.sync_mode = 0
         self.sync_period = 500
@@ -176,7 +175,7 @@ class NetSim(Simulator):
         net.net_listen.append(self)
         self.net_connect.append(net)
 
-    def connect_sockets(self, env: ExpEnv):
+    def connect_sockets(self, env: ExpEnv) -> tp.List[tp.Tuple[Simulator, str]]:
         sockets = []
         for n in self.nics:
             sockets.append((n, env.nic_eth_path(n)))
@@ -209,7 +208,6 @@ class HostSim(Simulator):
         super().__init__()
         self.node_config = node_config
         """System configuration for this simulated host. """
-        self.name = ''
         self.wait = False
         """
         `True` - Wait for this simulator to finish execution.
@@ -446,7 +444,6 @@ class MultiSubNIC(NICSim):
 
     def __init__(self, mn):
         super().__init__()
-        self.name = ''
         self.multinic = mn
 
     def full_name(self):
@@ -464,7 +461,6 @@ class I40eMultiNIC(Simulator):
     def __init__(self):
         super().__init__()
         self.subnics = []
-        self.name = ''
 
     def create_subnic(self):
         sn = MultiSubNIC(self)
@@ -569,9 +565,9 @@ class NS3DumbbellNet(NetSim):
         ports = ''
         for (n, s) in self.connect_sockets(env):
             if 'server' in n.name:
-                ports += '--CosimPortLeft=' + s + ' '
+                ports += f'--CosimPortLeft={s} '
             else:
-                ports += '--CosimPortRight=' + s + ' '
+                ports += f'--CosimPortRight={s} '
 
         cmd = (
             f'{env.repodir}/sims/external/ns-3'
