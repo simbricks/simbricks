@@ -47,8 +47,8 @@ methods to add the simulators you wish to run. All available simulators can be
 found in the module :mod:`simbricks.orchestration.simulators`. Instantiating
 :class:`~simbricks.orchestration.simulators.HostSim` requires you to specify a
 :class:`~simbricks.orchestration.nodeconfig.NodeConfig`, which contains the
-configuration for your host, for example its networking settings, how much
-system memory it should have, and most importantly, which application to run by
+configuration for your host, for example, its networking settings, how much
+system memory it should have, and most importantly, which applications to run by
 assigning an :class:`~simbricks.orchestration.nodeconfig.AppConfig`. You can
 find predefined classes for node and app configs in the module
 :mod:`simbricks.orchestration.nodeconfig`, feel free to add new ones or just
@@ -104,6 +104,32 @@ basics to create and run your first experiment. Have fun.
 ********************************
 Add a Node or Application Config
 ********************************
+
+The classes :class:`~simbricks.orchestration.nodeconfig.NodeConfig` and
+:class:`~simbricks.orchestration.nodeconfig.AppConfig` are used to define the
+configuration of the individual host simulators or, more generally, nodes that
+should run in your experiment.
+:class:`~simbricks.orchestration.nodeconfig.NodeConfig` defines, for example,
+the networking configuration like IP address and subnet mask, how much system
+memory the node has, and which disk image to run. The latter can be used to, for
+example, run a specific version of the Linux kernel on a node. You can find more
+information on that in the :ref:`next section <sec-howto-custom_image>`. There
+is also an attribute to assign an instance of the class
+:class:`~simbricks.orchestration.nodeconfig.AppConfig`, which defines the
+concrete application to execute on the node.
+
+You can find predefined classes in the module
+:mod:`simbricks.orchestration.nodeconfig`, however, if they don't fit your
+use-case, you can easily create your own class. The typical use-case is that you
+want to use a pre-defined node configuration but run your own application. The
+easiest way is to create a class for that directly in your experiment module,
+which inherits from :class:`~simbricks.orchestration.nodeconfig.AppConfig` and
+overrides the methods of interest, most notably
+:meth:`~simbricks.orchestration.nodeconfig.AppConfig.run_cmds`, which defines
+the command to execute for your application. For further information take a look
+at the module :mod:`simbricks.orchestration.nodeconfig`.
+
+.. _sec-howto-custom_image:
 
 ******************************
 Add a Custom Image
