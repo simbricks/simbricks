@@ -45,11 +45,13 @@ class AppConfig():
         return []
 
     def config_files(self) -> tp.Dict[str, tp.IO]:
-        """Additional files to put inside the node, for example, necessary
-        config files or kernel modules.
-        
+        """
+        Additional files to put inside the node, for example, necessary config
+        files or kernel modules.
+
         Specified in the following format: `filename_inside_node`: `IO_handle_to
-        read_file`"""
+        read_file`
+        """
         return {}
 
     def strfile(self, s: str):
@@ -142,11 +144,13 @@ class NodeConfig():
         return []
 
     def config_files(self) -> tp.Dict[str, tp.IO]:
-        """Additional files to put inside the node, for example, necessary
-        config files or kernel modules.
-        
+        """
+        Additional files to put inside the node, for example, necessary config
+        files or kernel modules.
+
         Specified in the following format: `filename_inside_node`: `IO_handle_to
-        read_file`"""
+        read_file`
+        """
         return self.app.config_files()
 
     def strfile(self, s: str):

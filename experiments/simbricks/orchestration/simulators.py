@@ -113,7 +113,8 @@ class NICSim(PCIDevSim):
         self.network: tp.Optional[NetSim] = None
         self.mac: tp.Optional[str] = None
         self.eth_latency = 500
-        """Ethernet latency in nanoseconds from this NIC to the network component."""
+        """Ethernet latency in nanoseconds from this NIC to the network
+        component."""
 
     def set_network(self, net: NetSim):
         """Connect this NIC to a network simulator."""
@@ -159,9 +160,11 @@ class NetSim(Simulator):
         self.opt = ''
         self.sync_mode = 0
         self.sync_period = 500
-        """Synchronization period in nanoseconds from this network to connected components."""
+        """Synchronization period in nanoseconds from this network to connected
+        components."""
         self.eth_latency = 500
-        """Ethernet latency in nanoseconds from this network to connected components."""
+        """Ethernet latency in nanoseconds from this network to connected
+        components."""
         self.nics: list[NICSim] = []
         self.hosts_direct: list[HostSim] = []
         self.net_listen: list[NetSim] = []
@@ -210,8 +213,9 @@ class HostSim(Simulator):
         """System configuration for this simulated host. """
         self.wait = False
         """
-        `True` - Wait for this simulator to finish execution.
-        `False` - Don't wait and instead shutdown the simulator as soon as all other awaited simulators have completed execution.
+        `True` - Wait for this simulator to finish execution. `False` - Don't
+        wait and instead shutdown the simulator as soon as all other awaited
+        simulators have completed execution.
         """
         self.sleep = 0
         self.cpu_freq = '8GHz'

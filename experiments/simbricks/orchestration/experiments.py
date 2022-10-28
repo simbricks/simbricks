@@ -30,7 +30,11 @@ from simbricks.orchestration.simulators import (
 
 
 class Experiment(object):
-    """Base class for all simulation experiments. Contains the simulators to be run and experiment-wide parameters."""
+    """
+    Base class for all simulation experiments.
+
+    Contains the simulators to be run and experiment-wide parameters.
+    """
 
     def __init__(self, name: str):
         self.name = name
@@ -43,7 +47,9 @@ class Experiment(object):
         self.checkpoint = False
         """Whether to use checkpoint and restore for simulators.
 
-        The most common use-case for this is accelerating host simulator startup by first running in a less accurate mode, then checkpointing the system state after boot and running simulations from there."""
+        The most common use-case for this is accelerating host simulator startup
+        by first running in a less accurate mode, then checkpointing the system
+        state after boot and running simulations from there."""
         self.no_simbricks = False
         """If `true`, no simbricks adapters are used in any of the
         simulators."""
@@ -96,8 +102,7 @@ class Experiment(object):
         return mem
 
     def resreq_cores(self):
-        """Number of Cores required to run all simulators in this
-        experiment."""
+        """Number of Cores required to run all simulators in this experiment."""
         cores = 0
         for s in self.all_simulators():
             cores += s.resreq_cores()
