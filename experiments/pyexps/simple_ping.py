@@ -19,12 +19,18 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""Simple example experiment, which sets up a client and a server host connected
-through a switch. The client pings the server."""
+"""
+Simple example experiment, which sets up a client and a server host connected
+through a switch.
 
-from simbricks.orchestration.simulators import Gem5Host, I40eNIC, SwitchNet
-from simbricks.orchestration.nodeconfig import I40eLinuxNode, IdleHost, PingClient
+The client pings the server.
+"""
+
 from simbricks.orchestration.experiments import Experiment
+from simbricks.orchestration.nodeconfig import (
+    I40eLinuxNode, IdleHost, PingClient
+)
+from simbricks.orchestration.simulators import Gem5Host, I40eNIC, SwitchNet
 
 e = Experiment(name='simple_ping')
 e.checkpoint = True  # use checkpoint and restore to speed up simulation
