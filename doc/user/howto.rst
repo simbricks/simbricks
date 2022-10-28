@@ -42,7 +42,7 @@ The last step to complete your virtual testbed is to specify which virtual compo
 
 If you plan to simulate a topology with multiple hosts, it may be helpful to take a look at the module :mod:`simbricks.orchestration.simulator_utils` in which we provide some helper functions to reduce the amount of code you have to write.
 
-Finally, to run your experiment invoke ``/experiments/run.py`` and provide the path to your experiment module. In our docker containers you can just use the following command from anywhere:
+Finally, to run your experiment invoke ``/experiments/run.py`` and provide the path to your experiment module. In our docker containers, you can just use the following command from anywhere:
 
 .. code-block:: bash
 
@@ -63,7 +63,7 @@ While running, you can interrupt the experiment using CTRL+C in your terminal. T
   :lines: 25-
   :language: python
   :name: simple_ping_experiment
-  :caption: A simple experiment with a client host pinging a server, both are connected through a switch. The setup of the two hosts could be simplified by using :func:`~simbricks.orchestration.simulator_utils.create_basic_hosts`.
+  :caption: A simple experiment with a client host pinging a server, both are connected through a network switch. The setup of the two hosts could be simplified by using :func:`~simbricks.orchestration.simulator_utils.create_basic_hosts`.
 
 .. _sec-howto-nodeconfig:
 
@@ -79,18 +79,26 @@ Add a Custom Image
 Integrate a New Simulator
 ******************************
 
-The simulator to be integrated should have its SimBricks adapter ready. Here we assume you already implemented SimBricks adapter for the simulator. Please refer to :ref:`Simulator Adapters <Simulator Adapters>` Section for more detail about how a SimBricks adapter works and how someone can implement it.
+The first step when integrating a new simulator into SimBricks is to implement a SimBricks adapter for it. You can find the necessary information in the :ref:`Simulator Adapters <Simulator Adapters>` section. After that, we need to add a class for the simulator in the SimBricks orchestration framework such that it can be used when defining experiments. This class basically wraps a command for launching the simulator and needs to inherit from :class:`~simbricks.orchestration.simulators.Simulator` and implement relevant methods. There are several more specialized child classes in the module :mod:`simbricks.orchestration.simulators` for typical categories of simulators, which already offer the interfaces to collect parameters like which other simulators to connect to necessary for creating the launch command. Examples are :class:`~simbricks.orchestration.simulators.PCIDevSim`, :class:`~simbricks.orchestration.simulators.NICSim`, :class:`~simbricks.orchestration.simulators.NetSim`, and :class:`~simbricks.orchestration.simulators.HostSim`. You can find an example below of adding a class for the ``NS3`` network simulator.
 
-The next step is to add the command for launching the simulator to the orchestration framework. The class :class:`~simbricks.orchestration.simulators.Simulator` in ``experiments/simbricks/orchestration/simulators.py``, provides methods to set the command and configure the parameters to the simulator. There are several child classes inheriting from class :class:`~simbricks.orchestration.simulators.Simulator` including :class:`~simbricks.orchestration.simulators.PCIDevSim`, :class:`~simbricks.orchestration.simulators.NICSim`, :class:`~simbricks.orchestration.simulators.NetSim`, :class:`~simbricks.orchestration.simulators.HostSim` etc. You can create a new class for your simulator inheriting from one of these classes according to the simulator's category. 
-Below is an example of adding a class for ``NS3`` simulator.
-
-.. literalinclude:: /../experiments/simbricks/orchestration/simulators.py
+.. code-block:: python
   :linenos:
-  :lineno-start: 585
-  :lines: 585 - 598
-  :language: python
-  :name: NS3 simulator class
-  :caption: NS3 simulator class
+  :caption: Class implementing the ``NS3`` network simulator in the SimBricks orchestration framework.
+
+  class NS3BridgeNet(NetSim):
+
+    def run_cmd(self, env):
+        ports = ''
+        for (_, n) in self.connect_sockets(env):
+            ports += '--CosimPort=' + n + ' '
+
+        cmd = (
+            f'{env.repodir}/sims/external/ns-3'
+            f'/cosim-run.sh cosim cosim-bridge-example {ports} {self.opt}'
+        )
+        print(cmd)
+
+        return cmd
 
 
 ******************************
@@ -102,6 +110,9 @@ Add a New Interface
 
 .. automodule:: simbricks.orchestration.simulators
 
+  .. autoclass:: simbricks.orchestration.simulators.Simulator
+    :members: resreq_cores, resreq_mem, prep_cmds, run_cmd, dependencies
+
   .. autoclass:: simbricks.orchestration.simulators.HostSim
     :members: add_pcidev, add_nic, add_netdirect
 
@@ -110,6 +121,8 @@ Add a New Interface
 
   .. autoclass:: simbricks.orchestration.simulators.NetSim
     :members: connect_network
+
+  .. autoclass:: simbricks.orchestration.simulators.PCIDevSim
 
 
 .. automodule:: simbricks.orchestration.nodeconfig

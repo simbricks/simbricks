@@ -44,7 +44,7 @@ class AppConfig():
         restore."""
         return []
 
-    def config_files(self) -> tp.Set[str, tp.IO]:
+    def config_files(self) -> tp.Dict[str, tp.IO]:
         """Additional files to put inside the node, for example, necessary
         config files or kernel modules.
         
@@ -141,7 +141,7 @@ class NodeConfig():
         """Commands to run to cleanup node."""
         return []
 
-    def config_files(self) -> tp.Set[str, tp.IO]:
+    def config_files(self) -> tp.Dict[str, tp.IO]:
         """Additional files to put inside the node, for example, necessary
         config files or kernel modules.
         
