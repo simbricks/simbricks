@@ -152,6 +152,15 @@ size_t SimbricksBaseIfSHMSize(struct SimbricksBaseIfParams *params) {
 
 int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
                         struct SimbricksBaseIfParams *params) {
+  /* ensure latency >= sync interval in synchronization case */
+  bool must_check_sync = params->sync_mode == kSimbricksBaseIfSyncOptional ||
+    params->sync_mode == kSimbricksBaseIfSyncRequired;
+  if (must_check_sync && params->link_latency < params->sync_interval) {
+    fprintf(stderr,
+            "SimbricksBaseIfInit: latency must be larger or equal to sync"
+            " interval\n");
+    return -1;
+  }
   memset(base_if, 0, sizeof(*base_if));
   base_if->params = *params;
   return 0;
