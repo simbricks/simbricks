@@ -2,7 +2,7 @@
 	"initializeCommand": "docker pull simbricks/simbricks-build",
 	"image": "simbricks/simbricks-build:latest",
 	"runArgs": [
-		"--device=/dev/kvm"
+		"--device=/dev/kvm", "--privileged"
 	],
 	"extensions": [
 		"ms-python.python"
