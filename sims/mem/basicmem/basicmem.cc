@@ -41,7 +41,7 @@ extern "C" {
 #include <simbricks/mem/if.h>
 };
 
-#define BASICMEM_DEBUG 1
+#define BASICMEM_DEBUG 0
 
 static int exiting = 0;
 static uint64_t cur_ts = 0;
