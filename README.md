@@ -131,7 +131,7 @@ e.g. `make -jN sims/external/qemu/ready` (replace `qemu` with `gem5`, `ns-3`, or
 
 Next, to actually run simulations, you will also need to build the disk images
 with `make -jN build-images` (note this requires QEMU to be built first).
-This will build all our disk images, while `make build-images-min` will
+This will build all our disk images, while `make -jN build-images-min` will
 only build the base disk image (but not the NOPaxos or Memcache images used for
 some experiments). This step will again take 10 - 45 minutes depending on your
 machine and whether KVM acceleration is available but only needs to be run
