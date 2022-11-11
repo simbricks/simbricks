@@ -25,35 +25,4 @@
 Installing
 ###################################
 
-******************************
-System Requirements
-******************************
-
-
-.. _sec-docker-images:
-
-******************************
-Docker Images
-******************************
-
-Pre-Built
-=========
-
-Building Images
-===============
-
-
-.. _sec-install-build:
-
-******************************
-Building from Source
-******************************
-
-Dependencies
-============
-
-vscode dev container
---------------------
-
-Building
-==================
+You can find all information at a glance in our README under the section `Quick Start <https://github.com/simbricks/simbricks#quick-start>`_.
