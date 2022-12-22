@@ -1,5 +1,6 @@
 dist/*/*.c
 dist/*/*.h
+sims/external/qemu/hw/misc/simbricks_mem.c
 sims/net/*/*.c
 sims/net/*/*.cc
 sims/nic/corundum/*.cc
