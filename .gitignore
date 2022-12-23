@@ -46,4 +46,5 @@ dist/rdma/net_rdma
 dist/sockets/net_sockets
 trace/process
 mk/local.mk
+.cache
 .eggs
