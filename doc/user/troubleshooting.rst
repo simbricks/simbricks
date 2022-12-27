@@ -29,6 +29,18 @@ Troubleshooting
 Is my Simulation Stuck or just Slow?
 ************************************
 
+It is possible to check the current timestamp of individual component
+simulators. If the timestamp of one of them isn't advancing, then the simulation
+is stuck. To make one of our already implemented component simulators output its
+current timestamp, send a USR1 signal, for example, by invoking ``kill -s USR1
+<insert_pid_of_simulator>``.
+
+When the orchestration framework is running in verbose mode (see
+:ref:`sec-command-line`), the current timestamp is visible in the terminal where
+you invoked the SimBricks orchestration framework to execute your experiment.
+Otherwise, you can interrupt the execution via CTRL+C to produce the output JSON
+for the experiment. All component simulator's output is logged there.
+
 ************************************
 Understanding Simulation Performance
 ************************************
