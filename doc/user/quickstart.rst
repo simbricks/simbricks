@@ -28,10 +28,12 @@ Getting Started
 Welcome! We are happy that you want to give SimBricks a try.
 
 The easiest way to get started with just running a simulation is to use our
-Docker images, see :ref:`sec-docker-images`. Given a working docker installation
-(`docker engine <https://docs.docker.com/engine/install/#server>`_ or `docker
-desktop <https://docs.docker.com/get-docker/>`_ both work), this is as simple
-as just launching a new container and docker will take care of the rest:
+Docker images, see our `README
+<https://github.com/simbricks/simbricks#using-pre-built-docker-images>`_. Given
+a working docker installation (`docker engine
+<https://docs.docker.com/engine/install/#server>`_ or `docker desktop
+<https://docs.docker.com/get-docker/>`_ both work), this is as simple as just
+launching a new container and docker will take care of the rest:
 
 .. code-block:: bash
 
@@ -62,7 +64,8 @@ various configurations of SimBricks simulations.
 
 If you are planning on making changes to the implementation of SimBricks
 components, you may next want to make sure you can build SimBricks from source,
-see :ref:`sec-install-build`. Before diving into our :ref:`sec-devel` for
-learning about the SimBricks architecture, internals, and APIs.
+see our `Quick Start section in the README <https://github.com/simbricks/simbricks#quick-start>`_. We
+recommend diving into our :ref:`sec-devel` for learning about the SimBricks
+architecture, internals, and APIs.
 
 If you run into problems please refer to :ref:`sec-troubleshoot-getting-help`.
