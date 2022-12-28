@@ -40,7 +40,7 @@ classes. Basically, create a `.py` file and add a global variable
 :class:`simbricks.orchestration.experiments.Experiment`, each one describing a
 standalone experiment. This is very helpful if you wish to evaluate your work in
 different environments, for example, you may want to swap out some simulator or
-investigate multiple topologies with different scale.
+investigate multiple topologies with different scale. 
 
 The class :class:`~simbricks.orchestration.experiments.Experiment` provides
 methods to add the simulators you wish to run. All available simulators can be
@@ -51,8 +51,8 @@ configuration for your host, for example, its networking settings, how much
 system memory it should have, and most importantly, which applications to run by
 assigning an :class:`~simbricks.orchestration.nodeconfig.AppConfig`. You can
 find predefined classes for node and app configs in the module
-:mod:`simbricks.orchestration.nodeconfig`, feel free to add new ones or just
-create a new class locally in your experiment's module.
+:mod:`simbricks.orchestration.nodeconfig`. Feel free to add new ones or just
+create a new class locally in your experiment's module. For more details, see :ref:`sec-orchestration`.
 
 The last step to complete your virtual testbed is to specify which virtual
 components connect to each other. You do this by invoking the respective methods
@@ -66,9 +66,9 @@ take a look at the module :mod:`simbricks.orchestration.simulator_utils` in
 which we provide some helper functions to reduce the amount of code you have to
 write.
 
-Finally, to run your experiment invoke ``/experiments/run.py`` and provide the
-path to your experiment module. In our docker containers, you can just use the
-following command from anywhere:
+Finally, to run your experiment, invoke ``<repository>/experiments/run.py`` and
+provide the path to your experiment module. In our docker containers, you can
+just use the following command from anywhere:
 
 .. code-block:: bash
 
@@ -105,29 +105,19 @@ basics to create and run your first experiment. Have fun.
 Add a Node or Application Config
 ********************************
 
-The classes :class:`~simbricks.orchestration.nodeconfig.NodeConfig` and
-:class:`~simbricks.orchestration.nodeconfig.AppConfig` are used to define the
-configuration of the individual host simulators or, more generally, nodes that
-should run in your experiment.
-:class:`~simbricks.orchestration.nodeconfig.NodeConfig` defines, for example,
-the networking configuration like IP address and subnet mask, how much system
-memory the node has, and which disk image to run. The latter can be used to, for
-example, run a specific version of the Linux kernel on a node. You can find more
-information on that in the :ref:`next section <sec-howto-custom_image>`. There
-is also an attribute to assign an instance of the class
-:class:`~simbricks.orchestration.nodeconfig.AppConfig`, which defines the
-concrete application to execute on the node.
+The configuration for a host and the commands to run for your workload are
+defined via a :ref:`sec-node_config` and :ref:`sec-app_config`. SimBricks
+already offers some concrete implementations in the module
+:mod:`simbricks.orchestration.nodeconfig`. If they don't fit your use-case, you
+need to implement your own by overwriting the pre-defined member functions.
 
-You can find predefined classes in the module
-:mod:`simbricks.orchestration.nodeconfig`, however, if they don't fit your
-use-case, you can easily create your own class. The typical use-case is that you
-want to use a pre-defined node configuration but run your own application. The
-easiest way is to create a class for that directly in your experiment module,
-which inherits from :class:`~simbricks.orchestration.nodeconfig.AppConfig` and
-overrides the methods of interest, most notably
+When using one of our pre-defined node configs, you probably need to provide
+your own app config to run the workload you have in mind. The easiest way is to
+create a child class for that directly in your experiment module, and override
+the methods of interest, most notably
 :meth:`~simbricks.orchestration.nodeconfig.AppConfig.run_cmds`, which defines
-the command to execute for your application. For further information take a look
-at the module :mod:`simbricks.orchestration.nodeconfig`.
+the command that is executed to run your application. Further information can be
+found in the module :mod:`simbricks.orchestration.nodeconfig`.
 
 .. _sec-howto-custom_image:
 
@@ -180,34 +170,6 @@ below of adding a class for the ``NS3`` network simulator.
 ******************************
 Add a New Interface
 ******************************
-
-.. autoclass:: simbricks.orchestration.experiments.Experiment
-  :members: add_host, add_pcidev, add_nic, add_network
-
-.. automodule:: simbricks.orchestration.simulators
-
-  .. autoclass:: simbricks.orchestration.simulators.Simulator
-    :members: resreq_cores, resreq_mem, prep_cmds, run_cmd, dependencies
-
-  .. autoclass:: simbricks.orchestration.simulators.HostSim
-    :members: add_pcidev, add_nic, add_netdirect
-
-  .. autoclass:: simbricks.orchestration.simulators.NICSim
-    :members: set_network
-
-  .. autoclass:: simbricks.orchestration.simulators.NetSim
-    :members: connect_network
-
-  .. autoclass:: simbricks.orchestration.simulators.PCIDevSim
-
-
-.. automodule:: simbricks.orchestration.nodeconfig
-
-  .. autoclass:: simbricks.orchestration.nodeconfig.NodeConfig
-    :members:
-    
-  .. autoclass:: simbricks.orchestration.nodeconfig.AppConfig
-    :members:
 
 .. automodule:: simbricks.orchestration.simulator_utils
   :members:
