@@ -48,3 +48,4 @@ trace/process
 mk/local.mk
 .cache
 .eggs
+.vscode
