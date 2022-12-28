@@ -91,8 +91,12 @@ full system simulation capable of running Linux and with various SimBricks
 adapter configurations in ``configs/simbricks/simbricks.py``. This script
 heavily includes parts of the common gem5 configuration.
 
+
+.. _sec-checkpointing:
+
 Checkpointing
 =============
+
 gem5 is currently the only simulator we use that supports checkpoint and
 restore. The most common use-case for this is accelerating repeated simulations
 by checkpointing system state after boot and running future simulations from
