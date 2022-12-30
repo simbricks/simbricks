@@ -47,6 +47,7 @@ $(d)qemu/ready: $(d)qemu
 	+cd $< && ./configure \
 	    --target-list=x86_64-softmmu \
 	    --disable-werror \
+        --disable-docs \
 	    --extra-cflags="-I$(abspath $(lib_dir))" \
 	    --extra-ldflags="-L$(abspath $(lib_dir))" \
 	    --enable-simbricks \
