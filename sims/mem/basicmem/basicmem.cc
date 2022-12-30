@@ -164,12 +164,11 @@ void PollH2M(struct SimbricksMemIf *memif, uint64_t cur_ts) {
       SimbricksMemIfM2HOutSend(memif, msg_to, SIMBRICKS_PROTO_MEM_M2H_MSG_WRITECOMP);
 
 #if BASICMEM_DEBUG 
-      printf("received H2M write addr: %lu size: %d\n", addr, msg->write.len);
+      printf("received H2M write addr: 0x%lx size: %d\n", addr, msg->write.len);
       for (i = 0; i < (int)len; i++){
         printf("%X ", msg->write.data[i]);
       }
       printf("\n");
-
 #endif
       break;
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
