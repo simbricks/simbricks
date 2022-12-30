@@ -26,7 +26,9 @@ import simbricks.orchestration.simulators as sim
 
 experiments = []
 
+
 class MemTest(node.AppConfig):
+
     def __init__(self, addr):
         self.addr = addr
 
@@ -37,13 +39,13 @@ class MemTest(node.AppConfig):
         ]
 
 
-for h in ['gk']:
+for h in ['gk', 'qk']:
     e = exp.Experiment('basicmem-' + h)
     e.checkpoint = False
 
     mem = sim.BasicMemDev()
     mem.name = 'mem0'
-    mem.addr = 0x2000000000 #0x2000000000000000
+    mem.addr = 0x2000000000  #0x2000000000000000
 
     node_config = node.NodeConfig()
     node_config.nockp = True

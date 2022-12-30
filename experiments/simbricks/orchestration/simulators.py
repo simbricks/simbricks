@@ -201,6 +201,7 @@ class NetSim(Simulator):
 # FIXME: Class hierarchy is broken here as an ugly hack
 class MemDevSim(NICSim):
     """Base class for memory device simulators."""
+
     def __init__(self):
         super().__init__()
 
@@ -210,7 +211,7 @@ class MemDevSim(NICSim):
         self.sync_period = 500
         self.mem_latency = 500
         self.addr = 0xe000000000000000
-        self.size = 1024 * 1024 * 1024 # 1GB
+        self.size = 1024 * 1024 * 1024  # 1GB
         self.as_id = 0
 
     def full_name(self):
@@ -222,8 +223,10 @@ class MemDevSim(NICSim):
     def sockets_wait(self, env):
         return [env.dev_mem_path(self)]
 
+
 class NetMemSim(NICSim):
     """Base class for netork memory simulators."""
+
     def __init__(self):
         super().__init__()
 
@@ -233,7 +236,7 @@ class NetMemSim(NICSim):
         self.sync_period = 500
         self.eth_latency = 500
         self.addr = 0xe000000000000000
-        self.size = 1024 * 1024 * 1024 # 1GB
+        self.size = 1024 * 1024 * 1024  # 1GB
         self.as_id = 0
 
     def full_name(self):
@@ -244,7 +247,6 @@ class NetMemSim(NICSim):
 
     def sockets_wait(self, env):
         return [env.nic_eth_path(self)]
-
 
 
 class HostSim(Simulator):
@@ -348,7 +350,7 @@ class QemuHost(HostSim):
             f'-drive file={env.cfgtar_path(self)},if=ide,index=1,media=disk,'
             'driver=raw '
             '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
-            'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" '
+            f'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" '
             f'-m {self.node_config.memory} -smp {self.node_config.cores} '
         )
 
@@ -375,10 +377,21 @@ class QemuHost(HostSim):
                 cmd += ',sync=off'
             cmd += ' '
 
+        for dev in self.memdevs:
+            cmd += (
+                f'-device simbricks-mem,socket={env.dev_mem_path(dev)}'
+                f',base-address={dev.addr},size={dev.size}'
+            )
+            if self.sync:
+                cmd += ',sync=on'
+                cmd += f',mem-latency={self.pci_latency}'
+                cmd += f',sync-period={self.sync_period}'
+            else:
+                cmd += ',sync=off'
+            cmd += ' '
+
         # qemu does not currently support net direct ports
         assert len(self.net_directs) == 0
-        # qemu does not currently support mem device ports
-        assert len(self.memdevs) == 0
         return cmd
 
 
@@ -613,12 +626,12 @@ class SwitchNet(NetSim):
             cleanup.append(s + '-shm')
         return cleanup
 
+
 class MemSwitchNet(NetSim):
 
     def __init__(self):
         super().__init__()
         self.sync = True
-
         """ AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START """
         self.mem_map = []
 
@@ -738,15 +751,17 @@ class FEMUDev(PCIDevSim):
 
 
 class BasicMemDev(MemDevSim):
+
     def run_cmd(self, env):
         cmd = (
             f'{env.repodir}/sims/mem/basicmem/basicmem'
-            f' {self.size} {self.addr} {self.as_id}' 
+            f' {self.size} {self.addr} {self.as_id}'
             f' {env.dev_mem_path(self)} {env.dev_shm_path(self)}'
             f' {self.sync_mode} {self.start_tick} {self.sync_period}'
             f' {self.mem_latency}'
         )
         return cmd
+
 
 class MemNIC(MemDevSim):
 
@@ -771,6 +786,7 @@ class MemNIC(MemDevSim):
     def sockets_wait(self, env):
         return super().sockets_wait(env) + [env.nic_eth_path(self)]
 
+
 class NetMem(NetMemSim):
 
     def run_cmd(self, env):
@@ -785,5 +801,5 @@ class NetMem(NetMemSim):
 
         cmd += f' {self.sync_mode} {self.start_tick} {self.sync_period}'
         cmd += f' {self.eth_latency}'
-                
+
         return cmd

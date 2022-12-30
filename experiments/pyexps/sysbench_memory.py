@@ -20,15 +20,17 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
-Runs sysbench memory benchmarks for different memory configurations. Used to
-compare latency and throughput of disaggregated memory to local one.
+Runs sysbench memory benchmarks for different memory configurations.
+
+Used to compare latency and throughput of disaggregated memory to local one.
 """
 
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
+from simbricks.orchestration.simulators import QemuHost
 
-host_types = ['gem5']
+host_types = ['gem5', 'qemu']
 mem_types = ['local', 'basicmem']
 experiments = []
 
@@ -114,6 +116,9 @@ for host_type in host_types:
         if host_type == 'gem5':
             host = sim.Gem5Host(node_config)
             e.checkpoint = True
+        elif host_type == 'qemu':
+            host = QemuHost(node_config)
+            host.sync = True
         else:
             raise NameError(host_type)
 
