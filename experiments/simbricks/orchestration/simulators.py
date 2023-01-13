@@ -482,6 +482,153 @@ class Gem5Host(HostSim):
         return cmd
 
 
+class SimicsHost(HostSim):
+    """Simics host simulator."""
+
+    def __init__(self, node_config: NodeConfig):
+        super().__init__(node_config)
+        node_config.sim = 'simics'
+
+        self.cpu_class = 'x86-cooper-lake'
+        """Simics CPU class. Can be obtained by running `list-classes substr =
+        processor_` inside Simics."""
+        self.cpu_freq = 4000  # TODO Don't hide attribute in super class
+        """CPU frequency in MHz"""
+        self.timing = False
+        """Whether to run Simics in a more precise timing mode. This adds a
+        cache model."""
+        self.append_cmdline: tp.List[str] = []
+        """Additional parameters to append on the command-line when invoking
+        Simics."""
+        self.interactive = False
+        """Whether to launch Simics in interactive GUI mode. This is helpful for
+        debugging, e.g. enabling log messages in the mid of the simulation."""
+        self.debug_messages = False
+        """Whether to enable debug messages of SimBricks adapter devices."""
+
+    def resreq_cores(self):
+        return 2
+
+    def resreq_mem(self):
+        return self.node_config.memory
+
+    def run_cmd(self, env):
+        if self.node_config.kcmd_append:
+            raise RuntimeError(
+                'Appending kernel command-line not yet implemented.'
+            )
+
+        if self.interactive and not env.create_cp:
+            cmd = f'{env.simics_gui_path} -q '
+        else:
+            cmd = f'{env.simics_path} -q -batch-mode -werror '
+
+        if env.restore_cp:
+            # restore checkpoint
+            cmd += f'-e \'read-configuration {env.simics_cpfile(self)}\' '
+        else:
+            # initialize simulated machine
+            cmd += (
+                '-e \'run-command-file '
+                f'{env.simics_qsp_modern_core_path} '
+                f'disk0_image = {env.hd_raw_path(self.node_config.disk_image)} '
+                f'disk1_image = {env.cfgtar_path(self)} '
+                f'cpu_comp_class = {self.cpu_class} '
+                f'freq_mhz = {self.cpu_freq} '
+                f'num_cores = {self.node_config.cores} '
+                f'num_threads = {self.node_config.threads} '
+                f'memory_megs = {self.node_config.memory}\' '
+            )
+
+        if env.create_cp:
+            # stop simulation when encountering special checkpoint string on
+            # serial console
+            cmd += (
+                '-e \'bp.console_string.break board.serconsole.con '
+                '"ready to checkpoint"\' '
+            )
+            # run simulation
+            cmd += '-e run '
+            # create checkpoint
+            cmd += f'-e \'write-configuration {env.simics_cpfile(self)}\' '
+            return cmd
+
+        if self.timing:
+            # Add the cache model. Note that the caches aren't warmed up during
+            # the boot process. The reason is that when later adding the memory
+            # devices, we change the mapped memory. The cycle staller doesn't
+            # like this and will SEGFAULT.
+            #
+            # The cache model doesn't store any memory contents and therefore
+            # doesn't answer any memory transactions. It only inserts CPU stall
+            # cycles on each cache level and can be queried for statistics as
+            # well as which addresses are cached.
+            #
+            # Read penalties are based on https://www.7-cpu.com/cpu/Skylake.html
+            cmd += (
+                '-e \'new-cycle-staller name = cs0 '
+                'stall-interval = 10000\' '
+            )
+            cmd += (
+                '-e \'new-simple-cache-tool name = cachetool '
+                'cycle-staller = cs0 -connect-all\' '
+            )
+            cmd += (
+                '-e \'cachetool.add-l1i-cache name = l1i line-size = 64 '
+                'sets = 64 ways = 8\' '
+            )
+            cmd += (
+                '-e \'cachetool.add-l1d-cache name = l1d line-size = 64 '
+                'sets = 64 ways = 8 -ip-read-prefetcher '
+                'prefetch-additional = 1 read-penalty = 4\' '
+            )
+            cmd += (
+                '-e \'cachetool.add-l2-cache name = l2 line-size = 64 '
+                'sets = 8192 ways = 4 -prefetch-adjacent '
+                'prefetch-additional = 4 read-penalty = 12\' '
+            )
+            cmd += (
+                '-e \'cachetool.add-l3-cache name = l3 line-size = 64 '
+                'sets = 32768 ways = 16 read-penalty = 42\' '
+            )
+
+        # Only simulate one cycle per CPU and then switch to the next. This is
+        # necessary for the synchronization of the SimBricks adapter with all
+        # the CPUs to work properly.
+        cmd += '-e \'set-time-quantum 1\' '
+
+        if self.memdevs:
+            cmd += '-e \'load-module simbricks_mem_comp\' '
+
+        for memdev in self.memdevs:
+            cmd += (
+                f'-e \'$mem = (new-simbricks-mem-comp '
+                f'socket = "{env.dev_mem_path(memdev)}" '
+                f'mem_latency = {self.mem_latency} '
+                f'sync_period = {self.sync_period})\' '
+            )
+            cmd += (
+                f'-e \'board.mb.dram_space.add-map $mem.simbricks_mem_dev '
+                f'{memdev.addr:#x} {memdev.size:#x}\' '
+            )
+            if self.debug_messages:
+                cmd += '-e \'$mem.log-level 3\' '
+
+        for param in self.append_cmdline:
+            cmd += f'{param} '
+
+        # The simulation keeps running when the host powers off. A log message
+        # indicates the event when the machine is powering off. We place a
+        # breakpoint on that log message, which will terminate Simics due to the
+        # use of `-batch-mode`.
+        cmd += (
+            '-e \'bp.log.break object=board.mb.sb.lpc.bank.acpi_io_regs '
+            'substr="Sleep state is unimplemented" type=unimpl\' '
+        )
+
+        return cmd + '-e run'
+
+
 class CorundumVerilatorNIC(NICSim):
 
     def __init__(self):
