@@ -46,6 +46,12 @@ class ExpEnv(object):
             f'{self.repodir}/sims/external/gem5/configs/simbricks/simbricks.py'
         )
         self.gem5_kernel_path = f'{self.repodir}/images/vmlinux'
+        simics_project_base = f'{self.repodir}/sims/external/simics/project'
+        self.simics_path = f'{simics_project_base}/simics'
+        self.simics_gui_path = f'{simics_project_base}/simics-gui'
+        self.simics_qsp_modern_core_path = (
+            f'{simics_project_base}/targets/qsp-x86/qsp-modern-core.simics'
+        )
 
     def gem5_path(self, variant):
         return f'{self.repodir}/sims/external/gem5/build/X86/gem5.{variant}'
@@ -91,3 +97,6 @@ class ExpEnv(object):
 
     def gem5_cpdir(self, sim):
         return f'{self.cpdir}/gem5-cp.{sim.name}'
+
+    def simics_cpfile(self, sim):
+        return f'{self.cpdir}/simics-cp.{sim.name}'
