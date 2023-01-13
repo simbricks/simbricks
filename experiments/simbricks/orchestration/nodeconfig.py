@@ -86,15 +86,12 @@ class NodeConfig():
         """String to be appended to kernel command line."""
 
     def config_str(self) -> str:
-        if self.sim == 'qemu':
+        if self.sim == 'gem5':
+            cp_es = [] if self.nockp else ['m5 checkpoint']
+            exit_es = ['m5 exit']
+        else:
             cp_es = []
             exit_es = ['poweroff -f']
-        else:
-            if self.nockp:
-                cp_es = []
-            else:
-                cp_es = ['m5 checkpoint']
-            exit_es = ['m5 exit']
 
         es = self.prepare_pre_cp() + self.app.prepare_pre_cp() + cp_es + \
             self.prepare_post_cp() + self.app.prepare_post_cp() + \
