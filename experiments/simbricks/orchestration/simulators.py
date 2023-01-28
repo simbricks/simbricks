@@ -269,7 +269,7 @@ class HostSim(Simulator):
         simulators have completed execution.
         """
         self.sleep = 0
-        self.cpu_freq = '8GHz'
+        self.cpu_freq = '4GHz'
 
         self.sync_mode = 0
         self.sync_period = 500
@@ -326,7 +326,6 @@ class QemuHost(HostSim):
         super().__init__(node_config)
 
         self.sync = False
-        self.cpu_freq = '4GHz'
 
     def resreq_cores(self):
         if self.sync:
