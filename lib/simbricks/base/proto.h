@@ -28,8 +28,10 @@
 #include <assert.h>
 #include <stdint.h>
 
+#ifndef SIMBRICKS_PROTO_MSG_SZCHECK
 #define SIMBRICKS_PROTO_MSG_SZCHECK(s) \
   static_assert(sizeof(s) == 64, "SimBrick message size check failed")
+#endif
 
 #define SIMBRICKS_PROTO_VERSION 1
 
