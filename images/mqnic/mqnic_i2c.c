@@ -121,7 +121,7 @@ int mqnic_init_i2c(struct mqnic_dev *mqnic)
             return ret;
         }
 
-        mqnic->eeprom_i2c_client = i2c_new_device(&mqnic->eeprom_i2c_adap, &mqnic_eeprom_info);
+        mqnic->eeprom_i2c_client = i2c_new_client_device(&mqnic->eeprom_i2c_adap, &mqnic_eeprom_info);
         if (mqnic->eeprom_i2c_client == NULL)
         {
             ret = -ENODEV;
