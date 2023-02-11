@@ -39,6 +39,7 @@ either expressed or implied, of The Regents of the University of California.
 #include <linux/miscdevice.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
+#include <linux/ethtool.h>
 #include <linux/net_tstamp.h>
 #include <linux/ptp_clock_kernel.h>
 
