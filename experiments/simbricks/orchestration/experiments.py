@@ -69,7 +69,7 @@ class Experiment(object):
         """Add a host simulator to the experiment."""
         for h in self.hosts:
             if h.name == sim.name:
-                raise Exception('Duplicate host name')
+                raise ValueError('Duplicate host name')
         self.hosts.append(sim)
 
     def add_nic(self, sim: tp.Union[NICSim, I40eMultiNIC]):
@@ -80,14 +80,14 @@ class Experiment(object):
         """Add a PCIe device simulator to the experiment."""
         for d in self.pcidevs:
             if d.name == sim.name:
-                raise Exception('Duplicate pcidev name')
+                raise ValueError('Duplicate pcidev name')
         self.pcidevs.append(sim)
 
     def add_network(self, sim: NetSim):
         """Add a network simulator to the experiment."""
         for n in self.networks:
             if n.name == sim.name:
-                raise Exception('Duplicate net name')
+                raise ValueError('Duplicate net name')
         self.networks.append(sim)
 
     def all_simulators(self):

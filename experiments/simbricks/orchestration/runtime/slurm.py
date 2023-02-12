@@ -110,7 +110,7 @@ class SlurmRuntime(Runtime):
             result = stream.close()
 
             if result is not None:
-                raise Exception('running sbatch failed')
+                raise RuntimeError('running sbatch failed')
 
             m = jid_re.search(output)
             run.job_id = int(m.group(1))

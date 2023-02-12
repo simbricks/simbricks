@@ -20,6 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import errno
 import json
 import os
 import pathlib
@@ -43,7 +44,7 @@ with open(log_file, 'r', encoding='utf-8') as log:
     outdir = '/'.join(list(p.parts)[0:-1]) + tooutdir
 
     if not os.path.exists(outdir):
-        raise Exception('no such directory')
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), outdir)
 
     start_end_path = os.path.join(outdir, 'start_end.txt')
 

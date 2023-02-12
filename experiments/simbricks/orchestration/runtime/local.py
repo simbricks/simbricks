@@ -108,10 +108,10 @@ class LocalParallelRuntime(Runtime):
 
     def add_run(self, run: Run):
         if run.experiment.resreq_cores() > self.cores:
-            raise Exception('Not enough cores available for run')
+            raise RuntimeError('Not enough cores available for run')
 
         if self.mem is not None and run.experiment.resreq_mem() > self.mem:
-            raise Exception('Not enough memory available for run')
+            raise RuntimeError('Not enough memory available for run')
 
         if run.prereq is None:
             self.runs_noprereq.append(run)
