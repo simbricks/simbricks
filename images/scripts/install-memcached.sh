@@ -11,9 +11,9 @@ tar xf libmemcached-1.0.18.tar.gz
 cd libmemcached-1.0.18
 ./configure --enable-memaslap --disable-dtrace --prefix=/usr --enable-static \
     --disable-shared \
-    CXXFLAGS='-fpermissive -pthread' \
-    CFLAGS='-fpermissive -pthread' \
-    LDFLAGS='-pthread' || (cat config.log ; exit 1)
+    CXXFLAGS='-fpermissive -fcommon -pthread' \
+    CFLAGS='-fpermissive -fcommon -pthread' \
+    LDFLAGS='-fcommon -pthread' || (cat config.log ; exit 1)
 make -j`nproc`
 make -j`nproc` install
 
