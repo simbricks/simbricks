@@ -306,7 +306,7 @@ class QemuHost(HostSim):
             elif unit.lower() == 'mhz':
                 base = 3
             else:
-                raise Exception('cpu frequency specified in unsupported unit')
+                raise ValueError('cpu frequency specified in unsupported unit')
             num = float(self.cpu_freq[:-3])
             shift = base - int(math.ceil(math.log(num, 2)))
 
@@ -610,7 +610,7 @@ class NS3SequencerNet(NetSim):
             elif 'sequencer' in n.name:
                 ports += '--ServerPort=' + s + ' '
             else:
-                raise Exception('Wrong NIC type')
+                raise KeyError('Wrong NIC type')
         cmd = (
             f'{env.repodir}/sims/external/ns-3'
             f'/cosim-run.sh sequencer sequencer-single-switch-example'

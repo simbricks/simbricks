@@ -212,7 +212,7 @@ class SimpleComponent(Component):
         if self.verbose:
             print(self.label, 'TERMINATED:', rc, flush=True)
         if not self.canfail and rc != 0:
-            raise Exception('Command Failed: ' + str(self.cmd_parts))
+            raise RuntimeError('Command Failed: ' + str(self.cmd_parts))
 
 
 class SimpleRemoteComponent(SimpleComponent):
