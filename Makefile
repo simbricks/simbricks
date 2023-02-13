@@ -69,7 +69,7 @@ clang-format:
 	$(CLANG_FORMAT) -i --style=file `cat .lint-files`
 
 lint-clang-format:
-	$(CLANG_FORMAT) --dry-run --style=file `cat .lint-files`
+	$(CLANG_FORMAT) --Werror --dry-run --style=file `cat .lint-files`
 
 lint-yapf:
 	yapf --recursive --diff \
