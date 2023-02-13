@@ -154,7 +154,7 @@ int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
                         struct SimbricksBaseIfParams *params) {
   /* ensure latency >= sync interval in synchronization case */
   bool must_check_sync = params->sync_mode == kSimbricksBaseIfSyncOptional ||
-    params->sync_mode == kSimbricksBaseIfSyncRequired;
+                         params->sync_mode == kSimbricksBaseIfSyncRequired;
   if (must_check_sync && params->link_latency < params->sync_interval) {
     fprintf(stderr,
             "SimbricksBaseIfInit: latency must be larger or equal to sync"
