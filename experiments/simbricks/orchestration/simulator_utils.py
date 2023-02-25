@@ -164,3 +164,50 @@ def create_dctcp_hosts(
         hosts.append(host)
 
     return hosts
+
+
+def create_tcp_cong_hosts(
+    e: Experiment,
+    num: int,
+    name_prefix: str,
+    net: NetSim,
+    nic_class: tp.Type[NICSim],
+    host_class: tp.Type[HostSim],
+    nc_class: tp.Type[NodeConfig],
+    app_class: tp.Type[AppConfig],
+    cpu_freq: str,
+    mtu: int,
+    congestion_control: str,
+    ip_start: int = 1
+):
+    """
+    Creates and configures multiple hosts to be simulated in a TCP congestion
+    control experiment using the given parameters.
+
+    Args:
+        num: number of hosts to create
+        cpu_freq: CPU frequency to simulate, e.g. '5GHz'
+    """
+    hosts = []
+    for i in range(0, num):
+        nic = nic_class()
+        #nic.name = '%s.%d' % (name_prefix, i)
+        nic.set_network(net)
+
+        node_config = nc_class()
+        node_config.mtu = mtu
+        node_config.tcp_congestion_control = congestion_control
+        node_config.ip = f'192.168.64.{ip_start + i}'
+        node_config.app = app_class()
+
+        host = host_class(node_config)
+        host.name = f'{name_prefix}.{i}'
+        host.cpu_freq = cpu_freq
+
+        host.add_nic(nic)
+        e.add_nic(nic)
+        e.add_host(host)
+
+        hosts.append(host)
+
+    return hosts

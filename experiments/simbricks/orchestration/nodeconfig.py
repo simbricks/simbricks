@@ -90,6 +90,8 @@ class NodeConfig():
         """Name of disk image to use."""
         self.mtu = 1500
         """Networking MTU."""
+        self.tcp_congestion_control = 'bic'
+        """TCP Congestion Control algorithm to use."""
         self.nockp = 0
         """Do not create a checkpoint in Gem5.
 
@@ -353,6 +355,36 @@ class I40eDCTCPNode(NodeConfig):
         ]
 
 
+class I40eTCPCongNode(NodeConfig):
+
+    def prepare_pre_cp(self):
+        return super().prepare_pre_cp() + [
+            'mount -t proc proc /proc',
+            'mount -t sysfs sysfs /sys',
+            # 'sysctl -w net.core.rmem_default=31457280',
+            # 'sysctl -w net.core.rmem_max=31457280',
+            # 'sysctl -w net.core.wmem_default=31457280',
+            # 'sysctl -w net.core.wmem_max=31457280',
+            # 'sysctl -w net.core.optmem_max=25165824',
+            # 'sysctl -w net.ipv4.tcp_mem="786432 1048576 26777216"',
+            # 'sysctl -w net.ipv4.tcp_rmem="8192 87380 33554432"',
+            # 'sysctl -w net.ipv4.tcp_wmem="8192 87380 33554432"',
+            'sysctl -w net.ipv4.tcp_congestion_control=' +
+            f'{self.tcp_congestion_control}',
+            'sysctl -w net.ipv4.tcp_ecn=0'
+        ]
+
+    def prepare_post_cp(self):
+        return super().prepare_post_cp() + [
+            'modprobe i40e',
+            'ethtool -G eth0 rx 4096 tx 4096',
+            'ethtool -K eth0 tso off',
+            # 'ip link set eth0 txqueuelen 13888',
+            f'ip link set dev eth0 mtu {self.mtu} up',
+            f'ip addr add {self.ip}/{self.prefix} dev eth0',
+        ]
+
+
 class CorundumDCTCPNode(NodeConfig):
 
     def prepare_pre_cp(self) -> tp.List[str]:
@@ -545,6 +577,34 @@ class DctcpClient(AppConfig):
                 'sleep 1',
                 f'iperf -w 1M -c {self.server_ip} -Z dctcp -i 1',
                 'sleep 20'
+            ]
+
+
+class TcpCongServer(AppConfig):
+
+    def run_cmds(self, node):
+        return ['iperf -s -w 1M']
+
+
+class TcpCongClient(AppConfig):
+
+    def __init__(self):
+        super().__init__()
+        self.server_ip = '192.168.64.1'
+        self.is_last = False
+
+    def run_cmds(self, node):
+        if self.is_last:
+            return [
+                'sleep 1',
+                f'iperf -w 1M -c {self.server_ip} -i 1',
+                'sleep 2',
+            ]
+        else:
+            return [
+                'sleep 1',
+                f'iperf -w 1M -c {self.server_ip} -i 1',
+                'sleep 20',
             ]
 
 
