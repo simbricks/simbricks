@@ -6,7 +6,7 @@
 	url = https://github.com/simbricks/qemu.git
 [submodule "sims/external/ns-3"]
 	path = sims/external/ns-3
-	url = https://github.com/simbricks/ns-3.git
+	url = https://github.com/marvin71/ns-3.git
 [submodule "sims/external/femu"]
 	path = sims/external/femu
 	url = https://github.com/simbricks/femu.git
