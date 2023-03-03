@@ -29,7 +29,7 @@ import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
 
-host_types = ['gem5']
+host_types = ['gem5', 'simics']
 mem_types = ['local', 'basicmem']
 experiments = []
 
@@ -41,7 +41,8 @@ class SysbenchMemoryBenchmark(node.AppConfig):
         disagg_addr: int,
         disagg_size: int,
         disaggregated: bool,
-        time_limit: int
+        time_limit: int,
+        num_threads=1
     ):
         self.disagg_addr = disagg_addr
         """Address of disaggregated memory start."""
@@ -51,6 +52,8 @@ class SysbenchMemoryBenchmark(node.AppConfig):
         """Whether to use disaggregated memory."""
         self.time_limit = time_limit
         """Time limit for sysbench benchmark in seconds. 0 to disable limit."""
+        self.num_threads = num_threads
+        """Number of cores to run the benchmark on in parallel."""
 
     # pylint: disable=consider-using-with
     def config_files(self):
@@ -58,33 +61,38 @@ class SysbenchMemoryBenchmark(node.AppConfig):
         return {**m, **super().config_files()}
 
     def run_cmds(self, _):
-        cmds = []
-        if self.disaggregated:
-            cmds += [
-                'mount -t proc proc /proc',
-                'mount -t sysfs sysfs /sys',
-                'free -m',
-                (
-                    f'insmod /tmp/guest/farmem.ko '
-                    f'base_addr=0x{self.disagg_addr:x} '
-                    f'size=0x{self.disagg_size:x} nnid=1 drain_node=1'
-                )
-            ]
-        cmds += [
-            'free -m',
-            'numactl -H',
-            (
-                f'numactl --membind={1 if self.disaggregated else 0} '
-                'sysbench '
-                f'--time={self.time_limit} '
-                '--histogram=on '
-                'memory '
-                '--memory-oper=read '
-                '--memory-block-size=16M '
-                '--memory-access-mode=rnd '
-                '--memory-total-size=0 run'
-            )
+        cmds = [
+            'mount -t proc proc /proc', 'mount -t sysfs sysfs /sys', 'free -m'
         ]
+        if self.disaggregated:
+            cmds.append(
+                f'insmod /tmp/guest/farmem.ko '
+                f'base_addr=0x{self.disagg_addr:x} '
+                f'size=0x{self.disagg_size:x} nnid=1 drain_node=1'
+            )
+            cmds.append('free -m')
+            cmds.append('numactl -H')
+
+        sysbench_cmd = (
+            'sysbench '
+            f'--time={self.time_limit} '
+            '--histogram=on '
+            'memory '
+            '--memory-oper=read '
+            '--memory-block-size=16M '
+            '--memory-access-mode=rnd '
+            '--memory-total-size=0 run'
+        )
+
+        parallel_cmd = str()
+        for i in range(self.num_threads):
+            parallel_cmd += (
+                f'numactl --membind={1 if self.disaggregated else 0} '
+                f'--physcpubind={i} {sysbench_cmd} & '
+            )
+        parallel_cmd += 'wait'
+        cmds.append(parallel_cmd)
+
         return cmds
 
 
@@ -94,31 +102,42 @@ for host_type in host_types:
     for mem_type in mem_types:
         e = exp.Experiment(f'sysbench_memory-{host_type}-{mem_type}')
 
-        # memory type and app config
-        if mem_type == 'local':
-            mem = sim.BasicMemDev()
-            mem.name = 'mem0'
-            mem.addr = 0x2000000000
-
-            app = SysbenchMemoryBenchmark(mem.addr, mem.size, False, 10)
-        elif mem_type == 'basicmem':
-            mem = sim.BasicMemDev()
-            mem.name = 'mem0'
-            mem.addr = 0x2000000000
-
-            app = SysbenchMemoryBenchmark(mem.addr, mem.size, True, 10)
-        else:
+        if not mem_type in mem_types:
             raise NameError(mem_type)
+
+        mem = sim.BasicMemDev()
+        mem.name = 'mem0'
+        mem.addr = 0x2000000000
 
         # node config
         node_config = node.NodeConfig()
+        node_config.cores = 1
+        node_config.threads = 1
         node_config.memory = 4096
-        node_config.kcmd_append += 'numa=fake=2'
+        # TODO Simics offers no way to extend the kernel command line. Instead,
+        # the base image has to be rebuilt to set the following option using
+        # GRUB in `images/scripts/install-base.sh`.
+        if host_type != 'simics':
+            node_config.kcmd_append += 'numa=fake=2'
+
+        # app config
+        app = SysbenchMemoryBenchmark(
+            mem.addr,
+            mem.size,
+            mem_type == 'basicmem',
+            1,
+            node_config.cores * node_config.threads
+        )
         node_config.app = app
 
         # host
         if host_type == 'gem5':
             host = sim.Gem5Host(node_config)
+            e.checkpoint = True
+        elif host_type == 'simics':
+            host = sim.SimicsHost(node_config)
+            host.sync = True
+            host.timing = True
             e.checkpoint = True
         else:
             raise NameError(host_type)
@@ -126,8 +145,10 @@ for host_type in host_types:
         host.name = 'host.0'
         e.add_host(host)
         host.wait = True
+        host.mem_latency = host.sync_period = mem.mem_latency = \
+            mem.sync_period = 500
 
-        if mem:
+        if mem_type == 'basicmem':
             host.add_memdev(mem)
             e.add_memdev(mem)
 
