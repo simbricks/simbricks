@@ -27,5 +27,7 @@
 void SimbricksMemIfDefaultParams(struct SimbricksBaseIfParams *params) {
   SimbricksBaseIfDefaultParams(params);
   params->upper_layer_proto = SIMBRICKS_PROTO_ID_MEM;
-  params->in_entries_size = params->out_entries_size = 4096;
+  // fit DMA writes with size 8192
+  params->in_entries_size = params->out_entries_size =
+      8192 + sizeof(union SimbricksProtoMemH2M);
 }
