@@ -30,6 +30,9 @@ SIMICS_ISPM_DOWNLOAD ?= $(SIMICS_DIR)simics-6-packages.ispm
 SIMICS_ISPM := $(SIMICS_DIR)package-manager/ispm
 SIMICS_INSTALLDIR := $(SIMICS_DIR)installdir
 SIMICS_INSTALL := $(SIMICS_INSTALLDIR)/simics-latest
+SIMICS_BIN := $(SIMICS_INSTALL)/bin
+SIMICS_MODULES := $(SIMICS_DIR)modules
+SIMICS_PROJECT := $(SIMICS_DIR)project
 
 $(SIMICS_PKGMGR_DOWNLOAD):
 	$(error Download intel-simics-package-manager-(version).tar.gz from \
@@ -54,9 +57,20 @@ $(SIMICS_INSTALL): $(SIMICS_ISPM) $(SIMICS_ISPM_DOWNLOAD)
 	SIMICS_LATEST=`ls -d $(SIMICS_INSTALLDIR)/simics-?.*/ | tail -n 1`; \
 	ln -sf `basename $$SIMICS_LATEST` $(@)
 
-$(d)ready: $(SIMICS_INSTALL)
+
+$(SIMICS_PROJECT)/GNUmakefile: $(SIMICS_INSTALL)
+	mkdir -p $(SIMICS_PROJECT)
+	mkdir -p $(SIMICS_PROJECT)/modules
+	ln -rs $(SIMICS_MODULES)/* $(SIMICS_PROJECT)/modules/
+	ln -rs $(SIMICS_DIR)/.package-list $(SIMICS_PROJECT)/
+	$(SIMICS_BIN)/project-setup --ignore-existing-files $(SIMICS_PROJECT)
+
+
+$(d)ready: $(SIMICS_PROJECT)/GNUmakefile $(lib_simbricks)
+	$(MAKE) -C $(SIMICS_PROJECT) SIMBRICKS_LIB="$(abspath $(lib_dir))"
 	touch $@
 
 DISTCLEAN := $(SIMICS_PKGMGR_DOWNLOAD) $(SIMICS_ISPM_DOWNLOAD) \
-  $(d)package-manager $(SIMICS_INSTALL) $(SIMICS_INSTALLDIR) $(d)ready
+  $(d)package-manager $(SIMICS_INSTALL) $(SIMICS_INSTALLDIR) \
+  $(SIMICS_PROJECT) $(d)ready
 include mk/subdir_post.mk
