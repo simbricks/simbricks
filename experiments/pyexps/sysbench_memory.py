@@ -58,29 +58,34 @@ class SysbenchMemoryBenchmark(node.AppConfig):
         return {**m, **super().config_files()}
 
     def run_cmds(self, _):
-        return [
-            'mount -t proc proc /proc',
-            'mount -t sysfs sysfs /sys',
-            'free -m',
-            (
-                f'insmod /tmp/guest/farmem.ko base_addr=0x{self.disagg_addr:x} '
-                f'size=0x{self.disagg_size:x} nnid=1 drain_node=1'
-            ),
+        cmds = []
+        if self.disaggregated:
+            cmds += [
+                'mount -t proc proc /proc',
+                'mount -t sysfs sysfs /sys',
+                'free -m',
+                (
+                    f'insmod /tmp/guest/farmem.ko '
+                    f'base_addr=0x{self.disagg_addr:x} '
+                    f'size=0x{self.disagg_size:x} nnid=1 drain_node=1'
+                )
+            ]
+        cmds += [
             'free -m',
             'numactl -H',
             (
                 f'numactl --membind={1 if self.disaggregated else 0} '
                 'sysbench '
                 f'--time={self.time_limit} '
-                '--validate=on '
                 '--histogram=on '
                 'memory '
-                '--memory-oper=write '
+                '--memory-oper=read '
                 '--memory-block-size=16M '
                 '--memory-access-mode=rnd '
                 '--memory-total-size=0 run'
             )
         ]
+        return cmds
 
 
 # Create multiple experiments with different simulator permutations, which can
