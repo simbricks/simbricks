@@ -46,5 +46,7 @@ dist/rdma/net_rdma
 dist/sockets/net_sockets
 trace/process
 mk/local.mk
+compile_commands.json
+.cache
 .eggs
 .vscode
