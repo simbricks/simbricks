@@ -1,5 +1,6 @@
 dist/*/*.c
 dist/*/*.h
+sims/external/simics/modules/*/*.c
 sims/mem/*/*.c
 sims/mem/*/*.cc
 sims/net/*/*.c
