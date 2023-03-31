@@ -113,6 +113,8 @@ class SlurmRuntime(Runtime):
                 raise RuntimeError('running sbatch failed')
 
             m = jid_re.search(output)
+            if m is None:
+                raise RuntimeError('cannot retrieve id of submitted job')
             run.job_id = int(m.group(1))
 
     async def start(self):
