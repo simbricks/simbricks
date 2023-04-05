@@ -36,7 +36,7 @@
 namespace i40e {
 
 i40e_bm::i40e_bm()
-    : log("i40e", runner_),
+    : log("i40e", *this),
       pf_atq(*this, regs.pf_atqba, regs.pf_atqlen, regs.pf_atqh, regs.pf_atqt),
       hmc(*this),
       shram(*this),
@@ -754,7 +754,7 @@ void i40e_bm::reset(bool indicate_done) {
   regs.glrpb_plw = 0x0846;
 }
 
-shadow_ram::shadow_ram(i40e_bm &dev_) : dev(dev_), log("sram", dev_.runner_) {
+shadow_ram::shadow_ram(i40e_bm &dev_) : dev(dev_), log("sram", dev_) {
 }
 
 void shadow_ram::reg_updated() {
