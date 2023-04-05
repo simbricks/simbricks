@@ -133,6 +133,7 @@ class queue_base {
     enum state state;
     uint32_t index;
     void *desc;
+    size_t desc_len;
     void *data;
     size_t data_len;
     size_t data_capacity;

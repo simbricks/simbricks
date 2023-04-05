@@ -276,10 +276,11 @@ queue_base::desc_ctx::desc_ctx(queue_base &queue_)
     : queue(queue_),
       state(DESC_EMPTY),
       index(0),
+      desc_len(queue_.desc_len),
       data(nullptr),
       data_len(0),
       data_capacity(0) {
-  desc = new uint8_t[queue_.desc_len];
+  desc = new uint8_t[desc_len];
 }
 
 queue_base::desc_ctx::~desc_ctx() {
