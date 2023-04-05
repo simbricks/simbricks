@@ -28,15 +28,26 @@
 
 namespace i40e {
 
-logger::logger(const std::string &label_, nicbm::Runner *runner_)
-    : label(label_), runner(runner_) {
+logger::logger(const std::string &label_, nicbm::Runner::Device &dev_)
+    : label(label_), dev(dev_), runner(dev_.runner_) {
   ss << std::hex;
 }
 
 logger &logger::operator<<(char c) {
   if (c == endl) {
-    std::cerr << runner->TimePs() << " " << label << ": " << ss.str()
-              << std::endl;
+    uint64_t ts;
+
+    /* runner might not be initialized yet if called from a constructor
+     * somewhere, in that case see if it's set now otherwise just take 0 as the
+     * current timestamp. */
+    if (!runner) {
+      runner = dev.runner_;
+      ts = runner ? runner->TimePs() : 0;
+    } else {
+      ts = runner->TimePs();
+    }
+
+    std::cerr << ts << " " << label << ": " << ss.str() << std::endl;
     ss.str(std::string());
     ss << std::hex;
   } else {

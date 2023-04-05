@@ -68,11 +68,12 @@ class logger : public std::ostream {
 
  protected:
   std::string label;
+  nicbm::Runner::Device &dev;
   nicbm::Runner *runner;
   std::stringstream ss;
 
  public:
-  explicit logger(const std::string &label_, nicbm::Runner *runner_);
+  explicit logger(const std::string &label_, nicbm::Runner::Device &dev_);
   logger &operator<<(char c);
   logger &operator<<(int32_t c);
   logger &operator<<(uint8_t i);

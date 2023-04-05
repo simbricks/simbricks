@@ -37,7 +37,7 @@ namespace i40e {
 queue_base::queue_base(const std::string &qname_, uint32_t &reg_head_,
                        uint32_t &reg_tail_, i40e_bm &dev_)
     : qname(qname_),
-      log(qname_, dev_.runner_),
+      log(qname_, dev_),
       dev(dev_),
       active_first_pos(0),
       active_first_idx(0),
