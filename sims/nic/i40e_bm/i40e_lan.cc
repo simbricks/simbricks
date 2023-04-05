@@ -287,12 +287,6 @@ void lan_queue_rx::initialize() {
   crc_strip = !!(((*hbsz_p) >> 13) & 0x1);
   rxmax = (((*rxmax_p) >> 6) & ((1 << 14) - 1)) * 128;
 
-  if (!longdesc) {
-    log << "lan_queue_rx::initialize: currently only 32B descs "
-           " supported"
-        << logger::endl;
-    abort();
-  }
   if (dtype != 0) {
     log << "lan_queue_rx::initialize: no header split supported"
         << logger::endl;
@@ -359,12 +353,17 @@ void lan_queue_rx::rx_desc_ctx::process() {
 
 void lan_queue_rx::rx_desc_ctx::packet_received(const void *data, size_t pktlen,
                                                 bool last) {
-  union i40e_32byte_rx_desc *rxd =
-      reinterpret_cast<union i40e_32byte_rx_desc *>(desc);
+  // we only use fields in the lowest 16b anyways, even if set to 32b
+  union i40e_16byte_rx_desc *rxd =
+      reinterpret_cast<union i40e_16byte_rx_desc *>(desc);
 
   uint64_t addr = rxd->read.pkt_addr;
 
   memset(rxd, 0, sizeof(*rxd));
+  // for 32b descriptors need to ensure to zero later fields
+  if (desc_len > sizeof(*rxd))
+    memset((uint8_t *)desc + sizeof(*rxd), 0, desc_len - sizeof(*rxd));
+
   rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_DD_SHIFT);
   rxd->wb.qword1.status_error_len |= (pktlen << I40E_RXD_QW1_LENGTH_PBUF_SHIFT);
 
