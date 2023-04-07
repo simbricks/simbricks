@@ -26,6 +26,8 @@ QEMU_IMG := $(d)qemu/build/qemu-img
 QEMU := $(d)qemu/build/qemu-system-x86_64
 GEM5_VARIANT ?= fast
 
+$(eval $(call subdir,simics))
+
 external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready
 .PHONY: external
 
