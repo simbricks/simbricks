@@ -79,6 +79,7 @@ lint-yapf:
 format-yapf:
 	yapf --recursive --in-place \
 		--exclude experiments/simbricks/orchestration/utils/graphlib.py \
+		--exclude experiments/out/ \
 		-- results/ experiments/
 
 lint-isort:
