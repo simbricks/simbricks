@@ -81,14 +81,14 @@ class Component(object):
         ls = self._parse_buf(self.stdout_buf, data)
         if len(ls) > 0 or eof:
             await self.process_out(ls, eof=eof)
-            self.stdout = self.stdout + ls
+            self.stdout.extend(ls)
 
     async def _consume_err(self, data: bytes):
         eof = len(data) == 0
         ls = self._parse_buf(self.stderr_buf, data)
         if len(ls) > 0 or eof:
             await self.process_err(ls, eof=eof)
-            self.stderr = self.stderr + ls
+            self.stderr.extend(ls)
 
     async def _read_stream(self, stream: asyncio.StreamReader, fn):
         while True:

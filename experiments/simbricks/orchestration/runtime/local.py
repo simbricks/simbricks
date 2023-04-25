@@ -63,6 +63,11 @@ class LocalSimpleRuntime(Runtime):
         run.output = await runner.run()  # already handles CancelledError
         self.complete.append(run)
 
+        # if the log is huge, this step takes some time
+        if self.verbose:
+            print(
+                f'Writing collected output of run {run.name()} to JSON file ...'
+            )
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
         with open(run.outpath, 'w', encoding='utf-8') as f:
             f.write(run.output.dumps())
@@ -134,6 +139,11 @@ class LocalParallelRuntime(Runtime):
         print('starting run ', run.name())
         run.output = await runner.run()  # already handles CancelledError
 
+        # if the log is huge, this step takes some time
+        if self.verbose:
+            print(
+                f'Writing collected output of run {run.name()} to JSON file ...'
+            )
         pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
         with open(run.outpath, 'w', encoding='utf-8') as f:
             f.write(run.output.dumps())
