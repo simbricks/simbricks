@@ -21,7 +21,6 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import asyncio
-import pathlib
 import typing as tp
 
 from simbricks.orchestration import exectools
@@ -68,9 +67,7 @@ class LocalSimpleRuntime(Runtime):
             print(
                 f'Writing collected output of run {run.name()} to JSON file ...'
             )
-        pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
-        with open(run.outpath, 'w', encoding='utf-8') as f:
-            f.write(run.output.dumps())
+        run.output.dump(run.outpath)
 
     async def start(self):
         """Execute the runs defined in `self.runnable`."""
@@ -144,9 +141,7 @@ class LocalParallelRuntime(Runtime):
             print(
                 f'Writing collected output of run {run.name()} to JSON file ...'
             )
-        pathlib.Path(run.outpath).parent.mkdir(parents=True, exist_ok=True)
-        with open(run.outpath, 'w', encoding='utf-8') as f:
-            f.write(run.output.dumps())
+        run.output.dump(run.outpath)
         print('finished run ', run.name())
         return run
 

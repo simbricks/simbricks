@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
+import pathlib
 import time
 
 from simbricks.orchestration.experiments import Experiment
@@ -60,9 +61,12 @@ class ExpOutput(object):
         }
         self.sims[sim.full_name()] = obj
 
-    def dumps(self):
-        return json.dumps(self.__dict__)
+    def dump(self, outpath: str):
+        pathlib.Path(outpath).parent.mkdir(parents=True, exist_ok=True)
+        with open(outpath, 'w', encoding='utf-8') as file:
+            json.dump(self.__dict__, file)
 
-    def loads(self, json_s):
-        for k, v in json.loads(json_s).items():
-            self.__dict__[k] = v
+    def load(self, file: str):
+        with open(file, 'r', encoding='utf-8') as fp:
+            for k, v in json.load(fp).items():
+                self.__dict__[k] = v
