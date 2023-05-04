@@ -537,7 +537,8 @@ class SimicsHost(HostSim):
                 f'freq_mhz = {self.cpu_freq} '
                 f'num_cores = {self.node_config.cores} '
                 f'num_threads = {self.node_config.threads} '
-                f'memory_megs = {self.node_config.memory}\' '
+                f'memory_megs = {self.node_config.memory} '
+                'create_network = FALSE\' '
             )
 
         if env.create_cp:
@@ -613,6 +614,23 @@ class SimicsHost(HostSim):
             )
             if self.debug_messages:
                 cmd += '-e \'$mem.log-level 3\' '
+
+        if self.pcidevs:
+            cmd += '-e \'load-module simbricks_pcie_comp\' '
+
+        i = 0
+        for pcidev in self.pcidevs:
+            cmd += (
+                f'-e \'$pci = (create-simbricks-pcie-comp '
+                f'socket = "{env.dev_pci_path(pcidev)}" '
+                f'pci_latency = {self.pci_latency} '
+                f'sync_period = {self.sync_period})\' '
+            )
+            cmd += f'-e \'connect board.mb.nb.pci_slot[{i}] $pci.pci_bus\' '
+            cmd += '-e instantiate-components '
+            if self.debug_messages:
+                cmd += '-e \'$pci.log-level 3\' '
+            i += 1
 
         for param in self.append_cmdline:
             cmd += f'{param} '
