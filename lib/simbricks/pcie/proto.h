@@ -43,7 +43,7 @@
 /** in bars.flags: this memory bar is prefetchable */
 #define SIMBRICKS_PROTO_PCIE_BAR_PF (1 << 2)
 /** in bars.flags: this memory bar is a dummy bar (device doesn't get MMIO
- * messages for this, but it dose get exposed to software. used for MSI-X). */
+ * messages for this, but it does get exposed to software. used for MSI-X). */
 #define SIMBRICKS_PROTO_PCIE_BAR_DUMMY (1 << 3)
 
 /**
@@ -179,6 +179,8 @@ SIMBRICKS_PROTO_MSG_SZCHECK(union SimbricksProtoPcieD2H);
 #define SIMBRICKS_PROTO_PCIE_H2D_MSG_READCOMP 0x62
 #define SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITECOMP 0x63
 #define SIMBRICKS_PROTO_PCIE_H2D_MSG_DEVCTRL 0x64
+/* treat write as posted meaning device doesn't send a completion message */
+#define SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE_POSTED 0x65
 
 struct SimbricksProtoPcieH2DRead {
   uint64_t req_id;
