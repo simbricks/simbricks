@@ -295,24 +295,29 @@ void Runner::H2DRead(volatile struct SimbricksProtoPcieH2DRead *read) {
                             SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
 }
 
-void Runner::H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write) {
+void Runner::H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write,
+                      bool posted) {
   volatile union SimbricksProtoPcieD2H *msg;
   volatile struct SimbricksProtoPcieD2HWritecomp *wc;
-
-  msg = D2HAlloc();
-  wc = &msg->writecomp;
 
 #ifdef DEBUG_NICBM
   uint64_t dbg_val = 0;
   memcpy(&dbg_val, (const void *)write->data, write->len <= 8 ? write->len : 8);
-  printf("main_time = %lu: nicbm: write(off=0x%lx, len=%u, val=0x%lx)\n",
-         main_time_, write->offset, write->len, dbg_val);
+  printf(
+      "main_time = %lu: nicbm: write(off=0x%lx, len=%u, val=0x%lx, "
+      "posted=%u)\n",
+      main_time_, write->offset, write->len, dbg_val, posted);
 #endif
   dev_.RegWrite(write->bar, write->offset, (void *)write->data, write->len);
-  wc->req_id = write->req_id;
 
-  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
-                            SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP);
+  if (!posted) {
+    msg = D2HAlloc();
+    wc = &msg->writecomp;
+    wc->req_id = write->req_id;
+
+    SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
+                              SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP);
+  }
 }
 
 void Runner::H2DReadcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc) {
@@ -399,7 +404,11 @@ void Runner::PollH2D() {
       break;
 
     case SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE:
-      H2DWrite(&msg->write);
+      H2DWrite(&msg->write, false);
+      break;
+
+    case SIMBRICKS_PROTO_PCIE_H2D_MSG_WRITE_POSTED:
+      H2DWrite(&msg->write, true);
       break;
 
     case SIMBRICKS_PROTO_PCIE_H2D_MSG_READCOMP:

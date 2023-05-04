@@ -141,7 +141,7 @@ class Runner {
   volatile union SimbricksProtoNetMsg *D2NAlloc();
 
   void H2DRead(volatile struct SimbricksProtoPcieH2DRead *read);
-  void H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write);
+  void H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write, bool posted);
   void H2DReadcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc);
   void H2DWritecomp(volatile struct SimbricksProtoPcieH2DWritecomp *wc);
   void H2DDevctrl(volatile struct SimbricksProtoPcieH2DDevctrl *dc);
