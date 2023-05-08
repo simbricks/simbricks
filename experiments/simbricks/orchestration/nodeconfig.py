@@ -71,7 +71,9 @@ class NodeConfig():
         self.prefix = 24
         """IP prefix."""
         self.cores = 1
-        """Number of cores to be simulated."""
+        """Number of CPU cores."""
+        self.threads = 1
+        """Number of threads per CPU core."""
         self.memory = 8 * 1024
         """Amount of system memory in MB."""
         self.disk_image = 'base'
