@@ -28,6 +28,9 @@ class ExpEnv(object):
 
     def __init__(self, repo_path, workdir, cpdir):
         self.create_cp = False
+        """Whether a checkpoint should be created."""
+        self.restore_cp = False
+        """Whether to restore from a checkpoint."""
         self.pcap_file = ''
         self.repodir = os.path.abspath(repo_path)
         self.workdir = os.path.abspath(workdir)
