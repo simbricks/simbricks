@@ -92,7 +92,7 @@ class NodeConfig():
             cp_es = [] if self.nockp else ['m5 checkpoint']
             exit_es = ['m5 exit']
         else:
-            cp_es = []
+            cp_es = ['echo ready to checkpoint']
             exit_es = ['poweroff -f']
 
         es = self.prepare_pre_cp() + self.app.prepare_pre_cp() + cp_es + \
