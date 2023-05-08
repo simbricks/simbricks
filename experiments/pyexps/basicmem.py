@@ -41,7 +41,7 @@ class MemTest(nodec.AppConfig):
         ]
 
 
-for h in ['gk']:
+for h in ['gk', 'simics']:
     e = exp.Experiment('basicmem-' + h)
     e.checkpoint = False
 
@@ -59,6 +59,13 @@ for h in ['gk']:
         host.variant = 'opt'
     elif h == 'qk':
         host = sim.QemuHost(node_config)
+    elif h == 'simics':
+        host = sim.SimicsHost(node_config)
+        host.sync = True
+        e.checkpoint = True
+    else:
+        raise NameError(h)
+
     host.name = 'host.0'
     e.add_host(host)
     host.wait = True
