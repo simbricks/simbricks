@@ -30,7 +30,7 @@ simulator combinations. Client and Server use the same simulators.
 from simbricks.orchestration import experiments as exp
 from simbricks.orchestration import nodeconfig, simulator_utils, simulators
 
-host_types = ['qemu', 'gem5']
+host_types = ['qemu', 'gem5', 'simics']
 nic_types = ['i40e', 'e1000']
 experiments = []
 
@@ -61,6 +61,8 @@ for host_type in host_types:
         elif host_type == 'gem5':
             HostClass = Gem5Timing
             e.checkpoint = True
+        elif host_type == 'simics':
+            HostClass = simulators.SimicsHost
         else:
             raise NameError(host_type)
 
