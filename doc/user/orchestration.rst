@@ -98,7 +98,7 @@ found in the module. :mod:`simbricks.orchestration.simulators`.
   .. autoclass:: simbricks.orchestration.simulators.PCIDevSim
 
 
-.. _sec-node_configuration:
+.. _sec-node-config:
 
 Node Configuration
 ==================
@@ -122,7 +122,7 @@ for a :class:`~simbricks.orchestration.nodeconfig.AppConfig`.
     :members: ip, prefix, mtu, cores, memory, disk_image, app, run_cmds, cleanup_cmds, config_files 
 
 
-.. _sec-app_configuration:
+.. _sec-app-config:
 
 Application Configuration
 -------------------------
@@ -140,15 +140,11 @@ simulators.
     :members: run_cmds, config_files
 
 
+.. _sec-command-line:
+
 ******************************
 Running Experiments
 ******************************
-
-
-.. _sec-command-line:
-
-Command Line
-====================
 
 To run experiments using our orchestration framework, use the
 ``experiments/run.py`` script. For your convenience, you can also use

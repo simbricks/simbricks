@@ -54,18 +54,19 @@ Now you are ready to run your first SimBricks simulation (in the container):
   $ cd experiments
   $ simbricks-run --verbose --force pyexps/qemu_i40e_pair.py
 
-Where you go from here depends on what you plan to do with SimBricks. Our How-To
-section, see :ref:`sec-howto`, provides instructions for some common scenarios.
-In general, we suggest starting with reading up on our orchestration framework,
-see :ref:`sec-orchestration`, and experimenting with building different
-simulation configurations, e.g. :ref:`sec-howto-createrun` and
-:ref:`sec-howto-nodeconfig`. This will enable you to assemble and customize
-various configurations of SimBricks simulations.
+Where you go from here depends on what you plan to do with SimBricks. Our
+:ref:`sec-howto` section provides instructions for some common scenarios. In
+general, we suggest starting with reading up on our orchestration framework, see
+:ref:`sec-orchestration`, and experimenting with building different simulation
+configurations, e.g. :ref:`sec-howto-createrun` and :ref:`sec-howto-nodeconfig`.
+This will enable you to assemble and customize various configurations of
+SimBricks simulations.
 
 If you are planning on making changes to the implementation of SimBricks
 components, you may next want to make sure you can build SimBricks from source,
-see our `Quick Start section in the README <https://github.com/simbricks/simbricks#quick-start>`_. We
-recommend diving into our :ref:`sec-devel` for learning about the SimBricks
-architecture, internals, and APIs.
+see our `Quick Start section in the README
+<https://github.com/simbricks/simbricks#quick-start>`_. We recommend diving into
+our :ref:`sec-devel` for learning about the SimBricks architecture, internals,
+and APIs.
 
 If you run into problems please refer to :ref:`sec-troubleshoot-getting-help`.
