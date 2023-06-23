@@ -69,7 +69,14 @@ simulators:
 docker run --rm -it --device /dev/kvm simbricks/simbricks /bin/bash
 ```
 
-The 
+Finally, some of our host simulators, e.g., gem5 and Simics, require raw
+disk images. Since Docker doesn't handle large, sparse files well leading to
+large Docker image sizes, we only include disk images in the qcow format. To
+convert these to raw, run the following:
+
+```Shell
+make convert-images-raw
+```
 
 Now you are ready to run your first SimBricks simulation:
 
