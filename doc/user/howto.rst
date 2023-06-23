@@ -84,20 +84,20 @@ experiment. If ``simbricks-run`` is not available, you can always do
   $ cd experiments
   $ python run.py --verbose --force <path_to_your_module.py>
 
-While running, you can interrupt the experiment using CTRL+C in your terminal.
+While running, you can interrupt the experiment using Ctrl+C in your terminal.
 This will cleanly stop all simulators and collect their output in a JSON file in
 the directory ``experiments/out/<experiment_name>``. These are the necessary
 basics to create and run your first experiment. Have fun.
 
 .. literalinclude:: /../experiments/pyexps/simple_ping.py
   :linenos:
-  :lines: 25-
+  :lines: 29-
   :language: python
   :name: simple_ping_experiment
   :caption: A simple experiment with a client host pinging a server, both are
     connected through a network switch. The setup of the two hosts could be
     simplified by using
-    :func:`~simbricks.orchestration.simulator_utils.create_basic_hosts`.
+    :func:`simbricks.orchestration.simulator_utils.create_basic_hosts`.
 
 .. _sec-howto-nodeconfig:
 
@@ -106,7 +106,7 @@ Add a Node or Application Config
 ********************************
 
 The configuration for a host and the commands to run for your workload are
-defined via a :ref:`sec-node_config` and :ref:`sec-app_config`. SimBricks
+defined via a :ref:`sec-node-config` and :ref:`sec-app-config`. SimBricks
 already offers some concrete implementations in the module
 :mod:`simbricks.orchestration.nodeconfig`. If they don't fit your use-case, you
 need to implement your own by overwriting the pre-defined member functions.
@@ -170,6 +170,3 @@ below of adding a class for the ``NS3`` network simulator.
 ******************************
 Add a New Interface
 ******************************
-
-.. automodule:: simbricks.orchestration.simulator_utils
-  :members:
