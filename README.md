@@ -20,7 +20,7 @@ system. Our primary use-case for SimBricks is computer systems, networks, and
 architecture research. Our [paper](https://arxiv.org/abs/2012.14219) provides a
 more detailed discussion of technical details and use-cases.
 
-Currently SimBricks includes the following simulators:
+Currently, SimBricks includes the following simulators:
 
 - [QEMU](https://www.qemu.org) (fast host simulator)
 - [gem5](https://www.gem5.org/) (flexible and detailed host simulator)
@@ -100,17 +100,19 @@ make docker-images
 This will build a number of Docker images and tag them locally, including the
 main `simbricks/simbricks` image.
 
-### Building in VSCode Dev Container
+### Building in VS Code Dev Container
 
 **We recommend this approach if you plan to modify or extend SimBricks.**
 
 This repository is pre-configured with a [Visual Studio Code Development
-Container] (https://code.visualstudio.com/docs/remote/containers) that includes
+Container](https://code.visualstudio.com/docs/remote/containers) that includes
 all required dependencies for building and working on SimBricks. If you have
-Docker set up and the vscode remote containers extension installed, you can just
-open a freshly cloned simbricks repo in VSCode and VSCode will display a prompt
-to re-open the folder in the container. The VSCode terminals will also
-automatically run any commands inside of the container.
+Docker set up and the VS Code [Dev Containers
+extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+installed, you just have to press `Ctrl+Shift+P` and execute the `Dev Containers: Reopen in
+Container` command to open the repository inside the container. This also means
+that all VS Code terminals will automatically run any commands inside the
+container.
 
 To compile the core SimBricks components simply run `make` (with `-jN` to
 use multiple cores). Note that by default, we do not build the Verilator
@@ -122,88 +124,89 @@ settings there.
 
 The previous step only builds the simulators directly contained in the SimBricks
 repository. You likely also want to build at least some of the external
-simulators, such as gem5, QEMU, or ns-3. First, make sure their corresponding
-submodules are intialized via `git submodule update --init`. You can either
-build all external simulators by running `make -jN external` (this could take
-multiple hours depending on your machine), or build them individually by running
-e.g. `make -jN sims/external/qemu/ready` (replace `qemu` with `gem5`, `ns-3`, or
-`femu` as desired).
+simulators, such as *gem5*, *QEMU*, or *ns-3*. First, make sure their
+corresponding submodules are initialized via `git submodule update --init`. You
+can either build all external simulators by running `make -jN external` (this
+could take multiple hours depending on your machine), or build them individually
+by running e.g. `make -jN sims/external/qemu/ready` (replace `qemu` with `gem5`,
+`ns-3`, or `femu` as desired).
 
-Next, to actually run simulations, you will also need to build the disk images
-with `make -jN build-images` (note this requires QEMU to be built first).
-This will build all our disk images, while `make -jN build-images-min` will
-only build the base disk image (but not the NOPaxos or Memcache images used for
-some experiments). This step will again take 10 - 45 minutes depending on your
-machine and whether KVM acceleration is available but only needs to be run
-once (unless you want to modify the images).
+Next, to actually run simulations, you also need to build the disk images with
+`make -jN build-images` (note this requires QEMU to be built first). This builds
+all our disk images, while `make -jN build-images-min` only builds the base disk
+image (but not the NOPaxos or Memcached images used for some experiments). This
+step will again take 10 - 45 minutes depending on your machine and whether KVM
+acceleration is available but only needs to be run once (unless you want to
+modify the images).
 
 Now you are ready to run simulations as with the pre-built docker images.
 
 ### Building From Source
 
-Finally, it is of course possible to install the required dependencies
-directly on your machine and then build and run SimBricks locally. Note that
-you will need to install both the modest build dependencies for SimBricks but
-also for the external simulators you need. We suggest you refer to the
-[`docker/Dockerfile.buildenv`](docker/Dockerfile.buildenv) for the
-authoritative list of required dependencies.
+Finally, it is of course possible to install the required dependencies directly
+on your machine and then build and run SimBricks locally. Note that you will
+need to install both the build dependencies for SimBricks but also for the
+external simulators you need. We suggest you refer to the
+[`docker/Dockerfile.buildenv`](docker/Dockerfile.buildenv) for the authoritative
+list of required dependencies.
 
 ## Questions? Suggestions? Bugs?
 
 If you are using SimBricks or are trying to determine if SimBricks is suitable
-for what you are trying to do, we would love to hear from you. First off,
-please feel free to report bugs or suggestions directly through
-[github issues](https://github.com/simbricks/simbricks/issues). If you
-have questions or thoughts please post them on our
-[github discussion board](https://github.com/simbricks/simbricks/discussions).
-Finally, we are also available
-[on Slack](https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA)
+for what you are trying to do, we would love to hear from you. First off, please
+feel free to report bugs or suggestions directly through [GitHub
+issues](https://github.com/simbricks/simbricks/issues). If you have questions or
+thoughts, please post them on our [GitHub discussion
+board](https://github.com/simbricks/simbricks/discussions). Finally, we are also
+available on
+[Slack](https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA)
 for more interactive discussions or to answer quick questions.
 
 ## Repository Structure
 
-- `doc/`: Documentation (sphinx), automatically deployed on
+- `doc/`: Documentation (Sphinx), automatically deployed on
   [Read The Docs](https://simbricks.readthedocs.io/en/latest/?badge=latest).
 - `lib/simbricks/`: Libraries implementing SimBricks interfaces
   - `lib/simbricks/base`: Base protocol implementation responsible for
     connection setup, message transfer, and time synchronization between
     SimBricks component simulators.
-  - `lib/simbricks/network`: Network protocol implementation carrying ethernet
-    packets between network components, layers over the base protocol.
+  - `lib/simbricks/network`: Network protocol implementation carrying Ethernet
+    packets between network components. Layers over the base protocol.
   - `lib/simbricks/pcie`: PCIe protocol implementation, roughly modelling PCIe
-    at the transaction level, interconnecting hosts with PCIe device simulators,
-    layers over base protocol.
+    at the transaction level, interconnecting hosts with PCIe device simulators.
+    Layers over base protocol.
   - `lib/simbricks/nicbm`: Helper C++ library for implementing behavioral
     (high-level) NIC simulation models, offers similar abstractions as device
     models in other simulators such as gem-5.
   - `lib/simbricks/nicif`: *(deprecated)* Thin C library for NIC simulators
     establishing a network and a PCIe connection.
-- `dist/`: Proxies for distributed SimBricks simulation running on multiple
+- `dist/`: Proxies for distributed SimBricks simulations running on multiple
   physical hosts.
-  - `dist/sockets/`: Proxy transporting messages over regular TCP sockets.
+  - `dist/sockets/`: Proxy transporting SimBricks messages over regular TCP
+    sockets.
   - `dist/rdma/`: RDMA SimBricks proxy (not compiled by default).
 - `sims/`: Component Simulators integrated into SimBricks.
   - `sims/external/`: Submodule pointers to repositories for existing external
-    simulators (gem5, qemu, ns-3, femu).
+    simulators (gem5, QEMU, ns-3, FEMU).
   - `sims/nic/`: NIC simulators
     - `sims/nic/i40e_bm`: Behavioral NIC model for Intel X710 40G NIC.
-    - `sims/nic/corundum`: RTL simulation with verilator of the
+    - `sims/nic/corundum`: RTL simulation with Verilator of the
       [Corundum FPGA NIC](https://corundum.io/).
     - `sims/nic/corundum_bm`: Simple behavioral Corundum NIC model.
     - `sims/nic/e1000_gem5`: E1000 NIC model extracted from gem5.
   - `sims/net/`: Network simulators
     - `sims/net/net_switch`: Simple behavioral Ethernet switch model.
-    - `sims/net/wire`: Simple ethernet "wire" connecting two NICs back-to-back.
+    - `sims/net/wire`: Simple Ethernet "wire" connecting two NICs back-to-back.
     - `sims/net/pktgen`: Packet generator.
     - `sims/net/tap`: Linux TAP device adapter.
     - `sims/net/tofino/`: Adapter for Intel Tofino Simulator.
-    - `sims/net/menshen`: RTL simulation with verilator for the
+    - `sims/net/menshen`: RTL simulation with Verilator for the
       [Menshen RMT Pipeline](https://isolation.quest/).
-- `experiments/`: Python Orchestration scripts for running simulations.
+- `experiments/`: Python orchestration framework for running simulations.
   - `experiments/simbricks/orchestration/`: Orchestration framework implementation.
-  - `experiments/run.py`: Main script for running a simulation.
-  - `experiments/pyexps/`: Example simulation configurations.
-- `images/`: Infrastructure to build disk images for hosts in SimBricks.
+  - `experiments/run.py`: Main script for running simulation experiments.
+  - `experiments/pyexps/`: Example simulation experiments.
+- `images/`: Infrastructure to build disk images for host simulators.
   - `images/kernel/`: Slimmed down Linux kernel to reduce simulation time.
   - `images/mqnic/`: Linux driver for Corundum NIC.
   - `images/scripts/`: Scripts for installing packages in disk images.
