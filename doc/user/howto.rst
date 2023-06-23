@@ -68,7 +68,7 @@ write.
 
 Finally, to run your experiment, invoke ``<repository>/experiments/run.py`` and
 provide the path to your experiment module. In our docker containers, you can
-just use the following command from anywhere:
+also just use the following command from anywhere:
 
 .. code-block:: bash
 
