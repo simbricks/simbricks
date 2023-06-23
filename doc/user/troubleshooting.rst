@@ -28,6 +28,7 @@ Troubleshooting / FAQ
 This is a collection of common troubleshooting tips and answers to frequently
 asked questions.
 
+
 .. _sec-troubleshoot-getting-help:
 
 ******************************
@@ -40,6 +41,9 @@ encountered issues while using SimBricks, we are available on `Slack
 for quick answers and interactive discussions. If you find bugs or want to
 request a feature, feel free to open an `issue on GitHub
 <https://github.com/simbricks/simbricks/issues>`_.
+
+
+.. _sec-convert-qcow-images-to-raw:
 
 *****************************************
 Error Opening images/output-base/base.raw
