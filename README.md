@@ -24,6 +24,9 @@ Currently, SimBricks includes the following simulators:
 
 - [QEMU](https://www.qemu.org) (fast host simulator)
 - [gem5](https://www.gem5.org/) (flexible and detailed host simulator)
+- [Simics](https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html)
+  (fast, closed-source host simulator supporting modern x86 ISA extensions like
+  AVX)
 - [ns-3](https://www.nsnam.org/) (flexible simulator for networks)
 - [OMNeT++ INET](https://inet.omnetpp.org/) (flexible simulator for networks)
 - [Intel Tofino SDK Simulator](https://www.intel.com/content/www/us/en/products/network-io/programmable-ethernet-switch/p4-suite/p4-studio.html)
@@ -65,6 +68,8 @@ simulators:
 ```Shell
 docker run --rm -it --device /dev/kvm simbricks/simbricks /bin/bash
 ```
+
+The 
 
 Now you are ready to run your first SimBricks simulation:
 
@@ -187,7 +192,7 @@ for more interactive discussions or to answer quick questions.
   - `dist/rdma/`: RDMA SimBricks proxy (not compiled by default).
 - `sims/`: Component Simulators integrated into SimBricks.
   - `sims/external/`: Submodule pointers to repositories for existing external
-    simulators (gem5, QEMU, ns-3, FEMU).
+    simulators (gem5, QEMU, Simics, ns-3, FEMU).
   - `sims/nic/`: NIC simulators
     - `sims/nic/i40e_bm`: Behavioral NIC model for Intel X710 40G NIC.
     - `sims/nic/corundum`: RTL simulation with Verilator of the
