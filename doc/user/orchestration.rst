@@ -150,34 +150,64 @@ Running Experiments
 Command Line
 ====================
 
+To run experiments using our orchestration framework, use the
+``experiments/run.py`` script. For your convenience, you can also use
+``simbricks-run`` in the Docker images from anywhere to run experiments. In
+practice, running experiments will look similar to this:
+
 .. code-block:: bash
 
-   usage: simbricks-run [-h] [--filter PATTERN [PATTERN ...]] [--pickled] [--runs N]
-               [--firstrun N] [--force] [--verbose] [--pcap] [--repo DIR]
-               [--workdir DIR] [--outdir DIR] [--cpdir DIR] [--parallel]
-               [--cores N] [--mem N] [--slurm] [--slurmdir DIR]
-               EXP [EXP ...]
+  $ python3.10 run.py --verbose --force pyexps/qemu_i40e_pair.py
+  # only available inside docker images
+  $ simbricks-run --verbose --force qemu_i40e_pair.py
 
-Positional arguments
---------------------
+Here are all the command line arguments for the ``experiments/run.py`` script:
 
-   *  ``EXP``
+.. code-block:: text
 
-      An experiment file to run.
+  usage: run.py [-h] [--list] [--filter PATTERN [PATTERN ...]] [--pickled] [--runs N]
+                [--firstrun N] [--force] [--verbose] [--pcap] [--repo DIR] [--workdir DIR]
+                [--outdir DIR] [--cpdir DIR] [--hosts JSON_FILE] [--shmdir DIR]
+                [--parallel] [--cores N] [--mem N] [--slurm] [--slurmdir DIR] [--dist]
+                [--auto-dist] [--proxy-type TYPE]
+                EXP [EXP ...]
 
-Optional arguments
-------------------
+  positional arguments:
+    EXP                   Python modules to load the experiments from
 
-   *  `` -h, --help``
+  options:
+    -h, --help            show this help message and exit
+    --list                List available experiment names
+    --filter PATTERN [PATTERN ...]
+                          Only run experiments matching the given Unix shell style patterns
+    --pickled             Interpret experiment modules as pickled runs instead of .py files
+    --runs N              Number of repetition of each experiment
+    --firstrun N          ID for first run
+    --force               Run experiments even if output already exists (overwrites output)
+    --verbose             Verbose output, for example, print component simulators\' output
+    --pcap                Dump pcap file (if supported by component simulator)
 
-      show this help message and exit.
-   
-   * `` --filter PATTERN [PATTERN ...] ``
-      Pattern to match experiment names against
+  Environment:
+    --repo DIR            SimBricks repository directory
+    --workdir DIR         Work directory base
+    --outdir DIR          Output directory base
+    --cpdir DIR           Checkpoint directory base
+    --hosts JSON_FILE     List of hosts to use (json)
+    --shmdir DIR          Shared memory directory base (workdir if not set)
 
-Environment
------------
+  Parallel Runtime:
+    --parallel            Use parallel instead of sequential runtime
+    --cores N             Number of cores to use for parallel runs
+    --mem N               Memory limit for parallel runs (in MB)
 
+  Slurm Runtime:
+    --slurm               Use slurm instead of sequential runtime
+    --slurmdir DIR        Slurm communication directory
+
+  Distributed Runtime:
+    --dist                Use sequential distributed runtime instead of local
+    --auto-dist           Automatically distribute non-distributed experiments
+    --proxy-type TYPE     Proxy type to use (sockets,rdma) for auto distribution
 
 ******************************
 Images

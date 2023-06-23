@@ -59,35 +59,35 @@ parser.add_argument(
     metavar='EXP',
     type=str,
     nargs='+',
-    help='An experiment file to run'
+    help='Python modules to load the experiments from'
 )
 parser.add_argument(
     '--list',
     action='store_const',
     const=True,
     default=False,
-    help='Only list available experiment names'
+    help='List available experiment names'
 )
 parser.add_argument(
     '--filter',
     metavar='PATTERN',
     type=str,
     nargs='+',
-    help='Pattern to match experiment names against'
+    help='Only run experiments matching the given Unix shell style patterns'
 )
 parser.add_argument(
     '--pickled',
     action='store_const',
     const=True,
     default=False,
-    help='Read exp files as pickled runs instead of exp.py files'
+    help='Interpret experiment modules as pickled runs instead of .py files'
 )
 parser.add_argument(
     '--runs',
     metavar='N',
     type=int,
     default=1,
-    help='Number of repetition for each experiment'
+    help='Number of repetition of each experiment'
 )
 parser.add_argument(
     '--firstrun', metavar='N', type=int, default=1, help='ID for first run'
@@ -97,26 +97,30 @@ parser.add_argument(
     action='store_const',
     const=True,
     default=False,
-    help='Run experiments even if output already exists'
+    help='Run experiments even if output already exists (overwrites output)'
 )
 parser.add_argument(
     '--verbose',
     action='store_const',
     const=True,
     default=False,
-    help='Verbose output'
+    help='Verbose output, for example, print component simulators\' output'
 )
 parser.add_argument(
     '--pcap',
     action='store_const',
     const=True,
     default=False,
-    help='Dump pcap file (if supported by simulator)'
+    help='Dump pcap file (if supported by component simulator)'
 )
 
 g_env = parser.add_argument_group('Environment')
 g_env.add_argument(
-    '--repo', metavar='DIR', type=str, default='..', help='Repo directory'
+    '--repo',
+    metavar='DIR',
+    type=str,
+    default='..',
+    help='SimBricks repository directory'
 )
 g_env.add_argument(
     '--workdir',
