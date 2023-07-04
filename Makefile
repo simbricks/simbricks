@@ -92,8 +92,7 @@ lint-isort:
 		results/ experiments/
 
 format-isort:
-	isort --overwrite-in-place \
-		--skip experiments/simbricks/orchestration/utils/graphlib.py \
+	isort --skip experiments/simbricks/orchestration/utils/graphlib.py \
 		results/ experiments/
 
 lint: lint-cpplint lint-clang-format lint-python
