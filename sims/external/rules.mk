@@ -28,7 +28,7 @@ GEM5_VARIANT ?= fast
 
 $(eval $(call subdir,simics))
 
-external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready
+external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready $(d)bmv2/ready
 .PHONY: external
 
 $(d)gem5:
@@ -79,6 +79,14 @@ $(d)femu/ready: $(d)femu $(lib_nicif)
 	      -L$(abspath $(lib_dir))/simbricks/base/ "\
 	    EXTRA_CPPFLAGS=-I$(abspath $(lib_dir))
 	touch $@
+
+$(d)bmv2:
+	git clone https://github.com/simbricks/bmv2.git $@
+
+$(d)bmv2/ready: $(d)bmv2 $(lib_netif)
+	+cd $< && ./autogen.sh && \
+	CPPFLAGS=-I$(abspath $(lib_dir)) ./configure && \
+	make -j
 
 DISTCLEAN := $(base_dir)gem5 $(base_dir)qemu $(base_dir)ns-3 $(base_dir)femu
 include mk/subdir_post.mk
