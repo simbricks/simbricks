@@ -29,30 +29,8 @@ Welcome! We are happy that you want to give SimBricks a try.
 
 The easiest way to get started with just running a simulation is to use our
 Docker images, see our `README
-<https://github.com/simbricks/simbricks#using-pre-built-docker-images>`_. Given
-a working docker installation (`docker engine
-<https://docs.docker.com/engine/install/#server>`_ or `docker desktop
-<https://docs.docker.com/get-docker/>`_ both work), this is as simple as just
-launching a new container and docker will take care of the rest:
-
-.. code-block:: bash
-
-  $ docker run -it simbricks/simbricks /bin/bash
-
-If you have a host system with support for KVM virtualization, you can greatly
-speed up many simulations (and building images) by passing through the KVM
-device into the container:
-
-.. code-block:: bash
-
-  $ docker run --device=/dev/kvm --privileged -it simbricks/simbricks /bin/bash
-
-Now you are ready to run your first SimBricks simulation (in the container):
-
-.. code-block:: bash
-
-  $ cd experiments
-  $ simbricks-run --verbose --force pyexps/qemu_i40e_pair.py
+<https://github.com/simbricks/simbricks#using-pre-built-docker-images>`_ for
+details.
 
 Where you go from here depends on what you plan to do with SimBricks. Our
 :ref:`sec-howto` section provides instructions for some common scenarios. In
@@ -63,8 +41,8 @@ This will enable you to assemble and customize various configurations of
 SimBricks simulations.
 
 If you are planning on making changes to the implementation of SimBricks
-components, you may next want to make sure you can build SimBricks from source,
-see our `Quick Start section in the README
+components, you may next want to make sure you can build SimBricks from source.
+For instructions, refer to our `Quick Start section in the README
 <https://github.com/simbricks/simbricks#quick-start>`_. We recommend diving into
 our :ref:`sec-devel` for learning about the SimBricks architecture, internals,
 and APIs.

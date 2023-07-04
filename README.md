@@ -78,11 +78,12 @@ convert these to raw, run the following:
 make convert-images-raw
 ```
 
-Now you are ready to run your first SimBricks simulation:
+Now you are ready to run your first SimBricks simulation. Note that
+`simbricks-run` is only available inside our docker containers.
 
 ```Shell
 root@fa76605e3628:/simbricks# cd experiments/
-root@fa76605e3628:/simbricks/experiments# simbricks-run --verbose --force pyexps/qemu_i40e_pair.py
+root@fa76605e3628:/simbricks/experiments# simbricks-run --verbose --force pyexps/simple_ping.py
 ...
 ```
 
