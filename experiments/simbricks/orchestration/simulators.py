@@ -33,11 +33,11 @@ from simbricks.orchestration.nodeconfig import NodeConfig
 class Simulator(object):
     """Base class for all simulators."""
 
-    def __init__(self):
-        self.extra_deps = []
+    def __init__(self) -> None:
+        self.extra_deps: tp.List[Simulator] = []
         self.name = ''
 
-    def resreq_cores(self):
+    def resreq_cores(self) -> int:
         """
         Number of cores this simulator requires during execution.
 
@@ -45,7 +45,7 @@ class Simulator(object):
         """
         return 1
 
-    def resreq_mem(self):
+    def resreq_mem(self) -> int:
         """
         Number of memory in MB this simulator requires during execution.
 
@@ -53,7 +53,7 @@ class Simulator(object):
         """
         return 64
 
-    def full_name(self):
+    def full_name(self) -> str:
         """Full name of the simulator."""
         return ''
 
@@ -73,25 +73,25 @@ class Simulator(object):
 
     # Sockets to be cleaned up
     # pylint: disable=unused-argument
-    def sockets_cleanup(self, env: ExpEnv):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return []
 
     # sockets to wait for indicating the simulator is ready
     # pylint: disable=unused-argument
-    def sockets_wait(self, env: ExpEnv):
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return []
 
-    def start_delay(self):
+    def start_delay(self) -> int:
         return 5
 
-    def wait_terminate(self):
+    def wait_terminate(self) -> bool:
         return False
 
 
 class PCIDevSim(Simulator):
     """Base class for PCIe device simulators."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.sync_mode = 0
@@ -110,23 +110,23 @@ class PCIDevSim(Simulator):
         """Latency in nanoseconds for sending messages to components connected
         via PCI."""
 
-    def full_name(self):
+    def full_name(self) -> str:
         return 'dev.' + self.name
 
-    def is_nic(self):
+    def is_nic(self) -> bool:
         return False
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return [env.dev_pci_path(self), env.dev_shm_path(self)]
 
-    def sockets_wait(self, env):
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return [env.dev_pci_path(self)]
 
 
 class NICSim(PCIDevSim):
     """Base class for NIC simulators."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.network: tp.Optional[NetSim] = None
@@ -135,12 +135,12 @@ class NICSim(PCIDevSim):
         """Ethernet latency in nanoseconds from this NIC to the network
         component."""
 
-    def set_network(self, net: NetSim):
+    def set_network(self, net: NetSim) -> None:
         """Connect this NIC to a network simulator."""
         self.network = net
         net.nics.append(self)
 
-    def basic_args(self, env, extra=None):
+    def basic_args(self, env: ExpEnv, extra: tp.Optional[str] = None) -> str:
         cmd = (
             f'{env.dev_pci_path(self)} {env.nic_eth_path(self)}'
             f' {env.dev_shm_path(self)} {self.sync_mode} {self.start_tick}'
@@ -153,27 +153,29 @@ class NICSim(PCIDevSim):
             cmd += ' ' + extra
         return cmd
 
-    def basic_run_cmd(self, env, name, extra=None):
+    def basic_run_cmd(
+        self, env: ExpEnv, name: str, extra: tp.Optional[str] = None
+    ) -> str:
         cmd = f'{env.repodir}/sims/nic/{name} {self.basic_args(env, extra)}'
         return cmd
 
-    def full_name(self):
+    def full_name(self) -> str:
         return 'nic.' + self.name
 
-    def is_nic(self):
+    def is_nic(self) -> bool:
         return True
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return super().sockets_cleanup(env) + [env.nic_eth_path(self)]
 
-    def sockets_wait(self, env):
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return super().sockets_wait(env) + [env.nic_eth_path(self)]
 
 
 class NetSim(Simulator):
     """Base class for network simulators."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.opt = ''
@@ -191,10 +193,10 @@ class NetSim(Simulator):
         self.net_listen: list[NetSim] = []
         self.net_connect: list[NetSim] = []
 
-    def full_name(self):
+    def full_name(self) -> str:
         return 'net.' + self.name
 
-    def connect_network(self, net: NetSim):
+    def connect_network(self, net: NetSim) -> None:
         """Connect this network to the listening peer `net`"""
         net.net_listen.append(self)
         self.net_connect.append(net)
@@ -209,19 +211,19 @@ class NetSim(Simulator):
             sockets.append((h, env.net2host_eth_path(self, h)))
         return sockets
 
-    def listen_sockets(self, env: ExpEnv):
+    def listen_sockets(self, env: ExpEnv) -> tp.List[tp.Tuple[NetSim, str]]:
         listens = []
         for net in self.net_listen:
             listens.append((net, env.n2n_eth_path(self, net)))
         return listens
 
-    def dependencies(self):
+    def dependencies(self) -> tp.List[Simulator]:
         return self.nics + self.net_connect + self.hosts_direct
 
-    def sockets_cleanup(self, env: ExpEnv):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return [s for (_, s) in self.listen_sockets(env)]
 
-    def sockets_wait(self, env: ExpEnv):
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return [s for (_, s) in self.listen_sockets(env)]
 
 
@@ -229,7 +231,7 @@ class NetSim(Simulator):
 class MemDevSim(NICSim):
     """Base class for memory device simulators."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.mem_latency = 500
@@ -237,40 +239,40 @@ class MemDevSim(NICSim):
         self.size = 1024 * 1024 * 1024  # 1GB
         self.as_id = 0
 
-    def full_name(self):
+    def full_name(self) -> str:
         return 'mem.' + self.name
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return [env.dev_mem_path(self), env.dev_shm_path(self)]
 
-    def sockets_wait(self, env):
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return [env.dev_mem_path(self)]
 
 
 class NetMemSim(NICSim):
     """Base class for netork memory simulators."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.addr = 0xe000000000000000
         self.size = 1024 * 1024 * 1024  # 1GB
         self.as_id = 0
 
-    def full_name(self):
+    def full_name(self) -> str:
         return 'netmem.' + self.name
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return [env.nic_eth_path(self), env.dev_shm_path(self)]
 
-    def sockets_wait(self, env):
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return [env.nic_eth_path(self)]
 
 
 class HostSim(Simulator):
     """Base class for host simulators."""
 
-    def __init__(self, node_config: NodeConfig):
+    def __init__(self, node_config: NodeConfig) -> None:
         super().__init__()
         self.node_config = node_config
         """System configuration for this simulated host. """
@@ -301,31 +303,35 @@ class HostSim(Simulator):
         self.memdevs: tp.List[MemDevSim] = []
 
     @property
-    def nics(self):
-        return filter(lambda pcidev: pcidev.is_nic(), self.pcidevs)
+    def nics(self) -> tp.List[NICSim]:
+        return [
+            tp.cast(NICSim, pcidev)
+            for pcidev in self.pcidevs
+            if pcidev.is_nic()
+        ]
 
-    def full_name(self):
+    def full_name(self) -> str:
         return 'host.' + self.name
 
-    def add_nic(self, dev: NICSim):
+    def add_nic(self, dev: NICSim) -> None:
         """Add a NIC to this host."""
         self.add_pcidev(dev)
 
-    def add_pcidev(self, dev: PCIDevSim):
+    def add_pcidev(self, dev: PCIDevSim) -> None:
         """Add a PCIe device to this host."""
         dev.name = self.name + '.' + dev.name
         self.pcidevs.append(dev)
 
-    def add_memdev(self, dev: MemDevSim):
+    def add_memdev(self, dev: MemDevSim) -> None:
         dev.name = self.name + '.' + dev.name
         self.memdevs.append(dev)
 
-    def add_netdirect(self, net: NetSim):
+    def add_netdirect(self, net: NetSim) -> None:
         """Add a direct connection to a network to this host."""
         net.hosts_direct.append(self)
         self.net_directs.append(net)
 
-    def dependencies(self):
+    def dependencies(self) -> tp.List[PCIDevSim]:
         deps = []
         for dev in self.pcidevs:
             deps.append(dev)
@@ -335,36 +341,36 @@ class HostSim(Simulator):
             deps.append(dev)
         return deps
 
-    def wait_terminate(self):
+    def wait_terminate(self) -> bool:
         return self.wait
 
 
 class QemuHost(HostSim):
     """Qemu host simulator."""
 
-    def __init__(self, node_config: NodeConfig):
+    def __init__(self, node_config: NodeConfig) -> None:
         super().__init__(node_config)
 
         self.sync = False
         """"Whether to synchronize with attached simulators."""
 
-    def resreq_cores(self):
+    def resreq_cores(self) -> int:
         if self.sync:
             return 1
         else:
             return self.node_config.cores + 1
 
-    def resreq_mem(self):
+    def resreq_mem(self) -> int:
         return 8192
 
-    def prep_cmds(self, env):
+    def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
         return [
             f'{env.qemu_img_path} create -f qcow2 -o '
             f'backing_file="{env.hd_path(self.node_config.disk_image)}" '
             f'{env.hdcopy_path(self)}'
         ]
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         accel = ',accel=kvm:tcg' if not self.sync else ''
         if self.node_config.kcmd_append:
             kcmd_append = ' ' + self.node_config.kcmd_append
@@ -416,7 +422,7 @@ class QemuHost(HostSim):
 class Gem5Host(HostSim):
     """Gem5 host simulator."""
 
-    def __init__(self, node_config: NodeConfig):
+    def __init__(self, node_config: NodeConfig) -> None:
         node_config.sim = 'gem5'
         super().__init__(node_config)
         self.cpu_type_cp = 'X86KvmCPU'
@@ -426,16 +432,16 @@ class Gem5Host(HostSim):
         self.extra_config_args = []
         self.variant = 'fast'
 
-    def resreq_cores(self):
+    def resreq_cores(self) -> int:
         return 1
 
-    def resreq_mem(self):
+    def resreq_mem(self) -> int:
         return 4096
 
-    def prep_cmds(self, env):
+    def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
         return [f'mkdir -p {env.gem5_cpdir(self)}']
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cpu_type = self.cpu_type
         if env.create_cp:
             cpu_type = self.cpu_type_cp
@@ -506,7 +512,7 @@ class Gem5Host(HostSim):
 class SimicsHost(HostSim):
     """Simics host simulator."""
 
-    def __init__(self, node_config: NodeConfig):
+    def __init__(self, node_config: NodeConfig) -> None:
         super().__init__(node_config)
         node_config.sim = 'simics'
 
@@ -527,13 +533,13 @@ class SimicsHost(HostSim):
         self.debug_messages = False
         """Whether to enable debug messages of SimBricks adapter devices."""
 
-    def resreq_cores(self):
+    def resreq_cores(self) -> int:
         return 2
 
-    def resreq_mem(self):
+    def resreq_mem(self) -> int:
         return self.node_config.memory
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         if self.node_config.kcmd_append:
             raise RuntimeError(
                 'Appending kernel command-line not yet implemented.'
@@ -670,15 +676,15 @@ class SimicsHost(HostSim):
 
 class CorundumVerilatorNIC(NICSim):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.clock_freq = 250  # MHz
 
-    def resreq_mem(self):
+    def resreq_mem(self) -> int:
         # this is a guess
         return 512
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         return self.basic_run_cmd(
             env, '/corundum/corundum_verilator', str(self.clock_freq)
         )
@@ -686,23 +692,23 @@ class CorundumVerilatorNIC(NICSim):
 
 class CorundumBMNIC(NICSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         return self.basic_run_cmd(env, '/corundum_bm/corundum_bm')
 
 
 class I40eNIC(NICSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
 
 
 class E1000NIC(NICSim):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.debug = False
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cmd = self.basic_run_cmd(env, '/e1000_gem5/e1000_gem5')
         if self.debug:
             cmd = 'env E1000_DEBUG=1 ' + cmd
@@ -711,35 +717,35 @@ class E1000NIC(NICSim):
 
 class MultiSubNIC(NICSim):
 
-    def __init__(self, mn):
+    def __init__(self, mn: Simulator) -> None:
         super().__init__()
         self.multinic = mn
 
-    def full_name(self):
+    def full_name(self) -> str:
         return self.multinic.full_name() + '.' + self.name
 
-    def dependencies(self):
+    def dependencies(self) -> tp.List[Simulator]:
         return super().dependencies() + [self.multinic]
 
-    def start_delay(self):
+    def start_delay(self) -> int:
         return 0
 
 
 class I40eMultiNIC(Simulator):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.subnics = []
+        self.subnics: tp.List[NICSim] = []
 
-    def create_subnic(self):
+    def create_subnic(self) -> MultiSubNIC:
         sn = MultiSubNIC(self)
         self.subnics.append(sn)
         return sn
 
-    def full_name(self):
+    def full_name(self) -> str:
         return 'multinic.' + self.name
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         args = ''
         first = True
         for sn in self.subnics:
@@ -749,13 +755,13 @@ class I40eMultiNIC(Simulator):
             args += sn.basic_args(env)
         return f'{env.repodir}/sims/nic/i40e_bm/i40e_bm {args}'
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         ss = []
         for sn in self.subnics:
             ss += sn.sockets_cleanup(env)
         return ss
 
-    def sockets_wait(self, env):
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         ss = []
         for sn in self.subnics:
             ss += sn.sockets_wait(env)
@@ -764,7 +770,7 @@ class I40eMultiNIC(Simulator):
 
 class WireNet(NetSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         connects = self.connect_sockets(env)
         assert len(connects) == 2
         cmd = (
@@ -779,12 +785,12 @@ class WireNet(NetSim):
 
 class SwitchNet(NetSim):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.sync = True
         """Whether to synchronize with attached simulators."""
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cmd = env.repodir + '/sims/net/switch/net_switch'
         cmd += f' -S {self.sync_period} -E {self.eth_latency}'
 
@@ -799,7 +805,7 @@ class SwitchNet(NetSim):
             cmd += ' -h ' + n
         return cmd
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         # cleanup here will just have listening eth sockets, switch also creates
         # shm regions for each with a "-shm" suffix
         cleanup = []
@@ -811,13 +817,13 @@ class SwitchNet(NetSim):
 
 class MemSwitchNet(NetSim):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.sync = True
         """ AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START """
         self.mem_map = []
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cmd = env.repodir + '/sims/mem/memswitch/memswitch'
         cmd += f' -S {self.sync_period} -E {self.eth_latency}'
 
@@ -836,7 +842,7 @@ class MemSwitchNet(NetSim):
             cmd += f',{m[4]}'
         return cmd
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         # cleanup here will just have listening eth sockets, switch also creates
         # shm regions for each with a "-shm" suffix
         cleanup = []
@@ -848,12 +854,12 @@ class MemSwitchNet(NetSim):
 
 class TofinoNet(NetSim):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.tofino_log_path = '/tmp/model.ldjson'
         self.sync = True
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cmd = f'{env.repodir}/sims/net/tofino/tofino'
         cmd += (
             f' -S {self.sync_period} -E {self.eth_latency}'
@@ -868,7 +874,7 @@ class TofinoNet(NetSim):
 
 class NS3DumbbellNet(NetSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         ports = ''
         for (n, s) in self.connect_sockets(env):
             if 'server' in n.name:
@@ -887,7 +893,7 @@ class NS3DumbbellNet(NetSim):
 
 class NS3BridgeNet(NetSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         ports = ''
         for (_, n) in self.connect_sockets(env):
             ports += '--CosimPort=' + n + ' '
@@ -903,7 +909,7 @@ class NS3BridgeNet(NetSim):
 
 class NS3SequencerNet(NetSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         ports = ''
         for (n, s) in self.connect_sockets(env):
             if 'client' in n.name:
@@ -924,7 +930,7 @@ class NS3SequencerNet(NetSim):
 
 class FEMUDev(PCIDevSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cmd = (
             f'{env.repodir}/sims/external/femu/femu-simbricks'
             f' {env.dev_pci_path(self)} {env.dev_shm_path(self)}'
@@ -934,7 +940,7 @@ class FEMUDev(PCIDevSim):
 
 class BasicMemDev(MemDevSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cmd = (
             f'{env.repodir}/sims/mem/basicmem/basicmem'
             f' {self.size} {self.addr} {self.as_id}'
@@ -947,7 +953,7 @@ class BasicMemDev(MemDevSim):
 
 class MemNIC(MemDevSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cmd = (
             f'{env.repodir}/sims/mem/memnic/memnic'
             f' {env.dev_mem_path(self)} {env.nic_eth_path(self)}'
@@ -962,16 +968,16 @@ class MemNIC(MemDevSim):
 
         return cmd
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return super().sockets_cleanup(env) + [env.nic_eth_path(self)]
 
-    def sockets_wait(self, env):
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return super().sockets_wait(env) + [env.nic_eth_path(self)]
 
 
 class NetMem(NetMemSim):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: ExpEnv) -> str:
         cmd = (
             f'{env.repodir}/sims/mem/netmem/netmem'
             f' {self.size} {self.addr} {self.as_id}'

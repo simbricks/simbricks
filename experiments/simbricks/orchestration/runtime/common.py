@@ -54,10 +54,10 @@ class Run(object):
         self.job_id: tp.Optional[int] = None
         """Slurm job id."""
 
-    def name(self):
+    def name(self) -> str:
         return self.experiment.name + '.' + str(self.index)
 
-    async def prep_dirs(self, executor=LocalExecutor()):
+    async def prep_dirs(self, executor=LocalExecutor()) -> None:
         shutil.rmtree(self.env.workdir, ignore_errors=True)
         await executor.rmtree(self.env.workdir)
         shutil.rmtree(self.env.shm_base, ignore_errors=True)
@@ -83,11 +83,11 @@ class Runtime(metaclass=ABCMeta):
         """Indicates whether interrupt has been signaled."""
 
     @abstractmethod
-    def add_run(self, run: Run):
+    def add_run(self, run: Run) -> None:
         pass
 
     @abstractmethod
-    async def start(self):
+    async def start(self) -> None:
         pass
 
     @abstractmethod

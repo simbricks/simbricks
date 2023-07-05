@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import asyncio
+import collections
 import itertools
 import shlex
 import traceback
@@ -41,30 +42,29 @@ from simbricks.orchestration.utils import graphlib
 
 class ExperimentBaseRunner(ABC):
 
-    def __init__(self, exp: Experiment, env: ExpEnv, verbose: bool):
+    def __init__(self, exp: Experiment, env: ExpEnv, verbose: bool) -> None:
         self.exp = exp
         self.env = env
         self.verbose = verbose
         self.out = ExpOutput(exp)
         self.running: tp.List[tp.Tuple[Simulator, SimpleComponent]] = []
-        self.sockets = []
+        self.sockets: tp.List[tp.Tuple[Executor, str]] = []
         self.wait_sims: tp.List[Component] = []
 
     @abstractmethod
     def sim_executor(self, sim: Simulator) -> Executor:
         pass
 
-    def sim_graph(self):
+    def sim_graph(self) -> tp.Dict[Simulator, tp.Set[Simulator]]:
         sims = self.exp.all_simulators()
-        graph = {}
+        graph = collections.defaultdict(set)
         for sim in sims:
             deps = sim.dependencies() + sim.extra_deps
-            graph[sim] = set()
             for d in deps:
                 graph[sim].add(d)
         return graph
 
-    async def start_sim(self, sim: Simulator):
+    async def start_sim(self, sim: Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
 
         name = sim.full_name()
@@ -108,16 +108,16 @@ class ExperimentBaseRunner(ABC):
         if self.verbose:
             print(f'{self.exp.name}: started {name}')
 
-    async def before_wait(self):
+    async def before_wait(self) -> None:
         pass
 
-    async def before_cleanup(self):
+    async def before_cleanup(self) -> None:
         pass
 
-    async def after_cleanup(self):
+    async def after_cleanup(self) -> None:
         pass
 
-    async def prepare(self):
+    async def prepare(self) -> None:
         # generate config tars
         copies = []
         for host in self.exp.hosts:
@@ -143,14 +143,14 @@ class ExperimentBaseRunner(ABC):
             sims.append(task)
         await asyncio.wait(sims)
 
-    async def wait_for_sims(self):
+    async def wait_for_sims(self) -> None:
         """Wait for simulators to terminate (the ones marked to wait on)."""
         if self.verbose:
             print(f'{self.exp.name}: waiting for hosts to terminate')
         for sc in self.wait_sims:
             await sc.wait()
 
-    async def run(self):
+    async def run(self) -> ExpOutput:
         try:
             self.out.set_start()
 
@@ -218,28 +218,30 @@ class ExperimentBaseRunner(ABC):
 class ExperimentSimpleRunner(ExperimentBaseRunner):
     """Simple experiment runner with just one executor."""
 
-    def __init__(self, executor: Executor, *args, **kwargs):
+    def __init__(self, executor: Executor, *args, **kwargs) -> None:
         self.executor = executor
         super().__init__(*args, **kwargs)
 
-    def sim_executor(self, sim: Simulator):
+    def sim_executor(self, sim: Simulator) -> Executor:
         return self.executor
 
 
 class ExperimentDistributedRunner(ExperimentBaseRunner):
     """Simple experiment runner with just one executor."""
 
-    def __init__(self, execs, exp: DistributedExperiment, *args, **kwargs):
+    def __init__(
+        self, execs, exp: DistributedExperiment, *args, **kwargs
+    ) -> None:
         self.execs = execs
         super().__init__(exp, *args, **kwargs)
         self.exp = exp  # overrides the type in the base class
         assert self.exp.num_hosts <= len(execs)
 
-    def sim_executor(self, sim):
+    def sim_executor(self, sim) -> Executor:
         h_id = self.exp.host_mapping[sim]
         return self.execs[h_id]
 
-    async def prepare(self):
+    async def prepare(self) -> None:
         # make sure all simulators are assigned to an executor
         assert self.exp.all_sims_assigned()
 

@@ -34,7 +34,7 @@ from simbricks.orchestration.runtime.common import Run, Runtime
 
 class DistributedSimpleRuntime(Runtime):
 
-    def __init__(self, executors, verbose=False):
+    def __init__(self, executors, verbose=False) -> None:
         super().__init__()
         self.runnable: tp.List[Run] = []
         self.complete: tp.List[Run] = []
@@ -43,13 +43,13 @@ class DistributedSimpleRuntime(Runtime):
 
         self._running: asyncio.Task
 
-    def add_run(self, run: Run):
+    def add_run(self, run: Run) -> None:
         if not isinstance(run.experiment, DistributedExperiment):
             raise RuntimeError('Only distributed experiments supported')
 
         self.runnable.append(run)
 
-    async def do_run(self, run: Run):
+    async def do_run(self, run: Run) -> None:
         runner = ExperimentDistributedRunner(
             self.executors,
             # we ensure the correct type in add_run()
@@ -91,8 +91,10 @@ class DistributedSimpleRuntime(Runtime):
 
 
 def auto_dist(
-    e: Experiment, execs: tp.List[Executor], proxy_type: str = 'sockets'
-):
+    e: Experiment,
+    execs: tp.List[Executor],
+    proxy_type: str = 'sockets'
+) -> DistributedExperiment:
     """
     Converts an Experiment into a DistributedExperiment.
 

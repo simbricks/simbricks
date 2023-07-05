@@ -23,36 +23,42 @@
 import json
 import pathlib
 import time
+import typing as tp
 
 from simbricks.orchestration.experiments import Experiment
+
+if tp.TYPE_CHECKING:  # prevent cyclic import
+    from simbricks.orchestration import exectools, simulators
 
 
 class ExpOutput(object):
     """Manages an experiment's output."""
 
-    def __init__(self, exp: Experiment):
+    def __init__(self, exp: Experiment) -> None:
         self.exp_name = exp.name
         self.metadata = exp.metadata
         self.start_time = None
         self.end_time = None
-        self.sims = {}
+        self.sims: tp.Dict[str, tp.Dict[str, tp.Union[str, tp.List[str]]]] = {}
         self.success = True
         self.interrupted = False
 
-    def set_start(self):
+    def set_start(self) -> None:
         self.start_time = time.time()
 
-    def set_end(self):
+    def set_end(self) -> None:
         self.end_time = time.time()
 
-    def set_failed(self):
+    def set_failed(self) -> None:
         self.success = False
 
-    def set_interrupted(self):
+    def set_interrupted(self) -> None:
         self.success = False
         self.interrupted = True
 
-    def add_sim(self, sim, comp):
+    def add_sim(
+        self, sim: 'simulators.Simulator', comp: 'exectools.Component'
+    ) -> None:
         obj = {
             'class': sim.__class__.__name__,
             'cmd': comp.cmd_parts,
@@ -61,12 +67,12 @@ class ExpOutput(object):
         }
         self.sims[sim.full_name()] = obj
 
-    def dump(self, outpath: str):
+    def dump(self, outpath: str) -> None:
         pathlib.Path(outpath).parent.mkdir(parents=True, exist_ok=True)
         with open(outpath, 'w', encoding='utf-8') as file:
             json.dump(self.__dict__, file)
 
-    def load(self, file: str):
+    def load(self, file: str) -> None:
         with open(file, 'r', encoding='utf-8') as fp:
             for k, v in json.load(fp).items():
                 self.__dict__[k] = v

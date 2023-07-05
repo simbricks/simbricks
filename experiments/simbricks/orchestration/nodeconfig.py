@@ -54,13 +54,13 @@ class AppConfig():
         """
         return {}
 
-    def strfile(self, s: str):
+    def strfile(self, s: str) -> io.BytesIO:
         """
         Helper function to convert a string to an IO handle for usage in
         `config_files()`.
 
         Using this, you can create a file with the string as its content on the
-        node.
+        simulated node.
         """
         return io.BytesIO(bytes(s, encoding='UTF-8'))
 
@@ -68,7 +68,7 @@ class AppConfig():
 class NodeConfig():
     """Defines the configuration of a node or host."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sim = 'qemu'
         """The concrete simulator that runs this node config. This is used to
         use execute different commands depending on the concrete simulator,
@@ -115,7 +115,7 @@ class NodeConfig():
             self.run_cmds() + self.cleanup_cmds() + exit_es
         return '\n'.join(es)
 
-    def make_tar(self, path):
+    def make_tar(self, path: str) -> None:
         with tarfile.open(path, 'w:') as tar:
             # add main run script
             cfg_i = tarfile.TarInfo('guest/run.sh')
@@ -169,26 +169,26 @@ class NodeConfig():
         """
         return self.app.config_files()
 
-    def strfile(self, s: str):
+    def strfile(self, s: str) -> io.BytesIO:
         """
         Helper function to convert a string to an IO handle for usage in
         `config_files()`.
 
         Using this, you can create a file with the string as its content on the
-        node.
+        simulated node.
         """
         return io.BytesIO(bytes(s, encoding='UTF-8'))
 
 
 class LinuxNode(NodeConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.ifname = 'eth0'
-        self.drivers = []
-        self.force_mac_addr = None
+        self.drivers: tp.List[str] = []
+        self.force_mac_addr: tp.Optional[str] = None
 
-    def prepare_post_cp(self):
+    def prepare_post_cp(self) -> tp.List[str]:
         l = []
         for d in self.drivers:
             if d[0] == '/':
@@ -207,40 +207,40 @@ class LinuxNode(NodeConfig):
 
 class I40eLinuxNode(LinuxNode):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.drivers.append('i40e')
 
 
 class CorundumLinuxNode(LinuxNode):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.drivers.append('/tmp/guest/mqnic.ko')
 
     # pylint: disable=consider-using-with
-    def config_files(self):
+    def config_files(self) -> tp.Dict[str, tp.IO]:
         m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
         return {**m, **super().config_files()}
 
 
 class E1000LinuxNode(LinuxNode):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.drivers.append('e1000')
 
 
 class MtcpNode(NodeConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.disk_image = 'mtcp'
         self.pci_dev = '0000:00:02.0'
         self.memory = 16 * 1024
         self.num_hugepages = 4096
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
         return super().prepare_pre_cp() + [
             'mount -t proc proc /proc',
             'mount -t sysfs sysfs /sys',
@@ -252,7 +252,7 @@ class MtcpNode(NodeConfig):
                     'node/node0/hugepages/hugepages-2048kB/nr_hugepages',
         ]
 
-    def prepare_post_cp(self):
+    def prepare_post_cp(self) -> tp.List[str]:
         return super().prepare_post_cp() + [
             'insmod /root/mtcp/dpdk/x86_64-native-linuxapp-gcc/kmod/igb_uio.ko',
             '/root/mtcp/dpdk/usertools/dpdk-devbind.py -b igb_uio ' +
@@ -263,7 +263,7 @@ class MtcpNode(NodeConfig):
             f'ip addr add {self.ip}/{self.prefix} dev dpdk0'
         ]
 
-    def config_files(self):
+    def config_files(self) -> tp.Dict[str, tp.IO]:
         m = {
             'mtcp.conf':
                 self.strfile(
@@ -286,7 +286,7 @@ class MtcpNode(NodeConfig):
 
 class TASNode(NodeConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.disk_image = 'tas'
         self.pci_dev = '0000:00:02.0'
@@ -295,7 +295,7 @@ class TASNode(NodeConfig):
         self.fp_cores = 1
         self.preload = True
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
         return super().prepare_pre_cp() + [
             'mount -t proc proc /proc',
             'mount -t sysfs sysfs /sys',
@@ -307,7 +307,7 @@ class TASNode(NodeConfig):
                     'node/node0/hugepages/hugepages-2048kB/nr_hugepages',
         ]
 
-    def prepare_post_cp(self):
+    def prepare_post_cp(self) -> tp.List[str]:
         cmds = super().prepare_post_cp() + [
             'insmod /root/dpdk/lib/modules/5.4.46/extra/dpdk/igb_uio.ko',
             '/root/dpdk/sbin/dpdk-devbind -b igb_uio ' + self.pci_dev,
@@ -326,7 +326,7 @@ class TASNode(NodeConfig):
 
 class I40eDCTCPNode(NodeConfig):
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
         return super().prepare_pre_cp() + [
             'mount -t proc proc /proc',
             'mount -t sysfs sysfs /sys',
@@ -342,7 +342,7 @@ class I40eDCTCPNode(NodeConfig):
             'sysctl -w net.ipv4.tcp_ecn=1'
         ]
 
-    def prepare_post_cp(self):
+    def prepare_post_cp(self) -> tp.List[str]:
         return super().prepare_post_cp() + [
             'modprobe i40e',
             'ethtool -G eth0 rx 4096 tx 4096',
@@ -355,7 +355,7 @@ class I40eDCTCPNode(NodeConfig):
 
 class CorundumDCTCPNode(NodeConfig):
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
         return super().prepare_pre_cp() + [
             'mount -t proc proc /proc',
             'mount -t sysfs sysfs /sys',
@@ -371,7 +371,7 @@ class CorundumDCTCPNode(NodeConfig):
             'sysctl -w net.ipv4.tcp_ecn=1'
         ]
 
-    def prepare_post_cp(self):
+    def prepare_post_cp(self) -> tp.List[str]:
         return super().prepare_post_cp() + [
             'insmod mqnic.ko',
             'ip link set dev eth0 up',
@@ -381,11 +381,11 @@ class CorundumDCTCPNode(NodeConfig):
 
 class LinuxFEMUNode(NodeConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.drivers = ['nvme']
 
-    def prepare_post_cp(self):
+    def prepare_post_cp(self) -> tp.List[str]:
         l = ['lspci -vvvv']
         for d in self.drivers:
             if d[0] == '/':
@@ -397,13 +397,13 @@ class LinuxFEMUNode(NodeConfig):
 
 class IdleHost(AppConfig):
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return ['sleep infinity']
 
 
 class NVMEFsTest(AppConfig):
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
             'mount -t proc proc /proc',
             'mkfs.ext3 /dev/nvme0n1',
@@ -414,18 +414,18 @@ class NVMEFsTest(AppConfig):
 
 class DctcpServer(AppConfig):
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return ['iperf -s -w 1M -Z dctcp']
 
 
 class DctcpClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ip = '192.168.64.1'
         self.is_last = False
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         if self.is_last:
             return [
                 'sleep 1',
@@ -442,35 +442,35 @@ class DctcpClient(AppConfig):
 
 class PingClient(AppConfig):
 
-    def __init__(self, server_ip: str = '192.168.64.1'):
+    def __init__(self, server_ip: str = '192.168.64.1') -> None:
         super().__init__()
         self.server_ip = server_ip
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [f'ping {self.server_ip} -c 10']
 
 
 class IperfTCPServer(AppConfig):
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return ['iperf -s -l 32M -w 32M']
 
 
 class IperfUDPServer(AppConfig):
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return ['iperf -s -u']
 
 
 class IperfTCPClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ip = '10.0.0.1'
         self.procs = 1
         self.is_last = False
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
 
         cmds = [
             'sleep 1',
@@ -486,13 +486,13 @@ class IperfTCPClient(AppConfig):
 
 class IperfUDPClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ip = '10.0.0.1'
         self.rate = '150m'
         self.is_last = False
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         cmds = [
             'sleep 1',
             'iperf -c ' + self.server_ip + ' -i 1 -u -b ' + self.rate
@@ -508,13 +508,13 @@ class IperfUDPClient(AppConfig):
 
 class IperfUDPShortClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ip = '10.0.0.1'
         self.rate = '150m'
         self.is_last = False
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         cmds = ['sleep 1', 'iperf -c ' + self.server_ip + ' -u -n 1 ']
 
         return cmds
@@ -522,23 +522,23 @@ class IperfUDPShortClient(AppConfig):
 
 class IperfUDPClientSleep(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ip = '10.0.0.1'
         self.rate = '150m'
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return ['sleep 1', 'sleep 10']
 
 
 class NoTraffic(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.is_sleep = 1
         self.is_server = 0
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         cmds = []
         if self.is_server:
             cmds.append('sleep infinity')
@@ -554,19 +554,19 @@ class NoTraffic(AppConfig):
 
 class NetperfServer(AppConfig):
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return ['netserver', 'sleep infinity']
 
 
 class NetperfClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ip = '10.0.0.1'
         self.duration_tp = 10
         self.duration_lat = 10
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
             'netserver',
             'sleep 0.5',
@@ -580,11 +580,11 @@ class NetperfClient(AppConfig):
 
 class VRReplica(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.index = 0
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
             '/root/nopaxos/bench/replica -c /root/nopaxos.config -i ' +
             str(self.index) + ' -m vr'
@@ -593,11 +593,11 @@ class VRReplica(AppConfig):
 
 class VRClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.server_ips = []
+        self.server_ips: tp.List[str] = []
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         cmds = []
         for ip in self.server_ips:
             cmds.append('ping -c 2 ' + ip)
@@ -610,11 +610,11 @@ class VRClient(AppConfig):
 
 class NOPaxosReplica(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.index = 0
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
             '/root/nopaxos/bench/replica -c /root/nopaxos.config -i ' +
             str(self.index) + ' -m nopaxos'
@@ -623,13 +623,13 @@ class NOPaxosReplica(AppConfig):
 
 class NOPaxosClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.server_ips = []
+        self.server_ips: tp.List[str] = []
         self.is_last = False
         self.use_ehseq = False
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         cmds = []
         for ip in self.server_ips:
             cmds.append('ping -c 2 ' + ip)
@@ -647,7 +647,7 @@ class NOPaxosClient(AppConfig):
 
 class NOPaxosSequencer(AppConfig):
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [(
             '/root/nopaxos/sequencer/sequencer -c /root/nopaxos.config'
             ' -m nopaxos'
@@ -656,14 +656,14 @@ class NOPaxosSequencer(AppConfig):
 
 class RPCServer(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.port = 1234
         self.threads = 1
         self.max_flows = 1234
         self.max_bytes = 1024
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         exe = 'echoserver_linux' if not isinstance(node, MtcpNode) else \
             'echoserver_mtcp'
         return [
@@ -677,7 +677,7 @@ class RPCServer(AppConfig):
 
 class RPCClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ip = '10.0.0.1'
         self.port = 1234
@@ -690,7 +690,7 @@ class RPCClient(AppConfig):
         self.max_pend_conns = 8
         self.time = 25
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         exe = 'testclient_linux' if not isinstance(node, MtcpNode) else \
             'testclient_mtcp'
         return [
@@ -710,14 +710,14 @@ class RPCClient(AppConfig):
 
 class HTTPD(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.threads = 1
         self.file_size = 64
         self.mtcp_config = 'lighttpd.conf'
         self.httpd_dir = ''  # TODO added because doesn't originally exist
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
         return [
             'mkdir -p /srv/www/htdocs/ /tmp/lighttpd/',
             (
@@ -726,7 +726,7 @@ class HTTPD(AppConfig):
             )
         ]
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
             f'cd {self.httpd_dir}/src/',
             (
@@ -738,26 +738,26 @@ class HTTPD(AppConfig):
 
 class HTTPDLinux(HTTPD):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux'
 
 
 class HTTPDLinuxRPO(HTTPD):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.httpd_dir = '/root/mtcp/apps/lighttpd-mtlinux-rop'
 
 
 class HTTPDMtcp(HTTPD):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.httpd_dir = '/root/mtcp/apps/lighttpd-mtcp'
         self.mtcp_config = 'm-lighttpd.conf'
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
         return super().prepare_pre_cp() + [
             f'cp /tmp/guest/mtcp.conf {self.httpd_dir}/src/mtcp.conf',
             (
@@ -770,7 +770,7 @@ class HTTPDMtcp(HTTPD):
 
 class HTTPC(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ip = '10.0.0.1'
         self.conns = 1000
@@ -780,7 +780,7 @@ class HTTPC(AppConfig):
         self.url = '/file'
         self.ab_dir = ''  # TODO added because doesn't originally exist
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
             f'cd {self.ab_dir}/support/',
             (
@@ -792,18 +792,18 @@ class HTTPC(AppConfig):
 
 class HTTPCLinux(HTTPC):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.ab_dir = '/root/mtcp/apps/ab-linux'
 
 
 class HTTPCMtcp(HTTPC):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.ab_dir = '/root/mtcp/apps/ab-mtcp'
 
-    def prepare_pre_cp(self):
+    def prepare_pre_cp(self) -> tp.List[str]:
         return super().prepare_pre_cp() + [
             f'cp /tmp/guest/mtcp.conf {self.ab_dir}/support/config/mtcp.conf',
             f'rm -f {self.ab_dir}/support/config/arp.conf'
@@ -812,20 +812,20 @@ class HTTPCMtcp(HTTPC):
 
 class MemcachedServer(AppConfig):
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return ['memcached -u root -t 1 -c 4096']
 
 
 class MemcachedClient(AppConfig):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.server_ips = ['10.0.0.1']
         self.threads = 1
         self.concurrency = 1
         self.throughput = '1k'
 
-    def run_cmds(self, node):
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         servers = [ip + ':11211' for ip in self.server_ips]
         servers = ','.join(servers)
         return [(

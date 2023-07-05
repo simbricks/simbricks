@@ -41,7 +41,7 @@ def create_basic_hosts(
     app_class: tp.Type[AppConfig],
     ip_start: int = 1,
     ip_prefix: int = 24
-):
+) -> tp.List[HostSim]:
     """
     Creates and configures multiple hosts to be simulated using the given
     parameters.
@@ -84,7 +84,7 @@ def create_multinic_hosts(
     app_class: tp.Type[AppConfig],
     ip_start: int = 1,
     ip_prefix: int = 24
-):
+) -> tp.List[HostSim]:
     """
     Creates and configures multiple hosts to be simulated using the given
     parameters. These hosts use multiple NICs.
@@ -133,7 +133,7 @@ def create_dctcp_hosts(
     cpu_freq: str,
     mtu: int,
     ip_start: int = 1
-):
+) -> tp.List[HostSim]:
     """
     Creates and configures multiple hosts to be simulated in a DCTCP experiment
     using the given parameters.

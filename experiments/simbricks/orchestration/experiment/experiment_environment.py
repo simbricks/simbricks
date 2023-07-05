@@ -21,12 +21,16 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os
+import typing as tp
+
+if tp.TYPE_CHECKING:  # prevent cyclic import
+    from simbricks.orchestration import simulators
 
 
 class ExpEnv(object):
     """Manages the experiment environment."""
 
-    def __init__(self, repo_path, workdir, cpdir):
+    def __init__(self, repo_path, workdir, cpdir) -> None:
         self.create_cp = False
         """Whether a checkpoint should be created."""
         self.restore_cp = False
@@ -53,50 +57,54 @@ class ExpEnv(object):
             f'{simics_project_base}/targets/qsp-x86/qsp-modern-core.simics'
         )
 
-    def gem5_path(self, variant):
+    def gem5_path(self, variant: str) -> str:
         return f'{self.repodir}/sims/external/gem5/build/X86/gem5.{variant}'
 
-    def hdcopy_path(self, sim):
+    def hdcopy_path(self, sim: 'simulators.Simulator') -> str:
         return f'{self.workdir}/hdcopy.{sim.name}'
 
-    def hd_path(self, hd_name):
+    def hd_path(self, hd_name: str) -> str:
         return f'{self.repodir}/images/output-{hd_name}/{hd_name}'
 
-    def hd_raw_path(self, hd_name):
+    def hd_raw_path(self, hd_name: str) -> str:
         return f'{self.repodir}/images/output-{hd_name}/{hd_name}.raw'
 
-    def cfgtar_path(self, sim):
+    def cfgtar_path(self, sim: 'simulators.Simulator') -> str:
         return f'{self.workdir}/cfg.{sim.name}.tar'
 
-    def dev_pci_path(self, sim):
+    def dev_pci_path(self, sim) -> str:
         return f'{self.workdir}/dev.pci.{sim.name}'
 
-    def dev_mem_path(self, sim):
+    def dev_mem_path(self, sim: 'simulators.Simulator') -> str:
         return f'{self.workdir}/dev.mem.{sim.name}'
 
-    def nic_eth_path(self, sim):
+    def nic_eth_path(self, sim: 'simulators.Simulator') -> str:
         return f'{self.workdir}/nic.eth.{sim.name}'
 
-    def dev_shm_path(self, sim):
+    def dev_shm_path(self, sim: 'simulators.Simulator') -> str:
         return f'{self.shm_base}/dev.shm.{sim.name}'
 
-    def n2n_eth_path(self, sim_l, sim_c):
+    def n2n_eth_path(
+        self, sim_l: 'simulators.Simulator', sim_c: 'simulators.Simulator'
+    ) -> str:
         return f'{self.workdir}/n2n.eth.{sim_l.name}.{sim_c.name}'
 
-    def net2host_eth_path(self, sim_n, sim_h):
+    def net2host_eth_path(self, sim_n, sim_h) -> str:
         return f'{self.workdir}/n2h.eth.{sim_n.name}.{sim_h.name}'
 
-    def net2host_shm_path(self, sim_n, sim_h):
+    def net2host_shm_path(
+        self, sim_n: 'simulators.Simulator', sim_h: 'simulators.Simulator'
+    ) -> str:
         return f'{self.workdir}/n2h.shm.{sim_n.name}.{sim_h.name}'
 
-    def proxy_shm_path(self, sim):
+    def proxy_shm_path(self, sim: 'simulators.Simulator') -> str:
         return f'{self.shm_base}/proxy.shm.{sim.name}'
 
-    def gem5_outdir(self, sim):
+    def gem5_outdir(self, sim: 'simulators.Simulator') -> str:
         return f'{self.workdir}/gem5-out.{sim.name}'
 
-    def gem5_cpdir(self, sim):
+    def gem5_cpdir(self, sim: 'simulators.Simulator') -> str:
         return f'{self.cpdir}/gem5-cp.{sim.name}'
 
-    def simics_cpfile(self, sim):
+    def simics_cpfile(self, sim: 'simulators.Simulator') -> str:
         return f'{self.cpdir}/simics-cp.{sim.name}'

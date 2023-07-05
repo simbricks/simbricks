@@ -43,10 +43,10 @@ class LocalSimpleRuntime(Runtime):
         self.executor = executor
         self._running: tp.Optional[asyncio.Task] = None
 
-    def add_run(self, run: Run):
+    def add_run(self, run: Run) -> None:
         self.runnable.append(run)
 
-    async def do_run(self, run: Run):
+    async def do_run(self, run: Run) -> None:
         """Actually executes `run`."""
         try:
             runner = ExperimentSimpleRunner(
@@ -69,7 +69,7 @@ class LocalSimpleRuntime(Runtime):
             )
         run.output.dump(run.outpath)
 
-    async def start(self):
+    async def start(self) -> None:
         """Execute the runs defined in `self.runnable`."""
         for run in self.runnable:
             if self._interrupted:
@@ -78,7 +78,7 @@ class LocalSimpleRuntime(Runtime):
             self._running = asyncio.create_task(self.do_run(run))
             await self._running
 
-    def interrupt_handler(self):
+    def interrupt_handler(self) -> None:
         if self._running:
             self._running.cancel()
 
@@ -107,7 +107,7 @@ class LocalParallelRuntime(Runtime):
         self._pending_jobs: tp.Set[asyncio.Task] = set()
         self._starter_task: asyncio.Task
 
-    def add_run(self, run: Run):
+    def add_run(self, run: Run) -> None:
         if run.experiment.resreq_cores() > self.cores:
             raise RuntimeError('Not enough cores available for run')
 
@@ -119,7 +119,7 @@ class LocalParallelRuntime(Runtime):
         else:
             self.runs_prereq.append(run)
 
-    async def do_run(self, run: Run):
+    async def do_run(self, run: Run) -> tp.Optional[Run]:
         """Actually executes `run`."""
         try:
             runner = ExperimentSimpleRunner(
@@ -130,7 +130,7 @@ class LocalParallelRuntime(Runtime):
         except asyncio.CancelledError:
             # it is safe to just exit here because we are not running any
             # simulators yet
-            return
+            return None
 
         print('starting run ', run.name())
         run.output = await runner.run()  # already handles CancelledError
@@ -144,7 +144,7 @@ class LocalParallelRuntime(Runtime):
         print('finished run ', run.name())
         return run
 
-    async def wait_completion(self):
+    async def wait_completion(self) -> None:
         """Wait for any run to terminate and return."""
         assert self._pending_jobs
 
@@ -158,7 +158,7 @@ class LocalParallelRuntime(Runtime):
             self.cores_used -= run.experiment.resreq_cores()
             self.mem_used -= run.experiment.resreq_mem()
 
-    def enough_resources(self, run: Run):
+    def enough_resources(self, run: Run) -> bool:
         """Check if enough cores and mem are available for the run."""
         exp = run.experiment  # pylint: disable=redefined-outer-name
 
@@ -174,14 +174,14 @@ class LocalParallelRuntime(Runtime):
 
         return enough_cores and enough_mem
 
-    def prereq_ready(self, run: Run):
+    def prereq_ready(self, run: Run) -> bool:
         """Check if the prerequesite run for `run` has completed."""
         if run.prereq is None:
             return True
 
         return run.prereq in self.complete
 
-    async def do_start(self):
+    async def do_start(self) -> None:
         """Asynchronously execute the runs defined in `self.runs_noprereq +
         self.runs_prereq."""
         #self.completions = asyncio.Queue()
