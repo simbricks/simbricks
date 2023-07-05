@@ -122,7 +122,7 @@ for host_type in host_types:
                 e.assign_sim_host(c.pcidevs[0], k)
 
                 if k != 0:
-                    cp.add_nic(c.pcidevs[0])
+                    cp.add_nic(c.nics[0])
                 k = (k + 1) % 2
 
             # add to experiments

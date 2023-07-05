@@ -20,6 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import abc
 import asyncio
 import os
 import pathlib
@@ -35,9 +36,9 @@ class Component(object):
 
     def __init__(self, cmd_parts: tp.List[str], with_stdin=False):
         self.is_ready = False
-        self.stdout = []
+        self.stdout: tp.List[str] = []
         self.stdout_buf = bytearray()
-        self.stderr = []
+        self.stderr: tp.List[str] = []
         self.stderr_buf = bytearray()
         self.cmd_parts = cmd_parts
         #print(cmd_parts)
@@ -46,7 +47,7 @@ class Component(object):
         self._proc: Process
         self._terminate_future: asyncio.Task
 
-    def _parse_buf(self, buf, data):
+    def _parse_buf(self, buf: bytearray, data: bytes) -> tp.List[str]:
         if data is not None:
             buf.extend(data)
         lines = []
@@ -62,14 +63,14 @@ class Component(object):
             lines.append(buf.decode('utf-8'))
         return lines
 
-    async def _consume_out(self, data: bytes):
+    async def _consume_out(self, data: bytes) -> None:
         eof = len(data) == 0
         ls = self._parse_buf(self.stdout_buf, data)
         if len(ls) > 0 or eof:
             await self.process_out(ls, eof=eof)
             self.stdout.extend(ls)
 
-    async def _consume_err(self, data: bytes):
+    async def _consume_err(self, data: bytes) -> None:
         eof = len(data) == 0
         ls = self._parse_buf(self.stderr_buf, data)
         if len(ls) > 0 or eof:
@@ -85,7 +86,7 @@ class Component(object):
                 await fn(bs)
                 return
 
-    async def _waiter(self):
+    async def _waiter(self) -> None:
         stdout_handler = asyncio.create_task(
             self._read_stream(self._proc.stdout, self._consume_out)
         )
@@ -96,12 +97,12 @@ class Component(object):
         await asyncio.wait([stdout_handler, stderr_handler])
         await self.terminated(rc)
 
-    async def send_input(self, bs, eof=False):
+    async def send_input(self, bs: bytes, eof=False) -> None:
         self._proc.stdin.write(bs)
         if eof:
             self._proc.stdin.close()
 
-    async def start(self):
+    async def start(self) -> None:
         if self.with_stdin:
             stdin = asyncio.subprocess.PIPE
         else:
@@ -116,7 +117,7 @@ class Component(object):
         self._terminate_future = asyncio.create_task(self._waiter())
         await self.started()
 
-    async def wait(self):
+    async def wait(self) -> None:
         """
         Wait for running process to finish and output to be collected.
 
@@ -125,22 +126,22 @@ class Component(object):
         """
         await asyncio.shield(self._terminate_future)
 
-    async def interrupt(self):
+    async def interrupt(self) -> None:
         """Sends an interrupt signal."""
         if self._proc.returncode is None:
             self._proc.send_signal(signal.SIGINT)
 
-    async def terminate(self):
+    async def terminate(self) -> None:
         """Sends a terminate signal."""
         if self._proc.returncode is None:
             self._proc.terminate()
 
-    async def kill(self):
+    async def kill(self) -> None:
         """Sends a kill signal."""
         if self._proc.returncode is None:
             self._proc.kill()
 
-    async def int_term_kill(self, delay=5):
+    async def int_term_kill(self, delay: int = 5) -> None:
         """Attempts to stop this component by sending signals in the following
         order: interrupt, terminate, kill."""
         await self.interrupt()
@@ -168,41 +169,47 @@ class Component(object):
 
         await self._proc.wait()
 
-    async def started(self):
+    async def started(self) -> None:
         pass
 
-    async def terminated(self, rc):
+    async def terminated(self, rc) -> None:
         pass
 
-    async def process_out(self, lines, eof):
+    async def process_out(self, lines: tp.List[str], eof: bool) -> None:
         pass
 
-    async def process_err(self, lines, eof):
+    async def process_err(self, lines: tp.List[str], eof: bool) -> None:
         pass
 
 
 class SimpleComponent(Component):
 
     def __init__(
-        self, label, cmd_parts, *args, verbose=True, canfail=False, **kwargs
-    ):
+        self,
+        label: str,
+        cmd_parts: tp.List[str],
+        *args,
+        verbose=True,
+        canfail=False,
+        **kwargs
+    ) -> None:
         self.label = label
         self.verbose = verbose
         self.canfail = canfail
         self.cmd_parts = cmd_parts
         super().__init__(cmd_parts, *args, **kwargs)
 
-    async def process_out(self, lines, eof):
+    async def process_out(self, lines: tp.List[str], eof: bool) -> None:
         if self.verbose:
             for _ in lines:
                 print(self.label, 'OUT:', lines, flush=True)
 
-    async def process_err(self, lines, eof):
+    async def process_err(self, lines: tp.List[str], eof: bool) -> None:
         if self.verbose:
             for _ in lines:
                 print(self.label, 'ERR:', lines, flush=True)
 
-    async def terminated(self, rc):
+    async def terminated(self, rc: int) -> None:
         if self.verbose:
             print(self.label, 'TERMINATED:', rc, flush=True)
         if not self.canfail and rc != 0:
@@ -213,14 +220,14 @@ class SimpleRemoteComponent(SimpleComponent):
 
     def __init__(
         self,
-        host_name,
-        label,
-        cmd_parts,
+        host_name: str,
+        label: str,
+        cmd_parts: tp.List[str],
         *args,
-        cwd=None,
-        ssh_extra_args=None,
+        cwd: tp.Optional[str] = None,
+        ssh_extra_args: tp.Optional[tp.List[str]] = None,
         **kwargs
-    ):
+    ) -> None:
         if ssh_extra_args is None:
             ssh_extra_args = []
 
@@ -246,7 +253,7 @@ class SimpleRemoteComponent(SimpleComponent):
 
         self._pid_fut: tp.Optional[asyncio.Future] = None
 
-    def _ssh_cmd(self, parts):
+    def _ssh_cmd(self, parts: tp.List[str]) -> tp.List[str]:
         """SSH invocation of command for this host."""
         return [
             'ssh',
@@ -256,13 +263,13 @@ class SimpleRemoteComponent(SimpleComponent):
             'StrictHostKeyChecking=no'
         ] + self.extra_flags + [self.host_name, '--'] + parts
 
-    async def start(self):
+    async def start(self) -> None:
         """Start this command (includes waiting for its pid)."""
         self._pid_fut = asyncio.get_running_loop().create_future()
         await super().start()
         await self._pid_fut
 
-    async def process_out(self, lines, eof):
+    async def process_out(self, lines: tp.List[str], eof: bool) -> None:
         """Scans output and set PID future once PID line found."""
         if not self._pid_fut.done():
             newlines = []
@@ -282,7 +289,7 @@ class SimpleRemoteComponent(SimpleComponent):
                 self._pid_fut.cancel()
         await super().process_out(lines, eof)
 
-    async def _kill_cmd(self, sig):
+    async def _kill_cmd(self, sig: str) -> None:
         """Send signal to command by running ssh kill -$sig $PID."""
         cmd_parts = self._ssh_cmd([
             'kill', '-' + sig, str(self._pid_fut.result())
@@ -290,43 +297,47 @@ class SimpleRemoteComponent(SimpleComponent):
         proc = await asyncio.create_subprocess_exec(*cmd_parts)
         await proc.wait()
 
-    async def interrupt(self):
+    async def interrupt(self) -> None:
         await self._kill_cmd('INT')
 
-    async def terminate(self):
+    async def terminate(self) -> None:
         await self._kill_cmd('TERM')
 
-    async def kill(self):
+    async def kill(self) -> None:
         await self._kill_cmd('KILL')
 
 
 class Executor(abc.ABC):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.ip = None
 
     @abc.abstractmethod
-    def create_component(self, label, parts, **kwargs) -> SimpleComponent:
+    def create_component(
+        self, label: str, parts: tp.List[str], **kwargs
+    ) -> SimpleComponent:
         pass
 
     @abc.abstractmethod
-    async def await_file(self, path, delay=0.05, verbose=False) -> None:
+    async def await_file(self, path: str, delay=0.05, verbose=False) -> None:
         pass
 
     @abc.abstractmethod
-    async def send_file(self, path, verbose=False) -> None:
+    async def send_file(self, path: str, verbose=False) -> None:
         pass
 
     @abc.abstractmethod
-    async def mkdir(self, path, verbose=False) -> None:
+    async def mkdir(self, path: str, verbose=False) -> None:
         pass
 
     @abc.abstractmethod
-    async def rmtree(self, path, verbose=False) -> None:
+    async def rmtree(self, path: str, verbose=False) -> None:
         pass
 
     # runs the list of commands as strings sequentially
-    async def run_cmdlist(self, label, cmds, verbose=True):
+    async def run_cmdlist(
+        self, label: str, cmds: tp.List[str], verbose=True
+    ) -> None:
         i = 0
         for cmd in cmds:
             cmd_c = self.create_component(
@@ -335,7 +346,7 @@ class Executor(abc.ABC):
             await cmd_c.start()
             await cmd_c.wait()
 
-    async def await_files(self, paths, *args, **kwargs):
+    async def await_files(self, paths: tp.List[str], *args, **kwargs) -> None:
         xs = []
         for p in paths:
             waiter = asyncio.create_task(self.await_file(p, *args, **kwargs))
@@ -346,10 +357,14 @@ class Executor(abc.ABC):
 
 class LocalExecutor(Executor):
 
-    def create_component(self, label, parts, **kwargs):
+    def create_component(
+        self, label: str, parts: tp.List[str], **kwargs
+    ) -> SimpleComponent:
         return SimpleComponent(label, parts, **kwargs)
 
-    async def await_file(self, path, delay=0.05, verbose=False, timeout=30):
+    async def await_file(
+        self, path: str, delay=0.05, verbose=False, timeout=30
+    ) -> None:
         if verbose:
             print(f'await_file({path})')
         t = 0
@@ -359,14 +374,14 @@ class LocalExecutor(Executor):
             await asyncio.sleep(delay)
             t += delay
 
-    async def send_file(self, path, verbose):
+    async def send_file(self, path: str, verbose=False) -> None:
         # locally we do not need to do anything
         pass
 
-    async def mkdir(self, path, verbose=False):
+    async def mkdir(self, path: str, verbose=False) -> None:
         pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
-    async def rmtree(self, path, verbose=False):
+    async def rmtree(self, path: str, verbose=False) -> None:
         if os.path.isdir(path):
             shutil.rmtree(path, ignore_errors=True)
         elif os.path.exists(path):
@@ -375,7 +390,7 @@ class LocalExecutor(Executor):
 
 class RemoteExecutor(Executor):
 
-    def __init__(self, host_name, workdir):
+    def __init__(self, host_name: str, workdir: str) -> None:
         super().__init__()
 
         self.host_name = host_name
@@ -383,7 +398,9 @@ class RemoteExecutor(Executor):
         self.ssh_extra_args = []
         self.scp_extra_args = []
 
-    def create_component(self, label, parts, **kwargs):
+    def create_component(
+        self, label: str, parts: tp.List[str], **kwargs
+    ) -> SimpleRemoteComponent:
         return SimpleRemoteComponent(
             self.host_name,
             label,
@@ -393,7 +410,9 @@ class RemoteExecutor(Executor):
             **kwargs
         )
 
-    async def await_file(self, path, delay=0.05, verbose=False, timeout=30):
+    async def await_file(
+        self, path: str, delay=0.05, verbose=False, timeout=30
+    ) -> None:
         if verbose:
             print(f'{self.host_name}.await_file({path}) started')
 
@@ -416,7 +435,7 @@ class RemoteExecutor(Executor):
 
     # TODO: Implement opitimized await_files()
 
-    async def send_file(self, path, verbose):
+    async def send_file(self, path: str, verbose=False) -> None:
         parts = [
             'scp',
             '-o',
@@ -433,7 +452,7 @@ class RemoteExecutor(Executor):
         await sc.start()
         await sc.wait()
 
-    async def mkdir(self, path, verbose=False):
+    async def mkdir(self, path: str, verbose=False) -> None:
         sc = self.create_component(
             f"{self.host_name}.mkdir('{path}')", ['mkdir', '-p', path],
             canfail=False,
@@ -442,7 +461,7 @@ class RemoteExecutor(Executor):
         await sc.start()
         await sc.wait()
 
-    async def rmtree(self, path, verbose=False):
+    async def rmtree(self, path: str, verbose=False) -> None:
         sc = self.create_component(
             f'{self.host_name}.rmtree("{path}")', ['rm', '-rf', path],
             canfail=False,
