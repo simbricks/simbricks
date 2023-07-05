@@ -100,14 +100,14 @@ class Component(object):
                 return
 
     async def _waiter(self):
-        out_handlers = asyncio.ensure_future(
-            asyncio.wait([
-                self._read_stream(self._proc.stdout, self._consume_out),
-                self._read_stream(self._proc.stderr, self._consume_err)
-            ])
+        stdout_handler = asyncio.create_task(
+            self._read_stream(self._proc.stdout, self._consume_out)
+        )
+        stderr_handler = asyncio.create_task(
+            self._read_stream(self._proc.stderr, self._consume_err)
         )
         rc = await self._proc.wait()
-        await out_handlers
+        await asyncio.wait([stdout_handler, stderr_handler])
         await self.terminated(rc)
 
     async def send_input(self, bs, eof=False):
@@ -158,21 +158,29 @@ class Component(object):
         """Attempts to stop this component by sending signals in the following
         order: interrupt, terminate, kill."""
         await self.interrupt()
-        _, pending = await asyncio.wait([self._proc.wait()], timeout=delay)
-        if len(pending) != 0:
+        try:
+            await asyncio.wait_for(self._proc.wait(), delay)
+            return
+        except TimeoutError:
             print(
                 f'terminating component {self.cmd_parts[0]} '
-                f'pid {self._proc.pid}'
+                f'pid {self._proc.pid}',
+                flush=True
             )
             await self.terminate()
-            _, pending = await asyncio.wait([self._proc.wait()], timeout=delay)
-            if len(pending) != 0:
-                print(
-                    f'killing component {self.cmd_parts[0]} '
-                    f'pid {self._proc.pid}'
-                )
-                await self.kill()
-                await self._proc.wait()
+
+        try:
+            await asyncio.wait_for(self._proc.wait(), delay)
+            return
+        except TimeoutError:
+            print(
+                f'killing component {self.cmd_parts[0]} '
+                f'pid {self._proc.pid}',
+                flush=True
+            )
+            await self.kill()
+
+        await self._proc.wait()
 
     async def started(self):
         pass
@@ -339,7 +347,9 @@ class Executor(object):
     async def await_files(self, paths, *args, **kwargs):
         xs = []
         for p in paths:
-            xs.append(self.await_file(p, *args, **kwargs))
+            waiter = asyncio.create_task(self.await_file(p, *args, **kwargs))
+            xs.append(waiter)
+
         await asyncio.wait(xs)
 
 

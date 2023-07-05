@@ -125,7 +125,9 @@ class ExperimentBaseRunner(ABC):
             if self.verbose:
                 print('preparing config tar:', path)
             host.node_config.make_tar(path)
-            copies.append(self.sim_executor(host).send_file(path, self.verbose))
+            executor = self.sim_executor(host)
+            task = asyncio.create_task(executor.send_file(path, self.verbose))
+            copies.append(task)
         await asyncio.wait(copies)
 
         # prepare all simulators in parallel
@@ -133,11 +135,12 @@ class ExperimentBaseRunner(ABC):
         for sim in self.exp.all_simulators():
             prep_cmds = list(sim.prep_cmds(self.env))
             executor = self.sim_executor(sim)
-            sims.append(
+            task = asyncio.create_task(
                 executor.run_cmdlist(
                     'prepare_' + self.exp.name, prep_cmds, verbose=self.verbose
                 )
             )
+            sims.append(task)
         await asyncio.wait(sims)
 
     async def wait_for_sims(self):
@@ -156,14 +159,14 @@ class ExperimentBaseRunner(ABC):
             ts.prepare()
             while ts.is_active():
                 # start ready simulators in parallel
-                starts = []
+                starting = []
                 sims = []
                 for sim in ts.get_ready():
-                    starts.append(self.start_sim(sim))
+                    starting.append(asyncio.create_task(self.start_sim(sim)))
                     sims.append(sim)
 
                 # wait for starts to complete
-                await asyncio.wait(starts)
+                await asyncio.wait(starting)
 
                 for sim in sims:
                     ts.done(sim)
@@ -190,7 +193,7 @@ class ExperimentBaseRunner(ABC):
             # "interrupt, terminate, kill" all processes
             scs = []
             for _, sc in self.running:
-                scs.append(sc.int_term_kill())
+                scs.append(asyncio.create_task(sc.int_term_kill()))
             await asyncio.wait(scs)
 
             # wait for all processes to terminate
@@ -200,7 +203,7 @@ class ExperimentBaseRunner(ABC):
             # remove all sockets
             scs = []
             for (executor, sock) in self.sockets:
-                scs.append(executor.rmtree(sock))
+                scs.append(asyncio.create_task(executor.rmtree(sock)))
             if scs:
                 await asyncio.wait(scs)
 
