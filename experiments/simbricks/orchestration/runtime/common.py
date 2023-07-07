@@ -91,11 +91,20 @@ class Runtime(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def interrupt(self):
+    def interrupt_handler(self) -> None:
         """
-        Signals an interrupt request.
+        Interrupts signal handler.
 
-        As a consequence all currently running simulators should be stopped
-        cleanly and their output collected.
+        All currently running simulators should be stopped cleanly and their
+        output collected.
         """
-        self._interrupted = True
+        pass
+
+    def interrupt(self) -> None:
+        """signals interrupt to runtime."""
+
+        # don't invoke interrupt handler multiple times as this would trigger
+        # repeated CancelledError
+        if not self._interrupted:
+            self._interrupted = True
+            self.interrupt_handler()

@@ -59,7 +59,7 @@ class LocalSimpleRuntime(Runtime):
             # simulators yet
             return
 
-        run.output = await runner.run()  # already handles CancelledError
+        run.output = await runner.run()  # handles CancelledError
         self.complete.append(run)
 
         # if the log is huge, this step takes some time
@@ -78,8 +78,7 @@ class LocalSimpleRuntime(Runtime):
             self._running = asyncio.create_task(self.do_run(run))
             await self._running
 
-    def interrupt(self):
-        super().interrupt()
+    def interrupt_handler(self):
         if self._running:
             self._running.cancel()
 
@@ -210,7 +209,7 @@ class LocalParallelRuntime(Runtime):
         # wait for all runs to finish
         await asyncio.wait(self._pending_jobs)
 
-    async def start(self):
+    async def start(self) -> None:
         """Execute all defined runs."""
         self._starter_task = asyncio.create_task(self.do_start())
         try:
@@ -221,6 +220,5 @@ class LocalParallelRuntime(Runtime):
             # wait for all runs to finish
             await asyncio.wait(self._pending_jobs)
 
-    def interrupt(self):
-        super().interrupt()
+    def interrupt_handler(self) -> None:
         self._starter_task.cancel()
