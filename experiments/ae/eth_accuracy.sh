@@ -16,7 +16,7 @@ mkdir -p $RUN_DIR
 
 # Runs the SENDER host first
 echo "run sender host"
-build/src/cosim/examples/ns3-dev-cosim-nicif-example-debug  --verbose --uxsoc=$RUN_DIR/uxsoc --shm=$RUN_DIR/shm --syncDelay=500000 --pollDelay=500000 --ethLatency=500000 --sync=1 --sync_mode=0 > $RUN_DIR/sender.out 2>&1 &
+./simbricks-run.sh simbricks-nicif-example --verbose --uxsoc=$RUN_DIR/uxsoc --shm=$RUN_DIR/shm --syncDelay=500000 --pollDelay=500000 --ethLatency=500000 --sync=1 --sync_mode=0 > $RUN_DIR/sender.out 2>&1 &
 
 pid=$!
 ALL_PIDS="$ALL_PIDS $pid"
@@ -25,7 +25,7 @@ sleep 1
 
 # Runs the RECEIVER host
 echo "run receiver host"
-build/src/cosim/examples/ns3-dev-cosim-netif-example-debug --verbose --uxsoc=$RUN_DIR/uxsoc --syncDelay=500000 --pollDelay=500000 --ethLatency=500000 --sync=1 > $RUN_DIR/receiver.out 2>&1 & 
+./simbricks-run.sh simbricks-netif-example --verbose --uxsoc=$RUN_DIR/uxsoc --syncDelay=500000 --pollDelay=500000 --ethLatency=500000 --sync=1 > $RUN_DIR/receiver.out 2>&1 &
 
 # 
 # 
@@ -54,7 +54,7 @@ sleep 2
 
 ### Run single instance ns-3
 echo "Run single instance ns-3"
-build/src/network/examples/ns3-dev-packet-socket-apps-debug --verbose > $RUN_DIR/single_ns3.out 2>&1 
+./simbricks-run.sh packet-socket-apps --verbose > $RUN_DIR/single_ns3.out 2>&1
 
 echo "parsing data"
 cat $RUN_DIR/sender.out | awk '/Time:/ {print "Tx at: "$11}' > $RUN_DIR/sender.time

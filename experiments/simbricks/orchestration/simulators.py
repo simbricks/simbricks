@@ -904,13 +904,13 @@ class NS3DumbbellNet(NetSim):
         ports = ''
         for (n, s) in self.connect_sockets(env):
             if 'server' in n.name:
-                ports += f'--CosimPortLeft={s} '
+                ports += f'--SimbricksPortLeft={s} '
             else:
-                ports += f'--CosimPortRight={s} '
+                ports += f'--SimbricksPortRight={s} '
 
         cmd = (
             f'{env.repodir}/sims/external/ns-3'
-            f'/cosim-run.sh cosim cosim-dumbbell-example {ports} {self.opt}'
+            f'/simbricks-run.sh simbricks-dumbbell-example {ports} {self.opt}'
         )
         print(cmd)
 
@@ -922,11 +922,11 @@ class NS3BridgeNet(NetSim):
     def run_cmd(self, env: ExpEnv) -> str:
         ports = ''
         for (_, n) in self.connect_sockets(env):
-            ports += '--CosimPort=' + n + ' '
+            ports += '--SimbricksPort=' + n + ' '
 
         cmd = (
             f'{env.repodir}/sims/external/ns-3'
-            f'/cosim-run.sh cosim cosim-bridge-example {ports} {self.opt}'
+            f'/simbricks-run.sh simbricks-bridge-example {ports} {self.opt}'
         )
         print(cmd)
 
@@ -948,7 +948,7 @@ class NS3SequencerNet(NetSim):
                 raise KeyError('Wrong NIC type')
         cmd = (
             f'{env.repodir}/sims/external/ns-3'
-            f'/cosim-run.sh sequencer sequencer-single-switch-example'
+            f'/simbricks-run.sh sequencer-single-switch-example'
             f' {ports} {self.opt}'
         )
         return cmd
