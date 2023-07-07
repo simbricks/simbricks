@@ -8,6 +8,7 @@ RUN apt-get update \
 	bc \
 	bison \
 	build-essential \
+	cmake \
 	doxygen \
 	g++ \
 	flex \
