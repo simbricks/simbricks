@@ -77,7 +77,7 @@ class DistributedSimpleRuntime(Runtime):
             )
         run.output.dump(run.outpath)
 
-    async def start(self):
+    async def start(self) -> None:
         for run in self.runnable:
             if self._interrupted:
                 return
@@ -85,8 +85,7 @@ class DistributedSimpleRuntime(Runtime):
             self._running = asyncio.create_task(self.do_run(run))
             await self._running
 
-    def interrupt(self):
-        super().interrupt()
+    def interrupt_handler(self) -> None:
         if self._running:
             self._running.cancel()
 

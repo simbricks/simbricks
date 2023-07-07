@@ -117,7 +117,7 @@ class SlurmRuntime(Runtime):
                 raise RuntimeError('cannot retrieve id of submitted job')
             run.job_id = int(m.group(1))
 
-    async def start(self):
+    async def start(self) -> None:
         self._start_task = asyncio.create_task(self._do_start())
         try:
             await self._start_task
@@ -134,6 +134,5 @@ class SlurmRuntime(Runtime):
             )
             await scancel_process.wait()
 
-    def interrupt(self):
-        super().interrupt()
+    def interrupt_handler(self) -> None:
         self._start_task.cancel()
