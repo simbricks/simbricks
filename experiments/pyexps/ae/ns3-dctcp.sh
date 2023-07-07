@@ -82,7 +82,7 @@ do
         for k in $(seq $k_start $k_step $k_end)
         do
             echo "latency: $lat MtU: $m  K: $k  "
-            ./cosim-dctcp-run.sh $k $m $lat &
+            ./simbricks-run.sh dctcp-cwnd-devred --EcnTh=$k --mtu=$m --LinkLatency=$lat &
             pid=$!
             pids="$pids $pid"
             proc=$(($proc + 1))

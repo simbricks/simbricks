@@ -78,11 +78,11 @@ $(d)ns-3:
 	git clone https://github.com/simbricks/ns-3.git $@
 
 $(d)ns-3/ready: $(d)ns-3 $(lib_netif)
-	+cd $< && COSIM_PATH=$(abspath $(base_dir)) ./cosim-build.sh configure
+	+cd $< && SIMBRICKS_PATH=$(abspath $(base_dir)) ./simbricks-build.sh configure
 	touch $@
 
 ns-3-clean:
-	-cd $(EXTERNAL_SIMS_DIR)ns-3 && ./waf clean
+	-cd $(EXTERNAL_SIMS_DIR)ns-3 && ./ns3 clean
 	rm -f $(EXTERNAL_SIMS_DIR)ns-3/ready
 
 $(d)femu:

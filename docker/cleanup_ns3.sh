@@ -3,11 +3,11 @@ set -e
 
 mkdir -p sims/external/ns-3-new/
 cd sims/external/ns-3
-find build -name '*.o' -delete
 cp -r \
   build/ \
-  cosim-run.sh \
-  cosim-dctcp-run.sh \
+  simbricks-run.sh \
+  ns3 \
+  .lock-ns3* \
   ../ns-3-new/
 cd ..
 git submodule deinit -f ns-3
