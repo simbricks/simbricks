@@ -300,25 +300,30 @@ class SimpleRemoteComponent(SimpleComponent):
         await self._kill_cmd('KILL')
 
 
-class Executor(object):
+class Executor(abc.ABC):
 
     def __init__(self):
         self.ip = None
 
+    @abc.abstractmethod
     def create_component(self, label, parts, **kwargs) -> SimpleComponent:
-        raise NotImplementedError('Please Implement this method')
+        pass
 
-    async def await_file(self, path, delay=0.05, verbose=False):
-        raise NotImplementedError('Please Implement this method')
+    @abc.abstractmethod
+    async def await_file(self, path, delay=0.05, verbose=False) -> None:
+        pass
 
-    async def send_file(self, path, verbose=False):
-        raise NotImplementedError('Please Implement this method')
+    @abc.abstractmethod
+    async def send_file(self, path, verbose=False) -> None:
+        pass
 
-    async def mkdir(self, path, verbose=False):
-        raise NotImplementedError('Please Implement this method')
+    @abc.abstractmethod
+    async def mkdir(self, path, verbose=False) -> None:
+        pass
 
-    async def rmtree(self, path, verbose=False):
-        raise NotImplementedError('Please Implement this method')
+    @abc.abstractmethod
+    async def rmtree(self, path, verbose=False) -> None:
+        pass
 
     # runs the list of commands as strings sequentially
     async def run_cmdlist(self, label, cmds, verbose=True):
