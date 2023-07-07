@@ -31,20 +31,6 @@ import typing as tp
 from asyncio.subprocess import Process
 
 
-class HostConfig(object):
-
-    def __init__(self, name, ip, mac, sudopwd, other=None):
-        if other is None:
-            other = {}
-
-        self.name = name
-        self.ip = ip
-        self.used_ip = ip
-        self.mac = mac
-        self.sudo_pwd = sudopwd
-        self.other = other.copy()
-
-
 class Component(object):
 
     def __init__(self, cmd_parts: tp.List[str], with_stdin=False):
