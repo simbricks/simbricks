@@ -20,6 +20,7 @@
   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+.. _page-architectural-overview:
 
 ###################################
 Architectural Overview
@@ -138,6 +139,7 @@ interface-specific protocols, however, are fine. Similarly, we must ensure to
 not overwrite the base protocol's fields with something else.
 
 
+.. _sec-synchronization:
 
 Synchronization
 ---------------
