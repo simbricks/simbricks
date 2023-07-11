@@ -79,6 +79,8 @@ autodoc_default_options = {
     'member-order': 'bysource'
 }
 
+# Whether to number figures.
+numfig = True
 
 # -- Options for HTML output -------------------------------------------------
 
