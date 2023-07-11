@@ -89,7 +89,11 @@ class PCIDevSim(Simulator):
         self.sync_mode = 0
         self.start_tick = 0
         self.sync_period = 500
+        """Period in nanoseconds of sending synchronization messages from this
+        device to connected components."""
         self.pci_latency = 500
+        """Latency in nanoseconds for sending messages to components connected
+        via PCI."""
 
     def full_name(self):
         return 'dev.' + self.name
@@ -273,8 +277,14 @@ class HostSim(Simulator):
 
         self.sync_mode = 0
         self.sync_period = 500
+        """Period in nanoseconds of sending synchronization messages from this
+        device to connected components."""
         self.pci_latency = 500
+        """Latency in nanoseconds for sending messages to components connected
+        via PCIe."""
         self.mem_latency = 500
+        """Latency in nanoseconds for sending messages to components connected
+        via Ethernet."""
 
         self.pcidevs: tp.List[PCIDevSim] = []
         self.net_directs: tp.List[NetSim] = []
