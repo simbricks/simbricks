@@ -45,7 +45,6 @@ $(eval $(call subdir,sims))
 $(eval $(call subdir,dist))
 $(eval $(call subdir,doc))
 $(eval $(call subdir,images))
-$(eval $(call subdir,experiments))
 
 
 all: $(ALL_ALL)
@@ -93,6 +92,17 @@ lint-isort:
 format-isort:
 	isort --skip experiments/simbricks/orchestration/utils/graphlib.py \
 		results/ experiments/ doc/
+
+lint-python:
+	pylint -d missing-module-docstring,missing-class-docstring \
+		--ignore-paths experiments/simbricks/orchestration/utils/graphlib.py \
+	  	experiments/ results/
+
+typecheck-python:
+	pytype -j 0 --keep-going \
+		--exclude experiments/pyexps/ae/ \
+			experiments/simbricks/orchestration/utils/graphlib.py \
+		-- experiments/ results/
 
 lint: lint-cpplint lint-clang-format lint-python
 lint-all: lint lint-clang-tidy typecheck-python
