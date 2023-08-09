@@ -93,7 +93,7 @@ format-isort:
 	isort --skip experiments/simbricks/orchestration/utils/graphlib.py \
 		results/ experiments/ doc/
 
-lint-python:
+lint-pylint:
 	pylint -d missing-module-docstring,missing-class-docstring \
 		--ignore-paths experiments/simbricks/orchestration/utils/graphlib.py \
 	  	experiments/ results/
@@ -104,8 +104,9 @@ typecheck-python:
 			experiments/simbricks/orchestration/utils/graphlib.py \
 		-- experiments/ results/
 
+lint-python: lint-pylint typecheck-python
 lint: lint-cpplint lint-clang-format lint-python
-lint-all: lint lint-clang-tidy typecheck-python
+lint-all: lint lint-clang-tidy
 
 help:
 	@echo "Targets:"
