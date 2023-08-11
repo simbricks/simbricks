@@ -66,21 +66,20 @@ take a look at the module :mod:`simbricks.orchestration.simulator_utils` in
 which we provide some helper functions to reduce the amount of code you have to
 write.
 
-Finally, to run your experiment, invoke ``<repository>/experiments/run.py`` and
-provide the path to your experiment module. In our docker containers, you can
-also just use the following command from anywhere:
+Finally, to run your experiment, invoke ``experiments/run.py`` and provide the
+path to your experiment module. In our docker containers, you can also just use
+the following command from anywhere:
 
 .. code-block:: bash
 
   $ simbricks-run --verbose --force <path_to_your_module.py>
 
 ``--verbose`` prints all simulators' output to the terminal and ``--force``
-forces execution even if there already exist result files for the same
-experiment. If ``simbricks-run`` is not available, you can always do 
+forces execution even if there already exist result files for the experiment. If
+``simbricks-run`` is not available, you can always do 
 
 .. code-block:: bash
   
-  # from the repository's root directory
   $ cd experiments
   $ python run.py --verbose --force <path_to_your_module.py>
 
@@ -105,19 +104,15 @@ basics to create and run your first experiment. Have fun.
 Add a Node or Application Config
 ********************************
 
-The configuration for a host and the commands to run for your workload are
-defined via a :ref:`sec-node-config` and :ref:`sec-app-config`. SimBricks
-already offers some concrete implementations in the module
-:mod:`simbricks.orchestration.nodeconfig`. If they don't fit your use-case, you
-need to implement your own by overwriting the pre-defined member functions.
-
-When using one of our pre-defined node configs, you probably need to provide
-your own app config to run the workload you have in mind. The easiest way is to
-create a child class for that directly in your experiment module, and override
-the methods of interest, most notably
+A host's configuration and the workload to run are defined via
+:ref:`sec-node_app_config`. SimBricks already comes with a few examples in the
+module :mod:`simbricks.orchestration.nodeconfig`. If they don't fit your
+use-case, you need to add your own by overriding the pre-defined member
+functions of :class:`~simbricks.orchestration.nodeconfig.NodeConfig` and
+:class:`~simbricks.orchestration.nodeconfig.AppConfig`. The most notably is
 :meth:`~simbricks.orchestration.nodeconfig.AppConfig.run_cmds`, which defines
-the command that is executed to run your application. Further information can be
-found in the module :mod:`simbricks.orchestration.nodeconfig`.
+the commands to execute for your workload/application. Further information can
+be found in the module :mod:`simbricks.orchestration.nodeconfig` directly.
 
 .. _sec-howto-custom_image:
 
@@ -131,39 +126,33 @@ Integrate a New Simulator
 
 The first step when integrating a new simulator into SimBricks is to implement a
 SimBricks adapter for it. You can find the necessary information in the
-:ref:`Simulator Adapters <Simulator Adapters>` section. After that, we need to
-add a class for the simulator in the SimBricks orchestration framework such that
-it can be used when defining experiments. This class basically wraps a command
-for launching the simulator and needs to inherit from
-:class:`~simbricks.orchestration.simulators.Simulator` and implement relevant
-methods. There are several more specialized child classes in the module
-:mod:`simbricks.orchestration.simulators` for typical categories of simulators,
-which already offer the interfaces to collect parameters like which other
-simulators to connect to necessary for creating the launch command. Examples are
-:class:`~simbricks.orchestration.simulators.PCIDevSim`,
-:class:`~simbricks.orchestration.simulators.NICSim`,
-:class:`~simbricks.orchestration.simulators.NetSim`, and
-:class:`~simbricks.orchestration.simulators.HostSim`. You can find an example
-below of adding a class for the ``NS3`` network simulator.
+:ref:`Simulator Adapters <Simulator Adapters>` section. To then make running
+experiments and setting up the communication channels with other simulators more
+convenient, add a class for the simulator to the orchestration framework that
+inherits from :class:`~simbricks.orchestration.simulators.Simulator` or one of
+the more specialized base classes in :mod:`simbricks.orchestration.simulators`.
+In this class you define the command to execute the simulator together with
+further parameters, for example, to connect to the communication channels with
+other simulators. Below is an example of what this looks like.
 
 .. code-block:: python
   :linenos:
-  :caption: Class implementing the ``NS3`` network simulator in the SimBricks
-    orchestration framework.
+  :caption: Orchestration framework class for WireNet, a simple Ethernet wire
+    that attaches to the SimBricks Ethernet adapters of two simulators.
 
-  class NS3BridgeNet(NetSim):
+  class WireNet(NetSim):
 
     def run_cmd(self, env):
-        ports = ''
-        for (_, n) in self.connect_sockets(env):
-            ports += '--CosimPort=' + n + ' '
-
+        connects = self.connect_sockets(env)
+        assert len(connects) == 2
         cmd = (
-            f'{env.repodir}/sims/external/ns-3'
-            f'/cosim-run.sh cosim cosim-bridge-example {ports} {self.opt}'
+            f'{env.repodir}/sims/net/wire/net_wire {connects[0][1]}'
+            f' {connects[1][1]} {self.sync_mode} {self.sync_period}'
+            f' {self.eth_latency}'
         )
-        print(cmd)
-
+        if env.pcap_file:
+            cmd += ' ' + env.pcap_file
+        
         return cmd
 
 
