@@ -38,11 +38,19 @@ class Simulator(object):
         self.name = ''
 
     def resreq_cores(self):
-        """Number of cores required for this simulator."""
+        """
+        Number of cores this simulator requires during execution.
+
+        This is used for scheduling multiple runs and experiments.
+        """
         return 1
 
     def resreq_mem(self):
-        """Memory required for this simulator (in MB)."""
+        """
+        Number of memory in MB this simulator requires during execution.
+
+        This is used for scheduling multiple runs and experiments.
+        """
         return 64
 
     def full_name(self):
@@ -51,16 +59,16 @@ class Simulator(object):
 
     # pylint: disable=unused-argument
     def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
-        """Commands to run to prepare simulator."""
+        """Commands to prepare execution of this simulator."""
         return []
 
     # pylint: disable=unused-argument
     def run_cmd(self, env: ExpEnv) -> tp.Optional[str]:
-        """Command to run to execute simulator."""
+        """Command to execute this simulator."""
         return None
 
     def dependencies(self) -> tp.List[Simulator]:
-        """Other simulators this one depends on."""
+        """Other simulators to execute before this one."""
         return []
 
     # Sockets to be cleaned up
