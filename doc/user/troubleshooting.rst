@@ -73,16 +73,17 @@ Is My Simulation Stuck or Just Slow?
 ************************************
 
 It is possible to check the current timestamp of individual component
-simulators. If the timestamp of one of them isn't advancing, then the simulation
-is stuck. To make one of our already implemented component simulators output its
-current timestamp, send a USR1 signal, for example, by invoking ``kill -s USR1
-<insert_pid_of_simulator>``.
+simulators. If the timestamp of a simulator which is synchronizing with at least
+one other simulator isn't advancing, the whole simulation is stuck. Many of our
+component simulators print their timestamp when you send them a USR1 signal, for
+example, by running ``kill -s USR1 <insert_pid_of_simulator>``. By doing this
+multiple times, you can check whether the timestamp advances.
 
-When the orchestration framework is running in verbose mode (see
-:ref:`sec-command-line`), the current timestamp is visible in the terminal in
-which you invoked ``experiments/run.py``. Otherwise, you can interrupt/stop the
-execution via Ctrl+C to produce the output JSON for the experiment. All
-component simulator's output is logged there.
+If you invoked the orchestration framework in verbose mode (see
+:ref:`sec-command-line`), the current timestamp is printed directly in the
+terminal. If not then you have to stop the experiment via Ctrl+C to produce
+the output JSON file. All the simulators' output is logged
+there.
 
 ************************************
 Understanding Simulation Performance
