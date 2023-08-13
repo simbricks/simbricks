@@ -52,7 +52,7 @@ run. SimBricks comes with many pre-defined experiments, which can serve as
 starting guides and are located in the repository under ``experiments/pyexps``.
 
 .. autoclass:: simbricks.orchestration.experiments.Experiment
-  :members: add_host, add_pcidev, add_nic, add_network
+  :members: add_host, add_pcidev, add_nic, add_network, checkpoint
 
 Runs
 ====
@@ -247,6 +247,27 @@ Here are all the command line arguments for the ``experiments/run.py`` script:
 Images
 ******************************
 
+*************************************
+Checkpoints
+*************************************
+
+Some of our host simulators support taking checkpoints. Using these can
+dramatically speed up the boot process by executing two runs for an experiment.
+In the first, the simulator is booted in unsynchronized mode using an inaccurate
+CPU model. When the boot process is completed meaning the workload defined via
+the class :class:`~simbricks.orchestration.nodeconfig.AppConfig` can be
+executed, a checkpoint is taken. In the second run, the simulator is switched
+into synchronized mode, the CPU model replaced with the accurate one, and the
+workload executed. Checkpointing can be enabled by setting the attribute
+:attr:`~simbricks.orchestration.experiments.Experiment.checkpoint` on the
+:class:`~simbricks.orchestration.experiments.Experiment` class.
+
+When running an experiment multiple times, e.g. because you are tweaking the
+workload, the checkpoint doesn't have to be recreated all the time. When
+invoking the orchestration framework without the ``--force`` flag (see
+:ref:`sec-command-line`), it won't re-execute experiments and runs, for which an
+output JSON file already exists. So, if you delete only the output file of the
+second run, you can save the time for creating the checkpoint.
 
 ******************************
 Distributed Simulations
