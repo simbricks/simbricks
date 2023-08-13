@@ -232,10 +232,6 @@ class MemDevSim(NICSim):
     def __init__(self):
         super().__init__()
 
-        self.name = ''
-        self.sync_mode = 0
-        self.start_tick = 0
-        self.sync_period = 500
         self.mem_latency = 500
         self.addr = 0xe000000000000000
         self.size = 1024 * 1024 * 1024  # 1GB
@@ -257,11 +253,6 @@ class NetMemSim(NICSim):
     def __init__(self):
         super().__init__()
 
-        self.name = ''
-        self.sync_mode = 0
-        self.start_tick = 0
-        self.sync_period = 500
-        self.eth_latency = 500
         self.addr = 0xe000000000000000
         self.size = 1024 * 1024 * 1024  # 1GB
         self.as_id = 0
