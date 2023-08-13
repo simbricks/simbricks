@@ -40,23 +40,28 @@ class AppConfig():
         return []
 
     def prepare_post_cp(self) -> tp.List[str]:
-        """Commands to run to prepare this application after checkpoint
-        restore."""
+        """Commands to run to prepare this application after the checkpoint is
+        restored."""
         return []
 
     def config_files(self) -> tp.Dict[str, tp.IO]:
         """
-        Additional files to put inside the node, for example, necessary config
-        files or kernel modules.
+        Additional files to put inside the node, which are mounted under
+        `/tmp/guest/`.
 
-        Specified in the following format: `filename_inside_node`: `IO_handle_to
-        read_file`
+        Specified in the following format: `filename_inside_node`:
+        `IO_handle_of_file`
         """
         return {}
 
     def strfile(self, s: str):
-        """Helper function to convert a string to an IO handle for usage in
-        `config_files()`."""
+        """
+        Helper function to convert a string to an IO handle for usage in
+        `config_files()`.
+
+        Using this, you can create a file with the string as its content on the
+        node.
+        """
         return io.BytesIO(bytes(s, encoding='UTF-8'))
 
 
@@ -65,7 +70,12 @@ class NodeConfig():
 
     def __init__(self):
         self.sim = 'qemu'
-        """Name of simulator to run."""
+        """The concrete simulator that runs this node config. This is used to
+        use execute different commands depending on the concrete simulator,
+        e.g., which command to use to end the simulation.
+
+        TODO(Kaufi-Jonas): This is ugly. Refactor necessary commands to be
+        provided by the simulator's class directly."""
         self.ip = '10.0.0.1'
         """IP address."""
         self.prefix = 24
@@ -77,11 +87,16 @@ class NodeConfig():
         self.memory = 8 * 1024
         """Amount of system memory in MB."""
         self.disk_image = 'base'
-        """Disk image to use."""
+        """Name of disk image to use."""
         self.mtu = 1500
         """Networking MTU."""
         self.nockp = 0
-        """Do not make checkpoint in Gem5."""
+        """Do not create a checkpoint in Gem5.
+
+        TODO(Kaufi-Jonas): Seems we don't need this anymore since we specify
+        whether to take a checkpoint experiment-wide. Otherwise, refactor this
+        into simulator-specific class.
+        """
         self.app: tp.Optional[AppConfig] = None
         """Application to run on simulated host."""
         self.kcmd_append = ''
@@ -146,17 +161,22 @@ class NodeConfig():
 
     def config_files(self) -> tp.Dict[str, tp.IO]:
         """
-        Additional files to put inside the node, for example, necessary config
-        files or kernel modules.
+        Additional files to put inside the node, which are mounted under
+        `/tmp/guest/`.
 
-        Specified in the following format: `filename_inside_node`: `IO_handle_to
-        read_file`
+        Specified in the following format: `filename_inside_node`:
+        `IO_handle_of_file`
         """
         return self.app.config_files()
 
     def strfile(self, s: str):
-        """Helper function to convert a string to an IO handle for usage in
-        `config_files()`."""
+        """
+        Helper function to convert a string to an IO handle for usage in
+        `config_files()`.
+
+        Using this, you can create a file with the string as its content on the
+        node.
+        """
         return io.BytesIO(bytes(s, encoding='UTF-8'))
 
 
