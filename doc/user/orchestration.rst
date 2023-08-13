@@ -134,6 +134,24 @@ guest system and the value is an IO handle of the file to be copied over.
 .. autoclass:: simbricks.orchestration.nodeconfig.AppConfig
   :members: run_cmds, config_files
 
+*******************************
+Synchronized vs. Unsynchronized
+*******************************
+
+For most component simulators in your experiment, you can decide whether to run
+them synchronized or unsynchronized by setting
+:attr:`~simbricks.orchestration.simulators.PCIDevSim.sync_mode` or
+:attr:`~simbricks.orchestration.simulators.QemuHost.sync`. By default, all
+simulators run unsynchronized to simulate as fast as possible. When you are
+conducting measurements, however, you need to run synchronized, or you won't get
+meaningful performance numbers.
+
+Running synchronized means that a simulator waits to process incoming messages
+from connected simulators at the correct timestamps. For technical details, see
+:ref:`sec-synchronization`. In contrast, unsynchronized lets a simulator advance
+its virtual time as fast as it can. It still handles and exchanges messages with
+connected simulators, but it won't wait for incoming messages and instead
+advances its virtual time when there's nothing available to process. 
 
 ***************************************
 Link Latency and Synchronization Period
