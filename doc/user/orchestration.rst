@@ -294,6 +294,9 @@ second run, you can save the time for creating the checkpoint.
 Distributed Simulations
 ******************************
 
+For the moment, refer to our `GitHub Q&A on this topic
+<https://github.com/simbricks/simbricks/discussions/73#discussioncomment-6682260>`_.
+
 
 ******************************
 Slurm
