@@ -247,6 +247,27 @@ Here are all the command line arguments for the ``experiments/run.py`` script:
 Images
 ******************************
 
+All host simulators require a disk image. We already provide a base image with
+Ubuntu. If you just want to copy in additional files, e.g., drivers and
+executables for your workload, you don't need to build your own image. You can
+use the method
+:meth:`~simbricks.orchestration.nodeconfig.NodeConfig.config_files` of
+:class:`~simbricks.orchestration.nodeconfig.NodeConfig` and
+:class:`~simbricks.orchestration.nodeconfig.AppConfig` to mount additional files
+under ``/tmp/guest`` inside the simulated OS.
+
+For more than that, you need to build your own images. You can find the commands
+to do so in ``images/rules.mk``. When building an image, it is started with Qemu
+in a VM with active internet access. The image-specific script located in
+``images/scripts`` is then executed on the guest system to modify the image,
+e.g., changing config files, installing packages, or building required projects
+from source. In order to use your image in experiments, set the attribute
+:attr:`~simbricks.orchestration.nodeconfig.NodeConfig.disk_image` on
+:class:`~simbricks.orchestration.nodeconfig.NodeConfig`. This requires that your
+image is stored as ``images/out-<image_name>/<image_name>``. If your host
+simulator requires a raw image, execute ``make
+images/out-<image_name>/<image_name>.raw`` to convert your image.
+
 *************************************
 Checkpoints
 *************************************
