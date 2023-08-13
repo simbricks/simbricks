@@ -95,7 +95,14 @@ class PCIDevSim(Simulator):
         super().__init__()
 
         self.sync_mode = 0
+        """Synchronization mode. 0 is running unsynchronized, 1 synchronized.
+        Depending on the concrete simulator, there may be additional modes."""
         self.start_tick = 0
+        """The timestamp at which to start the simulation. This is useful when
+        the simulator is only attached at a later point in time and needs to
+        synchronize with connected simulators. For example, this could be used
+        when taking checkpoints to only attach certain simulators after the
+        checkpoint has been taken."""
         self.sync_period = 500
         """Period in nanoseconds of sending synchronization messages from this
         device to connected components."""
@@ -171,6 +178,8 @@ class NetSim(Simulator):
 
         self.opt = ''
         self.sync_mode = 0
+        """Synchronization mode. 0 is running unsynchronized, 1 synchronized.
+        Depending on the concrete simulator, there may be additional modes."""
         self.sync_period = 500
         """Synchronization period in nanoseconds from this network to connected
         components."""
@@ -284,6 +293,8 @@ class HostSim(Simulator):
         self.cpu_freq = '4GHz'
 
         self.sync_mode = 0
+        """Synchronization mode. 0 is running unsynchronized, 1 synchronized.
+        Depending on the concrete simulator, there may be additional modes."""
         self.sync_period = 500
         """Period in nanoseconds of sending synchronization messages from this
         device to connected components."""
@@ -344,6 +355,7 @@ class QemuHost(HostSim):
         super().__init__(node_config)
 
         self.sync = False
+        """"Whether to synchronize with attached simulators."""
 
     def resreq_cores(self):
         if self.sync:
@@ -779,6 +791,7 @@ class SwitchNet(NetSim):
     def __init__(self):
         super().__init__()
         self.sync = True
+        """Whether to synchronize with attached simulators."""
 
     def run_cmd(self, env):
         cmd = env.repodir + '/sims/net/switch/net_switch'
