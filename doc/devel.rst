@@ -33,5 +33,4 @@ Developer Guide
 
    devel/arch
    devel/interface
-   devel/sync
    devel/adapter
