@@ -28,6 +28,42 @@ Troubleshooting / FAQ
 This is a collection of common troubleshooting tips and answers to frequently
 asked questions.
 
+.. _sec-troubleshoot-getting-help:
+
+******************************
+Getting Help
+******************************
+
+We love to hear from you. If you have questions, want to discuss an idea, or
+encountered issues while using SimBricks, we are available on `Slack
+<https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA>`_
+for quick answers and interactive discussions. If you find bugs or want to
+request a feature, feel free to open an `issue on GitHub
+<https://github.com/simbricks/simbricks/issues>`_.
+
+*****************************************
+Error Opening images/output-base/base.raw
+*****************************************
+
+Some of our host simulators, e.g., gem5 and Simics, require raw disk images. If
+these aren't available, you will see the error in the title or something
+similar. If you use our Docker images, we deliberately remove these since Docker
+doesn't handle large, sparse files well, which leads to large Docker image
+sizes. We include disk images in the qcow format though, which can easily be
+converted to raw. To do so, just run the following (requires QEMU to be built
+first):
+
+.. code-block:: bash
+
+  $ make convert-images-raw
+
+If you are not using the provided docker containers, you might need to build the
+qcow images by running the following (again, requires QEMU to be built first):
+
+.. code-block:: bash
+
+  $ make build-images-min
+
 ************************************
 Is My Simulation Stuck or Just Slow?
 ************************************
@@ -47,10 +83,3 @@ component simulator's output is logged there.
 ************************************
 Understanding Simulation Performance
 ************************************
-
-
-.. _sec-troubleshoot-getting-help:
-
-******************************
-Getting Help
-******************************
