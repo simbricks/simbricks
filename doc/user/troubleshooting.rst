@@ -22,11 +22,14 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ###################################
-Troubleshooting
+Troubleshooting / FAQ
 ###################################
 
+This is a collection of common troubleshooting tips and answers to frequently
+asked questions.
+
 ************************************
-Is my Simulation Stuck or just Slow?
+Is My Simulation Stuck or Just Slow?
 ************************************
 
 It is possible to check the current timestamp of individual component
@@ -36,10 +39,10 @@ current timestamp, send a USR1 signal, for example, by invoking ``kill -s USR1
 <insert_pid_of_simulator>``.
 
 When the orchestration framework is running in verbose mode (see
-:ref:`sec-command-line`), the current timestamp is visible in the terminal where
-you invoked the SimBricks orchestration framework to execute your experiment.
-Otherwise, you can interrupt the execution via CTRL+C to produce the output JSON
-for the experiment. All component simulator's output is logged there.
+:ref:`sec-command-line`), the current timestamp is visible in the terminal in
+which you invoked ``experiments/run.py``. Otherwise, you can interrupt/stop the
+execution via Ctrl+C to produce the output JSON for the experiment. All
+component simulator's output is logged there.
 
 ************************************
 Understanding Simulation Performance
