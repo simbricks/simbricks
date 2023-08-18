@@ -35,6 +35,3 @@ Developer Guide
    devel/interface
    devel/sync
    devel/adapter
-   devel/style
-
-
