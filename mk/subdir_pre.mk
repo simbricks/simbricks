@@ -29,5 +29,6 @@ d := $(cur_dir)
 ALL :=
 CLEAN :=
 DISTCLEAN :=
+EXTERNAL_CLEAN_TASKS :=
 DEPS :=
 OBJS :=
