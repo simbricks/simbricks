@@ -81,5 +81,5 @@ $(d)femu/ready: $(d)femu $(lib_nicif)
 	    EXTRA_CPPFLAGS=-I$(abspath $(lib_dir))
 	touch $@
 
-DISTCLEAN := $(base_dir)gem5 $(base_dir)qemu $(base_dir)ns-3 $(base_dir)femu
+DISTCLEAN := $(d)gem5 $(d)qemu $(d)ns-3 $(d)femu
 include mk/subdir_post.mk
