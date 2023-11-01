@@ -84,7 +84,7 @@ class NodeConfig():
         """Number of CPU cores."""
         self.threads = 1
         """Number of threads per CPU core."""
-        self.memory = 8 * 1024
+        self.memory = 512
         """Amount of system memory in MB."""
         self.disk_image = 'base'
         """Name of disk image to use."""
