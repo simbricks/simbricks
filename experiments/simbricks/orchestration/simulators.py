@@ -431,6 +431,14 @@ class Gem5Host(HostSim):
         self.extra_main_args = []
         self.extra_config_args = []
         self.variant = 'fast'
+        self.modify_checkpoint_tick = True
+        """Whether to modify the event queue tick before restoring a checkpoint.
+        When this is enabled, the restored checkpoint will start at event queue
+        tick 0. This is a performance optimization since now, connected
+        simulators don't have to simulate and synchronize until the restored
+        tick before the actual workload can be executed. Disable this if you
+        need to retain the differences in virtual time between multiple gem5
+        instances."""
 
     def resreq_cores(self) -> int:
         return 1
@@ -439,7 +447,13 @@ class Gem5Host(HostSim):
         return 4096
 
     def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
-        return [f'mkdir -p {env.gem5_cpdir(self)}']
+        cmds = [f'mkdir -p {env.gem5_cpdir(self)}']
+        if env.restore_cp and self.modify_checkpoint_tick:
+            cmds.append(
+                f'python3 {env.utilsdir}/modify_gem5_cp_tick.py --tick 0 '
+                f'--cpdir {env.gem5_cpdir(self)}'
+            )
+        return cmds
 
     def run_cmd(self, env: ExpEnv) -> str:
         cpu_type = self.cpu_type
