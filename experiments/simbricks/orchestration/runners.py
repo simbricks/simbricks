@@ -21,7 +21,6 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import asyncio
-import collections
 import itertools
 import shlex
 import traceback
@@ -57,9 +56,10 @@ class ExperimentBaseRunner(ABC):
 
     def sim_graph(self) -> tp.Dict[Simulator, tp.Set[Simulator]]:
         sims = self.exp.all_simulators()
-        graph = collections.defaultdict(set)
+        graph = {}
         for sim in sims:
             deps = sim.dependencies() + sim.extra_deps
+            graph[sim] = set()
             for d in deps:
                 graph[sim].add(d)
         return graph
