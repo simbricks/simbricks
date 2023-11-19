@@ -30,7 +30,7 @@ if tp.TYPE_CHECKING:  # prevent cyclic import
 class ExpEnv(object):
     """Manages the experiment environment."""
 
-    def __init__(self, repo_path, workdir, cpdir) -> None:
+    def __init__(self, repo_path: str, workdir: str, cpdir: str) -> None:
         self.create_cp = False
         """Whether a checkpoint should be created."""
         self.restore_cp = False
