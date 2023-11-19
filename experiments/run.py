@@ -19,6 +19,8 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""This is the top-level module of the SimBricks orchestration framework that
+users interact with."""
 
 import argparse
 import asyncio
@@ -32,11 +34,13 @@ import sys
 import typing as tp
 from signal import SIGINT, signal
 
+from simbricks.orchestration import exectools
 from simbricks.orchestration.exectools import LocalExecutor, RemoteExecutor
 from simbricks.orchestration.experiment.experiment_environment import ExpEnv
 from simbricks.orchestration.experiments import (
     DistributedExperiment, Experiment
 )
+from simbricks.orchestration.runtime import common as rt_common
 from simbricks.orchestration.runtime.common import Run
 from simbricks.orchestration.runtime.distributed import (
     DistributedSimpleRuntime, auto_dist
@@ -47,186 +51,186 @@ from simbricks.orchestration.runtime.local import (
 from simbricks.orchestration.runtime.slurm import SlurmRuntime
 
 
-# pylint: disable=redefined-outer-name
-def mkdir_if_not_exists(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    # general arguments for experiments
+    parser.add_argument(
+        'experiments',
+        metavar='EXP',
+        type=str,
+        nargs='+',
+        help='Python modules to load the experiments from'
+    )
+    parser.add_argument(
+        '--list',
+        action='store_const',
+        const=True,
+        default=False,
+        help='List available experiment names'
+    )
+    parser.add_argument(
+        '--filter',
+        metavar='PATTERN',
+        type=str,
+        nargs='+',
+        help='Only run experiments matching the given Unix shell style patterns'
+    )
+    parser.add_argument(
+        '--pickled',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Interpret experiment modules as pickled runs instead of .py files'
+    )
+    parser.add_argument(
+        '--runs',
+        metavar='N',
+        type=int,
+        default=1,
+        help='Number of repetition of each experiment'
+    )
+    parser.add_argument(
+        '--firstrun', metavar='N', type=int, default=1, help='ID for first run'
+    )
+    parser.add_argument(
+        '--force',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Run experiments even if output already exists (overwrites output)'
+    )
+    parser.add_argument(
+        '--verbose',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Verbose output, for example, print component simulators\' output'
+    )
+    parser.add_argument(
+        '--pcap',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Dump pcap file (if supported by component simulator)'
+    )
+
+    # arguments for the experiment environment
+    g_env = parser.add_argument_group('Environment')
+    g_env.add_argument(
+        '--repo',
+        metavar='DIR',
+        type=str,
+        default='..',
+        help='SimBricks repository directory'
+    )
+    g_env.add_argument(
+        '--workdir',
+        metavar='DIR',
+        type=str,
+        default='./out/',
+        help='Work directory base'
+    )
+    g_env.add_argument(
+        '--outdir',
+        metavar='DIR',
+        type=str,
+        default='./out/',
+        help='Output directory base'
+    )
+    g_env.add_argument(
+        '--cpdir',
+        metavar='DIR',
+        type=str,
+        default='./out/',
+        help='Checkpoint directory base'
+    )
+    g_env.add_argument(
+        '--hosts',
+        metavar='JSON_FILE',
+        type=str,
+        default=None,
+        help='List of hosts to use (json)'
+    )
+    g_env.add_argument(
+        '--shmdir',
+        metavar='DIR',
+        type=str,
+        default=None,
+        help='Shared memory directory base (workdir if not set)'
+    )
+
+    # arguments for the parallel runtime
+    g_par = parser.add_argument_group('Parallel Runtime')
+    g_par.add_argument(
+        '--parallel',
+        dest='runtime',
+        action='store_const',
+        const='parallel',
+        default='sequential',
+        help='Use parallel instead of sequential runtime'
+    )
+    g_par.add_argument(
+        '--cores',
+        metavar='N',
+        type=int,
+        default=len(os.sched_getaffinity(0)),
+        help='Number of cores to use for parallel runs'
+    )
+    g_par.add_argument(
+        '--mem',
+        metavar='N',
+        type=int,
+        default=None,
+        help='Memory limit for parallel runs (in MB)'
+    )
+
+    # arguments for the slurm runtime
+    g_slurm = parser.add_argument_group('Slurm Runtime')
+    g_slurm.add_argument(
+        '--slurm',
+        dest='runtime',
+        action='store_const',
+        const='slurm',
+        default='sequential',
+        help='Use slurm instead of sequential runtime'
+    )
+    g_slurm.add_argument(
+        '--slurmdir',
+        metavar='DIR',
+        type=str,
+        default='./slurm/',
+        help='Slurm communication directory'
+    )
+
+    # arguments for the distributed runtime
+    g_dist = parser.add_argument_group('Distributed Runtime')
+    g_dist.add_argument(
+        '--dist',
+        dest='runtime',
+        action='store_const',
+        const='dist',
+        default='sequential',
+        help='Use sequential distributed runtime instead of local'
+    )
+    g_dist.add_argument(
+        '--auto-dist',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Automatically distribute non-distributed experiments'
+    )
+    g_dist.add_argument(
+        '--proxy-type',
+        metavar='TYPE',
+        type=str,
+        default='sockets',
+        help='Proxy type to use (sockets,rdma) for auto distribution'
+    )
+
+    return parser.parse_args()
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    'experiments',
-    metavar='EXP',
-    type=str,
-    nargs='+',
-    help='Python modules to load the experiments from'
-)
-parser.add_argument(
-    '--list',
-    action='store_const',
-    const=True,
-    default=False,
-    help='List available experiment names'
-)
-parser.add_argument(
-    '--filter',
-    metavar='PATTERN',
-    type=str,
-    nargs='+',
-    help='Only run experiments matching the given Unix shell style patterns'
-)
-parser.add_argument(
-    '--pickled',
-    action='store_const',
-    const=True,
-    default=False,
-    help='Interpret experiment modules as pickled runs instead of .py files'
-)
-parser.add_argument(
-    '--runs',
-    metavar='N',
-    type=int,
-    default=1,
-    help='Number of repetition of each experiment'
-)
-parser.add_argument(
-    '--firstrun', metavar='N', type=int, default=1, help='ID for first run'
-)
-parser.add_argument(
-    '--force',
-    action='store_const',
-    const=True,
-    default=False,
-    help='Run experiments even if output already exists (overwrites output)'
-)
-parser.add_argument(
-    '--verbose',
-    action='store_const',
-    const=True,
-    default=False,
-    help='Verbose output, for example, print component simulators\' output'
-)
-parser.add_argument(
-    '--pcap',
-    action='store_const',
-    const=True,
-    default=False,
-    help='Dump pcap file (if supported by component simulator)'
-)
-
-g_env = parser.add_argument_group('Environment')
-g_env.add_argument(
-    '--repo',
-    metavar='DIR',
-    type=str,
-    default='..',
-    help='SimBricks repository directory'
-)
-g_env.add_argument(
-    '--workdir',
-    metavar='DIR',
-    type=str,
-    default='./out/',
-    help='Work directory base'
-)
-g_env.add_argument(
-    '--outdir',
-    metavar='DIR',
-    type=str,
-    default='./out/',
-    help='Output directory base'
-)
-g_env.add_argument(
-    '--cpdir',
-    metavar='DIR',
-    type=str,
-    default='./out/',
-    help='Checkpoint directory base'
-)
-g_env.add_argument(
-    '--hosts',
-    metavar='JSON_FILE',
-    type=str,
-    default=None,
-    help='List of hosts to use (json)'
-)
-g_env.add_argument(
-    '--shmdir',
-    metavar='DIR',
-    type=str,
-    default=None,
-    help='Shared memory directory base (workdir if not set)'
-)
-
-g_par = parser.add_argument_group('Parallel Runtime')
-g_par.add_argument(
-    '--parallel',
-    dest='runtime',
-    action='store_const',
-    const='parallel',
-    default='sequential',
-    help='Use parallel instead of sequential runtime'
-)
-g_par.add_argument(
-    '--cores',
-    metavar='N',
-    type=int,
-    default=len(os.sched_getaffinity(0)),
-    help='Number of cores to use for parallel runs'
-)
-g_par.add_argument(
-    '--mem',
-    metavar='N',
-    type=int,
-    default=None,
-    help='Memory limit for parallel runs (in MB)'
-)
-
-g_slurm = parser.add_argument_group('Slurm Runtime')
-g_slurm.add_argument(
-    '--slurm',
-    dest='runtime',
-    action='store_const',
-    const='slurm',
-    default='sequential',
-    help='Use slurm instead of sequential runtime'
-)
-g_slurm.add_argument(
-    '--slurmdir',
-    metavar='DIR',
-    type=str,
-    default='./slurm/',
-    help='Slurm communication directory'
-)
-
-g_dist = parser.add_argument_group('Distributed Runtime')
-g_dist.add_argument(
-    '--dist',
-    dest='runtime',
-    action='store_const',
-    const='dist',
-    default='sequential',
-    help='Use sequential distributed runtime instead of local'
-)
-g_dist.add_argument(
-    '--auto-dist',
-    action='store_const',
-    const=True,
-    default=False,
-    help='Automatically distribute non-distributed experiments'
-)
-g_dist.add_argument(
-    '--proxy-type',
-    metavar='TYPE',
-    type=str,
-    default='sockets',
-    help='Proxy type to use (sockets,rdma) for auto distribution'
-)
-args = parser.parse_args()
-
-
-# pylint: disable=redefined-outer-name
-def load_executors(path):
+def load_executors(path: str) -> tp.List[exectools.Executor]:
     """Load hosts list from json file and return list of executors."""
     with open(path, 'r', encoding='utf-8') as f:
         hosts = json.load(f)
@@ -248,13 +252,7 @@ def load_executors(path):
     return exs
 
 
-if args.hosts is None:
-    executors = [LocalExecutor()]
-else:
-    executors = load_executors(args.hosts)
-
-
-def warn_multi_exec():
+def warn_multi_exec(executors: tp.List[exectools.Executor]):
     if len(executors) > 1:
         print(
             'Warning: multiple hosts specified, only using first one for now',
@@ -262,32 +260,16 @@ def warn_multi_exec():
         )
 
 
-# initialize runtime
-if args.runtime == 'parallel':
-    warn_multi_exec()
-    rt = LocalParallelRuntime(
-        cores=args.cores,
-        mem=args.mem,
-        verbose=args.verbose,
-        executor=executors[0]
-    )
-elif args.runtime == 'slurm':
-    rt = SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
-elif args.runtime == 'dist':
-    rt = DistributedSimpleRuntime(executors, verbose=args.verbose)
-else:
-    warn_multi_exec()
-    rt = LocalSimpleRuntime(verbose=args.verbose, executor=executors[0])
-
-
 # pylint: disable=redefined-outer-name
 def add_exp(
     e: Experiment,
+    rt: rt_common.Runtime,
     run: int,
     prereq: tp.Optional[Run],
     create_cp: bool,
     restore_cp: bool,
-    no_simbricks: bool
+    no_simbricks: bool,
+    args: argparse.Namespace
 ):
     outpath = f'{args.outdir}/{e.name}-{run}.json'
     if os.path.exists(outpath) and not args.force:
@@ -314,60 +296,94 @@ def add_exp(
     return run
 
 
-# load experiments
-if not args.pickled:
-    # default: load python modules with experiments
-    experiments = []
-    for path in args.experiments:
-        modname, _ = os.path.splitext(os.path.basename(path))
+def main():
+    args = parse_args()
+    if args.hosts is None:
+        executors = [exectools.LocalExecutor()]
+    else:
+        executors = load_executors(args.hosts)
 
-        class ExperimentModuleLoadError(Exception):
-            pass
+    # initialize runtime
+    if args.runtime == 'parallel':
+        warn_multi_exec(executors)
+        rt = LocalParallelRuntime(
+            cores=args.cores,
+            mem=args.mem,
+            verbose=args.verbose,
+            executor=executors[0]
+        )
+    elif args.runtime == 'slurm':
+        rt = SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
+    elif args.runtime == 'dist':
+        rt = DistributedSimpleRuntime(executors, verbose=args.verbose)
+    else:
+        warn_multi_exec(executors)
+        rt = LocalSimpleRuntime(verbose=args.verbose, executor=executors[0])
 
-        spec = importlib.util.spec_from_file_location(modname, path)
-        if spec is None:
-            raise ExperimentModuleLoadError('spec is None')
-        mod = importlib.util.module_from_spec(spec)
-        if spec.loader is None:
-            raise ExperimentModuleLoadError('spec.loader is None')
-        spec.loader.exec_module(mod)
-        experiments += mod.experiments
+    # load experiments
+    if not args.pickled:
+        # default: load python modules with experiments
+        experiments = []
+        for path in args.experiments:
+            modname, _ = os.path.splitext(os.path.basename(path))
 
-    if args.list:
+            class ExperimentModuleLoadError(Exception):
+                pass
+
+            spec = importlib.util.spec_from_file_location(modname, path)
+            if spec is None:
+                raise ExperimentModuleLoadError('spec is None')
+            mod = importlib.util.module_from_spec(spec)
+            if spec.loader is None:
+                raise ExperimentModuleLoadError('spec.loader is None')
+            spec.loader.exec_module(mod)
+            experiments += mod.experiments
+
+        if args.list:
+            for e in experiments:
+                print(e.name)
+            sys.exit(0)
+
         for e in experiments:
-            print(e.name)
-        sys.exit(0)
+            if args.auto_dist and not isinstance(e, DistributedExperiment):
+                e = auto_dist(e, executors, args.proxy_type)
+            # apply filter if any specified
+            if (args.filter) and (len(args.filter) > 0):
+                match = False
+                for f in args.filter:
+                    match = fnmatch.fnmatch(e.name, f)
+                    if match:
+                        break
 
-    for e in experiments:
-        if args.auto_dist and not isinstance(e, DistributedExperiment):
-            e = auto_dist(e, executors, args.proxy_type)
-        # apply filter if any specified
-        if (args.filter) and (len(args.filter) > 0):
-            match = False
-            for f in args.filter:
-                match = fnmatch.fnmatch(e.name, f)
-                if match:
-                    break
+                if not match:
+                    continue
 
-            if not match:
-                continue
+            # if this is an experiment with a checkpoint we might have to create
+            # it
+            no_simbricks = e.no_simbricks
+            if e.checkpoint:
+                prereq = add_exp(
+                    e, rt, 0, None, True, False, no_simbricks, args
+                )
+            else:
+                prereq = None
 
-        # if this is an experiment with a checkpoint we might have to create it
-        no_simbricks = e.no_simbricks
-        if e.checkpoint:
-            prereq = add_exp(e, 0, None, True, False, no_simbricks)
-        else:
-            prereq = None
+            for run in range(args.firstrun, args.firstrun + args.runs):
+                add_exp(
+                    e, rt, run, prereq, False, e.checkpoint, no_simbricks, args
+                )
+    else:
+        # otherwise load pickled run object
+        for path in args.experiments:
+            with open(path, 'rb') as f:
+                rt.add_run(pickle.load(f))
 
-        for run in range(args.firstrun, args.firstrun + args.runs):
-            add_exp(e, run, prereq, False, e.checkpoint, no_simbricks)
-else:
-    # otherwise load pickled run object
-    for path in args.experiments:
-        with open(path, 'rb') as f:
-            rt.add_run(pickle.load(f))
+    # register interrupt handler
+    signal(SIGINT, lambda *_: rt.interrupt())
 
-# register interrupt handler
-signal(SIGINT, lambda *_: rt.interrupt())
+    # invoke runtime to run experiments
+    asyncio.run(rt.start())
 
-asyncio.run(rt.start())
+
+if __name__ == '__main__':
+    main()
