@@ -24,10 +24,12 @@
 from __future__ import annotations
 
 import math
+import sys
 import typing as tp
 
 from simbricks.orchestration.experiment.experiment_environment import ExpEnv
 from simbricks.orchestration.nodeconfig import NodeConfig
+from simbricks.orchestration.e2e_components import E2ETopology, E2ESimbricksHost
 
 
 class Simulator(object):
@@ -883,6 +885,40 @@ class TofinoNet(NetSim):
             cmd += ' -u'
         for (_, n) in self.connect_sockets(env):
             cmd += ' -s ' + n
+        return cmd
+
+
+class NS3E2ENet(NetSim):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.e2e_components: tp.List[E2ETopology] = []
+
+    def resolve_socket_paths(
+        self, env: ExpEnv, e2e_sim: E2ESimbricksHost
+    ) -> None:
+        if e2e_sim.simbricks_host is None:
+            print('E2E Simbricks host does not contain a simulator')
+            sys.exit(1)
+        e2e_sim.unix_socket = env.nic_eth_path(e2e_sim.simbricks_host)
+
+    def run_cmd(self, env):
+        for topo in self.e2e_components:
+            topo.resolve_paths()
+            for c in topo.components:
+                if isinstance(c, E2ESimbricksHost):
+                    self.resolve_socket_paths(env, c)
+
+        params: tp.List[str] = []
+        for component in self.e2e_components:
+            params.append(component.ns3_config())
+
+        cmd = (
+            f'{env.repodir}/sims/external/ns-3'
+            f'/simbricks-run.sh e2e-cc-example {" ".join(params)} {self.opt}'
+        )
+        print(cmd)
+
         return cmd
 
 
