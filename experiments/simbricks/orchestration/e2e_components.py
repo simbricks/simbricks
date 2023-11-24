@@ -91,6 +91,7 @@ class E2EComponent(E2EBase):
         self.components.append(component)
 
     def resolve_paths(self) -> None:
+        self.has_path = True
         for component in self.components:
             if component.has_path:
                 print(
@@ -99,7 +100,6 @@ class E2EComponent(E2EBase):
                 )
                 sys.exit(1)
             component.id = f"{self.id}/{component.id}"
-            component.has_path = True
             component.resolve_paths()
 
 
@@ -108,7 +108,6 @@ class E2ETopology(E2EComponent):
     def __init__(self, idd: str) -> None:
         super().__init__(idd)
         self.category = "Topology"
-        self.has_path = True
 
 
 class E2EDumbbellTopology(E2ETopology):
