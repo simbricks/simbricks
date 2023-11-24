@@ -904,7 +904,8 @@ class NS3E2ENet(NetSim):
 
     def run_cmd(self, env):
         for topo in self.e2e_components:
-            topo.resolve_paths()
+            if not topo.has_path:
+                topo.resolve_paths()
             for c in topo.components:
                 if isinstance(c, E2ESimbricksHost):
                     self.resolve_socket_paths(env, c)
