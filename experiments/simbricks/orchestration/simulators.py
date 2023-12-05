@@ -886,7 +886,6 @@ class NS3DumbbellNet(NetSim):
             f'{env.repodir}/sims/external/ns-3'
             f'/cosim-run.sh cosim cosim-dumbbell-example {ports} {self.opt}'
         )
-        print(cmd)
 
         return cmd
 
@@ -902,7 +901,6 @@ class NS3BridgeNet(NetSim):
             f'{env.repodir}/sims/external/ns-3'
             f'/cosim-run.sh cosim cosim-bridge-example {ports} {self.opt}'
         )
-        print(cmd)
 
         return cmd
 
