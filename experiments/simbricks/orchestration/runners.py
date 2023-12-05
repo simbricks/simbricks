@@ -226,6 +226,58 @@ class ExperimentBaseRunner(ABC):
                 pass
 
 
+class ExperimentDryRunner(ExperimentBaseRunner):
+    """A runner that only prints what a normal runner would execute."""
+
+    def sim_executor(self, sim: Simulator) -> Executor:
+        raise NotImplementedError()
+
+    async def start_sim(self, sim: Simulator) -> None:
+        """Print the command that would start the simulator."""
+        name = sim.full_name()
+        print(f'{self.exp.name}: starting {name}')
+
+        run_cmd = sim.run_cmd(self.env)
+        if run_cmd is None:
+            print(f'{self.exp.name}: started dummy {name}')
+            return
+        print(run_cmd)
+
+    async def prepare(self) -> None:
+        raise NotImplementedError()
+
+    async def wait_for_sims(self) -> None:
+        raise NotImplementedError()
+
+    async def terminate_collect_sims(self) -> ExpOutput:
+        raise NotImplementedError()
+
+    async def run(self) -> ExpOutput:
+        try:
+            graph = self.sim_graph()
+            ts = graphlib.TopologicalSorter(graph)
+            ts.prepare()
+            while ts.is_active():
+                # "start" ready simulators
+                sims = []
+                for sim in ts.get_ready():
+                    await self.start_sim(sim)
+                    sims.append(sim)
+
+                for sim in sims:
+                    ts.done(sim)
+        except asyncio.CancelledError:
+            if self.verbose:
+                print(f'{self.exp.name}: interrupted')
+        except:  # pylint: disable=bare-except
+            self.out.set_failed()
+            traceback.print_exc()
+
+        # return self.out to conform to the function signature, although
+        # the returned value will never be used
+        return self.out
+
+
 class ExperimentSimpleRunner(ExperimentBaseRunner):
     """Simple experiment runner with just one executor."""
 

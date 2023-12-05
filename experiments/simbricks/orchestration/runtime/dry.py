@@ -1,4 +1,4 @@
-# Copyright 2021 Max Planck Institute for Software Systems, and
+# Copyright 2023 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -20,12 +20,42 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
+import typing as tp
+
+from simbricks.orchestration.runners import ExperimentDryRunner
 from simbricks.orchestration.runtime.common import Run, Runtime
-from simbricks.orchestration.runtime.distributed import (
-    DistributedSimpleRuntime, auto_dist
-)
-from simbricks.orchestration.runtime.dry import DryRuntime
-from simbricks.orchestration.runtime.local import (
-    LocalParallelRuntime, LocalSimpleRuntime
-)
-from simbricks.orchestration.runtime.slurm import SlurmRuntime
+
+
+class DryRuntime(Runtime):
+    """Execute dry runs."""
+
+    def __init__(
+        self,
+        verbose=False,
+    ):
+        super().__init__()
+        self.runnable: tp.List[Run] = []
+        self.verbose = verbose
+        self._running: tp.Optional[asyncio.Task] = None
+
+    def add_run(self, run: Run) -> None:
+        self.runnable.append(run)
+
+    async def do_run(self, run: Run) -> None:
+        """Actually executes `run`."""
+        runner = ExperimentDryRunner(run.experiment, run.env, self.verbose)
+        await runner.run()  # handles CancelledError
+
+    async def start(self) -> None:
+        """Execute the runs defined in `self.runnable`."""
+        for run in self.runnable:
+            if self._interrupted:
+                return
+
+            self._running = asyncio.create_task(self.do_run(run))
+            await self._running
+
+    def interrupt_handler(self) -> None:
+        if self._running:
+            self._running.cancel()
