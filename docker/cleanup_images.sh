@@ -2,4 +2,9 @@
 set -e
 rm -rf images/{packer,packer_cache}
 rm -rf images/output-*/*.raw
-rm -rf images/kernel/{kheaders,linux-5.4.46}
+rm -rf images/kernel/kheaders
+find images/kernel \
+    -maxdepth 1 \
+    -regex "^images/kernel/linux-[0-9]*\.[0-9]*\.[0-9]*$" \
+    -type d \
+    -exec rm -rf {} \;
