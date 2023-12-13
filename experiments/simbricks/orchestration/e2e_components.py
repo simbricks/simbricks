@@ -25,8 +25,47 @@ from __future__ import annotations
 
 import typing as tp
 from abc import ABC, abstractmethod
+from enum import Enum
 
 import sys
+
+
+class CongestionControl(Enum):
+    RENO = ("ns3::TcpLinuxReno", "reno")
+    WESTWOOD = ("ns3::TcpWestwoodPlus", "westwood")
+    BIC = ("ns3::TcpBic", "bic")
+    CUBIC = ("ns3::TcpCubic", "cubic")
+    HTCP = ("ns3::TcpHtcp", "htcp")
+    HYBLA = ("ns3::TcpHybla", "hybla")
+    VEGAS = ("ns3::TcpVegas", "vegas")
+    NV = ("", "nv")
+    SCALABLE = ("ns3::TcpScalable", "scalable")
+    LP = ("ns3::TcpLp", "lp")
+    VENO = ("ns3::TcpVeno", "veno")
+    YEAH = ("ns3::TcpYeah", "yeah")
+    ILLINOIS = ("ns3::TcpIllinois", "illinois")
+    DCTCP = ("ns3::TcpDctcp", "dctcp")
+    CDG = ("", "cdg")
+    BBR = ("ns3::TcpBbr", "bbr")
+    HIGHSPEED = ("ns3::TcpHighSpeed", "highspeed")
+
+    def __init__(self, ns3_str, gem5_str):
+        self.ns3_str = ns3_str
+        self.gem5_str = gem5_str
+
+    def __str__(self):
+        return self.name.lower()
+
+    @property
+    def ns3(self):
+        if self.ns3_str == "":
+            print(f"There is no ns3 implementation for {self.name} available")
+            sys.exit(1)
+        return self.ns3_str
+
+    @property
+    def gem5(self):
+        return self.gem5_str
 
 
 class E2EBase(ABC):
