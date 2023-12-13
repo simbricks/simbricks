@@ -172,7 +172,7 @@ def create_tcp_cong_hosts(
     name_prefix: str,
     net: NetSim,
     nic_class: tp.Type[NICSim],
-    host_class: tp.Type[HostSim],
+    host_class: tp.Union[tp.Type[HostSim], tp.Callable[[NodeConfig], HostSim]],
     nc_class: tp.Type[NodeConfig],
     app_class: tp.Type[AppConfig],
     cpu_freq: str,
