@@ -25,6 +25,7 @@ import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
 import simbricks.orchestration.e2e_components as e2e
 from simbricks.orchestration.simulator_utils import create_tcp_cong_hosts
+from simbricks.orchestration.e2e_topologies import E2EDumbbellTopology
 
 # iperf TCP_multi_client test
 # naming convention following host-nic-net-app
@@ -76,17 +77,18 @@ for congestion_control in types_of_congestion_control:
 
             net = NetClass()
             net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
-            topology = e2e.E2EDumbbellTopology('topo')
+
+            topology = E2EDumbbellTopology()
             topology.data_rate = f'{link_rate}Mbps'
             topology.delay = f'{link_latency}ms'
             topology.queue_size = f'{queue_size}B'
-            net.e2e_components.append(topology)
+            topology.mtu = f'{mtu-52}'
+            net.add_component(topology)
 
             for i in range(1, num_ns3_hosts + 1):
                 host = e2e.E2ESimpleNs3Host(f'ns3server-{i}')
                 host.delay = '1us'
                 host.data_rate = f'{link_rate}Mbps'
-                host.node_position = 'left'
                 host.ip = f'192.168.64.{i}/24'
                 host.queue_size = f'{queue_size}B'
                 app = e2e.E2EPacketSinkApplication('sink')
@@ -97,20 +99,19 @@ for congestion_control in types_of_congestion_control:
                 probe.interval = '100ms'
                 probe.file = f'sink-rx-{i}'
                 app.add_component(probe)
-                topology.add_component(host)
+                topology.add_left_component(host)
 
             for i in range(1, num_ns3_hosts + 1):
                 host = e2e.E2ESimpleNs3Host(f'ns3client-{i}')
                 host.delay = '1us'
                 host.data_rate = f'{link_rate}Mbps'
-                host.node_position = 'right'
                 host.ip = f'192.168.64.{i+num_ns3_hosts+num_simbricks_hosts}/24'
                 host.queue_size = f'{queue_size}B'
                 app = e2e.E2EBulkSendApplication('sender')
                 app.remote_ip = f'192.168.64.{i}:5000'
                 app.stop_time = '20s'
                 host.add_component(app)
-                topology.add_component(host)
+                topology.add_right_component(host)
 
             e = exp.Experiment(
                 'gt-ib-dumbbell-' + str(congestion_control) + 'TCPm' +
@@ -164,16 +165,14 @@ for congestion_control in types_of_congestion_control:
             for i, server in enumerate(servers, 1):
                 host = e2e.E2ESimbricksHost(f'simbricksserver-{i}')
                 host.eth_latency = '1us'
-                host.node_position = 'left'
                 host.simbricks_host = server.nics[0]
-                topology.add_component(host)
+                topology.add_left_component(host)
 
             for i, client in enumerate(clients, 1):
                 host = e2e.E2ESimbricksHost(f'simbricksclient-{i}')
                 host.eth_latency = '1us'
-                host.node_position = 'right'
                 host.simbricks_host = client.nics[0]
-                topology.add_component(host)
+                topology.add_right_component(host)
 
             i = 0
             for cl in clients:

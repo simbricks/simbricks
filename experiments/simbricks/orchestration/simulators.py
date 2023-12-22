@@ -29,7 +29,8 @@ import typing as tp
 
 from simbricks.orchestration.experiment.experiment_environment import ExpEnv
 from simbricks.orchestration.nodeconfig import NodeConfig
-from simbricks.orchestration.e2e_components import E2ETopology, E2ESimbricksHost
+from simbricks.orchestration.e2e_topologies import E2ETopology
+from simbricks.orchestration import e2e_components as e2e
 
 
 class Simulator(object):
@@ -904,10 +905,24 @@ class NS3E2ENet(NetSim):
 
     def __init__(self) -> None:
         super().__init__()
-        self.e2e_components: tp.List[E2ETopology] = []
+        self.first_run = True
+        self.e2e_components: tp.List[tp.Union[e2e.E2ETopologyNode,
+                                              e2e.E2ETopologyChannel]] = []
+        self.e2e_topologies: tp.List[E2ETopology] = []
+
+    def add_component(
+        self,
+        component: tp.Union[e2e.E2ETopologyNode,
+                            e2e.E2ETopologyChannel,
+                            E2ETopology]
+    ):
+        if isinstance(component, E2ETopology):
+            self.e2e_topologies.append(component)
+        else:
+            self.e2e_components.append(component)
 
     def resolve_socket_paths(
-        self, env: ExpEnv, e2e_sim: E2ESimbricksHost
+        self, env: ExpEnv, e2e_sim: e2e.E2ESimbricksHost
     ) -> None:
         if e2e_sim.simbricks_host is None:
             print('E2E Simbricks host does not contain a simulator')
@@ -915,12 +930,18 @@ class NS3E2ENet(NetSim):
         e2e_sim.unix_socket = env.nic_eth_path(e2e_sim.simbricks_host)
 
     def run_cmd(self, env):
-        for topo in self.e2e_components:
-            if not topo.has_path:
-                topo.resolve_paths()
-            for c in topo.components:
-                if isinstance(c, E2ESimbricksHost):
+        if self.first_run:
+            for topo in self.e2e_topologies:
+                topo.add_to_network(self)
+
+        for component in self.e2e_components:
+            if self.first_run:
+                component.resolve_paths()
+            for c in component.components:
+                if isinstance(c, e2e.E2ESimbricksHost):
                     self.resolve_socket_paths(env, c)
+
+        self.first_run = False
 
         params: tp.List[str] = []
         for component in self.e2e_components:

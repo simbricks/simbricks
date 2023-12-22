@@ -142,27 +142,55 @@ class E2EComponent(E2EBase):
             component.resolve_paths()
 
 
-class E2ETopology(E2EComponent):
+class E2ETopologyNode(E2EComponent):
 
     def __init__(self, idd: str) -> None:
         super().__init__(idd)
-        self.category = "Topology"
+        self.category = "TopologyNode"
 
 
-class E2EDumbbellTopology(E2ETopology):
+class E2ESwitchNode(E2ETopologyNode):
 
     def __init__(self, idd: str) -> None:
         super().__init__(idd)
-        self.type = "Dumbbell"
+        self.type = "Switch"
+        self.mtu = ""
+
+    def ns3_config(self) -> str:
+        self.mapping.update({
+            "Mtu": self.mtu,
+        })
+        return super().ns3_config()
+
+
+class E2ETopologyChannel(E2EComponent):
+
+    def __init__(self, idd: str) -> None:
+        super().__init__(idd)
+        self.category = "TopologyChannel"
+
+
+class E2ESimpleChannel(E2ETopologyChannel):
+
+    def __init__(self, idd: str) -> None:
+        super().__init__(idd)
+        self.type = "Simple"
         self.data_rate = ""
         self.queue_size = ""
         self.delay = ""
+        self.left_node: E2ETopologyNode
+        self.right_node: E2ETopologyNode
 
     def ns3_config(self) -> str:
+        if self.left_node is None or self.right_node is None:
+            print(f"Not all nodes for channel {self.id} given")
+            sys.exit(1)
         self.mapping.update({
             "DataRate": self.data_rate,
             "QueueSize": self.queue_size,
             "Delay": self.delay,
+            "LeftNode": self.left_node.id,
+            "RightNode": self.right_node.id,
         })
         return super().ns3_config()
 
@@ -172,11 +200,6 @@ class E2EHost(E2EComponent):
     def __init__(self, idd: str) -> None:
         super().__init__(idd)
         self.category = "Host"
-        self.node_position = ""
-
-    def ns3_config(self) -> str:
-        self.mapping.update({"NodePosition": self.node_position})
-        return super().ns3_config()
 
 
 class E2ESimbricksHost(E2EHost):
