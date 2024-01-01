@@ -1,0 +1,7 @@
+--- rootfs.old/etc/group	2023-12-21 14:15:17.593037389 +0100
++++ rootfs/etc/group	2023-12-21 14:17:41.312562812 +0100
+@@ -44,3 +44,4 @@
+ systemd-network:x:104:
+ systemd-resolve:x:105:
+ systemd-timesync:x:106:
++kvm:x:100001:root
