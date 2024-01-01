@@ -27,4 +27,4 @@ from simbricks.orchestration.runtime.distributed import (
 from simbricks.orchestration.runtime.local import (
     LocalParallelRuntime, LocalSimpleRuntime
 )
-from simbricks.orchestration.runtime.slurm import SlurmRuntime
+from simbricks.orchestration.runtime.slurm import create_batch_script
