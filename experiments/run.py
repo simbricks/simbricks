@@ -109,7 +109,7 @@ def parse_args() -> argparse.Namespace:
         '--repo',
         metavar='DIR',
         type=str,
-        default='..',
+        default=os.path.dirname(__file__) + '/..',
         help='SimBricks repository directory'
     )
     g_env.add_argument(
