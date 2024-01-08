@@ -172,7 +172,7 @@ class Component(object):
     async def started(self) -> None:
         pass
 
-    async def terminated(self, rc) -> None:
+    async def terminated(self, rc: int) -> None:
         pass
 
     async def process_out(self, lines: tp.List[str], eof: bool) -> None:
