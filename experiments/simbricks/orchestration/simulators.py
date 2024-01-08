@@ -923,12 +923,29 @@ class NS3E2ENet(NetSim):
             self.e2e_components.append(component)
 
     def resolve_socket_paths(
-        self, env: ExpEnv, e2e_sim: e2e.E2ESimbricksHost
+        self,
+        env: ExpEnv,
+        e2e_sim: tp.Union[e2e.E2ESimbricksNetwork, e2e.E2ESimbricksHost],
+        listen: bool = False
     ) -> None:
-        if e2e_sim.simbricks_host is None:
-            print('E2E Simbricks host does not contain a simulator')
+        if e2e_sim.simbricks_component is None:
+            print('E2E Simbricks adapter does not contain a simulator')
             sys.exit(1)
-        e2e_sim.unix_socket = env.nic_eth_path(e2e_sim.simbricks_host)
+        if e2e_sim.adapter_type == e2e.SimbricksAdapterType.NIC:
+            e2e_sim.unix_socket = env.nic_eth_path(e2e_sim.simbricks_component)
+        elif e2e_sim.adapter_type == e2e.SimbricksAdapterType.NETWORK:
+            if listen:
+                e2e_sim.unix_socket = env.n2n_eth_path(
+                    self, e2e_sim.simbricks_component
+                )
+            else:
+                e2e_sim.unix_socket = env.n2n_eth_path(
+                    e2e_sim.simbricks_component, self
+                )
+        elif e2e_sim.adapter_type == e2e.SimbricksAdapterType.HOST:
+            e2e_sim.unix_socket = env.net2host_eth_path(
+                self, e2e_sim.simbricks_component
+            )
 
     def run_cmd(self, env):
         if self.first_run:
@@ -938,9 +955,16 @@ class NS3E2ENet(NetSim):
         for component in self.e2e_components:
             if self.first_run:
                 component.resolve_paths()
+
             for c in component.components:
                 if isinstance(c, e2e.E2ESimbricksHost):
                     self.resolve_socket_paths(env, c)
+                elif isinstance(c, e2e.E2ESimbricksNetworkNetIf):
+                    self.resolve_socket_paths(env, c)
+                    if self.first_run:
+                        self.connect_network(c.simbricks_component)
+                elif isinstance(c, e2e.E2ESimbricksNetworkNicIf):
+                    self.resolve_socket_paths(env, c, True)
 
         self.first_run = False
 
