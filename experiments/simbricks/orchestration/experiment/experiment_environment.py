@@ -125,3 +125,6 @@ class ExpEnv(object):
 
     def simics_cpfile(self, sim: 'simulators.Simulator') -> str:
         return f'{self.cpdir}/simics-cp.{sim.name}'
+
+    def ns3_e2e_params_file(self, sim: 'simulators.NS3E2ENet') -> str:
+        return f'{self.workdir}/ns3_e2e_params.{sim.name}'

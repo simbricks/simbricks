@@ -897,6 +897,7 @@ class NS3E2ENet(NetSim):
         self.e2e_components: tp.List[tp.Union[e2e.E2ETopologyNode,
                                               e2e.E2ETopologyChannel]] = []
         self.e2e_topologies: tp.List[E2ETopology] = []
+        self.use_file = True
 
     def add_component(
         self,
@@ -935,10 +936,21 @@ class NS3E2ENet(NetSim):
         for component in self.e2e_components:
             params.append(component.ns3_config())
 
-        cmd = (
-            f'{env.repodir}/sims/external/ns-3'
-            f'/simbricks-run.sh e2e-cc-example {" ".join(params)} {self.opt}'
-        )
+        params_str = f'{" ".join(params)} {self.opt}'
+
+        if self.use_file:
+            file_path = env.ns3_e2e_params_file(self)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(params_str)
+            cmd = (
+                f'{env.repodir}/sims/external/ns-3'
+                f'/simbricks-run.sh e2e-cc-example --ConfigFile={file_path}'
+            )
+        else:
+            cmd = (
+                f'{env.repodir}/sims/external/ns-3'
+                f'/simbricks-run.sh e2e-cc-example {params_str}'
+            )
         print(cmd)
 
         return cmd
