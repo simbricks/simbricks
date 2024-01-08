@@ -87,7 +87,7 @@ class E2EBase(ABC):
             child.ns3_config() for child in self.components
         ])
 
-        return f"--{self.category}={config} {child_configs}"
+        return f"--{self.category}=\"{config}\" {child_configs}"
 
     @abstractmethod
     def add_component(self, component: E2EComponent) -> None:
