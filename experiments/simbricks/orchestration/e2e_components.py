@@ -68,6 +68,18 @@ class CongestionControl(Enum):
         return self.gem5_str
 
 
+class SimbricksAdapterType(Enum):
+    NIC = 0
+    NETWORK = 1
+    HOST = 2
+
+
+class SimbricksSyncMode(Enum):
+    SYNC_DISABLED = 0
+    SYNC_OPTIONAL = 1
+    SYNC_REQUIRED = 2
+
+
 class E2EBase(ABC):
 
     def __init__(self) -> None:
@@ -195,6 +207,45 @@ class E2ESimpleChannel(E2ETopologyChannel):
         return super().ns3_config()
 
 
+class E2ESimbricksNetwork(E2EComponent):
+
+    def __init__(self, idd: str) -> None:
+        super().__init__(idd)
+        self.category = "Network"
+        self.adapter_type = SimbricksAdapterType.NETWORK
+        self.unix_socket = ""
+        self.sync_delay = ""
+        self.poll_delay = ""
+        self.eth_latency = ""
+        self.sync: SimbricksSyncMode = SimbricksSyncMode.SYNC_OPTIONAL
+
+        self.simbricks_component = None
+
+    def ns3_config(self) -> str:
+        self.mapping.update({
+            "UnixSocket": self.unix_socket,
+            "SyncDelay": self.sync_delay,
+            "PollDelay": self.poll_delay,
+            "EthLatency": self.eth_latency,
+            "Sync": "" if self.sync is None else f"{self.sync.value}",
+        })
+        return super().ns3_config()
+
+
+class E2ESimbricksNetworkNetIf(E2ESimbricksNetwork):
+
+    def __init__(self, idd: str) -> None:
+        super().__init__(idd)
+        self.type = "NetIf"
+
+
+class E2ESimbricksNetworkNicIf(E2ESimbricksNetwork):
+
+    def __init__(self, idd: str) -> None:
+        super().__init__(idd)
+        self.type = "NicIf"
+
+
 class E2EHost(E2EComponent):
 
     def __init__(self, idd: str) -> None:
@@ -207,13 +258,14 @@ class E2ESimbricksHost(E2EHost):
     def __init__(self, idd: str) -> None:
         super().__init__(idd)
         self.type = "Simbricks"
+        self.adapter_type = SimbricksAdapterType.NIC
         self.unix_socket = ""
         self.sync_delay = ""
         self.poll_delay = ""
         self.eth_latency = ""
-        self.sync = True
+        self.sync: SimbricksSyncMode = SimbricksSyncMode.SYNC_OPTIONAL
 
-        self.simbricks_host = None
+        self.simbricks_component = None
 
     def ns3_config(self) -> str:
         self.mapping.update({
@@ -221,7 +273,7 @@ class E2ESimbricksHost(E2EHost):
             "SyncDelay": self.sync_delay,
             "PollDelay": self.poll_delay,
             "EthLatency": self.eth_latency,
-            "Sync": "1" if self.sync else "0",
+            "Sync": "" if self.sync is None else f"{self.sync.value}",
         })
         return super().ns3_config()
 
