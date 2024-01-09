@@ -68,7 +68,6 @@ for congestion_control in types_of_congestion_control:
             queue_size = int(bdp * 2**k_val)
 
             options = {
-                'ns3::TcpL4Protocol::SocketType': congestion_control.ns3,
                 'ns3::TcpSocket::SegmentSize': f'{mtu-52}',
                 'ns3::TcpSocket::SndBufSize': '524288',
                 'ns3::TcpSocket::RcvBufSize': '524288',
@@ -110,6 +109,7 @@ for congestion_control in types_of_congestion_control:
                 host.data_rate = f'{link_rate}Mbps'
                 host.ip = f'192.168.64.{i}/24'
                 host.queue_size = f'{queue_size}B'
+                host.congestion_control = congestion_control
                 app = e2e.E2EPacketSinkApplication('sink')
                 app.local_ip = '0.0.0.0:5000'
                 app.stop_time = '20s'
@@ -126,6 +126,7 @@ for congestion_control in types_of_congestion_control:
                 host.data_rate = f'{link_rate}Mbps'
                 host.ip = f'192.168.64.{i+num_ns3_hosts+num_simbricks_hosts}/24'
                 host.queue_size = f'{queue_size}B'
+                host.congestion_control = congestion_control
                 app = e2e.E2EBulkSendApplication('sender')
                 app.remote_ip = f'192.168.64.{i}:5000'
                 app.stop_time = '20s'
