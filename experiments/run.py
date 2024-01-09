@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
         action='store_const',
         const=True,
         default=False,
-        help='List available experiment names'
+        help='List name of experiments that would be run'
     )
     parser.add_argument(
         '--filter',
@@ -328,6 +328,19 @@ def main():
             with open(path, 'rb') as f:
                 experiments.append(pickle.load(f))
 
+    # filter out experiments
+    if args.filter:
+        filtered_experiments = []
+        for exp in experiments:
+            match = False
+            for f in args.filter:
+                match = fnmatch.fnmatch(exp.name, f)
+                if match:
+                    filtered_experiments.append(exp)
+                    break
+
+        experiments = filtered_experiments
+
     # list all experiments that would be run
     if args.list:
         for e in experiments:
@@ -373,16 +386,6 @@ def main():
     for e in experiments:
         if args.auto_dist and not isinstance(e, exps.DistributedExperiment):
             e = runtime.auto_dist(e, executors, args.proxy_type)
-        # apply filter if any specified
-        if (args.filter) and (len(args.filter) > 0):
-            match = False
-            for f in args.filter:
-                match = fnmatch.fnmatch(e.name, f)
-                if match:
-                    break
-
-            if not match:  # skip this experiment since no filter matches
-                continue
 
         # if this is an experiment with a checkpoint we might have to create it
         no_simbricks = e.no_simbricks
