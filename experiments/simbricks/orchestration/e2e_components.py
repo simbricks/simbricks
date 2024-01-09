@@ -286,16 +286,19 @@ class E2ESimpleNs3Host(E2EHost):
         self.data_rate = ""
         self.queue_size = ""
         self.delay = ""
-        # todo change this to an enum
-        self.congestion_control = ""
+        self.congestion_control: CongestionControl = None
         self.ip = ""
 
     def ns3_config(self) -> str:
+        if self.congestion_control is None:
+            cc = ""
+        else:
+            cc = self.congestion_control.ns3
         self.mapping.update({
             "DataRate": self.data_rate,
             "QueueSize": self.queue_size,
             "Delay": self.delay,
-            "CongestionControl": self.congestion_control,
+            "CongestionControl": cc,
             "Ip": self.ip,
         })
         return super().ns3_config()
