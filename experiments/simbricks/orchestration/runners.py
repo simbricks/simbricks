@@ -128,7 +128,7 @@ class ExperimentBaseRunner(ABC):
             executor = self.sim_executor(host)
             task = asyncio.create_task(executor.send_file(path, self.verbose))
             copies.append(task)
-        await asyncio.wait(copies)
+        await asyncio.gather(*copies)
 
         # prepare all simulators in parallel
         sims = []
@@ -141,7 +141,7 @@ class ExperimentBaseRunner(ABC):
                 )
             )
             sims.append(task)
-        await asyncio.wait(sims)
+        await asyncio.gather(*sims)
 
     async def wait_for_sims(self) -> None:
         """Wait for simulators to terminate (the ones marked to wait on)."""
@@ -173,7 +173,7 @@ class ExperimentBaseRunner(ABC):
         for (executor, sock) in self.sockets:
             scs.append(asyncio.create_task(executor.rmtree(sock)))
         if scs:
-            await asyncio.wait(scs)
+            await asyncio.gather(*scs)
 
         # add all simulator components to the output
         for sim, sc in self.running:
@@ -197,7 +197,7 @@ class ExperimentBaseRunner(ABC):
                     sims.append(sim)
 
                 # wait for starts to complete
-                await asyncio.wait(starting)
+                await asyncio.gather(*starting)
 
                 for sim in sims:
                     ts.done(sim)
