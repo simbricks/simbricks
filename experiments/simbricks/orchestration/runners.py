@@ -162,24 +162,24 @@ class ExperimentBaseRunner(ABC):
         scs = []
         for _, sc in self.running:
             scs.append(asyncio.create_task(sc.int_term_kill()))
-        await asyncio.shield(asyncio.wait(scs))
+        await asyncio.gather(*scs)
 
         # wait for all processes to terminate
         for _, sc in self.running:
-            await asyncio.shield(sc.wait())
+            await sc.wait()
 
         # remove all sockets
         scs = []
         for (executor, sock) in self.sockets:
             scs.append(asyncio.create_task(executor.rmtree(sock)))
         if scs:
-            await asyncio.shield(asyncio.wait(scs))
+            await asyncio.wait(scs)
 
         # add all simulator components to the output
         for sim, sc in self.running:
             self.out.add_sim(sim, sc)
 
-        await asyncio.shield(self.after_cleanup())
+        await self.after_cleanup()
         return self.out
 
     async def run(self) -> ExpOutput:
@@ -222,7 +222,8 @@ class ExperimentBaseRunner(ABC):
         while True:
             try:
                 return await asyncio.shield(terminate_collect_task)
-            except asyncio.CancelledError:
+            except asyncio.CancelledError as e:
+                print(e)
                 pass
 
 

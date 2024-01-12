@@ -148,7 +148,8 @@ class Component(object):
         try:
             await asyncio.wait_for(self._proc.wait(), delay)
             return
-        except TimeoutError:
+        # before Python 3.11, asyncio.wait_for() throws asyncio.TimeoutError -_-
+        except (TimeoutError, asyncio.TimeoutError):
             print(
                 f'terminating component {self.cmd_parts[0]} '
                 f'pid {self._proc.pid}',
@@ -159,14 +160,13 @@ class Component(object):
         try:
             await asyncio.wait_for(self._proc.wait(), delay)
             return
-        except TimeoutError:
+        except (TimeoutError, asyncio.TimeoutError):
             print(
                 f'killing component {self.cmd_parts[0]} '
                 f'pid {self._proc.pid}',
                 flush=True
             )
             await self.kill()
-
         await self._proc.wait()
 
     async def started(self) -> None:
