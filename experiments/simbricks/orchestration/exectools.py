@@ -94,7 +94,7 @@ class Component(object):
             self._read_stream(self._proc.stderr, self._consume_err)
         )
         rc = await self._proc.wait()
-        await asyncio.wait([stdout_handler, stderr_handler])
+        await asyncio.gather(stdout_handler, stderr_handler)
         await self.terminated(rc)
 
     async def send_input(self, bs: bytes, eof=False) -> None:
@@ -352,7 +352,7 @@ class Executor(abc.ABC):
             waiter = asyncio.create_task(self.await_file(p, *args, **kwargs))
             xs.append(waiter)
 
-        await asyncio.wait(xs)
+        await asyncio.gather(*xs)
 
 
 class LocalExecutor(Executor):

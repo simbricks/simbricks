@@ -207,7 +207,7 @@ class LocalParallelRuntime(Runtime):
             self._pending_jobs.add(job)
 
         # wait for all runs to finish
-        await asyncio.wait(self._pending_jobs)
+        await asyncio.gather(*self._pending_jobs)
 
     async def start(self) -> None:
         """Execute all defined runs."""
@@ -218,7 +218,7 @@ class LocalParallelRuntime(Runtime):
             for job in self._pending_jobs:
                 job.cancel()
             # wait for all runs to finish
-            await asyncio.wait(self._pending_jobs)
+            await asyncio.gather(*self._pending_jobs)
 
     def interrupt_handler(self) -> None:
         self._starter_task.cancel()
