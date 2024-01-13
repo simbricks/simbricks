@@ -18,8 +18,8 @@ apt-get -y install \
 
 pushd /tmp/input
 mv guestinit.sh /home/ubuntu/guestinit.sh
-mv bzImage /boot/vmlinuz-5.15.93
-mv config-5.15.93 /boot/
+mv bzImage /boot/vmlinuz-5.17.7
+mv config-5.17.7 /boot/
 mv m5 /sbin/m5
 
 GRUB_CFG_FILE=/etc/default/grub.d/50-cloudimg-settings.cfg

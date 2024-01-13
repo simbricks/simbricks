@@ -395,6 +395,42 @@ class LinuxFEMUNode(NodeConfig):
         return super().prepare_post_cp() + l
 
 
+class HomaClientNode(AppConfig):
+
+    def prepare_post_cp(self) -> tp.List[str]:
+        return super().prepare_post_cp() + [
+            'insmod homa.ko'
+        ]
+    # pylint: disable=consider-using-with
+    def config_files(self) -> tp.Dict[str, tp.IO]:
+        m = {'homa.ko': open('../images/homa/homa.ko', 'rb')}
+        return {**m, **super().config_files()}
+    
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        return [
+            'echo "10.0.0.2 node1" >> /etc/hosts',
+            #'cat /etc/hosts', 
+            #'ping 10.0.0.2 -c 3',
+            #'ping node1',
+            '/root/homa/util/cp_node client'
+        ]
+
+class HomaServerNode(AppConfig):
+
+    def prepare_post_cp(self) -> tp.List[str]:
+        return super().prepare_post_cp() + [
+            'insmod homa.ko'
+        ]
+    # pylint: disable=consider-using-with
+    def config_files(self) -> tp.Dict[str, tp.IO]:
+        m = {'homa.ko': open('../images/homa/homa.ko', 'rb')}
+        return {**m, **super().config_files()}
+
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        return [
+            '/root/homa/util/cp_node server'
+        ]
+
 class IdleHost(AppConfig):
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:

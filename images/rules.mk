@@ -23,16 +23,17 @@
 include mk/subdir_pre.mk
 
 PACKER_VERSION := 1.7.0
-KERNEL_VERSION := 5.15.93
+KERNEL_VERSION := 5.17.7
 
 BASE_IMAGE := $(d)output-base/base
 MEMCACHED_IMAGE := $(d)output-memcached/memcached
 NOPAXOS_IMAGE := $(d)output-nopaxos/nopaxos
 MTCP_IMAGE := $(d)output-mtcp/mtcp
 TAS_IMAGE := $(d)output-tas/tas
+HOMA_IMAGE := $(d)output-homa/homa
 COMPRESSED_IMAGES ?= false
 
-IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE)
+IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE) $(HOMA_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
 IMAGES_MIN := $(BASE_IMAGE)
@@ -54,6 +55,8 @@ farmem_dir := $(d)farmem
 farmem_mod := $(farmem_dir)/farmem.ko
 m5_bin := $(d)m5
 guest_init := $(d)/scripts/guestinit.sh
+homa_dir := $(d)homa
+homa_mod := $(homa_dir)/homa.ko
 
 build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod) \
   $(farmem_mod)
@@ -121,6 +124,18 @@ $(TAS_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
 	    $(COMPRESSED_IMAGES)
 	touch $@
 
+$(HOMA_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
+    $(addprefix $(d), extended-image.pkr.hcl scripts/install-homa.sh \
+      scripts/cleanup.sh)
+	rm -rf $(dir $@)
+	mkdir -p $(img_dir)/input-homa
+	cp -r $(homa_dir) \
+	    $(img_dir)/input-homa
+	cd $(img_dir) && ./packer-wrap.sh base homa extended-image.pkr.hcl \
+	$(COMPRESSED_IMAGES)
+	rm -rf $(img_dir)/input-homa
+	touch $@
+
 $(packer):
 	wget -O $(img_dir)packer_$(PACKER_VERSION)_linux_amd64.zip \
 	    https://releases.hashicorp.com/packer/$(PACKER_VERSION)/packer_$(PACKER_VERSION)_linux_amd64.zip
@@ -181,6 +196,11 @@ $(kernel_dir)/.config: $(kernel_pardir)/config-$(KERNEL_VERSION)
 
 $(mqnic_mod): $(vmlinux)
 	$(MAKE) -C $(kernel_dir) M=$(abspath $(mqnic_dir)) modules
+	touch $@
+
+# HOMA kernel module
+$(homa_mod): $(vmlinux)
+	$(MAKE) -C $(kernel_dir) M=$(abspath $(homa_dir)) modules
 	touch $@
 
 ################################################
