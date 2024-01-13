@@ -128,7 +128,7 @@ class ExperimentBaseRunner(ABC):
             executor = self.sim_executor(host)
             task = asyncio.create_task(executor.send_file(path, self.verbose))
             copies.append(task)
-        await asyncio.wait(copies)
+        await asyncio.gather(*copies)
 
         # prepare all simulators in parallel
         sims = []
@@ -141,7 +141,7 @@ class ExperimentBaseRunner(ABC):
                 )
             )
             sims.append(task)
-        await asyncio.wait(sims)
+        await asyncio.gather(*sims)
 
     async def wait_for_sims(self) -> None:
         """Wait for simulators to terminate (the ones marked to wait on)."""
@@ -162,24 +162,24 @@ class ExperimentBaseRunner(ABC):
         scs = []
         for _, sc in self.running:
             scs.append(asyncio.create_task(sc.int_term_kill()))
-        await asyncio.shield(asyncio.wait(scs))
+        await asyncio.gather(*scs)
 
         # wait for all processes to terminate
         for _, sc in self.running:
-            await asyncio.shield(sc.wait())
+            await sc.wait()
 
         # remove all sockets
         scs = []
         for (executor, sock) in self.sockets:
             scs.append(asyncio.create_task(executor.rmtree(sock)))
         if scs:
-            await asyncio.shield(asyncio.wait(scs))
+            await asyncio.gather(*scs)
 
         # add all simulator components to the output
         for sim, sc in self.running:
             self.out.add_sim(sim, sc)
 
-        await asyncio.shield(self.after_cleanup())
+        await self.after_cleanup()
         return self.out
 
     async def run(self) -> ExpOutput:
@@ -197,7 +197,7 @@ class ExperimentBaseRunner(ABC):
                     sims.append(sim)
 
                 # wait for starts to complete
-                await asyncio.wait(starting)
+                await asyncio.gather(*starting)
 
                 for sim in sims:
                     ts.done(sim)
@@ -222,7 +222,8 @@ class ExperimentBaseRunner(ABC):
         while True:
             try:
                 return await asyncio.shield(terminate_collect_task)
-            except asyncio.CancelledError:
+            except asyncio.CancelledError as e:
+                print(e)
                 pass
 
 

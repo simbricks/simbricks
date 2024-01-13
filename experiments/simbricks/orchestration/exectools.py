@@ -94,7 +94,7 @@ class Component(object):
             self._read_stream(self._proc.stderr, self._consume_err)
         )
         rc = await self._proc.wait()
-        await asyncio.wait([stdout_handler, stderr_handler])
+        await asyncio.gather(stdout_handler, stderr_handler)
         await self.terminated(rc)
 
     async def send_input(self, bs: bytes, eof=False) -> None:
@@ -148,7 +148,8 @@ class Component(object):
         try:
             await asyncio.wait_for(self._proc.wait(), delay)
             return
-        except TimeoutError:
+        # before Python 3.11, asyncio.wait_for() throws asyncio.TimeoutError -_-
+        except (TimeoutError, asyncio.TimeoutError):
             print(
                 f'terminating component {self.cmd_parts[0]} '
                 f'pid {self._proc.pid}',
@@ -159,14 +160,13 @@ class Component(object):
         try:
             await asyncio.wait_for(self._proc.wait(), delay)
             return
-        except TimeoutError:
+        except (TimeoutError, asyncio.TimeoutError):
             print(
                 f'killing component {self.cmd_parts[0]} '
                 f'pid {self._proc.pid}',
                 flush=True
             )
             await self.kill()
-
         await self._proc.wait()
 
     async def started(self) -> None:
@@ -352,7 +352,7 @@ class Executor(abc.ABC):
             waiter = asyncio.create_task(self.await_file(p, *args, **kwargs))
             xs.append(waiter)
 
-        await asyncio.wait(xs)
+        await asyncio.gather(*xs)
 
 
 class LocalExecutor(Executor):
