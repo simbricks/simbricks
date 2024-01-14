@@ -35,11 +35,11 @@ class AppConfig():
         """Commands to run for this application."""
         return []
 
-    def prepare_pre_cp(self) -> tp.List[str]:
+    def prepare_pre_cp(self, node: NodeConfig) -> tp.List[str]:
         """Commands to run to prepare this application before checkpointing."""
         return []
 
-    def prepare_post_cp(self) -> tp.List[str]:
+    def prepare_post_cp(self, node: NodeConfig) -> tp.List[str]:
         """Commands to run to prepare this application after the checkpoint is
         restored."""
         return []
@@ -110,8 +110,8 @@ class NodeConfig():
             cp_es = ['echo ready to checkpoint']
             exit_es = ['poweroff -f']
 
-        es = self.prepare_pre_cp() + self.app.prepare_pre_cp() + cp_es + \
-            self.prepare_post_cp() + self.app.prepare_post_cp() + \
+        es = self.prepare_pre_cp() + self.app.prepare_pre_cp(self) + cp_es + \
+            self.prepare_post_cp() + self.app.prepare_post_cp(self) + \
             self.run_cmds() + self.cleanup_cmds() + exit_es
         return '\n'.join(es)
 
