@@ -298,6 +298,14 @@ class HostSim(Simulator):
         """Latency in nanoseconds for sending messages to components connected
         via Ethernet."""
 
+        self.sync_drift: tp.Optional[int] = None
+        """Conversion factor from SimBricks' picosecond timestamps to the host's
+        nanosecond clock. None or 1000 is 1:1, while other values result in
+        simulated clock drift for a host."""
+        self.sync_offset: tp.Optional[int] = None
+        """Clock offset for this host in picoseconds. None or 0 does not add an
+        offset."""
+
         self.pcidevs: tp.List[PCIDevSim] = []
         self.net_directs: tp.List[NetSim] = []
         self.memdevs: tp.List[MemDevSim] = []
@@ -408,6 +416,10 @@ class QemuHost(HostSim):
                 cmd += ',sync=on'
                 cmd += f',pci-latency={self.pci_latency}'
                 cmd += f',sync-period={self.sync_period}'
+                if self.sync_drift is not None:
+                    cmd += f',sync-drift={self.sync_drift}'
+                if self.sync_offset is not None:
+                    cmd += f',sync-offset={self.sync_offset}'
             else:
                 cmd += ',sync=off'
             cmd += ' '
