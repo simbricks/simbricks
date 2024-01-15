@@ -195,6 +195,7 @@ class NetSim(Simulator):
         self.hosts_direct: list[HostSim] = []
         self.net_listen: list[NetSim] = []
         self.net_connect: list[NetSim] = []
+        self.wait = False
 
     def full_name(self) -> str:
         return 'net.' + self.name
@@ -228,6 +229,9 @@ class NetSim(Simulator):
 
     def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return [s for (_, s) in self.listen_sockets(env)]
+
+    def wait_terminate(self) -> Bool:
+        return self.wait
 
 
 # FIXME: Class hierarchy is broken here as an ugly hack
