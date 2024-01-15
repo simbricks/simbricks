@@ -107,6 +107,7 @@ class DCFatTree(E2ETopology):
             'agg_link_delay': '1us',
             'agg_link_rate': '10Gbps',
             'agg_link_queue': '512KB',
+            'sbhost_eth_latency': '500ns',
         }
         for (n,v) in kwargs.items():
             self.params[n] = v
@@ -122,6 +123,8 @@ class DCFatTree(E2ETopology):
         self.agg_tor_links = []
 
         self.hosts = []
+
+        self.n_simbricks_host = 0
 
         bn = basename
 
@@ -224,6 +227,23 @@ class DCFatTree(E2ETopology):
             raise BufferError('Network is full')
         (agg, rack, _) = random.choice(rs)
         self.add_host(agg, rack, h)
+        return (agg, rack)
+
+    def wrap_simbricks_host(self, nic):
+        i = self.n_simbricks_host
+        self.n_simbricks_host += 1
+
+        host = e2e.E2ESimbricksHost(f'_sbh-{i}-{nic.name}')
+        host.eth_latency = self.params['sbhost_eth_latency']
+        host.simbricks_component = nic
+        return host
+
+    def add_simbricks_host(self, agg, rack, nic):
+        self.add_host(agg, rack, self.wrap_simbricks_host(nic))
+
+    def add_simbricks_host_r(self, nic):
+        return self.add_host_r(self.wrap_simbricks_host(nic))
+
 
 def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
     params = {
