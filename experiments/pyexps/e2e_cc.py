@@ -88,7 +88,7 @@ for congestion_control in types_of_congestion_control:
                 host = e2e.E2ESimpleNs3Host(f'ns3server-{i}')
                 host.delay = '1us'
                 host.data_rate = f'{link_rate}Mbps'
-                host.ip = f'192.168.64.{i}/24'
+                heost.ip = f'192.168.64.{i}/24'
                 host.queue_size = f'{queue_size}B'
                 host.congestion_control = congestion_control
                 app = e2e.E2EPacketSinkApplication('sink')
