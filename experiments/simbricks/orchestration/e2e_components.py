@@ -27,8 +27,6 @@ import typing as tp
 from abc import ABC, abstractmethod
 from enum import Enum
 
-import sys
-
 
 class CongestionControl(Enum):
     RENO = ("ns3::TcpLinuxReno", "reno")
@@ -59,8 +57,8 @@ class CongestionControl(Enum):
     @property
     def ns3(self):
         if self.ns3_str == "":
-            print(f"There is no ns3 implementation for {self.name} available")
-            sys.exit(1)
+            raise AttributeError(f"There is no ns3 implementation for "
+                f"{self.name} available")
         return self.ns3_str
 
     @property
@@ -118,8 +116,7 @@ class E2EGlobalConfig(E2EBase):
         return super().ns3_config()
 
     def add_component(self, component: E2EComponent) -> None:
-        print("Can't add a component to the global config")
-        sys.exit(1)
+        raise AttributeError("Can't add a component to the global config")
 
 
 class E2EComponent(E2EBase):
@@ -132,8 +129,7 @@ class E2EComponent(E2EBase):
 
     def ns3_config(self) -> str:
         if self.id == "" or self.type == "":
-            print("Id or Type cannot be empty")
-            sys.exit(1)
+            raise AttributeError("Id or Type cannot be empty")
         self.mapping.update({"Id": self.id, "Type": self.type})
 
         return super().ns3_config()
@@ -144,13 +140,14 @@ class E2EComponent(E2EBase):
     def resolve_paths(self) -> None:
         self.has_path = True
         for component in self.components:
+            path = f"{self.id}/{component.id}"
             if component.has_path:
-                print(
-                    f"Component {component.id} was already " +
-                    "added to another component"
+                raise AttributeError(
+                    f"Component {component.id} was already "
+                    f"added to another component (while trying "
+                    f"to assign {path})."
                 )
-                sys.exit(1)
-            component.id = f"{self.id}/{component.id}"
+            component.id = path
             component.resolve_paths()
 
 
@@ -195,8 +192,7 @@ class E2ESimpleChannel(E2ETopologyChannel):
 
     def ns3_config(self) -> str:
         if self.left_node is None or self.right_node is None:
-            print(f"Not all nodes for channel {self.id} given")
-            sys.exit(1)
+            raise AttributeError(f"Not all nodes for channel {self.id} given")
         self.mapping.update({
             "DataRate": self.data_rate,
             "QueueSize": self.queue_size,
