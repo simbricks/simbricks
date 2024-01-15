@@ -141,7 +141,7 @@ class NICSim(PCIDevSim):
     def set_network(self, net: NetSim) -> None:
         """Connect this NIC to a network simulator."""
         self.network = net
-        net.nics.append(self)
+        net.connect_nic(self)
 
     def basic_args(self, env: ExpEnv, extra: tp.Optional[str] = None) -> str:
         cmd = (
@@ -199,6 +199,9 @@ class NetSim(Simulator):
 
     def full_name(self) -> str:
         return 'net.' + self.name
+
+    def connect_nic(self, nic: NICSim) -> None:
+        self.nics.append(nic)
 
     def connect_network(self, net: NetSim) -> None:
         """Connect this network to the listening peer `net`"""
