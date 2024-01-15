@@ -954,8 +954,12 @@ class NS3E2ENet(NetSim):
                 self, e2e_sim.simbricks_component
             )
 
+    def instantiate(self):
+        pass
+
     def run_cmd(self, env):
         if self.first_run:
+            self.instantiate()
             for topo in self.e2e_topologies:
                 topo.add_to_network(self)
 
