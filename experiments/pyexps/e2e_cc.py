@@ -189,5 +189,7 @@ for congestion_control in types_of_congestion_control:
             clients[num_simbricks_hosts - 1].node_config.app.is_last = True
             clients[num_simbricks_hosts - 1].wait = True
 
+            net.init_network()
+
             print(e.name)
             experiments.append(e)

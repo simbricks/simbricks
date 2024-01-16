@@ -954,30 +954,29 @@ class NS3E2ENet(NetSim):
                 self, e2e_sim.simbricks_component
             )
 
-    def instantiate(self):
-        pass
-
-    def run_cmd(self, env):
-        if self.first_run:
-            self.instantiate()
-            for topo in self.e2e_topologies:
-                topo.add_to_network(self)
+    def init_network(self) -> None:
+        # add all components from topologies to the network
+        for topo in self.e2e_topologies:
+            topo.add_to_network(self)
 
         for component in self.e2e_components:
-            if self.first_run:
-                component.resolve_paths()
+            component.resolve_paths()
 
+            # add all connected networks
+            for c in component.components:
+                if isinstance(c, e2e.E2ESimbricksNetworkNetIf):
+                    self.connect_network(c.simbricks_component)
+
+    def run_cmd(self, env):
+        # resolve all socket paths
+        for component in self.e2e_components:
             for c in component.components:
                 if isinstance(c, e2e.E2ESimbricksHost):
                     self.resolve_socket_paths(env, c)
                 elif isinstance(c, e2e.E2ESimbricksNetworkNetIf):
                     self.resolve_socket_paths(env, c)
-                    if self.first_run:
-                        self.connect_network(c.simbricks_component)
                 elif isinstance(c, e2e.E2ESimbricksNetworkNicIf):
                     self.resolve_socket_paths(env, c, True)
-
-        self.first_run = False
 
         params: tp.List[str] = []
         for component in self.e2e_components:
