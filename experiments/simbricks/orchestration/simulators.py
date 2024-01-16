@@ -928,6 +928,8 @@ class NS3E2ENet(NetSim):
             self.e2e_topologies.append(component)
         else:
             self.e2e_components.append(component)
+            if isinstance(component, e2e.E2ETopologyNode):
+                component.network = self
 
     def resolve_socket_paths(
         self,

@@ -156,6 +156,7 @@ class E2ETopologyNode(E2EComponent):
     def __init__(self, idd: str) -> None:
         super().__init__(idd)
         self.category = "TopologyNode"
+        self.network = None
 
 
 class E2ESwitchNode(E2ETopologyNode):
