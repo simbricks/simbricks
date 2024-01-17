@@ -42,11 +42,11 @@ options = {
 }
 
 topology = DCFatTree(
-            n_spine_sw=2,
-            n_agg_bl=2,
+            n_spine_sw=1,
+            n_agg_bl=4,
             n_agg_sw=1,
-            n_agg_racks=2,
-            h_per_rack=1,
+            n_agg_racks=4,
+            h_per_rack=10,
         )
 add_contig_bg(topology)
 
