@@ -133,8 +133,9 @@ class CockroachClient(ChronyClient):
         super().__init__()
         self.init = False
         self.servers = []
-        self.workload = 'kv'
-        self.workload_args = '--read-percent=50 --sequential'
+        self.workload = 'social'
+        self.workload_init_args = '--splits=3'
+        self.workload_args = '--splits=3 --concurrency 100'
 
     def run_cmds(self, node):
         server_ports = [f'{ip}:26257' for ip in self.servers]
@@ -156,13 +157,15 @@ class CockroachClient(ChronyClient):
             cmds.append('sleep 1')
             cmds.append(
                 f'/usr/local/bin/cockroach workload init {self.workload} '
-                f'"{connstr}"')
+                f'{self.workload_init_args} "{connstr}"')
             cmds.append('sleep 0.5')
         else:
-            cmds.append('sleep 3')
+            cmds.append('sleep 4')
         cmds.append(
             f'/usr/local/bin/cockroach workload run {self.workload} '
                 f'--duration=10s {self.workload_args} "{connstr}"')
+        http = f'https://{self.servers[i]}:8080/_status/vars'
+        cmds.append(f'curl -k {http}')
         return super().run_cmds(node) + cmds
 
 kinds_of_host = ['qemu','qemu_sync']
@@ -276,9 +279,9 @@ for h in kinds_of_host:
         clients[0].wait = True
         clients[0].node_config.app.init = True
 
-        for hh in servers + clients:
-            hh.sync_drift = int(random.gauss(mu=1000.0, sigma=10))
-            hh.sync_offset = int(random.uniform(0.0, 1000000.0))
-            print(f'host {hh.name}: drift={hh.sync_drift} offset={hh.sync_offset}')
+        #for hh in servers + clients:
+        #    hh.sync_drift = int(random.gauss(mu=1000.0, sigma=10))
+        #    hh.sync_offset = int(random.uniform(0.0, 1000000.0))
+        #    print(f'host {hh.name}: drift={hh.sync_drift} offset={hh.sync_offset}')
 
         experiments.append(e)
