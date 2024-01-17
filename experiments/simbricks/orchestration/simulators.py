@@ -236,6 +236,9 @@ class NetSim(Simulator):
     def wait_terminate(self) -> Bool:
         return self.wait
 
+    def init_network(self) -> None:
+        pass
+
 
 # FIXME: Class hierarchy is broken here as an ugly hack
 class MemDevSim(NICSim):
