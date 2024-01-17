@@ -353,6 +353,125 @@ class E2EBulkSendApplication(E2EApplication):
         return super().ns3_config()
 
 
+class E2ENs3RandomVariable(ABC):
+
+    def __init__(self) -> None:
+        self.type_id = ""
+
+    def get_config(self) -> str:
+        params = self.get_parameters()
+        if params:
+            return f"{self.type_id}[{params}]"
+        else:
+            return self.type_id
+
+    @abstractmethod
+    def get_parameters(self) -> str:
+        pass
+
+
+class E2ENs3ConstantRandomVariable(E2ENs3RandomVariable):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.type_id = "ns3::ConstantRandomVariable"
+        self.constant: tp.Optional[float] = None
+
+    def get_parameters(self) -> str:
+        params = []
+        if self.constant:
+            params.append(f"Constant={self.constant}")
+        return "|".join(params)
+
+
+class E2ENs3UniformRandomVariable(E2ENs3RandomVariable):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.type_id = "ns3::UniformRandomVariable"
+        self.min: tp.Optional[float] = None
+        self.max: tp.Optional[float] = None
+
+    def get_parameters(self) -> str:
+        params = []
+        if self.min:
+            params.append(f"Min={self.min}")
+        if self.max:
+            params.append(f"Max={self.max}")
+        return "|".join(params)
+
+
+class E2ENs3ExponentialRandomVariable(E2ENs3RandomVariable):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.type_id = "ns3::ExponentialRandomVariable"
+        self.mean: tp.Optional[float] = None
+        self.bound: tp.Optional[float] = None
+
+    def get_parameters(self) -> str:
+        params = []
+        if self.mean:
+            params.append(f"Mean={self.mean}")
+        if self.bound:
+            params.append(f"Bound={self.bound}")
+        return "|".join(params)
+
+
+class E2ENs3NormalRandomVariable(E2ENs3RandomVariable):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.type_id = "ns3::NormalRandomVariable"
+        self.mean: tp.Optional[float] = None
+        self.variance: tp.Optional[float] = None
+        self.bound: tp.Optional[float] = None
+
+    def get_parameters(self) -> str:
+        params = []
+        if self.mean:
+            params.append(f"Mean={self.mean}")
+        if self.variance:
+            params.append(f"Variance={self.variance}")
+        if self.bound:
+            params.append(f"Bound={self.bound}")
+        return "|".join(params)
+
+
+class E2EOnOffApplication(E2EApplication):
+
+    def __init__(self, idd: str) -> None:
+        super().__init__(idd)
+        self.type = "OnOff"
+        self.protocol = "ns3::TcpSocketFactory"
+        self.remote_ip = ""
+        self.data_rate = ""
+        self.max_bytes = ""
+        self.packet_size = ""
+        self.on_time: tp.Optional[E2ENs3RandomVariable] = None
+        self.off_time: tp.Optional[E2ENs3RandomVariable] = None
+
+    def ns3_config(self) -> str:
+        if self.on_time:
+            on = self.on_time.get_config()
+        else:
+            on = ""
+        if self.off_time:
+            off = self.off_time.get_config()
+        else:
+            off = ""
+        self.mapping.update({
+            "Protocol": self.protocol,
+            "Remote": self.remote_ip,
+            "DataRate": self.data_rate,
+            "MaxBytes": self.max_bytes,
+            "PacketSize": self.packet_size,
+            "OnTime": on,
+            "OffTime": off,
+        })
+        return super().ns3_config()
+
+
 class E2EProbe(E2EComponent):
 
     def __init__(self, idd: str) -> None:
