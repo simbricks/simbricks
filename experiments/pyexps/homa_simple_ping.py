@@ -32,8 +32,8 @@ from simbricks.orchestration.nodeconfig import (
 )
 from simbricks.orchestration.simulators import QemuHost, Gem5Host, I40eNIC, SwitchNet
 
-e = Experiment(name='simple_ping')
-e.checkpoint = True  # use checkpoint and restore to speed up simulation
+e = Experiment(name='simple_homa')
+e.checkpoint = False  # use checkpoint and restore to speed up simulation
 
 # create client
 client_config = I40eLinuxNode()  # boot Linux with i40e NIC driver
@@ -59,6 +59,7 @@ server_config.app = HomaServerNode()
 server = QemuHost(server_config)
 server.sync = True
 server.name = 'server'
+# server.wait = True
 e.add_host(server)
 
 # attach server's NIC
