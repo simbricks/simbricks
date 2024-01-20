@@ -142,7 +142,7 @@ void queue_admin_tx::admin_desc_ctx::process() {
         reinterpret_cast<struct i40e_aqc_get_version *>(d->params.raw);
     gv->rom_ver = 0;
     gv->fw_build = 0;
-    gv->fw_major = 0;
+    gv->fw_major = 6;
     gv->fw_minor = 0;
     gv->api_major = I40E_FW_API_VERSION_MAJOR;
     gv->api_minor = I40E_FW_API_VERSION_MINOR_X710;
