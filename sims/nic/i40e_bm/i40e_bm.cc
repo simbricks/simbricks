@@ -40,7 +40,8 @@ i40e_bm::i40e_bm()
       pf_atq(*this, regs.pf_atqba, regs.pf_atqlen, regs.pf_atqh, regs.pf_atqt),
       hmc(*this),
       shram(*this),
-      lanmgr(*this, NUM_QUEUES) {
+      lanmgr(*this, NUM_QUEUES),
+      ptp(*this) {
   reset(false);
 }
 
@@ -425,6 +426,74 @@ uint32_t i40e_bm::reg_mem_read32(uint64_t addr) {
         val = regs.glrpb_plw;
         break;
 
+      case I40E_PRTTSYN_CTL0:
+        val = regs.prtsyn_ctl_0;
+        break;
+      case I40E_PRTTSYN_CTL1:
+        val = regs.prtsyn_ctl_1;
+        break;
+      case I40E_PRTTSYN_AUX_0(0):
+        val = regs.prtsyn_aux_0;
+        break;
+      case I40E_PRTTSYN_STAT_0:
+        val = regs.prtsyn_stat_0;
+        regs.prtsyn_stat_0 = 0;
+        break;
+      case I40E_PRTTSYN_STAT_1:
+        val = regs.prtsyn_stat_1;
+        break;
+      case I40E_PRTTSYN_ADJ:
+        val = ptp.adj_get();
+        break;
+
+      /* note the latching behavior prescribed by the spec for the L/H paired
+         registers: driver must read L first, which will latch the current value
+         for a future consistent read for h. */
+      case I40E_PRTTSYN_INC_L:
+        regs.prtsyn_inc_h = (regs.prtsyn_inc >> 32);
+        val = regs.prtsyn_inc;
+        break;
+      case I40E_PRTTSYN_INC_H:
+        val = regs.prtsyn_inc_h;
+        break;
+      case I40E_PRTTSYN_TIME_L: {
+        uint64_t phc = ptp.phc_read();
+        regs.prtsyn_time_h = (phc >> 32);
+        val = phc;
+        break;
+      }
+      case I40E_PRTTSYN_TIME_H:
+        val = regs.prtsyn_time_h;
+        break;
+      case I40E_PRTTSYN_RXTIME_L(0): /* fallthrough */
+      case I40E_PRTTSYN_RXTIME_L(1): /* fallthrough */
+      case I40E_PRTTSYN_RXTIME_L(2): /* fallthrough */
+      case I40E_PRTTSYN_RXTIME_L(3): {
+        size_t i = (addr - I40E_PRTTSYN_RXTIME_L(0)) /
+          (I40E_PRTTSYN_RXTIME_L(1) - I40E_PRTTSYN_RXTIME_L(0));
+        regs.prtsyn_rxtime_h[i] = (regs.prtsyn_rxtime[i] >> 32);
+        val = regs.prtsyn_rxtime[i];
+        break;
+      }
+      case I40E_PRTTSYN_RXTIME_H(0): /* fallthrough */
+      case I40E_PRTTSYN_RXTIME_H(1): /* fallthrough */
+      case I40E_PRTTSYN_RXTIME_H(2): /* fallthrough */
+      case I40E_PRTTSYN_RXTIME_H(3): {
+        size_t i = (addr - I40E_PRTTSYN_RXTIME_H(0)) /
+          (I40E_PRTTSYN_RXTIME_H(1) - I40E_PRTTSYN_RXTIME_H(0));
+        val = regs.prtsyn_rxtime_h[i];
+        regs.prtsyn_rxtime_lock[i] = false;
+        regs.prtsyn_stat_1 &= ~(1 << (I40E_PRTTSYN_STAT_1_RXT0_SHIFT + i));
+        break;
+      }
+      case I40E_PRTTSYN_TXTIME_L:
+        regs.prtsyn_txtime_h = (regs.prtsyn_txtime >> 32);
+        val = regs.prtsyn_txtime;
+        break;
+      case I40E_PRTTSYN_TXTIME_H:
+        val = regs.prtsyn_txtime_h;
+        break;
+
       default:
 #ifdef DEBUG_DEV
         log << "unhandled mem read addr=" << addr << logger::endl;
@@ -640,6 +709,38 @@ void i40e_bm::reg_mem_write32(uint64_t addr, uint32_t val) {
       case I40E_GLRPB_PLW:
         regs.glrpb_plw = val;
         break;
+
+      case I40E_PRTTSYN_CTL0:
+        regs.prtsyn_ctl_0 = val;
+        break;
+      case I40E_PRTTSYN_CTL1:
+        regs.prtsyn_ctl_1 = val;
+        break;
+      case I40E_PRTTSYN_AUX_0(0):
+        regs.prtsyn_aux_0 = val;
+        break;
+      case I40E_PRTTSYN_ADJ:
+        ptp.adj_set(val);
+        break;
+
+      /* note the latching behavior prescribed by the spec for the L/H paired
+         registers: driver must read L first, which will latch the current value
+         for a future consistent read for h. */
+      case I40E_PRTTSYN_INC_L:
+        regs.prtsyn_inc_l = val;
+        break;
+      case I40E_PRTTSYN_INC_H:
+        regs.prtsyn_inc = (((uint64_t) val) << 32) | regs.prtsyn_inc_l;
+        ptp.inc_set(regs.prtsyn_inc);
+        break;
+      case I40E_PRTTSYN_TIME_L: {
+        regs.prtsyn_time_l = val;
+        break;
+      }
+      case I40E_PRTTSYN_TIME_H:
+        ptp.phc_write((((uint64_t) val) << 32) | regs.prtsyn_time_l);
+        break;
+
       default:
 #ifdef DEBUG_DEV
         log << "unhandled mem write addr=" << addr << " val=" << val
@@ -752,6 +853,9 @@ void i40e_bm::reset(bool indicate_done) {
   regs.glrpb_ghw = 0xF2000;
   regs.glrpb_phw = 0x1246;
   regs.glrpb_plw = 0x0846;
+
+  regs.prtsyn_ctl_1 = (1 << I40E_PRTTSYN_CTL1_V1MESSTYPE1_SHIFT) |
+    (1 << I40E_PRTTSYN_CTL1_V2MESSTYPE1_SHIFT);
 }
 
 shadow_ram::shadow_ram(i40e_bm &dev_) : dev(dev_), log("sram", dev_) {

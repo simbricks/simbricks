@@ -420,7 +420,7 @@ class lan_queue_rx : public lan_queue_base {
    public:
     explicit rx_desc_ctx(lan_queue_rx &queue_);
     virtual void process();
-    void packet_received(const void *data, size_t len, bool last);
+    void packet_received(const void *data, size_t len, bool last, int rxtime_id);
   };
 
   uint16_t dbuff_size;
@@ -432,7 +432,7 @@ class lan_queue_rx : public lan_queue_base {
 
   virtual void initialize();
   virtual desc_ctx &desc_ctx_create();
-
+  bool ptp_rx_sample(const void *data, size_t len);
  public:
   lan_queue_rx(lan &lanmgr_, uint32_t &reg_tail, size_t idx, uint32_t &reg_ena,
                uint32_t &fpm_basereg, uint32_t &reg_intqctl);
@@ -481,6 +481,31 @@ class lan {
   void tail_updated(uint16_t idx, bool rx);
   void rss_key_updated();
   void packet_received(const void *data, size_t len);
+};
+
+class ptpmgr {
+ protected:
+  static const uint64_t CLOCK_HZ = 625000000;
+
+  i40e_bm &dev;
+  uint64_t last_updated;
+  __uint128_t last_val;
+  int64_t offset;
+  uint64_t inc_val;
+  bool adj_neg;
+  uint32_t adj_val;
+
+  uint64_t update_clock();
+
+ public:
+  ptpmgr(i40e_bm &dev);
+  uint64_t phc_read();
+  void phc_write(uint64_t val);
+
+  uint32_t adj_get();
+  void adj_set(uint32_t val);
+
+  void inc_set(uint64_t inc);
 };
 
 class shadow_ram {
@@ -579,6 +604,24 @@ class i40e_bm : public nicbm::Runner::Device {
     uint32_t glrpb_glw;
     uint32_t glrpb_phw;
     uint32_t glrpb_plw;
+
+    uint32_t prtsyn_ctl_0;
+    uint32_t prtsyn_ctl_1;
+    uint32_t prtsyn_aux_0;
+    uint32_t prtsyn_stat_0;
+    uint32_t prtsyn_stat_1;
+
+    uint64_t prtsyn_inc;
+    uint32_t prtsyn_inc_l;
+    uint32_t prtsyn_inc_h;
+
+    uint32_t prtsyn_time_l;
+    uint32_t prtsyn_time_h;
+    bool prtsyn_rxtime_lock[4];
+    uint64_t prtsyn_rxtime[4];
+    uint32_t prtsyn_rxtime_h[4];
+    uint64_t prtsyn_txtime;
+    uint32_t prtsyn_txtime_h;
   };
 
  public:
@@ -604,6 +647,7 @@ class i40e_bm : public nicbm::Runner::Device {
   host_mem_cache hmc;
   shadow_ram shram;
   lan lanmgr;
+  ptpmgr ptp;
 
   int_ev intevs[NUM_PFINTS];
 
