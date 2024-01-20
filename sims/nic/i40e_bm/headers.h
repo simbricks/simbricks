@@ -35,6 +35,7 @@ namespace headers {
 
 #define ETH_TYPE_IP 0x0800
 #define ETH_TYPE_ARP 0x0806
+#define ETH_TYPE_PTP 0x88F7
 
 struct eth_addr {
   uint8_t addr[ETH_ADDR_LEN];
@@ -175,6 +176,39 @@ struct udp_hdr {
   uint16_t dest;
   uint16_t len;
   uint16_t chksum;
+} __attribute__((packed));
+
+/******************************************************************************/
+/* PTP */
+
+struct ptp_v1_hdr {
+  uint16_t version_ptp;
+  uint16_t version_network;
+  uint8_t subdomain;
+  uint8_t _rsvd0[15];
+  uint8_t msg_type;
+  uint8_t src_comm_tech;
+  uint8_t src_uuid[6];
+  uint16_t src_portid;
+  uint16_t seq_id;
+  uint8_t ctrl;
+  uint8_t _rsvd1;
+  uint16_t flags;
+} __attribute__((packed));
+
+struct ptp_v2_hdr {
+  uint8_t msg_type;
+  uint8_t version_ptp;
+  uint16_t msg_len;
+  uint8_t subdomain;
+  uint8_t _rsvd0;
+  uint16_t flags;
+  uint64_t correction;
+  uint32_t _rsvd1;
+  uint8_t src_port_id[10];
+  uint16_t seq_id;
+  uint8_t ctrl;
+  uint8_t log_msg_period;
 } __attribute__((packed));
 
 /******************************************************************************/
