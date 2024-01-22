@@ -535,6 +535,7 @@ class HomaServerNode(AppConfig):
         # cmd.append('cat /root/homa/util/server.tt')
         return cmd
 
+
 class IdleHost(AppConfig):
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:

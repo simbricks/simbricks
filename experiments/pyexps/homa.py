@@ -1,4 +1,4 @@
-# Copyright 2021 Max Planck Institute for Software Systems, and
+# Copyright 2024 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -37,7 +37,7 @@ experiments = []
 # be filtered later.
 for host_type in host_types:
     for net_type in net_types:
-        for n in num_node: 
+        for n in num_node:
             e = exp.Experiment(
                 'homa-' + host_type + '-' + net_type + f'-{n}'
             )
