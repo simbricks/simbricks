@@ -395,6 +395,32 @@ class LinuxFEMUNode(NodeConfig):
         return super().prepare_post_cp() + l
 
 
+class HomaCluster(AppConfig):
+    def __init__(self) -> None:
+        super().__init__()
+        self.is_node_zero = False
+        self.cluster_size = 2
+
+    def prepare_post_cp(self) -> tp.List[str]:
+        return super().prepare_post_cp() + [
+            'insmod homa.ko'
+        ]
+    # pylint: disable=consider-using-with
+    def config_files(self) -> tp.Dict[str, tp.IO]:
+        m = {'homa.ko': open('../images/homa/homa.ko', 'rb')}
+        return {**m, **super().config_files()}
+    
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        cmd = ['mount -t sysfs sysfs /sys']
+
+        if (self.is_node_zero):
+            cmd.append(f'/root/homa/util/cp_vs_tcp -n {self.cluster_size} -w w4 -b 10 --protocol homa')
+        else:
+            cmd.append('service ssh restart')
+            cmd.append('sleep infinity')
+        return cmd
+            
+
 class HomaClientNode(AppConfig):
 
     def prepare_post_cp(self) -> tp.List[str]:
@@ -409,10 +435,21 @@ class HomaClientNode(AppConfig):
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
             'echo "10.0.0.2 node1" >> /etc/hosts',
+            'mount -t sysfs sysfs /sys',
+            'mount -t proc proc /proc',
             #'cat /etc/hosts', 
             #'ping 10.0.0.2 -c 3',
             #'ping node1',
-            '/root/homa/util/cp_node client'
+            #'sysctl -w .net.homa.poll_usecs=300000',
+            '/root/homa/util/cp_node client --protocol homa',
+            # '/root/homa/util/cp_vs_tcp --help',
+            # 'sleep 1',
+            # 'touch /root/homa/util/client.tt',
+            # 'sleep 1',
+            # '/root/homa/util/ttprint.py > /root/homa/util/client.tt',
+            # 'pkill cp_node',
+            # 'cat /root/homa/util/client.tt'
+            # 'cat /proc/net/homa_metrics'
         ]
 
 class HomaServerNode(AppConfig):
@@ -428,8 +465,18 @@ class HomaServerNode(AppConfig):
 
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
-            '/root/homa/util/cp_node server'
+            'mount -t proc proc /proc',
+            'mount -t sysfs sysfs /sys',
+            # 'sysctl -w .net.homa.poll_usecs=300000',
+            '/root/homa/util/cp_node server --protocol homa',
+            # 'sleep 1',
+            # 'touch /root/homa/util/server.tt',
+            # 'sleep 1',
+            # '/root/homa/util/ttprint.py > /root/homa/util/server.tt',
+            # 'pkill cp_node',
+            # 'cat /root/homa/util/server.tt'
         ]
+
 
 class IdleHost(AppConfig):
 
