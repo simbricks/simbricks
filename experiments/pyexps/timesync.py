@@ -45,11 +45,42 @@ class TimesyncNode(node.I40eLinuxNode):
         ]
 
 
+class PTPServer(node.AppConfig):
+
+    def __init__(self):
+        super().__init__()
+
+    def prepare_pre_cp(self, node):
+        cmds = super().prepare_pre_cp(node)
+        # lower clock class -> higher priority to ensure this serve
+        # ends up grand master
+        cmds.append('sed -i '
+                    '-e "s/clockClass\t*[0-9-]*/clockClass\t128/g" '
+                    '-e "s/logAnnounceInterval\t*[0-9-]*/logAnnounceInterval\t-2/g" '
+                    '-e "s/logSyncInterval\t*[0-9-]*/logSyncInterval\t-5/g" '
+                    '-e "s/logMinDelayReqInterval\t*[0-9-]*/logMinDelayReqInterval\t-5/g" '
+                    '-e "s/logMinPdelayReqInterval\t*[0-9-]*/logMinPdelayReqInterval\t-5/g" '
+                    '-e "s/operLogSyncInterval[\t ]*[0-9-]*/operLogSyncInterval\t-5/g" '
+                    '-e "s/operLogPdelayReqInterval[\t ]*[0-9-]*/operLogPdelayReqInterval\t-5/g" '
+                    '/etc/linuxptp/ptp4l.conf')
+        cmds.append('cat /etc/linuxptp/ptp4l.conf')
+        return cmds
+
+    def run_cmds(self, node):
+        return [
+            # initially set phc to system time, so we have a sane starting
+            # point
+            f'phc_ctl /dev/ptp0 set',
+            f'ptp4l -m -q -f /etc/linuxptp/ptp4l.conf -i eth0',
+        ]
+
+
 class ChronyServer(node.AppConfig):
 
     def __init__(self):
         super().__init__()
         self.loglevel = 0
+        self.nic_timestamping = False
 
     def config_files(self):
         cfg = (
@@ -58,6 +89,9 @@ class ChronyServer(node.AppConfig):
             f'driftfile /tmp/chrony-drift\n'
             f'local stratum 1\n'
             )
+        if self.nic_timestamping:
+            cfg += 'hwtimestamp * rxfilter ptp\n'
+            cfg += 'ptpport 319\n'
         m = {'chrony.conf': self.strfile(cfg)}
         return m
 
@@ -71,22 +105,56 @@ class ChronyClient(node.AppConfig):
         super().__init__()
         self.chrony_loglevel = 0
         self.ntp_server = '10.0.0.1'
+        self.nic_timestamping = False
+        self.ptp = False
+
+    def prepare_pre_cp(self, node):
+        cmds = super().prepare_pre_cp(node)
+        if self.ptp:
+            cmds.append('sed -i '
+                        '-e "s/logAnnounceInterval\t*[0-9-]*/logAnnounceInterval\t-2/g" '
+                        '-e "s/logSyncInterval\t*[0-9-]*/logSyncInterval\t-5/g" '
+                        '-e "s/logMinDelayReqInterval\t*[0-9-]*/logMinDelayReqInterval\t-5/g" '
+                        '-e "s/logMinPdelayReqInterval\t*[0-9-]*/logMinPdelayReqInterval\t-5/g" '
+                        '-e "s/operLogSyncInterval[\t ]*[0-9-]*/operLogSyncInterval\t-5/g" '
+                        '-e "s/operLogPdelayReqInterval[\t ]*[0-9-]*/operLogPdelayReqInterval\t-5/g" '
+                        '/etc/linuxptp/ptp4l.conf')
+            cmds.append('cat /etc/linuxptp/ptp4l.conf')
+        return cmds
+
 
     def config_files(self):
-        cfg = (
-            f'bindcmdaddress 127.0.0.1\n'
-            f'server {self.ntp_server} iburst minpoll -6 maxpoll -1\n'
-            f'driftfile /tmp/chrony-drift\n'
-            f'makestep 0.01 3\n'
-            )
+        if self.ptp:
+            cfg = (
+                f'bindcmdaddress 127.0.0.1\n'
+                f'refclock PHC /dev/ptp0 poll -2 dpoll -3\n'
+                f'driftfile /tmp/chrony-drift\n'
+                f'makestep 0.01 3\n'
+                )
+        else:
+            ptpport = ''
+            if self.nic_timestamping:
+                ptpport = 'port 319'
+            cfg = (
+                f'bindcmdaddress 127.0.0.1\n'
+                f'server {self.ntp_server} iburst minpoll -6 maxpoll -1 xleave {ptpport}\n'
+                f'driftfile /tmp/chrony-drift\n'
+                f'makestep 0.01 3\n'
+                )
+            if self.nic_timestamping:
+                cfg += 'hwtimestamp * rxfilter ptp\n'
+                cfg += 'ptpport 319\n'
         m = {'chrony.conf': self.strfile(cfg)}
         return m
 
     def run_cmds(self, node):
-        return [f'sleep 0.5',
+        cmds = [f'sleep 0.5',
                 f'chronyd -d -f chrony.conf -L {self.chrony_loglevel} &',
                 f'sleep 1',
                 f'(while true; do chronyc tracking; sleep 1; done) &']
+        if self.ptp:
+            cmds = [f'ptp4l -m -q -f /etc/linuxptp/ptp4l.conf -i eth0 &'] + cmds
+        return cmds
 
 
 class ChronyTestClient(ChronyClient):
@@ -98,6 +166,45 @@ class ChronyTestClient(ChronyClient):
         return super().run_cmds(node) + [
                 f'sleep 5'
                 ]
+
+
+
+class PTPClient(node.AppConfig):
+
+    def __init__(self):
+        super().__init__()
+
+    def run_cmds(self, node):
+        return [
+            f'sleep 0.5',
+            f'ptp4l -m -q -f /etc/linuxptp/ptp4l.conf -i eth0 &',
+            f'sleep 1',
+        ]
+
+
+class ChronyPTPClient(PTPClient):
+
+    def __init__(self):
+        super().__init__()
+        self.chrony_loglevel = 0
+
+    def config_files(self):
+        cfg = (
+            f'bindcmdaddress 127.0.0.1\n'
+            f'refclock PHC /dev/ptp0 poll -2 dpoll -3\n'
+            f'driftfile /tmp/chrony-drift\n'
+            f'makestep 0.01 3\n'
+            )
+        m = {'chrony.conf': self.strfile(cfg)}
+        return m
+
+    def run_cmds(self, node):
+        return super().run_cmds(node) + [
+                f'chronyd -dd -f chrony.conf -L {self.chrony_loglevel} &',
+                f'sleep 1',
+                f'(while true; do chronyc tracking; sleep 0.1; done) &']
+
+
 
 class CockroachServer(ChronyClient):
 
@@ -170,10 +277,10 @@ class CockroachClient(ChronyClient):
 
 kinds_of_host = ['qemu','qemu_sync']
 kinds_of_net = ['switch', 'dc', 'dcbg']
+kinds_of_sync = ['ntp', 'ntp_ts', 'ptp']
 
 experiments = []
 
-random.seed(42)
 
 class DCNetSim(sim.NS3E2ENet):
 
@@ -194,6 +301,9 @@ class DCNetSim(sim.NS3E2ENet):
                     n_agg_sw=1,
                     n_agg_racks=4,
                     h_per_rack=10,
+                    spine_link_rate='100Gbps',
+                    spine_link_queue='2MB',
+                    agg_link_rate='25Gbps',
                 )
         self.add_component(self.dc_topo)
 
@@ -207,9 +317,9 @@ class DCBgNetSim(DCNetSim):
         super().__init__(topo_args=topo_args)
         self.bg_args = bg_args
 
-    def instantiate(self):
+    def init_network(self):
         e2e.add_contig_bg(self.dc_topo, **self.bg_args)
-        super().instantiate()
+        super().init_network()
 
 for h in kinds_of_host:
     def qemu_timing(node_config: node.NodeConfig):
@@ -228,60 +338,73 @@ for h in kinds_of_host:
             NetClass = DCNetSim
         elif n == 'dcbg':
             NetClass = DCBgNetSim
-        net = NetClass()
 
-        e = exp.Experiment('timesync-' + h +'-' + n)
-        #net.pcap_file = 'out/' + e.name + '.pcap'
-        if h == 'qemu':
-            net.sync = False
-        e.add_network(net)
+        for ts in kinds_of_sync:
+            random.seed(42)
 
-        ntp_servers = create_basic_hosts(
-            e,
-            1,
-            'ntpserv',
-            net,
-            sim.I40eNIC,
-            HostClass,
-            TimesyncNode,
-            ChronyServer
-        )
-        servers = create_basic_hosts(
-            e,
-            2,
-            'server',
-            net,
-            sim.I40eNIC,
-            HostClass,
-            TimesyncNode,
-            CockroachServer,
-            ip_start=2
-        )
-        clients = create_basic_hosts(
-            e,
-            4,
-            'client',
-            net,
-            sim.I40eNIC,
-            HostClass,
-            TimesyncNode,
-            CockroachClient,
-            ip_start=32
-        )
+            net = NetClass()
+            e = exp.Experiment('timesync-' + h +'-' + n + '-' + ts)
 
-        server_ips = [s.node_config.ip for s in servers]
+            if h == 'qemu':
+                net.sync = False
+            e.add_network(net)
 
-        for hh in servers + clients:
-            hh.node_config.app.servers = server_ips
-            hh.node_config.app.ntp_server = \
-                    ntp_servers[0].node_config.ip
+            ts_class = PTPServer if ts == 'ptp' else ChronyServer
+            ntp_servers = create_basic_hosts(
+                e,
+                1,
+                'ntpserv',
+                net,
+                sim.I40eNIC,
+                HostClass,
+                TimesyncNode,
+                ts_class
+            )
+            servers = create_basic_hosts(
+                e,
+                2,
+                'server',
+                net,
+                sim.I40eNIC,
+                HostClass,
+                TimesyncNode,
+                CockroachServer,
+                ip_start=2
+            )
+            clients = create_basic_hosts(
+                e,
+                4,
+                'client',
+                net,
+                sim.I40eNIC,
+                HostClass,
+                TimesyncNode,
+                CockroachClient,
+                ip_start=32
+            )
 
-        clients[0].wait = True
-        clients[0].node_config.app.init = True
+            server_ips = [s.node_config.ip for s in servers]
 
-        #for hh in servers + clients:
-        #    hh.sync_drift = int(random.gauss(mu=1000.0, sigma=10))
-        #    hh.sync_offset = int(random.uniform(0.0, 1000000.0))
-        #    print(f'host {hh.name}: drift={hh.sync_drift} offset={hh.sync_offset}')
+            for hh in ntp_servers + servers + clients:
+                if ts == 'ntp_ts':
+                    hh.node_config.app.nic_timestamping = True
+                elif ts == 'ptp':
+                    hh.node_config.app.ptp = True
 
-        experiments.append(e)
+
+            for hh in servers + clients:
+                hh.node_config.app.servers = server_ips
+                hh.node_config.app.ntp_server = \
+                        ntp_servers[0].node_config.ip
+
+            clients[0].wait = True
+            clients[0].node_config.app.init = True
+
+            #for hh in servers + clients:
+            #    hh.sync_drift = int(random.gauss(mu=1000.0, sigma=10))
+            #    hh.sync_offset = int(random.uniform(0.0, 1000000.0))
+            #    print(f'host {hh.name}: drift={hh.sync_drift} offset={hh.sync_offset}')
+
+            net.init_network()
+
+            experiments.append(e)
