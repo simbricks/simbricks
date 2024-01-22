@@ -251,7 +251,7 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
         'link_delay': '1us',
         'link_queue_size': '512KB',
         'congestion_control': e2e.CongestionControl.CUBIC,
-        'app_stop_time': '10s',
+        'app_stop_time': '60s',
     }
     for (k,v) in kwargs.items():
         params[k] = v
