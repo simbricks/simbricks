@@ -36,6 +36,14 @@ class E2ETopology(ABC):
     def add_to_network(self, net):
         pass
 
+    @abstractmethod
+    def get_switches(self):
+        pass
+
+    @abstractmethod
+    def get_links(self):
+        pass
+
 
 class E2EDumbbellTopology(E2ETopology):
 
@@ -89,6 +97,12 @@ class E2EDumbbellTopology(E2ETopology):
     @delay.setter
     def delay(self, delay: str):
         self.link.delay = delay
+
+    def get_switches(self):
+        return [self.left_switch, self.right_switch]
+
+    def get_links(self):
+        return [self.link]
 
 
 class DCFatTree(E2ETopology):
@@ -243,6 +257,12 @@ class DCFatTree(E2ETopology):
 
     def add_simbricks_host_r(self, nic):
         return self.add_host_r(self.wrap_simbricks_host(nic))
+
+    def get_switches(self):
+        return self.switches
+
+    def get_links(self):
+        return self.links
 
 
 def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
