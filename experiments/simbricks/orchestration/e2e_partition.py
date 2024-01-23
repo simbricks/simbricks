@@ -94,16 +94,17 @@ def partition(topology, N):
         node_partitions[p].append(i)
 
     # For debugging: print out dot representation of partition
-    #print('graph R {')
-    #for p in sorted(node_partitions.keys()):
-    #    print(f'subgraph cluster{p} {{')
-    #    for n_i in node_partitions[p]:
-    #      n = idmap.from_id(n_i)
-    #      print(f'n{n_i} [label="{n.id}"];')
-    #    print('}')
-    #for (s,d) in edges:
-    #    print(f'n{s} -- n{d};')
-    #print('}')
+    dot = 'graph R {\n'
+    for p in sorted(node_partitions.keys()):
+        dot += f'subgraph cluster{p} {{\n'
+        dot += f'label = "netpart_{p}";\n'
+        for n_i in node_partitions[p]:
+          n = idmap.from_id(n_i)
+          dot += f'n{n_i} [label="{n.id}"];\n'
+        dot += '}\n'
+    for (s,d) in edges:
+        dot += f'n{s} -- n{d};\n'
+    dot += '}'
 
 
     # create the networks
@@ -158,4 +159,4 @@ def partition(topology, N):
             con_a.set_peer(lst_a)
             con.add_component(con_a)
 
-    return networks
+    return (networks, dot)

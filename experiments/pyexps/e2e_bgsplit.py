@@ -59,12 +59,15 @@ for N in splits:
   add_contig_bg(topology)
 
   # Partition into N ns-3 processes
-  nets = e2e_part.partition(topology, N)
+  nets, dot = e2e_part.partition(topology, N)
   for net in nets:
     net.e2e_global.stop_time = '1s'
     net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
     net.wait = True
     e.add_network(net)
     net.init_network()
+
+  with open(f'out/{e.name}.dot', 'w') as f:
+    f.write(dot)
 
   experiments.append(e)
