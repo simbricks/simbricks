@@ -919,6 +919,7 @@ class NS3E2ENet(NetSim):
         self.e2e_components: tp.List[tp.Union[e2e.E2ETopologyNode,
                                               e2e.E2ETopologyChannel]] = []
         self.e2e_topologies: tp.List[E2ETopology] = []
+        self.e2e_global = e2e.E2EGlobalConfig()
         self.use_file = True
 
     def add_component(
@@ -984,6 +985,7 @@ class NS3E2ENet(NetSim):
                     self.resolve_socket_paths(env, c, True)
 
         params: tp.List[str] = []
+        params.append(self.e2e_global.ns3_config())
         for component in self.e2e_components:
             params.append(component.ns3_config())
 
