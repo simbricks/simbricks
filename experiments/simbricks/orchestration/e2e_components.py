@@ -219,9 +219,14 @@ class E2ESimbricksNetwork(E2EComponent):
         self.sync_delay = ""
         self.poll_delay = ""
         self.eth_latency = ""
+        self.peer = None
         self.sync: SimbricksSyncMode = SimbricksSyncMode.SYNC_OPTIONAL
 
         self.simbricks_component = None
+
+    def set_peer(self, peer: E2ESimbricksNetwork):
+        self.peer = peer
+        peer.peer = self
 
     def ns3_config(self) -> str:
         self.mapping.update({
