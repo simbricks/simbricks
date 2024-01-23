@@ -110,9 +110,13 @@ class E2EGlobalConfig(E2EBase):
         super().__init__()
         self.category = "Global"
         self.stop_time = ""
+        self.mac_start = 0
 
     def ns3_config(self) -> str:
-        self.mapping.update({"StopTime": self.stop_time})
+        self.mapping.update({
+            "StopTime": self.stop_time,
+            "MACStart": self.mac_start
+        })
         return super().ns3_config()
 
     def add_component(self, component: E2EComponent) -> None:
