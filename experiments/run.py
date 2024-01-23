@@ -102,6 +102,13 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help='Dump pcap file (if supported by component simulator)'
     )
+    parser.add_argument(
+        '--profile-int',
+        metavar='S',
+        type=int,
+        default=None,
+        help='Enable periodic sigusr1 to each simulator every S seconds.'
+    )
 
     # arguments for the experiment environment
     g_env = parser.add_argument_group('Environment')
@@ -309,6 +316,9 @@ def main():
         rt = runtime.LocalSimpleRuntime(
             verbose=args.verbose, executor=executors[0]
         )
+
+    if args.profile_int:
+        rt.enable_profiler(args.profile_int)
 
     # load experiments
     if not args.pickled:
