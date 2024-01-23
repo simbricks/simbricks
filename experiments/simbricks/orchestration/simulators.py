@@ -193,8 +193,8 @@ class NetSim(Simulator):
         components."""
         self.nics: list[NICSim] = []
         self.hosts_direct: list[HostSim] = []
-        self.net_listen: list[NetSim] = []
-        self.net_connect: list[NetSim] = []
+        self.net_listen: list[(NetSim, str)] = []
+        self.net_connect: list[(NetSim, str)] = []
         self.wait = False
 
     def full_name(self) -> str:
@@ -203,29 +203,29 @@ class NetSim(Simulator):
     def connect_nic(self, nic: NICSim) -> None:
         self.nics.append(nic)
 
-    def connect_network(self, net: NetSim) -> None:
+    def connect_network(self, net: NetSim, suffix='') -> None:
         """Connect this network to the listening peer `net`"""
-        net.net_listen.append(self)
-        self.net_connect.append(net)
+        net.net_listen.append((self, suffix))
+        self.net_connect.append((net, suffix))
 
     def connect_sockets(self, env: ExpEnv) -> tp.List[tp.Tuple[Simulator, str]]:
         sockets = []
         for n in self.nics:
             sockets.append((n, env.nic_eth_path(n)))
-        for n in self.net_connect:
-            sockets.append((n, env.n2n_eth_path(n, self)))
+        for (n, suffix) in self.net_connect:
+            sockets.append((n, env.n2n_eth_path(n, self, suffix)))
         for h in self.hosts_direct:
             sockets.append((h, env.net2host_eth_path(self, h)))
         return sockets
 
     def listen_sockets(self, env: ExpEnv) -> tp.List[tp.Tuple[NetSim, str]]:
         listens = []
-        for net in self.net_listen:
-            listens.append((net, env.n2n_eth_path(self, net)))
+        for (net,suffix) in self.net_listen:
+            listens.append((net, env.n2n_eth_path(self, net, suffix)))
         return listens
 
     def dependencies(self) -> tp.List[Simulator]:
-        return self.nics + self.net_connect + self.hosts_direct
+        return self.nics + self.hosts_direct + [n for n,_ in self.net_connect]
 
     def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return [s for (_, s) in self.listen_sockets(env)]
@@ -947,13 +947,16 @@ class NS3E2ENet(NetSim):
         if e2e_sim.adapter_type == e2e.SimbricksAdapterType.NIC:
             e2e_sim.unix_socket = env.nic_eth_path(e2e_sim.simbricks_component)
         elif e2e_sim.adapter_type == e2e.SimbricksAdapterType.NETWORK:
+            p_suf = ''
+            if e2e_sim.peer:
+                p_suf = min(e2e_sim.name, e2e_sim.peer.name)
             if listen:
                 e2e_sim.unix_socket = env.n2n_eth_path(
-                    self, e2e_sim.simbricks_component
+                    self, e2e_sim.simbricks_component, p_suf
                 )
             else:
                 e2e_sim.unix_socket = env.n2n_eth_path(
-                    e2e_sim.simbricks_component, self
+                    e2e_sim.simbricks_component, self, p_suf
                 )
         elif e2e_sim.adapter_type == e2e.SimbricksAdapterType.HOST:
             e2e_sim.unix_socket = env.net2host_eth_path(
@@ -971,7 +974,10 @@ class NS3E2ENet(NetSim):
             # add all connected networks
             for c in component.components:
                 if isinstance(c, e2e.E2ESimbricksNetworkNetIf):
-                    self.connect_network(c.simbricks_component)
+                    p_suf = ''
+                    if c.peer:
+                        p_suf = min(c.name, c.peer.name)
+                    self.connect_network(c.simbricks_component, p_suf)
 
     def run_cmd(self, env):
         # resolve all socket paths

@@ -155,6 +155,7 @@ def partition(topology, N):
             con_a.eth_latency = f'{l.delay}'
             con_a.sync_delay = f'{l.delay}'
             con_a.simbricks_component = networks[lst_p]
+            con_a.set_peer(lst_a)
             con.add_component(con_a)
 
     return networks
