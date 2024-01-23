@@ -108,8 +108,11 @@ def partition(topology, N):
 
     # create the networks
     networks = []
+    mac_start = 0
     for p in sorted(node_partitions.keys()):
         net = sim.NS3E2ENet()
+        net.e2e_global.mac_start = mac_start
+        mac_start += 10000
         net.name = f'netpart_{p}'
         networks.append(net)
 
