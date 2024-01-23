@@ -45,6 +45,7 @@ class ExperimentBaseRunner(ABC):
         self.exp = exp
         self.env = env
         self.verbose = verbose
+        self.profile_int: tp.Optional[int] = None
         self.out = ExpOutput(exp)
         self.running: tp.List[tp.Tuple[Simulator, SimpleComponent]] = []
         self.sockets: tp.List[tp.Tuple[Executor, str]] = []
@@ -182,7 +183,16 @@ class ExperimentBaseRunner(ABC):
         await self.after_cleanup()
         return self.out
 
+    async def profiler(self):
+        assert self.profile_int
+        while True:
+            await asyncio.sleep(self.profile_int)
+            for (sim,sc) in self.running:
+                await sc.sigusr1()
+
     async def run(self) -> ExpOutput:
+        profiler_task = None
+
         try:
             self.out.set_start()
             graph = self.sim_graph()
@@ -202,6 +212,8 @@ class ExperimentBaseRunner(ABC):
                 for sim in sims:
                     ts.done(sim)
 
+            if self.profile_int:
+                profiler_task = asyncio.create_task(self.profiler())
             await self.before_wait()
             await self.wait_for_sims()
         except asyncio.CancelledError:
@@ -212,6 +224,11 @@ class ExperimentBaseRunner(ABC):
             self.out.set_failed()
             traceback.print_exc()
 
+        if profiler_task:
+          try:
+              profiler_task.cancel()
+          except asyncio.CancelledError:
+              pass
         # The bare except above guarantees that we always execute the following
         # code, which terminates all simulators and produces a proper output
         # file.

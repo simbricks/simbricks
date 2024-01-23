@@ -52,6 +52,8 @@ class LocalSimpleRuntime(Runtime):
             runner = ExperimentSimpleRunner(
                 self.executor, run.experiment, run.env, self.verbose
             )
+            if self.profile_int:
+                runner.profile_int = self.profile_int
             await run.prep_dirs(self.executor)
             await runner.prepare()
         except asyncio.CancelledError:
@@ -125,6 +127,8 @@ class LocalParallelRuntime(Runtime):
             runner = ExperimentSimpleRunner(
                 self.executor, run.experiment, run.env, self.verbose
             )
+            if self.profile_int:
+                runner.profile_int = self.profile_int
             await run.prep_dirs(executor=self.executor)
             await runner.prepare()
         except asyncio.CancelledError:

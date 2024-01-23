@@ -169,6 +169,11 @@ class Component(object):
             await self.kill()
         await self._proc.wait()
 
+    async def sigusr1(self) -> None:
+        """Sends an interrupt signal."""
+        if self._proc.returncode is None:
+            self._proc.send_signal(signal.SIGUSR1)
+
     async def started(self) -> None:
         pass
 
