@@ -81,6 +81,7 @@ class Runtime(metaclass=ABCMeta):
     def __init__(self) -> None:
         self._interrupted = False
         """Indicates whether interrupt has been signaled."""
+        self.profile_int: tp.Optional[int] = None
 
     @abstractmethod
     def add_run(self, run: Run) -> None:
@@ -108,3 +109,6 @@ class Runtime(metaclass=ABCMeta):
         if not self._interrupted:
             self._interrupted = True
             self.interrupt_handler()
+
+    def enable_profiler(self, profile_int: int) -> None:
+        self.profile_int = profile_int

@@ -57,6 +57,8 @@ class DistributedSimpleRuntime(Runtime):
             run.env,
             self.verbose
         )
+        if self.profile_int:
+            runner.profile_int = self.profile_int
 
         try:
             for executor in self.executors:
