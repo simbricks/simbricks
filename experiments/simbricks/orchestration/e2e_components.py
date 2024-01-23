@@ -127,6 +127,7 @@ class E2EComponent(E2EBase):
 
     def __init__(self, idd: str) -> None:
         super().__init__()
+        self.name = idd
         self.id = idd
         self.has_path = False
         self.type = ""
