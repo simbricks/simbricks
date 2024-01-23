@@ -31,9 +31,9 @@ from simbricks.orchestration.e2e_topologies import (
     DCFatTree, add_contig_bg
 )
 
-random.seed(42)
 
-e = exp.Experiment('e2e_bg')
+
+splits = [1,2,4]
 
 options = {
     'ns3::TcpSocket::SegmentSize': '1448',
@@ -41,19 +41,30 @@ options = {
     'ns3::TcpSocket::RcvBufSize': '524288',
 }
 
-topology = DCFatTree(
-            n_spine_sw=1,
-            n_agg_bl=2,
-            n_agg_sw=1,
-            n_agg_racks=1,
-            h_per_rack=1,
-        )
-add_contig_bg(topology)
-nets = e2e_part.partition(topology, 2)
-for net in nets:
-  net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
-  net.wait = True
-  e.add_network(net)
-  net.init_network()
+experiments = []
+for N in splits:
+  e = exp.Experiment(f'e2e_bgsplit-{N}')
+  # Make sure background hosts are placed the same way
+  random.seed(42)
 
-experiments = [e]
+  # Create empty topology first
+  topology = DCFatTree(
+              n_spine_sw=1,
+              n_agg_bl=2,
+              n_agg_sw=1,
+              n_agg_racks=2,
+              h_per_rack=10,
+          )
+  # fill up with background traffic hosts
+  add_contig_bg(topology)
+
+  # Partition into N ns-3 processes
+  nets = e2e_part.partition(topology, N)
+  for net in nets:
+    net.e2e_global.stop_time = '1s'
+    net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
+    net.wait = True
+    e.add_network(net)
+    net.init_network()
+
+  experiments.append(e)
