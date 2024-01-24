@@ -398,7 +398,56 @@ class LinuxFEMUNode(NodeConfig):
 class HomaCluster(AppConfig):
     def __init__(self) -> None:
         super().__init__()
-        self.is_node_zero = False
+        self.cluster_size = 2
+        self.id = 0
+
+    def prepare_post_cp(self) -> tp.List[str]:
+        return super().prepare_post_cp() + [
+            'insmod homa.ko'
+        ]
+    # pylint: disable=consider-using-with
+    def config_files(self) -> tp.Dict[str, tp.IO]:
+        m = {'homa.ko': open('../images/homa/homa.ko', 'rb')}
+        return {**m, **super().config_files()}
+    
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        cmd = ['mount -t sysfs sysfs /sys', 
+        'mount -t proc proc /proc'
+        ]
+
+        cmd.append(f'/root/homa/util/cp_node server --protocol homa & ')
+        cmd.append('sleep 5')
+        cmd.append(f'/root/homa/util/cp_node client --protocol homa --workload w4 --first-server 0 --server-nodes {self.cluster_size} --id {self.id} &')
+        cmd.append('sleep 10')
+        cmd.append('pkill cp_node')
+
+        # if (self.is_node_zero):
+            # cmd.append('service ssh restart')
+            # cmd.append('cp authorized_keys ~/.ssh/authorized_keys')
+            # cmd.append('cp id_rsa ~/.ssh/id_rsa')
+            # cmd.append('chmod 0700 ~/.ssh/id_rsa')
+            # cmd.append('echo "$!"')
+            # cmd.append('pid=$!')
+            # cmd.append('echo "client --protocol homa" > /proc/$pid/fd/0')
+            # cmd.append('ping 10.0.0.1')
+            # cmd.append('ssh -vvv -o StrictHostKeyChecking=no 10.0.0.1 echo hello')
+            # cmd.append(f'/root/homa/util/cp_vs_tcp -v --no-homa-prio -n {self.cluster_size} -w w4 -b 10 --protocol homa')
+
+
+        # else:
+            # cmd.append('service ssh restart')
+            # cmd.append('cp authorized_keys ~/.ssh/authorized_keys')
+            # cmd.append('cp id_rsa ~/.ssh/id_rsa')
+            # cmd.append('chmod 0700 ~/.ssh/id_rsa')
+            # cmd.append('sleep infinity')
+        return cmd
+            
+
+class HomaClientNode(AppConfig):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.id = 0
         self.cluster_size = 2
 
     def prepare_post_cp(self) -> tp.List[str]:
@@ -411,45 +460,14 @@ class HomaCluster(AppConfig):
         return {**m, **super().config_files()}
     
     def run_cmds(self, node: NodeConfig) -> tp.List[str]:
-        cmd = ['mount -t sysfs sysfs /sys']
-
-        if (self.is_node_zero):
-            cmd.append(f'/root/homa/util/cp_vs_tcp -n {self.cluster_size} -w w4 -b 10 --protocol homa')
-        else:
-            cmd.append('service ssh restart')
-            cmd.append('sleep infinity')
-        return cmd
-            
-
-class HomaClientNode(AppConfig):
-
-    def prepare_post_cp(self) -> tp.List[str]:
-        return super().prepare_post_cp() + [
-            'insmod homa.ko'
-        ]
-    # pylint: disable=consider-using-with
-    def config_files(self) -> tp.Dict[str, tp.IO]:
-        m = {'homa.ko': open('../images/homa/homa.ko', 'rb')}
-        return {**m, **super().config_files()}
-    
-    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
         return [
-            'echo "10.0.0.2 node1" >> /etc/hosts',
             'mount -t sysfs sysfs /sys',
             'mount -t proc proc /proc',
-            #'cat /etc/hosts', 
-            #'ping 10.0.0.2 -c 3',
-            #'ping node1',
-            #'sysctl -w .net.homa.poll_usecs=300000',
             '/root/homa/util/cp_node client --protocol homa',
-            # '/root/homa/util/cp_vs_tcp --help',
-            # 'sleep 1',
             # 'touch /root/homa/util/client.tt',
             # 'sleep 1',
             # '/root/homa/util/ttprint.py > /root/homa/util/client.tt',
             # 'pkill cp_node',
-            # 'cat /root/homa/util/client.tt'
-            # 'cat /proc/net/homa_metrics'
         ]
 
 class HomaServerNode(AppConfig):

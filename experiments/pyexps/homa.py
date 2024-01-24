@@ -86,9 +86,14 @@ for host_type in host_types:
             )
 
             nodes[0].node_config.app.is_node_zero = True
+
+            i = 0
             for c in nodes:
                 c.node_config.disk_image = 'homa'
+                c.node_config.app.id = i
+                c.node_config.app.cluster_size = n
                 c.wait = True
+                i += 1
 
             # add to experiments
             experiments.append(e)
