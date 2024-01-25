@@ -57,8 +57,30 @@ class IDMap(object):
     def items(self):
         return self.dict.items()
 
+def parse_duration(s: str) -> float:
+    if s.endswith('ps'):
+        return float(s[:-2])
+    elif s.endswith('ns'):
+        return float(s[:-2]) * 1000
+    elif s.endswith('us'):
+        return float(s[:-2]) * 1000000
+    elif s.endswith('ms'):
+        return float(s[:-2]) * 1000000000
+    else:
+        raise ValueError('Unknown duration unit')
+
+def stringify_duration(x: float) -> str:
+    if x < 1000:
+        return f'{x}ps'
+    elif x < 1000000:
+        return f'{x / 1000}ns'
+    elif x < 1000000000:
+        return f'{x / 1000000}us'
+    else:
+        return f'{x / 1000000000}ms'
+
 # Split the topology into N networks, return E2ENetwork instances
-def partition(topology, N, by_weight=False):
+def partition(topology, N, sync_delay_factor=1.0, by_weight=False):
     adjlists = collections.defaultdict(tuple)
     edges = []
     idmap = IDMap()
@@ -157,13 +179,15 @@ def partition(topology, N, by_weight=False):
 
             lst_a = comps.E2ESimbricksNetworkNicIf(f'crossL_{l_i}_{r_i}')
             lst_a.eth_latency = f'{l.delay}'
-            lst_a.sync_delay = f'{l.delay}'
+            lst_a.sync_delay = stringify_duration(
+                parse_duration(l.delay) * sync_delay_factor)
             lst_a.simbricks_component = networks[con_p]
             lst.add_component(lst_a)
 
             con_a = comps.E2ESimbricksNetworkNetIf(f'crossC_{l_i}_{r_i}')
             con_a.eth_latency = f'{l.delay}'
-            con_a.sync_delay = f'{l.delay}'
+            con_a.sync_delay = stringify_duration(
+                parse_duration(l.delay) * sync_delay_factor)
             con_a.simbricks_component = networks[lst_p]
             con_a.set_peer(lst_a)
             con.add_component(con_a)
