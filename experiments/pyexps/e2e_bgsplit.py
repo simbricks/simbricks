@@ -33,41 +33,38 @@ from simbricks.orchestration.e2e_topologies import (
 
 
 
-splits = [1,2,4]
-
+sync_factors = [1.0, 0.5, 0.25, 0.1]
 options = {
     'ns3::TcpSocket::SegmentSize': '1448',
     'ns3::TcpSocket::SndBufSize': '524288',
     'ns3::TcpSocket::RcvBufSize': '524288',
 }
 
+kinds_of_parts = e2e_part.hier_partitions(DCFatTree()).keys()
+
 experiments = []
-for N in splits:
-  e = exp.Experiment(f'e2e_bgsplit-{N}')
-  # Make sure background hosts are placed the same way
-  random.seed(42)
+for p in kinds_of_parts:
+  for sf in sync_factors:
+    e = exp.Experiment(f'e2e_bgsplit-{p}-{sf}')
+    # Make sure background hosts are placed the same way
+    random.seed(42)
 
-  # Create empty topology first
-  topology = DCFatTree(
-              n_spine_sw=1,
-              n_agg_bl=2,
-              n_agg_sw=1,
-              n_agg_racks=2,
-              h_per_rack=10,
-          )
-  # fill up with background traffic hosts
-  add_contig_bg(topology)
+    # Create empty topology first
+    topology = DCFatTree()
+    # fill up with background traffic hosts
+    add_contig_bg(topology)
 
-  # Partition into N ns-3 processes
-  nets, dot = e2e_part.partition(topology, N)
-  for net in nets:
-    net.e2e_global.stop_time = '1s'
-    net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
-    net.wait = True
-    e.add_network(net)
-    net.init_network()
+    partition = e2e_part.hier_partitions(topology)[p]
+    nets = e2e_part.instantiate_partition(topology, partition, sf)
+    dot = e2e_part.dot_topology(topology, partition)
+    for net in nets:
+      net.e2e_global.stop_time = '50ms'
+      net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
+      net.wait = True
+      e.add_network(net)
+      net.init_network()
 
-  with open(f'out/{e.name}.dot', 'w') as f:
-    f.write(dot)
+    with open(f'out/{e.name}.dot', 'w') as f:
+      f.write(dot)
 
-  experiments.append(e)
+    experiments.append(e)
