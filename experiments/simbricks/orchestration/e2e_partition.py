@@ -58,7 +58,7 @@ class IDMap(object):
         return self.dict.items()
 
 # Split the topology into N networks, return E2ENetwork instances
-def partition(topology, N):
+def partition(topology, N, by_weight=False):
     adjlists = collections.defaultdict(tuple)
     edges = []
     idmap = IDMap()
@@ -78,14 +78,23 @@ def partition(topology, N):
 
     max_node = max(adjlists.keys())
     graph = []
+    weights = []
     for i in range(0, max_node + 1):
+        c = idmap.from_id(i)
+        if 'weight' in c.__dict__:
+            weights.append(c.weight)
+        else:
+            weights.append(1)
         graph.append(adjlists[i])
 
     if N == 1:
         # metis does not like N=1 :-)
         parts = [0] * (max_node + 1)
     else:
-        (edgecuts, parts) = metis.part_graph(graph, N)
+        if by_weight:
+            (edgecuts, parts) = metis.part_graph(graph, N, nodew=weights)
+        else:
+            (edgecuts, parts) = metis.part_graph(graph, N)
 
     node_partitions = {}
     for (i,p) in enumerate(parts):
