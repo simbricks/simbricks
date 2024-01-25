@@ -109,19 +109,20 @@ class DCFatTree(E2ETopology):
 
     def __init__(self, basename='', **kwargs):
         self.params = {
-            'n_spine_sw': 4,
-            'n_agg_bl': 4,
-            'n_agg_sw': 4,
-            'n_agg_racks': 4,
+            'n_spine_sw': 1,
+            'n_agg_bl': 5,
+            'n_agg_sw': 1,
+            'n_agg_racks': 6,
             'h_per_rack': 40,
             'mtu': '1448',
             'spine_link_delay': '1us',
-            'spine_link_rate': '10Gbps',
+            'spine_link_rate': '100Gbps',
             'spine_link_queue': '512KB',
             'agg_link_delay': '1us',
-            'agg_link_rate': '10Gbps',
+            'agg_link_rate': '100Gbps',
             'agg_link_queue': '512KB',
             'sbhost_eth_latency': '500ns',
+            'sbhost_sync_delay': '100ns',
         }
         for (n,v) in kwargs.items():
             self.params[n] = v
@@ -254,6 +255,7 @@ class DCFatTree(E2ETopology):
 
         host = e2e.E2ESimbricksHost(f'_sbh-{i}-{nic.name}')
         host.eth_latency = self.params['sbhost_eth_latency']
+        host.sync_delay = self.params['sbhost_sync_delay']
         host.simbricks_component = nic
         return host
 
@@ -272,7 +274,7 @@ class DCFatTree(E2ETopology):
 
 def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
     params = {
-        'link_rate': '1Gbps',
+        'link_rate': '5Gbps',
         'link_delay': '1us',
         'link_queue_size': '512KB',
         'congestion_control': e2e.CongestionControl.CUBIC,
