@@ -79,87 +79,43 @@ def stringify_duration(x: float) -> str:
     else:
         return f'{x / 1000000000}ms'
 
-# Split the topology into N networks, return E2ENetwork instances
-def partition(topology, N, sync_delay_factor=1.0, by_weight=False):
-    adjlists = collections.defaultdict(tuple)
-    edges = []
-    idmap = IDMap()
-    for l in topology.get_links():
-        l_i = idmap.to_id(l.left_node)
-        r_i = idmap.to_id(l.right_node)
-        adjlists[l_i] += (r_i,)
-        adjlists[r_i] += (l_i,)
-        edges.append((l_i, r_i))
-    for sw in topology.get_switches():
-        for h in sw.components:
-            l_i = idmap.to_id(sw)
-            r_i = idmap.to_id(h)
-            adjlists[l_i] += (r_i,)
-            adjlists[r_i] += (l_i,)
-            edges.append((l_i, r_i))
+def dot_topology(topology, partitions=None):
+    if partitions is None:
+        partitions = {0: topology.get_switches()}
 
-    max_node = max(adjlists.keys())
-    graph = []
-    weights = []
-    for i in range(0, max_node + 1):
-        c = idmap.from_id(i)
-        if 'weight' in c.__dict__:
-            weights.append(c.weight)
-        else:
-            weights.append(1)
-        graph.append(adjlists[i])
-
-    if N == 1:
-        # metis does not like N=1 :-)
-        parts = [0] * (max_node + 1)
-    else:
-        if by_weight:
-            (edgecuts, parts) = metis.part_graph(graph, N, nodew=weights)
-        else:
-            (edgecuts, parts) = metis.part_graph(graph, N)
-
-    node_partitions = {}
-    for (i,p) in enumerate(parts):
-        if p not in node_partitions:
-            node_partitions[p] = []
-        node_partitions[p].append(i)
-
-    # For debugging: print out dot representation of partition
     dot = 'graph R {\n'
-    for p in sorted(node_partitions.keys()):
+    for p in sorted(partitions.keys()):
         dot += f'subgraph cluster{p} {{\n'
         dot += f'label = "netpart_{p}";\n'
-        for n_i in node_partitions[p]:
-          n = idmap.from_id(n_i)
-          dot += f'n{n_i} [label="{n.id}"];\n'
+        for n in partitions[p]:
+          dot += f'n{n.id} [label="{n.id}"];\n'
         dot += '}\n'
-    for (s,d) in edges:
-        dot += f'n{s} -- n{d};\n'
+    for l in topology.get_links():
+        dot += f'n{l.left_node.id} -- n{l.right_node.id};\n'
     dot += '}'
+    return dot
 
-
+def instantiate_partition(topology, node_partitions, sync_delay_factor=1.0):
     # create the networks
-    networks = []
+    networks = {}
     mac_start = 0
+    switchpart = {}
     for p in sorted(node_partitions.keys()):
         net = sim.NS3E2ENet()
         net.e2e_global.mac_start = mac_start
         mac_start += 10000
-        net.name = f'netpart_{p}'
-        networks.append(net)
+        net.name = f'np{p}'
+        networks[p] = net
 
-    # add the switches
-    for sw in topology.get_switches():
-        p = parts[idmap.to_id(sw)]
-        net = networks[p]
-        net.add_component(sw)
+        # add the switches
+        for sw in node_partitions[p]:
+            switchpart[sw] = p
+            net.add_component(sw)
 
     # add the links
-    for l in topology.get_links():
-        l_i = idmap.to_id(l.left_node)
-        l_p = parts[l_i]
-        r_i = idmap.to_id(l.right_node)
-        r_p = parts[r_i]
+    for i, l in enumerate(topology.get_links()):
+        l_p = switchpart[l.left_node]
+        r_p = switchpart[l.right_node]
         if l_p == r_p:
             # both end in the same partiton, just add the link
             networks[l_p].add_component(l)
@@ -177,14 +133,16 @@ def partition(topology, N, sync_delay_factor=1.0, by_weight=False):
               con_p = l_p
               con = l.left_node
 
-            lst_a = comps.E2ESimbricksNetworkNicIf(f'crossL_{l_i}_{r_i}')
+            lst_a = comps.E2ESimbricksNetworkNicIf(
+                f'xL_{i}')
             lst_a.eth_latency = f'{l.delay}'
             lst_a.sync_delay = stringify_duration(
                 parse_duration(l.delay) * sync_delay_factor)
             lst_a.simbricks_component = networks[con_p]
             lst.add_component(lst_a)
 
-            con_a = comps.E2ESimbricksNetworkNetIf(f'crossC_{l_i}_{r_i}')
+            con_a = comps.E2ESimbricksNetworkNetIf(
+                f'xC_{i}')
             con_a.eth_latency = f'{l.delay}'
             con_a.sync_delay = stringify_duration(
                 parse_duration(l.delay) * sync_delay_factor)
@@ -192,4 +150,98 @@ def partition(topology, N, sync_delay_factor=1.0, by_weight=False):
             con_a.set_peer(lst_a)
             con.add_component(con_a)
 
-    return (networks, dot)
+    return list(networks.values())
+
+
+# Split the topology into N networks, return E2ENetwork instances
+def partition(topology, N, by_weight=False):
+    # Convert topology to adjacency lists for metis solver
+    adjlists = collections.defaultdict(tuple)
+    idmap = IDMap()
+    for l in topology.get_links():
+        l_i = idmap.to_id(l.left_node)
+        r_i = idmap.to_id(l.right_node)
+        adjlists[l_i] += (r_i,)
+        adjlists[r_i] += (l_i,)
+
+    max_node = max(adjlists.keys())
+    graph = []
+    weights = []
+    for i in range(0, max_node + 1):
+        c = idmap.from_id(i)
+        w = c.weight if 'weight' in c.__dict__ else 1
+        weights.append(w)
+        graph.append(adjlists[i])
+
+    if N == 1:
+        # metis does not like N=1 :-)
+        parts = [0] * (max_node + 1)
+    else:
+        if by_weight:
+            (edgecuts, parts) = metis.part_graph(graph, N, nodew=weights)
+        else:
+            (edgecuts, parts) = metis.part_graph(graph, N)
+
+    node_partitions = {}
+    for (i,p) in enumerate(parts):
+        if p not in node_partitions:
+            node_partitions[p] = []
+        node_partitions[p].append(idmap.from_id(i))
+
+    return node_partitions
+
+
+def hier_partitions(topology: topos.DCFatTree):
+    partitions = {}
+
+    # trivial partition: all in same partiton
+    partitions['s'] = {0: topology.get_switches()}
+
+    # next partition agg blocks (for each agg block, get tors and agg switches)
+    aggblocks = []
+    for ab in topology.agg_blocks:
+        sws = ab['switches'][:]
+        for r in ab['racks']:
+            sws.append(r['tor'])
+        aggblocks.append(sws)
+
+    # one net per aggregation block, spine switches added to first block
+    partitions['ab'] = dict((i,j[:]) for i,j in enumerate(aggblocks))
+    partitions['ab'][0] += topology.spine_switches
+
+    # one net per AB + one for spine switches
+    partitions['ac'] = dict((i,j[:]) for i,j in enumerate(aggblocks))
+    partitions['ac'][len(aggblocks)] = topology.spine_switches
+
+    # Next one for core (spine + agg switches), one per rack
+    partitions['cr'] = { 0: topology.spine_switches[:] }
+    i = 1
+    for ab in topology.agg_blocks:
+        partitions['cr'][0] += ab['switches']
+        for r in ab['racks']:
+            partitions['cr'][i] = [r['tor']]
+            i += 1
+
+    for k in range(2, topology.params['n_agg_racks'] + 1):
+        p = { 0: topology.spine_switches[:] }
+        rs = []
+        for ab in topology.agg_blocks:
+            p[0] += ab['switches']
+            for r in ab['racks']:
+                rs.append(r['tor'])
+        i = 0
+        while i * k < len(rs):
+            p[i + 1] = rs[i * k: (i+1) * k]
+            i += 1
+        partitions[f'cr{k}'] = p
+
+    # Fully partitioned one for spine, one per agg-switch, one per rack
+    partitions['rs'] = { 0: topology.spine_switches[:] }
+    i = 1
+    for ab in topology.agg_blocks:
+        partitions['rs'][i] = ab['switches']
+        i += 1
+        for r in ab['racks']:
+            partitions['rs'][i] = [r['tor']]
+            i += 1
+    return partitions
