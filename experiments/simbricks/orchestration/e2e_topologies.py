@@ -145,6 +145,8 @@ class DCFatTree(E2ETopology):
         # Create spine switches
         for i in range(0, self.params['n_spine_sw']):
             sw = e2e.E2ESwitchNode(f"_{bn}spine{i}")
+            sw.weight = (self.params['n_agg_bl'] * self.params['n_agg_sw'] *
+                self.params['n_agg_racks'] * self.params['h_per_rack'])
             sw.mtu = self.params['mtu']
             self.spine_switches.append(sw)
             self.switches.append(sw)
@@ -160,6 +162,8 @@ class DCFatTree(E2ETopology):
             # Create switches in aggregation blocks
             for j in range(0, self.params['n_agg_sw']):
                 sw = e2e.E2ESwitchNode(f"_{bn}agg{i}_{j}")
+                sw.weight = (self.params['n_agg_racks'] *
+                    self.params['h_per_rack'])
                 sw.mtu = self.params['mtu']
                 ab['switches'].append(sw)
                 self.switches.append(sw)
@@ -167,6 +171,7 @@ class DCFatTree(E2ETopology):
             # Create racks (including ToRs)
             for j in range(0, self.params['n_agg_racks']):
                 tor = e2e.E2ESwitchNode(f"_{bn}tor{i}_{j}")
+                tor.weight = self.params['h_per_rack']
                 sw.mtu = self.params['mtu']
                 r = {
                     'id': f'rack{i}_{j}',
