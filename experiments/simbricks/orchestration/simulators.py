@@ -966,6 +966,8 @@ class NS3E2ENet(NetSim):
                     if c.peer:
                         p_suf = min(c.name, c.peer.name)
                     self.connect_network(c.simbricks_component, p_suf)
+                elif isinstance(c, e2e.E2ESimbricksHost):
+                    c.simbricks_component.set_network(self)
 
     def run_cmd(self, env):
         # resolve all socket paths
