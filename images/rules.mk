@@ -32,9 +32,11 @@ MTCP_IMAGE := $(d)output-mtcp/mtcp
 TAS_IMAGE := $(d)output-tas/tas
 HOMA_IMAGE := $(d)output-homa/homa
 TIMESYNC_IMAGE := $(d)output-timesync/timesync
+HOMA_IMAGE := $(d)output-homa/homa
 COMPRESSED_IMAGES ?= false
 
-IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE) $(HOMA_IMAGE) $(TIMESYNC_IMAGE)
+IMAGES := $(BASE_IMAGE) $(NOPAXOS_IMAGE) $(MEMCACHED_IMAGE) $(TIMESYNC_IMAGE) \
+  $(HOMA_IMAGE)
 RAW_IMAGES := $(addsuffix .raw,$(IMAGES))
 
 IMAGES_MIN := $(BASE_IMAGE)
@@ -143,6 +145,18 @@ $(TIMESYNC_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
 	    $(COMPRESSED_IMAGES)
 	touch $@
 
+$(HOMA_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
+    $(addprefix $(d), extended-image.pkr.hcl scripts/install-homa.sh \
+      scripts/cleanup.sh)
+	rm -rf $(dir $@)
+	mkdir -p $(img_dir)/input-homa
+	cp -r $(homa_dir) \
+	    $(img_dir)/input-homa
+	cd $(img_dir) && ./packer-wrap.sh base homa extended-image.pkr.hcl \
+	$(COMPRESSED_IMAGES)
+	rm -rf $(img_dir)/input-homa
+	touch $@
+
 $(packer):
 	wget -O $(img_dir)packer_$(PACKER_VERSION)_linux_amd64.zip \
 	    https://releases.hashicorp.com/packer/$(PACKER_VERSION)/packer_$(PACKER_VERSION)_linux_amd64.zip
@@ -207,6 +221,18 @@ $(mqnic_mod): $(vmlinux)
 
 # HOMA kernel module
 $(homa_mod): $(vmlinux)
+	$(MAKE) -C $(kernel_dir) M=$(abspath $(homa_dir)) modules
+	touch $@
+
+################################################
+# homa kernel module
+
+$(homa_dir):
+	git clone https://github.com/PlatformLab/HomaModule \
+	    -b linux_$(KERNEL_VERSION) $@
+
+# HOMA kernel module
+$(homa_mod): $(vmlinux) $(homa_dir)
 	$(MAKE) -C $(kernel_dir) M=$(abspath $(homa_dir)) modules
 	touch $@
 
