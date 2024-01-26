@@ -26,6 +26,7 @@ doc/_build
 images/farmem/Module.symvers
 images/farmem/modules.order
 images/farmem/farmem.mod*
+images/homa/
 images/kernel/kheaders/
 images/mqnic/Module.symvers
 images/mqnic/modules.order
