@@ -41,8 +41,8 @@ extern "C" {
 #include <simbricks/base/proto.h>
 }
 
+#define ENABLE_PROFILING 1
 // #define DEBUG_NICBM 1
-#define STAT_NICBM 1
 #define DMA_MAX_PENDING 64
 
 namespace nicbm {
@@ -51,39 +51,49 @@ static volatile int exiting = 0;
 
 static std::vector<Runner *> runners;
 
-#ifdef STAT_NICBM
-static uint64_t h2d_poll_total = 0;
-static uint64_t h2d_poll_suc = 0;
-static uint64_t h2d_poll_sync = 0;
-// count from signal USR2
-static uint64_t s_h2d_poll_total = 0;
-static uint64_t s_h2d_poll_suc = 0;
-static uint64_t s_h2d_poll_sync = 0;
-
-static uint64_t n2d_poll_total = 0;
-static uint64_t n2d_poll_suc = 0;
-static uint64_t n2d_poll_sync = 0;
-// count from signal USR2
-static uint64_t s_n2d_poll_total = 0;
-static uint64_t s_n2d_poll_suc = 0;
-static uint64_t s_n2d_poll_sync = 0;
-static int stat_flag = 0;
-#endif
+static inline uint64_t Rdtsc(void) {
+  uint32_t eax, edx;
+  asm volatile ("rdtsc" : "=a" (eax), "=d" (edx));
+  return ((uint64_t) edx << 32) | eax;
+}
 
 static void sigint_handler(int dummy) {
   exiting = 1;
 }
 
 static void sigusr1_handler(int dummy) {
+  std::cout << "STATS: tsc=" << Rdtsc() << std::endl;
   for (Runner *r : runners)
-    fprintf(stderr, "[%p] main_time = %lu\n", r, r->TimePs());
+    r->DumpStats();
 }
 
-#ifdef STAT_NICBM
-static void sigusr2_handler(int dummy) {
-  stat_flag = 1;
-}
+void Runner::DumpStats() const {
+  std::cout << "  " << pcieParams_.sock_path << ": main_time=" << main_time_ <<
+#ifdef ENABLE_PROFILING
+      " tx_comm_cycles=" << statsPcie.cycles_tx_comm <<
+      " tx_block_cycles=" << statsPcie.cycles_tx_block <<
+      " tx_sync_cycles=" << statsPcie.cycles_tx_sync <<
+      " rx_comm_cycles=" << statsPcie.cycles_rx_comm <<
+      " rx_block_cycles=" << statsPcie.cycles_rx_block <<
+      " tx_msgs=" << statsPcie.num_tx_msg <<
+      " rx_msgs=" << statsPcie.num_rx_msg <<
+      " rx_syncs=" << statsPcie.num_rx_sync <<
 #endif
+      std::endl;
+
+  std::cout << "  " << netParams_.sock_path << ": main_time=" << main_time_ <<
+#ifdef ENABLE_PROFILING
+      " tx_comm_cycles=" << statsEth.cycles_tx_comm <<
+      " tx_block_cycles=" << statsEth.cycles_tx_block <<
+      " tx_sync_cycles=" << statsEth.cycles_tx_sync <<
+      " rx_comm_cycles=" << statsEth.cycles_rx_comm <<
+      " rx_block_cycles=" << statsEth.cycles_rx_block <<
+      " tx_msgs=" << statsEth.num_tx_msg <<
+      " rx_msgs=" << statsEth.num_rx_msg <<
+      " rx_syncs=" << statsEth.num_rx_sync <<
+#endif
+      std::endl;
+}
 
 volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   if (SimbricksBaseIfInTerminated(&nicif_.pcie.base)) {
@@ -91,6 +101,9 @@ volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
     abort();
   }
 
+#ifdef ENABLE_PROFILING
+  statsPcie.cycles_tx_start_tsc = Rdtsc();
+#endif
   volatile union SimbricksProtoPcieD2H *msg;
   bool first = true;
   while ((msg = SimbricksPcieIfD2HOutAlloc(&nicif_.pcie, main_time_)) == NULL) {
@@ -99,7 +112,13 @@ volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
               nicif_.pcie.base.out_pos);
       first = false;
     }
+#ifdef ENABLE_PROFILING
+    statsPcie.cycles_tx_block += Rdtsc() - statsPcie.cycles_tx_start_tsc;
+#endif
     YieldPoll();
+#ifdef ENABLE_PROFILING
+    statsPcie.cycles_tx_start_tsc = Rdtsc();
+#endif
   }
 
   if (!first)
@@ -108,22 +127,48 @@ volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   return msg;
 }
 
+void Runner::D2HOutSend(volatile union SimbricksProtoPcieD2H *msg, uint8_t ty) {
+  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg, ty);
+#ifdef ENABLE_PROFILING
+  statsPcie.cycles_tx_comm += Rdtsc() - statsPcie.cycles_tx_start_tsc;
+  statsPcie.num_tx_msg++;
+#endif
+}
+
 volatile union SimbricksProtoNetMsg *Runner::D2NAlloc() {
   volatile union SimbricksProtoNetMsg *msg;
   bool first = true;
+#ifdef ENABLE_PROFILING
+  statsEth.cycles_tx_start_tsc = Rdtsc();
+#endif
   while ((msg = SimbricksNetIfOutAlloc(&nicif_.net, main_time_)) == NULL) {
     if (first) {
       fprintf(stderr, "D2NAlloc: warning waiting for entry (%zu)\n",
               nicif_.pcie.base.out_pos);
       first = false;
     }
+#ifdef ENABLE_PROFILING
+    statsEth.cycles_tx_block += Rdtsc() - statsEth.cycles_tx_start_tsc;
+#endif
     YieldPoll();
+#ifdef ENABLE_PROFILING
+    statsEth.cycles_tx_start_tsc = Rdtsc();
+#endif
   }
+
 
   if (!first)
     fprintf(stderr, "D2NAlloc: entry successfully allocated\n");
 
   return msg;
+}
+
+void Runner::D2NOutSend(volatile union SimbricksProtoNetMsg *msg, uint8_t ty) {
+  SimbricksNetIfOutSend(&nicif_.net, msg, ty);
+#ifdef ENABLE_PROFILING
+  statsEth.cycles_tx_comm += Rdtsc() - statsEth.cycles_tx_start_tsc;
+  statsEth.num_tx_msg++;
+#endif
 }
 
 void Runner::IssueDma(DMAOp &op) {
@@ -195,8 +240,7 @@ void Runner::DmaDo(DMAOp &op) {
       tmp++;
     }
 #endif
-    SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
-                              SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE);
+    D2HOutSend(msg, SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITE);
   } else {
     volatile struct SimbricksProtoPcieD2HRead *read = &msg->read;
     if (maxlen < sizeof(struct SimbricksProtoPcieH2DReadcomp) + op.len_) {
@@ -210,8 +254,7 @@ void Runner::DmaDo(DMAOp &op) {
     read->req_id = (uintptr_t)&op;
     read->offset = op.dma_addr_;
     read->len = op.len_;
-    SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
-                              SIMBRICKS_PROTO_PCIE_D2H_MSG_READ);
+    D2HOutSend(msg, SIMBRICKS_PROTO_PCIE_D2H_MSG_READ);
   }
 }
 
@@ -228,8 +271,7 @@ void Runner::MsiIssue(uint8_t vec) {
   intr->vector = vec;
   intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSI;
 
-  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
-                            SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
+  D2HOutSend(msg, SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
 }
 
 void Runner::MsiXIssue(uint8_t vec) {
@@ -245,8 +287,7 @@ void Runner::MsiXIssue(uint8_t vec) {
   intr->vector = vec;
   intr->inttype = SIMBRICKS_PROTO_PCIE_INT_MSIX;
 
-  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
-                            SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
+  D2HOutSend(msg, SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
 }
 
 void Runner::IntXIssue(bool level) {
@@ -262,8 +303,7 @@ void Runner::IntXIssue(bool level) {
   intr->inttype = (level ? SIMBRICKS_PROTO_PCIE_INT_LEGACY_HI
                          : SIMBRICKS_PROTO_PCIE_INT_LEGACY_LO);
 
-  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
-                            SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
+  D2HOutSend(msg, SIMBRICKS_PROTO_PCIE_D2H_MSG_INTERRUPT);
 }
 
 void Runner::EventSchedule(TimedEvent &evt) {
@@ -291,8 +331,7 @@ void Runner::H2DRead(volatile struct SimbricksProtoPcieH2DRead *read) {
          main_time_, read->offset, read->len, dbg_val);
 #endif
 
-  SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
-                            SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
+  D2HOutSend(msg, SIMBRICKS_PROTO_PCIE_D2H_MSG_READCOMP);
 }
 
 void Runner::H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write,
@@ -315,8 +354,7 @@ void Runner::H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write,
     wc = &msg->writecomp;
     wc->req_id = write->req_id;
 
-    SimbricksPcieIfD2HOutSend(&nicif_.pcie, msg,
-                              SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP);
+    D2HOutSend(msg, SIMBRICKS_PROTO_PCIE_D2H_MSG_WRITECOMP);
   }
 }
 
@@ -372,7 +410,7 @@ void Runner::EthSend(const void *data, size_t len) {
   packet->port = 0;  // single port
   packet->len = len;
   memcpy((void *)packet->data, data, len);
-  SimbricksNetIfOutSend(&nicif_.net, msg, SIMBRICKS_PROTO_NET_MSG_PACKET);
+  D2NOutSend(msg, SIMBRICKS_PROTO_NET_MSG_PACKET);
 }
 
 void Runner::PollH2D() {
@@ -380,24 +418,17 @@ void Runner::PollH2D() {
       SimbricksPcieIfH2DInPoll(&nicif_.pcie, main_time_);
   uint8_t type;
 
-#ifdef STAT_NICBM
-  h2d_poll_total += 1;
-  if (stat_flag) {
-    s_h2d_poll_total += 1;
-  }
-#endif
-
   if (msg == NULL)
     return;
 
-#ifdef STAT_NICBM
-  h2d_poll_suc += 1;
-  if (stat_flag) {
-    s_h2d_poll_suc += 1;
-  }
-#endif
-
   type = SimbricksPcieIfH2DInType(&nicif_.pcie, msg);
+#ifdef ENABLE_PROFILING
+  if (type == SIMBRICKS_PROTO_MSG_TYPE_SYNC)
+    statsPcie.num_rx_sync++;
+  else
+    statsPcie.num_rx_msg++;
+  statsPcie.cycles_rx_comm += Rdtsc() - statsPcie.cycles_rx_start_tsc;
+#endif
   switch (type) {
     case SIMBRICKS_PROTO_PCIE_H2D_MSG_READ:
       H2DRead(&msg->read);
@@ -424,12 +455,6 @@ void Runner::PollH2D() {
       break;
 
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
-#ifdef STAT_NICBM
-      h2d_poll_sync += 1;
-      if (stat_flag) {
-        s_h2d_poll_sync += 1;
-      }
-#endif
       break;
 
     case SIMBRICKS_PROTO_MSG_TYPE_TERMINATE:
@@ -439,7 +464,9 @@ void Runner::PollH2D() {
     default:
       fprintf(stderr, "poll_h2d: unsupported type=%u\n", type);
   }
-
+#ifdef ENABLE_PROFILING
+  statsPcie.cycles_rx_start_tsc = Rdtsc();
+#endif
   SimbricksPcieIfH2DInDone(&nicif_.pcie, msg);
 }
 
@@ -448,42 +475,31 @@ void Runner::PollN2D() {
       SimbricksNetIfInPoll(&nicif_.net, main_time_);
   uint8_t t;
 
-#ifdef STAT_NICBM
-  n2d_poll_total += 1;
-  if (stat_flag) {
-    s_n2d_poll_total += 1;
-  }
-#endif
-
   if (msg == NULL)
     return;
 
-#ifdef STAT_NICBM
-  n2d_poll_suc += 1;
-  if (stat_flag) {
-    s_n2d_poll_suc += 1;
-  }
-#endif
-
   t = SimbricksNetIfInType(&nicif_.net, msg);
+#ifdef ENABLE_PROFILING
+  if (t == SIMBRICKS_PROTO_MSG_TYPE_SYNC)
+    statsEth.num_rx_sync++;
+  else
+    statsEth.num_rx_msg++;
+  statsEth.cycles_rx_comm += Rdtsc() - statsEth.cycles_rx_start_tsc;
+#endif
   switch (t) {
     case SIMBRICKS_PROTO_NET_MSG_PACKET:
       EthRecv(&msg->packet);
       break;
 
     case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
-#ifdef STAT_NICBM
-      n2d_poll_sync += 1;
-      if (stat_flag) {
-        s_n2d_poll_sync += 1;
-      }
-#endif
       break;
 
     default:
       fprintf(stderr, "poll_n2d: unsupported type=%u", t);
   }
-
+#ifdef ENABLE_PROFILING
+  statsEth.cycles_rx_start_tsc = Rdtsc();
+#endif
   SimbricksNetIfInDone(&nicif_.net, msg);
 }
 
@@ -579,9 +595,6 @@ int Runner::RunMain() {
 
   signal(SIGINT, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
-#ifdef STAT_NICBM
-  signal(SIGUSR2, sigusr2_handler);
-#endif
 
   memset(&dintro_, 0, sizeof(dintro_));
   dev_.SetupIntro(dintro_);
@@ -598,15 +611,36 @@ int Runner::RunMain() {
   bool is_sync = sync_pcie || sync_net;
 
   while (!exiting) {
+#ifdef ENABLE_PROFILING
+    uint64_t tsc = Rdtsc();
+    uint64_t sync_start_tsc = tsc;
+#endif
     while (SimbricksNicIfSync(&nicif_, main_time_)) {
       fprintf(stderr, "warn: SimbricksNicIfSync failed (t=%lu)\n", main_time_);
       YieldPoll();
     }
-
+#ifdef ENABLE_PROFILING
+    tsc = Rdtsc();
+    statsPcie.cycles_tx_sync += (tsc - sync_start_tsc) / 2;
+    statsEth.cycles_tx_sync += (tsc - sync_start_tsc) / 2;
+    statsPcie.cycles_rx_start_tsc = tsc;
+    statsEth.cycles_rx_start_tsc = tsc;
+#endif
     bool first = true;
     do {
-      if (!first)
+      if (!first) {
+#ifdef ENABLE_PROFILING
+        tsc = Rdtsc();
+        statsPcie.cycles_rx_block += tsc - statsPcie.cycles_rx_start_tsc;
+        statsEth.cycles_rx_block += tsc - statsEth.cycles_rx_start_tsc;
+#endif
         YieldPoll();
+#ifdef ENABLE_PROFILING
+        tsc = Rdtsc();
+        statsPcie.cycles_rx_start_tsc = tsc;
+        statsEth.cycles_rx_start_tsc = tsc;
+#endif
+      }
       first = false;
 
       PollH2D();
@@ -631,47 +665,6 @@ int Runner::RunMain() {
   }
 
   fprintf(stderr, "exit main_time: %lu\n", main_time_);
-#ifdef STAT_NICBM
-  fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
-          "h2d_poll_total", h2d_poll_total, "h2d_poll_suc", h2d_poll_suc,
-          (double)h2d_poll_suc / h2d_poll_total);
-
-  fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "h2d_poll_sync",
-          h2d_poll_sync, (double)h2d_poll_sync / h2d_poll_suc);
-
-  fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
-          "n2d_poll_total", n2d_poll_total, "n2d_poll_suc", n2d_poll_suc,
-          (double)n2d_poll_suc / n2d_poll_total);
-
-  fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "n2d_poll_sync",
-          n2d_poll_sync, (double)n2d_poll_sync / n2d_poll_suc);
-
-  fprintf(
-      stderr, "%20s: %22lu %20s: %22lu  sync_rate: %f\n", "recv_total",
-      h2d_poll_suc + n2d_poll_suc, "recv_sync", h2d_poll_sync + n2d_poll_sync,
-      (double)(h2d_poll_sync + n2d_poll_sync) / (h2d_poll_suc + n2d_poll_suc));
-
-  fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
-          "s_h2d_poll_total", s_h2d_poll_total, "s_h2d_poll_suc",
-          s_h2d_poll_suc, (double)s_h2d_poll_suc / s_h2d_poll_total);
-
-  fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "s_h2d_poll_sync",
-          s_h2d_poll_sync, (double)s_h2d_poll_sync / s_h2d_poll_suc);
-
-  fprintf(stderr, "%20s: %22lu %20s: %22lu  poll_suc_rate: %f\n",
-          "s_n2d_poll_total", s_n2d_poll_total, "s_n2d_poll_suc",
-          s_n2d_poll_suc, (double)s_n2d_poll_suc / s_n2d_poll_total);
-
-  fprintf(stderr, "%65s: %22lu  sync_rate: %f\n", "s_n2d_poll_sync",
-          s_n2d_poll_sync, (double)s_n2d_poll_sync / s_n2d_poll_suc);
-
-  fprintf(stderr, "%20s: %22lu %20s: %22lu  sync_rate: %f\n", "s_recv_total",
-          s_h2d_poll_suc + s_n2d_poll_suc, "s_recv_sync",
-          s_h2d_poll_sync + s_n2d_poll_sync,
-          (double)(s_h2d_poll_sync + s_n2d_poll_sync) /
-              (s_h2d_poll_suc + s_n2d_poll_suc));
-#endif
-
   SimbricksNicIfCleanup(&nicif_);
   return 0;
 }

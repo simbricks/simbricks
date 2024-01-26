@@ -125,6 +125,23 @@ class Runner {
     }
   };
 
+  struct IfStats {
+    uint64_t cycles_tx_block;
+    uint64_t cycles_tx_comm;
+    uint64_t cycles_tx_sync;
+    uint64_t cycles_tx_start_tsc;
+    uint64_t cycles_rx_start_tsc;
+    uint64_t cycles_rx_block;
+    uint64_t cycles_rx_comm;
+    uint64_t num_rx_msg;
+    uint64_t num_rx_sync;
+    uint64_t num_tx_msg;
+    IfStats()
+      : cycles_tx_block(0), cycles_tx_comm(0), cycles_tx_sync(0),
+        cycles_rx_block(0), cycles_rx_comm(0), num_rx_msg(0), num_rx_sync(0)
+    { }
+  };
+
   uint64_t main_time_;
   Device &dev_;
   std::multiset<TimedEvent *, EventCmp> events_;
@@ -136,9 +153,13 @@ class Runner {
   const char *shmPath_;
   struct SimbricksNicIf nicif_;
   struct SimbricksProtoPcieDevIntro dintro_;
+  IfStats statsPcie;
+  IfStats statsEth;
 
   volatile union SimbricksProtoPcieD2H *D2HAlloc();
+  void D2HOutSend(volatile union SimbricksProtoPcieD2H *msg, uint8_t ty);
   volatile union SimbricksProtoNetMsg *D2NAlloc();
+  void D2NOutSend(volatile union SimbricksProtoNetMsg *msg, uint8_t ty);
 
   void H2DRead(volatile struct SimbricksProtoPcieH2DRead *read);
   void H2DWrite(volatile struct SimbricksProtoPcieH2DWrite *write, bool posted);
@@ -180,6 +201,7 @@ class Runner {
 
   uint64_t TimePs() const;
   uint64_t GetMacAddr() const;
+  void DumpStats() const;
 };
 
 /**
