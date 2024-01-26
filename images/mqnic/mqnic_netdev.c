@@ -477,18 +477,16 @@ int mqnic_init_netdev(struct mqnic_dev *mdev, int port, u8 __iomem *hw_addr)
     netif_set_real_num_rx_queues(ndev, priv->rx_queue_count);
 
     // set MAC
-    ndev->addr_len = ETH_ALEN;
-    memcpy(ndev->dev_addr, mdev->base_mac, ETH_ALEN);
-
-    if (!is_valid_ether_addr(ndev->dev_addr))
+    if (!is_valid_ether_addr(mdev->base_mac))
     {
         dev_warn(dev, "Bad MAC in EEPROM; using random MAC");
-        eth_hw_addr_random(ndev);
+        eth_random_addr(mdev->base_mac);
     }
     else
     {
-        ndev->dev_addr[ETH_ALEN-1] += port;
+        mdev->base_mac[ETH_ALEN-1] += port;
     }
+    eth_hw_addr_set(ndev, mdev->base_mac);
 
     priv->hwts_config.flags = 0;
     priv->hwts_config.tx_type = HWTSTAMP_TX_OFF;
