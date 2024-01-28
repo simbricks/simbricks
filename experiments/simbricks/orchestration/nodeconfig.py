@@ -450,6 +450,7 @@ class HomaClientNode(AppConfig):
         self.id = 0
         self.cluster_size = 2
         self.workload = 2
+        self.protocol = 'homa'
 
     def prepare_post_cp(self) -> tp.List[str]:
         return super().prepare_post_cp() + [
@@ -465,14 +466,20 @@ class HomaClientNode(AppConfig):
         cmd.append('mount -t sysfs sysfs /sys')
         cmd.append('mount -t proc proc /proc')
         cmd.append('sleep 1')
-        cmd.append(f'/root/homa/util/cp_node client --protocol homa --workload w{self.workload} &')
+        cmd.append(f'/root/homa/util/cp_node client --protocol ' + self.protocol + ' &')
+        # cmd.append('sleep 2')
+        # cmd.append('touch /root/homa/util/client.tt')
+        # cmd.append('/root/homa/util/ttprint.py > /root/homa/util/client.tt')
         cmd.append('sleep 10')
         cmd.append('pkill cp_node')
+        # cmd.append('cat /root/homa/util/client.tt')
         return cmd
-        # 'touch /root/homa/util/client.tt'
-        # '/root/homa/util/ttprint.py > /root/homa/util/client.tt'
 
 class HomaServerNode(AppConfig):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.protocol = 'homa'
 
     def prepare_post_cp(self) -> tp.List[str]:
         return super().prepare_post_cp() + [
@@ -487,16 +494,14 @@ class HomaServerNode(AppConfig):
         cmd = []
         cmd.append('mount -t sysfs sysfs /sys')
         cmd.append('mount -t proc proc /proc')
-        cmd.append('/root/homa/util/cp_node server --protocol homa &')
+        cmd.append('/root/homa/util/cp_node server --protocol ' + self.protocol + ' &')
+        # cmd.append('sleep 2')
+        # cmd.append('touch /root/homa/util/server.tt')
+        # cmd.append('/root/homa/util/ttprint.py > /root/homa/util/server.tt')
         cmd.append('sleep 10')
         cmd.append('pkill cp_node')
+        # cmd.append('cat /root/homa/util/server.tt')
         return cmd
-        # 'sysctl -w .net.homa.poll_usecs=300000'
-        # 'sleep 1'
-        # 'touch /root/homa/util/server.tt'
-        # '/root/homa/util/ttprint.py > /root/homa/util/server.tt'
-        # 'cat /root/homa/util/server.tt'
-
 
 class IdleHost(AppConfig):
 

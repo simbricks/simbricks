@@ -35,70 +35,74 @@ from simbricks.orchestration.simulators import QemuHost, Gem5Host, I40eNIC, Swit
 experiments = []
 workload = [1,2,3,4,5]
 host_types = ['qemu', 'gem5', 'qt']
-for  w in workload:
-    for host_type in host_types:
+protocol = ['tcp', 'dctcp', 'homa']
+for p in protocol:
+    for  w in workload:
+        for host_type in host_types:
 
-        e = Experiment(f'single_homa_w{w}_' + host_type)
-        e.checkpoint = False  # use checkpoint and restore to speed up simulation
-        # host
-        if host_type == 'qemu':
-            HostClass = QemuHost
-        elif host_type == 'qt':
+            e = Experiment(f'single_{p}_w{w}_{host_type}')
+            e.checkpoint = False  # use checkpoint and restore to speed up simulation
+            # host
+            if host_type == 'qemu':
+                HostClass = QemuHost
+            elif host_type == 'qt':
 
-            def qemu_timing(node_config: NodeConfig):
-                h = QemuHost(node_config)
-                h.sync = True
-                return h
+                def qemu_timing(node_config: NodeConfig):
+                    h = QemuHost(node_config)
+                    h.sync = True
+                    return h
 
-            HostClass = qemu_timing
-        elif host_type == 'gem5':
-            HostClass = Gem5Host
-            e.checkpoint = True
-        else:
-            raise NameError(host_type)
+                HostClass = qemu_timing
+            elif host_type == 'gem5':
+                HostClass = Gem5Host
+                e.checkpoint = True
+            else:
+                raise NameError(host_type)
 
-        # create client
-        client_config = I40eLinuxNode()  # boot Linux with i40e NIC driver
-        client_config.disk_image = 'homa'
-        client_config.ip = '10.0.0.1'
-        client_config.app = HomaClientNode()
-        client = HostClass(client_config)
-        # client.sync = False
-        client.name = 'client'
-        client.wait = True  # wait for client simulator to finish execution
-        e.add_host(client)
+            # create client
+            client_config = I40eLinuxNode()  # boot Linux with i40e NIC driver
+            client_config.disk_image = 'homa'
+            client_config.ip = '10.0.0.1'
+            client_config.app = HomaClientNode()
+            client_config.app.protocol = p
+            client = HostClass(client_config)
+            # client.sync = False
+            client.name = 'client'
+            client.wait = True  # wait for client simulator to finish execution
+            e.add_host(client)
 
-        # attach client's NIC
-        client_nic = I40eNIC()
-        e.add_nic(client_nic)
-        client.add_nic(client_nic)
+            # attach client's NIC
+            client_nic = I40eNIC()
+            e.add_nic(client_nic)
+            client.add_nic(client_nic)
 
-        # create server
-        server_config = I40eLinuxNode()  # boot Linux with i40e NIC driver
-        server_config.disk_image = 'homa'
-        server_config.ip = '10.0.0.2'
-        server_config.app = HomaServerNode()
-        server = HostClass(server_config)
-        # server.sync = False
-        server.name = 'server'
-        # server.wait = True
-        e.add_host(server)
+            # create server
+            server_config = I40eLinuxNode()  # boot Linux with i40e NIC driver
+            server_config.disk_image = 'homa'
+            server_config.ip = '10.0.0.2'
+            server_config.app = HomaServerNode()
+            server_config.app.protocol = p
+            server = HostClass(server_config)
+            # server.sync = False
+            server.name = 'server'
+            # server.wait = True
+            e.add_host(server)
 
-        # attach server's NIC
-        server_nic = I40eNIC()
-        e.add_nic(server_nic)
-        server.add_nic(server_nic)
+            # attach server's NIC
+            server_nic = I40eNIC()
+            e.add_nic(server_nic)
+            server.add_nic(server_nic)
 
-        # connect NICs over network
-        network = SwitchNet()
-        e.add_network(network)
-        client_nic.set_network(network)
-        server_nic.set_network(network)
+            # connect NICs over network
+            network = SwitchNet()
+            e.add_network(network)
+            client_nic.set_network(network)
+            server_nic.set_network(network)
 
-        # set more interesting link latencies than default
-        eth_latency = 500  # 500 us
-        network.eth_latency = eth_latency
-        client_nic.eth_latency = eth_latency
-        server_nic.eth_latency = eth_latency
+            # set more interesting link latencies than default
+            eth_latency = 500  # 500 us
+            network.eth_latency = eth_latency
+            client_nic.eth_latency = eth_latency
+            server_nic.eth_latency = eth_latency
 
-        experiments.append(e)
+            experiments.append(e)
