@@ -358,6 +358,34 @@ class E2EBulkSendApplication(E2EApplication):
         })
         return super().ns3_config()
 
+class E2EMsgGenApplication(E2EApplication):
+
+    def __init__(self, idd: str) -> None:
+        super().__init__(idd)
+        self.type = "MsgGenerator"
+        self.port = 3000
+        self.remotes = []
+        self.cdf = {0.5: 1, 1.0: 2}
+        self.max_msg = 0
+        self.load = 0.5
+        self.avg_msg_size_pkts = 1.0
+
+    def ns3_config(self) -> str:
+        els = [f'{{{p},{i}}}' for p,i in self.cdf.items()]
+        cdf = '+'.join(els)
+        print(cdf)
+        self.mapping.update({
+            "Port": self.port,
+            "RemoteClients": ','.join(self.remotes),
+            "MsgSizeCDF": cdf,
+            "MaxMsg": self.max_msg,
+            "Load": self.load,
+            "AvgMsgSizePkts": self.avg_msg_size_pkts,
+
+        })
+        return super().ns3_config()
+
+
 
 class E2EProbe(E2EComponent):
 

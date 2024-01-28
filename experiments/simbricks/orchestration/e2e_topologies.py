@@ -319,3 +319,39 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
         c_host.add_component(c_app)
         topo.add_host_r(c_host)
 
+
+def add_homa_bg(topo, subnet='10.42.0.0/16', **kwargs):
+    params = {
+        'link_rate': '5Gbps',
+        'link_delay': '1us',
+        'link_queue_size': '512KB',
+        'app_stop_time': '60s',
+    }
+    for (k,v) in kwargs.items():
+        params[k] = v
+
+
+    n = topo.capacity()
+    ipn = ipaddress.ip_network(subnet)
+    prefix = f'/{ipn.prefixlen}'
+    ip_pool = ipn.hosts()
+    ips = [str(next(ip_pool)) for i in range(0,n)]
+    remotes = [f'{ip}:3000' for ip in ips]
+
+    for i in range(0, n):
+        ip = ips[i]
+
+        s_host = e2e.E2ESimpleNs3Host(f'bg_h-{i}')
+        s_host.delay = params['link_delay']
+        s_host.data_rate = params['link_rate']
+        s_host.ip = ip + prefix
+        s_host.queue_size = params['link_queue_size']
+        s_app = e2e.E2EMsgGenApplication('msggen')
+        s_app.stop_time = params['app_stop_time']
+        s_app.remotes = remotes
+        s_host.add_component(s_app)
+        #s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
+        #s_probe.interval = '100ms'
+        #s_probe.file = f'sink-rx-{i}'
+        #s_app.add_component(s_probe)
+        topo.add_host_r(s_host)
