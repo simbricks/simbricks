@@ -115,6 +115,7 @@ class DCFatTree(E2ETopology):
             'n_agg_racks': 6,
             'h_per_rack': 40,
             'mtu': '1448',
+            'queue_type': 'ns3::PTPQueue',
             'spine_link_delay': '1us',
             'spine_link_rate': '100Gbps',
             'spine_link_queue': '512KB',
@@ -194,6 +195,7 @@ class DCFatTree(E2ETopology):
                     l.right_node = spine_sw
                     l.delay = self.params['spine_link_delay']
                     l.data_rate = self.params['spine_link_rate']
+                    l.queue_type = self.params['queue_type']
                     l.queue_size = self.params['spine_link_queue']
                     self.links.append(l)
                     self.spine_agg_links.append(l)
@@ -206,6 +208,7 @@ class DCFatTree(E2ETopology):
                     l.right_node = agg_sw
                     l.delay = self.params['agg_link_delay']
                     l.data_rate = self.params['agg_link_rate']
+                    l.queue_type = self.params['queue_type']
                     l.queue_size = self.params['agg_link_queue']
                     self.links.append(l)
                     self.agg_tor_links.append(l)
@@ -277,6 +280,7 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
         'link_rate': '5Gbps',
         'link_delay': '1us',
         'link_queue_size': '512KB',
+        'link_queue_type': 'ns3::PTPQueue',
         'congestion_control': e2e.CongestionControl.CUBIC,
         'app_stop_time': '60s',
     }
@@ -296,6 +300,7 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
         s_host.data_rate = params['link_rate']
         s_host.ip = s_ip + prefix
         s_host.queue_size = params['link_queue_size']
+        s_host.queue_type = params['link_queue_type']
         s_host.congestion_control = params['congestion_control']
         s_app = e2e.E2EPacketSinkApplication('sink')
         s_app.local_ip = '0.0.0.0:5000'
@@ -312,6 +317,7 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
         c_host.data_rate = params['link_rate']
         c_host.ip = c_ip + prefix
         c_host.queue_size = params['link_queue_size']
+        c_host.queue_type = params['link_queue_type']
         c_host.congestion_control = params['congestion_control']
         c_app = e2e.E2EBulkSendApplication('sender')
         c_app.remote_ip = s_ip + ':5000'
@@ -325,6 +331,7 @@ def add_homa_bg(topo, subnet='10.2.0.0/16', **kwargs):
         'link_rate': '20Gbps',
         'link_delay': '500ns',
         'link_queue_size': '512KB',
+        'link_queue_type': 'ns3::HomaPFifoQueue',
         'app_stop_time': '60s',
     }
     for (k,v) in kwargs.items():
@@ -346,6 +353,7 @@ def add_homa_bg(topo, subnet='10.2.0.0/16', **kwargs):
         s_host.data_rate = params['link_rate']
         s_host.ip = ip + prefix
         s_host.queue_size = params['link_queue_size']
+        s_host.queue_type = params['link_queue_type']
 
         remotes_to_connect = random.choices(remotes, k=10)
         # print(remotes_to_connect)

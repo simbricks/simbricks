@@ -192,6 +192,7 @@ class E2ESimpleChannel(E2ETopologyChannel):
         self.type = "Simple"
         self.data_rate = ""
         self.queue_size = ""
+        self.queue_type = ""
         self.delay = ""
         self.left_node: E2ETopologyNode
         self.right_node: E2ETopologyNode
@@ -201,6 +202,7 @@ class E2ESimpleChannel(E2ETopologyChannel):
             raise AttributeError(f"Not all nodes for channel {self.id} given")
         self.mapping.update({
             "DataRate": self.data_rate,
+            "QueueType": self.queue_type,
             "QueueSize": self.queue_size,
             "Delay": self.delay,
             "LeftNode": self.left_node.id,
@@ -291,6 +293,7 @@ class E2ESimpleNs3Host(E2EHost):
         super().__init__(idd)
         self.type = "SimpleNs3"
         self.data_rate = ""
+        self.queue_type = ""
         self.queue_size = ""
         self.delay = ""
         self.congestion_control: CongestionControl = None
@@ -303,6 +306,7 @@ class E2ESimpleNs3Host(E2EHost):
             cc = self.congestion_control.ns3
         self.mapping.update({
             "DataRate": self.data_rate,
+            "QueueType": self.queue_type,
             "QueueSize": self.queue_size,
             "Delay": self.delay,
             "CongestionControl": cc,
