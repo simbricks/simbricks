@@ -40,6 +40,7 @@ options = {
     'ns3::TcpSocket::SndBufSize': '524288',
     'ns3::TcpSocket::RcvBufSize': '524288',
     'ns3::Ipv4GlobalRouting::RandomEcmpRouting': '1',
+    'ns3::Ipv4L3Protocol::MayFragment': 'false',
 }
 
 
@@ -70,6 +71,7 @@ for h in types_of_host:
                     n_agg_sw=1,
                     n_agg_racks=4,
                     h_per_rack=10,
+                    queue_type='ns3::HomaPFifoQueue',
                 )
         
 
