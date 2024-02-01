@@ -54,7 +54,7 @@ net = sim.NS3E2ENet()
 net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
 net.add_component(topology)
 net.wait = True
-net.init_network()
 e.add_network(net)
+net.init_network()
 
 experiments = [e]
