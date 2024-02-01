@@ -33,7 +33,7 @@ from simbricks.orchestration.e2e_topologies import (
 random.seed(42)
 
 types_of_host = ['qemu', 'qt', 'gem5']
-types_of_protocol = ['tcp', 'dctcp', 'homa']
+types_of_protocol = ['tcp', 'homa']
 
 options = {
     'ns3::TcpSocket::SegmentSize': '1448',
@@ -69,7 +69,7 @@ for h in types_of_host:
                     n_agg_bl=1,
                     n_agg_sw=1,
                     n_agg_racks=1,
-                    h_per_rack=2,
+                    h_per_rack=4,
                 )
         
 
@@ -124,7 +124,7 @@ for h in types_of_host:
         topology.add_simbricks_host_r(client_nic)
         topology.add_simbricks_host_r(server_nic)
 
-        add_homa_bg(topology, app_proto=p)
+        add_homa_bg(topology, app_proto=p, exp_name=e.name)
         net.init_network()
 
         experiments.append(e)
