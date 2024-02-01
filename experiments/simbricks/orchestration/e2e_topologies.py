@@ -348,13 +348,21 @@ def add_homa_bg(topo, subnet='10.0.0.0/16', **kwargs):
         s_host.queue_size = params['link_queue_size']
         if (params['app_proto'] == 'tcp'):
             s_app = e2e.E2EMsgGenApplicationTCP('msggen')
+            s_app.stop_time = params['app_stop_time']
+            s_app.remotes = remotes
+            s_host.add_component(s_app)
+            s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
+            s_probe.interval = '1s'
+            s_probe.file = f'sink-rx-{i}'
+            s_app.add_component(s_probe)
         elif(params['app_proto'] == 'homa'):
             s_app = e2e.E2EMsgGenApplication('msggen')
-        s_app.stop_time = params['app_stop_time']
-        s_app.remotes = remotes
-        s_host.add_component(s_app)
-        s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
-        s_probe.interval = '1s'
-        s_probe.file = f'sink-rx-{i}'
-        s_app.add_component(s_probe)
+            s_app.stop_time = params['app_stop_time']
+            s_app.remotes = remotes
+            s_host.add_component(s_app)
+            s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
+            s_probe.interval = '1s'
+            s_probe.file = f'sink-rx-{i}'
+            s_app.add_component(s_probe)
+
         topo.add_host_r(s_host)

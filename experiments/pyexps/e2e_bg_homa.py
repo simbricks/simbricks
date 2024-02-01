@@ -42,14 +42,8 @@ options = {
     'ns3::Ipv4GlobalRouting::RandomEcmpRouting': '1',
 }
 
-topology = DCFatTree(
-            n_spine_sw=1,
-            n_agg_bl=4,
-            n_agg_sw=1,
-            n_agg_racks=4,
-            h_per_rack=10,
-        )
 
+experiments = []
 
 for h in types_of_host:
     for p in types_of_protocol:
@@ -69,13 +63,25 @@ for h in types_of_host:
             e.checkpoint = True
         else:
             raise NameError(h)
+
+        topology = DCFatTree(
+                    n_spine_sw=1,
+                    n_agg_bl=1,
+                    n_agg_sw=1,
+                    n_agg_racks=1,
+                    h_per_rack=2,
+                )
         
-        add_homa_bg(topology, app_proto='homa')
+        add_homa_bg(topology, app_proto=p)
 
         net = sim.NS3E2ENet()
         net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
         net.e2e_global.stop_time = "60s"
         net.add_component(topology)
+        if h == 'qemu':
+            net.sync = False
+        else:
+            net.sync = True
         # net.wait = True
         e.add_network(net)
         
@@ -118,4 +124,4 @@ for h in types_of_host:
 
         net.init_network()
 
-        experiments = [e]
+        experiments.append(e)
