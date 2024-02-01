@@ -325,7 +325,7 @@ def add_homa_bg(topo, subnet='10.42.0.0/16', **kwargs):
         'link_rate': '5Gbps',
         'link_delay': '1us',
         'link_queue_size': '512KB',
-        'app_stop_time': '60s',
+        'app_stop_time': '10s',
     }
     for (k,v) in kwargs.items():
         params[k] = v
@@ -350,8 +350,8 @@ def add_homa_bg(topo, subnet='10.42.0.0/16', **kwargs):
         s_app.stop_time = params['app_stop_time']
         s_app.remotes = remotes
         s_host.add_component(s_app)
-        # s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
-        # s_probe.interval = '100ms'
-        # s_probe.file = f'sink-rx-{i}'
-        # s_app.add_component(s_probe)
+        s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
+        s_probe.interval = '1s'
+        s_probe.file = f'sink-rx-{i}'
+        s_app.add_component(s_probe)
         topo.add_host_r(s_host)

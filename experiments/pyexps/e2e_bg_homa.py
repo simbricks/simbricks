@@ -52,6 +52,7 @@ add_homa_bg(topology, app_proto='ns3::HomaSocketFactory')
 
 net = sim.NS3E2ENet()
 net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
+net.e2e_global.stop_time = "20s"
 net.add_component(topology)
 net.wait = True
 e.add_network(net)
