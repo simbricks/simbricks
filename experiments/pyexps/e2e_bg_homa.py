@@ -32,7 +32,8 @@ from simbricks.orchestration.e2e_topologies import (
 
 random.seed(42)
 
-e = exp.Experiment('e2e_bg_homa')
+types_of_host = ['qemu', 'qt', 'gem5']
+types_of_protocol = ['tcp', 'dctcp', 'homa']
 
 options = {
     'ns3::TcpSocket::SegmentSize': '1448',
@@ -43,19 +44,78 @@ options = {
 
 topology = DCFatTree(
             n_spine_sw=1,
-            n_agg_bl=1,
+            n_agg_bl=4,
             n_agg_sw=1,
-            n_agg_racks=2,
-            h_per_rack=1,
+            n_agg_racks=4,
+            h_per_rack=10,
         )
-add_homa_bg(topology, app_proto='ns3::HomaSocketFactory')
 
-net = sim.NS3E2ENet()
-net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
-net.e2e_global.stop_time = "20s"
-net.add_component(topology)
-net.wait = True
-e.add_network(net)
-net.init_network()
 
-experiments = [e]
+for h in types_of_host:
+    for p in types_of_protocol:
+        e = exp.Experiment('e2e_homa_' + h + '_bg_' + p)
+
+        def qemu_timing(node_config: node.NodeConfig):
+            h = sim.QemuHost(node_config)
+            h.sync = True
+            return h
+        
+        if h == 'qemu':
+            HostClass = sim.QemuHost
+        elif h == 'qt':
+            HostClass = qemu_timing
+        elif h == 'gem5':
+            HostClass = sim.Gem5Host
+            e.checkpoint = True
+        else:
+            raise NameError(h)
+        
+        add_homa_bg(topology, app_proto='homa')
+
+        net = sim.NS3E2ENet()
+        net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
+        net.e2e_global.stop_time = "60s"
+        net.add_component(topology)
+        # net.wait = True
+        e.add_network(net)
+        
+        # create client
+        client_config = node.I40eLinuxNode()  # boot Linux with i40e NIC driver
+        client_config.disk_image = 'homa'
+        client_config.ip = '10.0.0.1'
+        client_config.app = node.HomaClientNode()
+        client_config.app.protocol = p
+        client = HostClass(client_config)
+        # client.sync = False
+        client.name = 'client'
+        client.wait = True  # wait for client simulator to finish execution
+        e.add_host(client)
+
+        # attach client's NIC
+        client_nic = sim.I40eNIC()
+        e.add_nic(client_nic)
+        client.add_nic(client_nic)
+
+        # create server
+        server_config = node.I40eLinuxNode()  # boot Linux with i40e NIC driver
+        server_config.disk_image = 'homa'
+        server_config.ip = '10.0.0.2'
+        server_config.app = node.HomaServerNode()
+        server_config.app.protocol = p
+        server = HostClass(server_config)
+        # server.sync = False
+        server.name = 'server'
+        # server.wait = True
+        e.add_host(server)
+
+        # attach server's NIC
+        server_nic = sim.I40eNIC()
+        e.add_nic(server_nic)
+        server.add_nic(server_nic)
+
+        client_nic.set_network(net)
+        server_nic.set_network(net)
+
+        net.init_network()
+
+        experiments = [e]

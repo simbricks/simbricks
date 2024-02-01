@@ -320,12 +320,12 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
         topo.add_host_r(c_host)
 
 
-def add_homa_bg(topo, subnet='10.42.0.0/16', **kwargs):
+def add_homa_bg(topo, subnet='10.0.0.0/16', **kwargs):
     params = {
-        'link_rate': '5Gbps',
-        'link_delay': '1us',
+        'link_rate': '10Gbps',
+        'link_delay': '500ns',
         'link_queue_size': '512KB',
-        'app_stop_time': '10s',
+        'app_stop_time': '60s',
     }
     for (k,v) in kwargs.items():
         params[k] = v
@@ -346,7 +346,10 @@ def add_homa_bg(topo, subnet='10.42.0.0/16', **kwargs):
         s_host.data_rate = params['link_rate']
         s_host.ip = ip + prefix
         s_host.queue_size = params['link_queue_size']
-        s_app = e2e.E2EMsgGenApplicationTCP('msggen')
+        if (params['app_proto'] == 'tcp'):
+            s_app = e2e.E2EMsgGenApplicationTCP('msggen')
+        elif(params['app_proto'] == 'homa'):
+            s_app = e2e.E2EMsgGenApplication('msggen')
         s_app.stop_time = params['app_stop_time']
         s_app.remotes = remotes
         s_host.add_component(s_app)
