@@ -320,7 +320,7 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
         topo.add_host_r(c_host)
 
 
-def add_homa_bg(topo, subnet='10.0.0.0/16', **kwargs):
+def add_homa_bg(topo, subnet='10.2.0.0/16', **kwargs):
     params = {
         'link_rate': '10Gbps',
         'link_delay': '500ns',
@@ -352,7 +352,7 @@ def add_homa_bg(topo, subnet='10.0.0.0/16', **kwargs):
             s_app.remotes = remotes
             s_host.add_component(s_app)
             s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
-            s_probe.interval = '1s'
+            s_probe.interval = '500ms'
             exp_name = params['exp_name']
             s_probe.file = f'{exp_name}_sink-rx-{i}'
             s_app.add_component(s_probe)
@@ -362,7 +362,7 @@ def add_homa_bg(topo, subnet='10.0.0.0/16', **kwargs):
             s_app.remotes = remotes
             s_host.add_component(s_app)
             s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
-            s_probe.interval = '1s'
+            s_probe.interval = '500ms'
             exp_name = params['exp_name']
             s_probe.file = f'{exp_name}_sink-rx-{i}'
             s_app.add_component(s_probe)
