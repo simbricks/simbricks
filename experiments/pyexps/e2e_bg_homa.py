@@ -72,7 +72,6 @@ for h in types_of_host:
                     h_per_rack=2,
                 )
         
-        add_homa_bg(topology, app_proto=p)
 
         net = sim.NS3E2ENet()
         net.opt = ' '.join([f'--{o[0]}={o[1]}' for o in options.items()])
@@ -122,6 +121,10 @@ for h in types_of_host:
         client_nic.set_network(net)
         server_nic.set_network(net)
 
+        topology.add_simbricks_host_r(client_nic)
+        topology.add_simbricks_host_r(server_nic)
+
+        add_homa_bg(topology, app_proto=p)
         net.init_network()
 
         experiments.append(e)
