@@ -127,16 +127,6 @@ $(TAS_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
 	    $(COMPRESSED_IMAGES)
 	touch $@
 
-$(HOMA_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
-    $(addprefix $(d), extended-image.pkr.hcl scripts/install-homa.sh \
-      scripts/cleanup.sh)
-	rm -rf $(dir $@)
-	mkdir -p $(img_dir)/input-homa
-	cp -r $(homa_dir) \
-	    $(img_dir)/input-homa
-	cd $(img_dir) && ./packer-wrap.sh base homa extended-image.pkr.hcl \
-	$(COMPRESSED_IMAGES)
-	rm -rf $(img_dir)/input-homa
 $(TIMESYNC_IMAGE): $(packer) $(QEMU) $(BASE_IMAGE) \
     $(addprefix $(d), extended-image.pkr.hcl scripts/install-timesync.sh \
       scripts/cleanup.sh)
