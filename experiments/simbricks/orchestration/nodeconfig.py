@@ -484,8 +484,8 @@ class HomaClientNode(AppConfig):
         self.workload = 2
         self.protocol = 'homa'
 
-    def prepare_post_cp(self) -> tp.List[str]:
-        return super().prepare_post_cp() + [
+    def prepare_post_cp(self, node) -> tp.List[str]:
+        return super().prepare_post_cp(node) + [
             'insmod homa.ko'
         ]
     # pylint: disable=consider-using-with
@@ -513,8 +513,8 @@ class HomaServerNode(AppConfig):
         super().__init__()
         self.protocol = 'homa'
 
-    def prepare_post_cp(self) -> tp.List[str]:
-        return super().prepare_post_cp() + [
+    def prepare_post_cp(self, node) -> tp.List[str]:
+        return super().prepare_post_cp(node) + [
             'insmod homa.ko'
         ]
     # pylint: disable=consider-using-with
