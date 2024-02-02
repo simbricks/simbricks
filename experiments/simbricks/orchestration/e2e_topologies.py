@@ -322,7 +322,7 @@ def add_contig_bg(topo, subnet='10.42.0.0/16', **kwargs):
 
 def add_homa_bg(topo, subnet='10.2.0.0/16', **kwargs):
     params = {
-        'link_rate': '10Gbps',
+        'link_rate': '20Gbps',
         'link_delay': '500ns',
         'link_queue_size': '512KB',
         'app_stop_time': '60s',
@@ -346,10 +346,15 @@ def add_homa_bg(topo, subnet='10.2.0.0/16', **kwargs):
         s_host.data_rate = params['link_rate']
         s_host.ip = ip + prefix
         s_host.queue_size = params['link_queue_size']
+
+        remotes_to_connect = random.choices(remotes, k=10)
+        # print(remotes_to_connect)
+
         if (params['app_proto'] == 'tcp'):
             s_app = e2e.E2EMsgGenApplicationTCP('msggen')
             s_app.stop_time = params['app_stop_time']
-            s_app.remotes = remotes
+            s_app.remotes = remotes_to_connect
+            # s_app.max_msg = 1
             s_host.add_component(s_app)
             s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
             s_probe.interval = '500ms'
@@ -359,7 +364,8 @@ def add_homa_bg(topo, subnet='10.2.0.0/16', **kwargs):
         elif(params['app_proto'] == 'homa'):
             s_app = e2e.E2EMsgGenApplication('msggen')
             s_app.stop_time = params['app_stop_time']
-            s_app.remotes = remotes
+            s_app.remotes = remotes_to_connect
+            # s_app.max_msg = 1
             s_host.add_component(s_app)
             s_probe = e2e.E2EPeriodicSampleProbe('probe', 'Rx')
             s_probe.interval = '500ms'

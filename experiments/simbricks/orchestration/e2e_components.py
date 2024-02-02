@@ -367,7 +367,7 @@ class E2EMsgGenApplication(E2EApplication):
         self.remotes = []
         self.cdf = {0.5: 1, 1.0: 2}
         self.max_msg = 0
-        self.load = 0.5
+        self.load = 0.8
         self.avg_msg_size_pkts = 1.0
 
     def ns3_config(self) -> str:
@@ -394,7 +394,7 @@ class E2EMsgGenApplicationTCP(E2EApplication):
         self.remotes = []
         self.cdf = {0.5: 1, 1.0: 2}
         self.max_msg = 0
-        self.load = 0.5
+        self.load = 0.8
         self.avg_msg_size_pkts = 1.0
 
     def ns3_config(self) -> str:
