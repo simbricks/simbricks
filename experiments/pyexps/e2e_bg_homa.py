@@ -121,8 +121,8 @@ for h in types_of_host:
         client_nic.set_network(net)
         server_nic.set_network(net)
 
-        topology.add_simbricks_host_r(client_nic)
-        topology.add_simbricks_host_r(server_nic)
+        topology.add_simbricks_host(0, 0, client_nic)
+        topology.add_simbricks_host(1, 0, server_nic)
 
         add_homa_bg(topology, app_proto=p, exp_name=e.name)
         net.init_network()
