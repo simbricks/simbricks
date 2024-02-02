@@ -60,16 +60,16 @@ for h in types_of_host:
             HostClass = qemu_timing
         elif h == 'gem5':
             HostClass = sim.Gem5Host
-            e.checkpoint = True
+            e.checkpoint = False
         else:
             raise NameError(h)
 
         topology = DCFatTree(
                     n_spine_sw=1,
-                    n_agg_bl=1,
+                    n_agg_bl=2,
                     n_agg_sw=1,
-                    n_agg_racks=1,
-                    h_per_rack=4,
+                    n_agg_racks=4,
+                    h_per_rack=10,
                 )
         
 
@@ -89,7 +89,7 @@ for h in types_of_host:
         client_config.disk_image = 'homa'
         client_config.ip = '10.0.0.1'
         client_config.app = node.HomaClientNode()
-        client_config.app.protocol = p
+        client_config.app.protocol = 'homa'
         client = HostClass(client_config)
         # client.sync = False
         client.name = 'client'
@@ -106,7 +106,7 @@ for h in types_of_host:
         server_config.disk_image = 'homa'
         server_config.ip = '10.0.0.2'
         server_config.app = node.HomaServerNode()
-        server_config.app.protocol = p
+        server_config.app.protocol = 'homa'
         server = HostClass(server_config)
         # server.sync = False
         server.name = 'server'
