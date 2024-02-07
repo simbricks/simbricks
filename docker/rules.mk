@@ -23,8 +23,8 @@
 include mk/subdir_pre.mk
 
 # Configuration parameters to control docker image build
-# DOCKER_REGISTRY ?= docker.io/
-# DOCKER_TAG ?= :latest
+DOCKER_REGISTRY ?= docker.io/
+DOCKER_TAG ?= :latest
 
 DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-base \
   simbricks/simbricks simbricks/simbricks-runenv simbricks/simbricks-min \
@@ -33,30 +33,46 @@ DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-base \
 docker-images:
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.buildenv docker
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-base$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.base .
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile .
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-runenv$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.runenv docker
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-min$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.min docker
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-dist-worker$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.dist-worker docker
 
 docker-images-debug:
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-gem5opt$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.gem5opt docker
 
 docker-images-tofino:
-	docker build -t $(DOCKER_REGISTRY)simbricks/simbricks:tofino \
+	docker build -t $(DOCKER_REGISTRY)simbricks/simbricks-tofino$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.tofino .
 
 docker-retag:

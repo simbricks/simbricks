@@ -1,5 +1,7 @@
-FROM simbricks/simbricks:latest as builder
-FROM simbricks/simbricks-runenv:latest
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks${TAG} as builder
+FROM ${REGISTRY}simbricks/simbricks-runenv${TAG}
 # Add non-root user for vs code devcontainer.
 ARG USERNAME=simbricks
 ARG USER_UID=1000

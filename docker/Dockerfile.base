@@ -1,4 +1,6 @@
-FROM simbricks/simbricks-build:latest
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks-build${TAG}
 COPY . /simbricks
 WORKDIR /simbricks
 RUN make -j `nproc` ENABLE_VERILATOR=y
