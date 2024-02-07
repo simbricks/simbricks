@@ -1,4 +1,6 @@
-FROM simbricks/simbricks:latest
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks${TAG}
 RUN mv sims/external/gem5 sims/external/gem5-old \
  && git submodule update --init sims/external/gem5 \
  && make -j `nproc` sims/external/gem5/ready GEM5_VARIANT=opt \
