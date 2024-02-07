@@ -1,3 +1,5 @@
+ARG REGISTRY=
+ARG TAG=:latest
 FROM ubuntu:jammy
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive \
