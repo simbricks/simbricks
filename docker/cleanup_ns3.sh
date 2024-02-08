@@ -3,11 +3,11 @@ set -e
 
 mkdir -p sims/external/ns-3-new/
 cd sims/external/ns-3
-find build -name '*.o' -delete
 cp -r \
   build/ \
   simbricks-run.sh \
-  ns3
+  ns3 \
+  .lock-ns3* \
   ../ns-3-new/
 cd ..
 git submodule deinit -f ns-3
