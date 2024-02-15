@@ -24,7 +24,6 @@
 from __future__ import annotations
 
 import math
-import sys
 import typing as tp
 
 from simbricks.orchestration.experiment.experiment_environment import ExpEnv
@@ -930,8 +929,9 @@ class NS3E2ENet(NetSim):
         listen: bool = False
     ) -> None:
         if e2e_sim.simbricks_component is None:
-            print('E2E Simbricks adapter does not contain a simulator')
-            sys.exit(1)
+            raise RuntimeError(
+                'E2E Simbricks adapter does not contain a simulator'
+            )
         if e2e_sim.adapter_type == e2e.SimbricksAdapterType.NIC:
             e2e_sim.unix_socket = env.nic_eth_path(e2e_sim.simbricks_component)
         elif e2e_sim.adapter_type == e2e.SimbricksAdapterType.NETWORK:
