@@ -116,7 +116,7 @@ class E2EGlobalConfig(E2EBase):
 
     def ns3_config(self) -> str:
         self.mapping.update({
-            "StopTime": self.stop_time, "MACStart": self.mac_start
+            "StopTime": self.stop_time, "MACStart": str(self.mac_start)
         })
         return super().ns3_config()
 
