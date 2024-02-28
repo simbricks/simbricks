@@ -961,7 +961,7 @@ class NS3E2ENet(NetSim):
 
             # add all connected networks
             for c in component.components:
-                if isinstance(c, e2e.E2ESimbricksNetworkNetIf):
+                if isinstance(c, e2e.E2ENetworkSimbricks) and not c.listen:
                     p_suf = ''
                     if c.peer:
                         p_suf = min(c.name, c.peer.name)
@@ -975,10 +975,8 @@ class NS3E2ENet(NetSim):
             for c in component.components:
                 if isinstance(c, e2e.E2ESimbricksHost):
                     self.resolve_socket_paths(env, c)
-                elif isinstance(c, e2e.E2ESimbricksNetworkNetIf):
-                    self.resolve_socket_paths(env, c)
-                elif isinstance(c, e2e.E2ESimbricksNetworkNicIf):
-                    self.resolve_socket_paths(env, c, True)
+                elif isinstance(c, e2e.E2ENetworkSimbricks):
+                    self.resolve_socket_paths(env, c, c.listen)
 
         params: tp.List[str] = []
         params.append(self.e2e_global.ns3_config())

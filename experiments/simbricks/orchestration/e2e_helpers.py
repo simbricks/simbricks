@@ -80,12 +80,14 @@ class E2ELinkAssigner():
         right_switch = link["right"]
         link_type = link["type"]
         if link_type == E2ELinkType.SIMBRICKS:
-            left_adapter = e2e.E2ESimbricksNetworkNetIf(f"_{idd}_left_adapter")
+            left_adapter = e2e.E2ENetworkSimbricks(f"_{idd}_left_adapter")
+            left_adapter.listen = False
             left_switch.add_component(left_adapter)
             link["left_adapter"] = left_adapter
-            right_adapter = e2e.E2ESimbricksNetworkNicIf(
+            right_adapter = e2e.E2ENetworkSimbricks(
                 f"_{idd}_right_adapter"
             )
+            right_adapter.listen = True
             right_switch.add_component(right_adapter)
             link["right_adapter"] = right_adapter
         elif link_type == E2ELinkType.NS3_SIMPLE_CHANNEL:
