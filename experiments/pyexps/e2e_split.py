@@ -94,13 +94,15 @@ for congestion_control in types_of_congestion_control:
             right_switch.mtu = f'{mtu-52}'
             right_net.add_component(right_switch)
 
-            left_adapter = e2e.E2ESimbricksNetworkNetIf('left_adapter')
+            left_adapter = e2e.E2ENetworkSimbricks('left_adapter')
             left_adapter.eth_latency = f'{link_latency}ns'
             left_adapter.simbricks_component = right_net
+            left_adapter.listen = False
             left_switch.add_component(left_adapter)
-            right_adapter = e2e.E2ESimbricksNetworkNicIf('right_adapter')
+            right_adapter = e2e.E2ENetworkSimbricks('right_adapter')
             right_adapter.eth_latency = f'{link_latency}ns'
             right_adapter.simbricks_component = left_net
+            right_adapter.listen = True
             right_switch.add_component(right_adapter)
 
             for i in range(1, num_ns3_hosts + 1):

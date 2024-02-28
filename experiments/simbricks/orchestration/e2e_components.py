@@ -57,8 +57,10 @@ class CongestionControl(Enum):
     @property
     def ns3(self):
         if self.ns3_str == "":
-            raise AttributeError(f"There is no ns3 implementation for "
-                f"{self.name} available")
+            raise AttributeError(
+                f"There is no ns3 implementation for "
+                f"{self.name} available"
+            )
         return self.ns3_str
 
     @property
@@ -114,8 +116,7 @@ class E2EGlobalConfig(E2EBase):
 
     def ns3_config(self) -> str:
         self.mapping.update({
-            "StopTime": self.stop_time,
-            "MACStart": self.mac_start
+            "StopTime": self.stop_time, "MACStart": self.mac_start
         })
         return super().ns3_config()
 
@@ -209,48 +210,49 @@ class E2ESimpleChannel(E2ETopologyChannel):
         return super().ns3_config()
 
 
-class E2ESimbricksNetwork(E2EComponent):
+class E2ENetwork(E2EComponent):
 
     def __init__(self, idd: str) -> None:
         super().__init__(idd)
         self.category = "Network"
+        self.peer = None
+
+    def set_peer(self, peer: E2ENetwork):
+        self.peer = peer
+        peer.peer = self
+
+
+class E2ENetworkSimbricks(E2ENetwork):
+
+    def __init__(self, idd: str) -> None:
+        super().__init__(idd)
+        self.type = "Simbricks"
         self.adapter_type = SimbricksAdapterType.NETWORK
         self.unix_socket = ""
         self.sync_delay = ""
         self.poll_delay = ""
         self.eth_latency = ""
-        self.peer = None
+        self.listen: tp.Optional[bool] = None
+        self.shm_path = ""
         self.sync: SimbricksSyncMode = SimbricksSyncMode.SYNC_OPTIONAL
 
         self.simbricks_component = None
 
-    def set_peer(self, peer: E2ESimbricksNetwork):
-        self.peer = peer
-        peer.peer = self
-
     def ns3_config(self) -> str:
+        if self.listen is None:
+            raise AttributeError(
+                f"Listen mode not specified for simbricks adapter {self.id}"
+            )
         self.mapping.update({
             "UnixSocket": self.unix_socket,
             "SyncDelay": self.sync_delay,
             "PollDelay": self.poll_delay,
             "EthLatency": self.eth_latency,
+            "Listen": "true" if self.listen else "false",
+            "ShmPath": self.shm_path,
             "Sync": "" if self.sync is None else f"{self.sync.value}",
         })
         return super().ns3_config()
-
-
-class E2ESimbricksNetworkNetIf(E2ESimbricksNetwork):
-
-    def __init__(self, idd: str) -> None:
-        super().__init__(idd)
-        self.type = "NetIf"
-
-
-class E2ESimbricksNetworkNicIf(E2ESimbricksNetwork):
-
-    def __init__(self, idd: str) -> None:
-        super().__init__(idd)
-        self.type = "NicIf"
 
 
 class E2EHost(E2EComponent):
