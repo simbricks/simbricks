@@ -190,10 +190,10 @@ class NetSim(Simulator):
         self.eth_latency = 500
         """Ethernet latency in nanoseconds from this network to connected
         components."""
-        self.nics: list[NICSim] = []
-        self.hosts_direct: list[HostSim] = []
-        self.net_listen: list[(NetSim, str)] = []
-        self.net_connect: list[(NetSim, str)] = []
+        self.nics: tp.List[NICSim] = []
+        self.hosts_direct: tp.List[HostSim] = []
+        self.net_listen: tp.List[tp.Tuple[NetSim, str]] = []
+        self.net_connect: tp.List[tp.Tuple[NetSim, str]] = []
         self.wait = False
 
     def full_name(self) -> str:
@@ -219,12 +219,12 @@ class NetSim(Simulator):
 
     def listen_sockets(self, env: ExpEnv) -> tp.List[tp.Tuple[NetSim, str]]:
         listens = []
-        for (net,suffix) in self.net_listen:
+        for (net, suffix) in self.net_listen:
             listens.append((net, env.n2n_eth_path(self, net, suffix)))
         return listens
 
     def dependencies(self) -> tp.List[Simulator]:
-        return self.nics + self.hosts_direct + [n for n,_ in self.net_connect]
+        return self.nics + self.hosts_direct + [n for n, _ in self.net_connect]
 
     def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         return [s for (_, s) in self.listen_sockets(env)]
@@ -232,7 +232,7 @@ class NetSim(Simulator):
     def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return [s for (_, s) in self.listen_sockets(env)]
 
-    def wait_terminate(self) -> Bool:
+    def wait_terminate(self) -> bool:
         return self.wait
 
     def init_network(self) -> None:
@@ -925,7 +925,7 @@ class NS3E2ENet(NetSim):
     def resolve_socket_paths(
         self,
         env: ExpEnv,
-        e2e_sim: tp.Union[e2e.E2ESimbricksNetwork, e2e.E2ESimbricksHost],
+        e2e_sim: tp.Union[e2e.E2ENetworkSimbricks, e2e.E2ESimbricksHost],
         listen: bool = False
     ) -> None:
         if e2e_sim.simbricks_component is None:
@@ -935,6 +935,10 @@ class NS3E2ENet(NetSim):
         if e2e_sim.adapter_type == e2e.SimbricksAdapterType.NIC:
             e2e_sim.unix_socket = env.nic_eth_path(e2e_sim.simbricks_component)
         elif e2e_sim.adapter_type == e2e.SimbricksAdapterType.NETWORK:
+            if not isinstance(e2e_sim, e2e.E2ENetworkSimbricks):
+                raise RuntimeError(
+                    f'Expected {e2e_sim.id} to be of type E2ENetworkSimbricks'
+                )
             p_suf = ''
             if e2e_sim.peer:
                 p_suf = min(e2e_sim.name, e2e_sim.peer.name)

@@ -187,7 +187,7 @@ class ExperimentBaseRunner(ABC):
         assert self.profile_int
         while True:
             await asyncio.sleep(self.profile_int)
-            for (sim,sc) in self.running:
+            for (_,sc) in self.running:
                 await sc.sigusr1()
 
     async def run(self) -> ExpOutput:
@@ -225,10 +225,10 @@ class ExperimentBaseRunner(ABC):
             traceback.print_exc()
 
         if profiler_task:
-          try:
-              profiler_task.cancel()
-          except asyncio.CancelledError:
-              pass
+            try:
+                profiler_task.cancel()
+            except asyncio.CancelledError:
+                pass
         # The bare except above guarantees that we always execute the following
         # code, which terminates all simulators and produces a proper output
         # file.

@@ -139,10 +139,7 @@ for link_type in (E2ELinkType.NS3_SIMPLE_CHANNEL, E2ELinkType.SIMBRICKS):
                 component.data_rate = f'{link_rate}Mbps'
                 component.queue_size = f'{queue_size}B'
                 component.delay = f'{link_latency}ns'
-            elif isinstance(
-                component,
-                (e2e.E2ESimbricksNetworkNetIf, e2e.E2ESimbricksNetworkNicIf)
-            ):
+            elif isinstance(component, (e2e.E2ENetworkSimbricks)):
                 component.eth_latency = f'{link_latency}ns'
 
     # simbricks host
