@@ -192,7 +192,9 @@ class E2ESimpleChannel(E2ETopologyChannel):
         super().__init__(idd)
         self.type = "Simple"
         self.data_rate = ""
+        self.queue_type = "ns3::DropTailQueue"
         self.queue_size = ""
+        self.channel_type = "ns3::SimpleChannel"
         self.delay = ""
         self.left_node: E2ETopologyNode
         self.right_node: E2ETopologyNode
@@ -201,13 +203,30 @@ class E2ESimpleChannel(E2ETopologyChannel):
         if self.left_node is None or self.right_node is None:
             raise AttributeError(f"Not all nodes for channel {self.id} given")
         self.mapping.update({
-            "DataRate": self.data_rate,
-            "QueueSize": self.queue_size,
-            "Delay": self.delay,
+            "Device-DataRate": self.data_rate,
+            "QueueType": self.queue_type,
+            "Queue-MaxSize": self.queue_size,
+            "ChannelType": self.channel_type,
+            "Channel-Delay": self.delay,
             "LeftNode": self.left_node.id,
             "RightNode": self.right_node.id,
         })
         return super().ns3_config()
+
+    def add_device_attr(self, key: str, value: str) -> None:
+        if not key.startswith("Device-"):
+            key = f"Device-{key}"
+        self.mapping.update({key: value})
+
+    def add_queue_attr(self, key: str, value: str) -> None:
+        if not key.startswith("Queue-"):
+            key = f"Queue-{key}"
+        self.mapping.update({key: value})
+
+    def add_channel_attr(self, key: str, value: str) -> None:
+        if not key.startswith("Channel-"):
+            key = f"Channel-{key}"
+        self.mapping.update({key: value})
 
 
 class E2ENetwork(E2EComponent):
@@ -293,7 +312,9 @@ class E2ESimpleNs3Host(E2EHost):
         super().__init__(idd)
         self.type = "SimpleNs3"
         self.data_rate = ""
+        self.queue_type = "ns3::DropTailQueue"
         self.queue_size = ""
+        self.channel_type = "ns3::SimpleChannel"
         self.delay = ""
         self.congestion_control: CongestionControl = None
         self.ip = ""
@@ -304,13 +325,30 @@ class E2ESimpleNs3Host(E2EHost):
         else:
             cc = self.congestion_control.ns3
         self.mapping.update({
-            "DataRate": self.data_rate,
-            "QueueSize": self.queue_size,
-            "Delay": self.delay,
+            "Device-DataRate": self.data_rate,
+            "QueueType": self.queue_type,
+            "Queue-MaxSize": self.queue_size,
+            "ChannelType": self.channel_type,
+            "Channel-Delay": self.delay,
             "CongestionControl": cc,
             "Ip": self.ip,
         })
         return super().ns3_config()
+
+    def add_device_attr(self, key: str, value: str) -> None:
+        if not key.startswith("Device-"):
+            key = f"Device-{key}"
+        self.mapping.update({key: value})
+
+    def add_queue_attr(self, key: str, value: str) -> None:
+        if not key.startswith("Queue-"):
+            key = f"Queue-{key}"
+        self.mapping.update({key: value})
+
+    def add_channel_attr(self, key: str, value: str) -> None:
+        if not key.startswith("Channel-"):
+            key = f"Channel-{key}"
+        self.mapping.update({key: value})
 
 
 class E2EApplication(E2EComponent):
