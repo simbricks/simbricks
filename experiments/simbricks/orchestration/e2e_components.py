@@ -80,6 +80,28 @@ class SimbricksSyncMode(Enum):
     SYNC_REQUIRED = 2
 
 
+class Ns3LoggingLevel(Enum):
+    ERROR = "error"
+    LEVEL_ERROR = "level_error"
+    WARN = "warn"
+    LEVEL_WARN = "level_warn"
+    DEBUG = "debug"
+    LEVEL_DEBUG = "level_debug"
+    INFO = "info"
+    LEVEL_INFO = "level_info"
+    FUNCTION = "function"
+    LEVEL_FUNCTION = "level_function"
+    LOGIC = "logic"
+    LEVEL_LOGIC = "level_logic"
+    ALL = "all"
+    LEVEL_ALL = "level_all"
+    PREFIX_FUNC = "prefix_func"
+    PREFIX_TIME = "prefix_time"
+    PREFIX_NODE = "prefix_node"
+    PREFIX_LEVEL = "prefix_level"
+    PREFIX_ALL = "prefix_all"
+
+
 class E2EBase(ABC):
 
     def __init__(self) -> None:
@@ -122,6 +144,29 @@ class E2EGlobalConfig(E2EBase):
 
     def add_component(self, component: E2EComponent) -> None:
         raise AttributeError("Can't add a component to the global config")
+
+
+class E2ENs3Logging(E2EBase):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.category = "Logging"
+        self.logging: tp.Dict[str, tp.List[Ns3LoggingLevel]] = {}
+
+    def ns3_config(self) -> str:
+        for component, levels in self.logging.items():
+            levels_str = "|".join([level.value for level in levels])
+            self.mapping.update([(component, levels_str)])
+        return super().ns3_config()
+
+    def add_component(self, component: E2EComponent) -> None:
+        raise AttributeError("Can't add a component to the global config")
+
+    def add_logging(self, component: str, level: Ns3LoggingLevel):
+        if component in self.logging:
+            self.logging[component].append(level)
+        else:
+            self.logging[component] = [level]
 
 
 class E2EComponent(E2EBase):
