@@ -96,6 +96,13 @@ def parse_args() -> argparse.Namespace:
         help='Verbose output, for example, print component simulators\' output'
     )
     parser.add_argument(
+        '--dry-run',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Print simulator commands without executing the experiment'
+    )
+    parser.add_argument(
         '--pcap',
         action='store_const',
         const=True,
@@ -292,7 +299,9 @@ def main():
         executors = load_executors(args.hosts)
 
     # initialize runtime
-    if args.runtime == 'parallel':
+    if args.dry_run:
+        rt = runtime.DryRuntime(verbose=args.verbose)
+    elif args.runtime == 'parallel':
         warn_multi_exec(executors)
         rt = runtime.LocalParallelRuntime(
             cores=args.cores,
