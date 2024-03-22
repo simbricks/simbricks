@@ -1,0 +1,46 @@
+#!/bin/bash
+#SBATCH --ntasks-per-node=1
+#SBATCH --nodes=$NUMNODES
+#SBATCH --mem=$MEM_PER_NODE
+#SBATCH --cpus-per-task=$CORES_PER_TASK
+#SBATCH --job-name=%JOBNAME
+#SBATCH -o slurm.%N.%j.out # STDOUT
+#SBATCH -e slurm.%N.%j.out # STDERR
+
+nodes="`scontrol show hostnames $$SLURM_JOB_NODELIST`"
+leader="`echo $$nodes | awk '{print $$1}'`"
+workers="`echo $$nodes | awk '{for (i=2; i<=NF; i++) print $$i}'`"
+
+docker export $$(docker create $CONTAINER) >rootfs.tar
+
+bash make_hosts.sh >hosts.json
+
+
+echo start worker containers on worker nodes
+i=0
+worker_pids=""
+for w in $$workers
+do
+	echo starting on $$w
+	srun --nodelist=$$w -N1  -n1 --cpus-per-task=$CORES_PER_TASK bash runworker.sh &
+	worker_pids="$$worker_pids $$!"
+	i=$$(($$i + 1))
+
+done
+
+if [[ -n "$${worker_pids// }" ]]
+then
+	echo Giving workers a head start
+	sleep 30
+fi
+
+echo starting main
+bash runmain.sh $SIMBRICKS_RUN_ARGS /slurm/$EXPERIMENT
+
+if [[ -n "$${worker_pids// }" ]]
+then
+	sleep 10
+	kill $$worker_pids
+	sleep 5
+fi
+scancel --signal=KILL $$SLURM_JOB_ID

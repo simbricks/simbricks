@@ -20,119 +20,67 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import asyncio
 import os
-import pathlib
 import pickle
-import re
+import shutil
+import string
 import typing as tp
 
-from simbricks.orchestration.runtime.common import Run, Runtime
+import simbricks.orchestration.experiments as exps
 
 
-class SlurmRuntime(Runtime):
+def create_batch_script(
+    exp: exps.Experiment,
+    container: str,
+    slurmdir: str,
+    repodir: str,
+    runtime: str,
+    num_nodes: int,
+    auto_dist: bool
+) -> None:
+    """Create a batch script in `slurmdir` suitable for submission via Slurm's
+    sbatch and that will run the provided `experiment`"""
+    # pickle experiment
+    os.makedirs(slurmdir, exist_ok=True)
+    with open(os.path.join(slurmdir, f'{exp.name}.exp'), 'wb') as f:
+        pickle.dump(exp, f)
 
-    def __init__(self, slurmdir, args, verbose=False, cleanup=True) -> None:
-        super().__init__()
-        self.runnable: tp.List[Run] = []
-        self.slurmdir = slurmdir
-        self.args = args
-        self.verbose = verbose
-        self.cleanup = cleanup
+    # write out slurm batch script
+    templatedir = os.path.join(repodir, 'experiments/simbricks/utils/slurm/')
+    with open(
+        os.path.join(templatedir, 'grid_submit.sh.template'),
+        'r',
+        encoding='utf-8'
+    ) as f:
+        batch_script_template = string.Template(f.read())
 
-        self._start_task: asyncio.Task
+    runtime = '' if runtime == 'sequential' else f'--{runtime}'
+    auto_dist = '--auto_dist' if auto_dist else ''
 
-    def add_run(self, run: Run) -> None:
-        self.runnable.append(run)
+    batch_script = batch_script_template.substitute(
+        NUMNODES=(
+            tp.cast(exps.DistributedExperiment, exp).num_hosts
+            if isinstance(exp, exps.DistributedExperiment) else num_nodes
+        ),
+        MEM_PER_NODE=exp.resreq_mem(),
+        CORES_PER_TASK=exp.resreq_cores(),
+        JOBNAME=exp.name,
+        CONTAINER=container,
+        SIMBRICKS_RUN_ARGS=f'{runtime} {auto_dist} --pickled',
+        EXPERIMENT=f'{exp.name}.exp'
+    )
 
-    def prep_run(self, run: Run) -> str:
-        exp = run.experiment
-        e_idx = exp.name + f'-{run.index}' + '.exp'
-        exp_path = os.path.join(self.slurmdir, e_idx)
+    with open(
+        os.path.join(slurmdir, f'{exp.name}-grid_submit.sh'),
+        'w',
+        encoding='utf-8'
+    ) as f:
+        f.write(batch_script)
 
-        log_idx = exp.name + f'-{run.index}' + '.log'
-        exp_log = os.path.join(self.slurmdir, log_idx)
-
-        sc_idx = exp.name + f'-{run.index}' + '.sh'
-        exp_script = os.path.join(self.slurmdir, sc_idx)
-        print(exp_path)
-        print(exp_log)
-        print(exp_script)
-
-        # write out pickled run
-        with open(exp_path, 'wb', encoding='utf-8') as f:
-            run.prereq = None  # we don't want to pull in the prereq too
-            pickle.dump(run, f)
-
-        # create slurm batch script
-        with open(exp_script, 'w', encoding='utf-8') as f:
-            f.write('#!/bin/sh\n')
-            f.write(f'#SBATCH -o {exp_log} -e {exp_log}\n')
-            #f.write('#SBATCH -c %d\n' % (exp.resreq_cores(),))
-            f.write(f'#SBATCH --mem={exp.resreq_mem()}M\n')
-            f.write(f'#SBATCH --job-name="{run.name()}"\n')
-            f.write('#SBATCH --exclude=spyder[01-05],spyder16\n')
-            f.write('#SBATCH -c 32\n')
-            f.write('#SBATCH --nodes=1\n')
-            if exp.timeout is not None:
-                h = int(exp.timeout / 3600)
-                m = int((exp.timeout % 3600) / 60)
-                s = int(exp.timeout % 60)
-                f.write(f'#SBATCH --time={h:02d}:{m:02d}:{s:02d}\n')
-
-            extra = ''
-            if self.verbose:
-                extra = '--verbose'
-
-            f.write(f'python3 run.py {extra} --pickled {exp_path}\n')
-            f.write('status=$?\n')
-            if self.cleanup:
-                f.write(f'rm -rf {run.env.workdir}\n')
-            f.write('exit $status\n')
-
-        return exp_script
-
-    async def _do_start(self) -> None:
-        pathlib.Path(self.slurmdir).mkdir(parents=True, exist_ok=True)
-
-        jid_re = re.compile(r'Submitted batch job ([0-9]+)')
-
-        for run in self.runnable:
-            if run.prereq is None:
-                dep_cmd = ''
-            else:
-                dep_cmd = '--dependency=afterok:' + str(run.prereq.job_id)
-
-            script = self.prep_run(run)
-
-            stream = os.popen(f'sbatch {dep_cmd} {script}')
-            output = stream.read()
-            result = stream.close()
-
-            if result is not None:
-                raise RuntimeError('running sbatch failed')
-
-            m = jid_re.search(output)
-            if m is None:
-                raise RuntimeError('cannot retrieve id of submitted job')
-            run.job_id = int(m.group(1))
-
-    async def start(self) -> None:
-        self._start_task = asyncio.create_task(self._do_start())
-        try:
-            await self._start_task
-        except asyncio.CancelledError:
-            # stop all runs that have already been scheduled
-            # (existing slurm job id)
-            job_ids = []
-            for run in self.runnable:
-                if run.job_id:
-                    job_ids.append(str(run.job_id))
-
-            scancel_process = await asyncio.create_subprocess_shell(
-                f"scancel {' '.join(job_ids)}"
-            )
-            await scancel_process.wait()
-
-    def interrupt_handler(self) -> None:
-        self._start_task.cancel()
+    # copy further required files to slurmdir
+    shutil.copy(os.path.join(templatedir, 'make_hosts.sh'), slurmdir)
+    shutil.copy(os.path.join(templatedir, 'prepcontainer.sh'), slurmdir)
+    shutil.copy(os.path.join(templatedir, 'runmain.sh'), slurmdir)
+    shutil.copy(os.path.join(templatedir, 'runworker.sh'), slurmdir)
+    shutil.copy(os.path.join(templatedir, 'modify_oci.py'), slurmdir)
+    shutil.copy(os.path.join(templatedir, 'kvm-group.patch'), slurmdir)

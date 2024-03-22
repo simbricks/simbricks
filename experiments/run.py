@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
         action='store_const',
         const=True,
         default=False,
-        help='List available experiment names'
+        help='List name of experiments that would be run'
     )
     parser.add_argument(
         '--filter',
@@ -69,7 +69,7 @@ def parse_args() -> argparse.Namespace:
         action='store_const',
         const=True,
         default=False,
-        help='Interpret experiment modules as pickled runs instead of .py files'
+        help='Interpret given experiments as pickled instead of .py files'
     )
     parser.add_argument(
         '--runs',
@@ -134,13 +134,6 @@ def parse_args() -> argparse.Namespace:
         help='Checkpoint directory base'
     )
     g_env.add_argument(
-        '--hosts',
-        metavar='JSON_FILE',
-        type=str,
-        default=None,
-        help='List of hosts to use (json)'
-    )
-    g_env.add_argument(
         '--shmdir',
         metavar='DIR',
         type=str,
@@ -173,22 +166,35 @@ def parse_args() -> argparse.Namespace:
         help='Memory limit for parallel runs (in MB)'
     )
 
-    # arguments for the slurm runtime
-    g_slurm = parser.add_argument_group('Slurm Runtime')
+    # Slurm arguments
+    g_slurm = parser.add_argument_group('Slurm')
     g_slurm.add_argument(
         '--slurm',
-        dest='runtime',
         action='store_const',
-        const='slurm',
-        default='sequential',
-        help='Use slurm instead of sequential runtime'
+        const=True,
+        default=False,
+        help=(
+            'Produce a batch script in slurmdir suitable for submission to '
+            'Slurm cluster'
+        )
     )
     g_slurm.add_argument(
         '--slurmdir',
         metavar='DIR',
         type=str,
         default='./slurm/',
-        help='Slurm communication directory'
+        help='Directory for Slurm batch scripts and Slurm output'
+    )
+    g_slurm.add_argument(
+        '--container',
+        default='simbricks/simbricks-dist-worker:latest',
+        help='The container image to use for Slurm'
+    )
+    g_slurm.add_argument(
+        '--nodes',
+        type=int,
+        default=1,
+        help='Number of Slurm nodes to use for experiments.'
     )
 
     # arguments for the distributed runtime
@@ -200,6 +206,13 @@ def parse_args() -> argparse.Namespace:
         const='dist',
         default='sequential',
         help='Use sequential distributed runtime instead of local'
+    )
+    g_dist.add_argument(
+        '--hosts',
+        metavar='JSON_FILE',
+        type=str,
+        default=None,
+        help='List of hosts to use (json)'
     )
     g_dist.add_argument(
         '--auto-dist',
@@ -291,29 +304,10 @@ def main():
     else:
         executors = load_executors(args.hosts)
 
-    # initialize runtime
-    if args.runtime == 'parallel':
-        warn_multi_exec(executors)
-        rt = runtime.LocalParallelRuntime(
-            cores=args.cores,
-            mem=args.mem,
-            verbose=args.verbose,
-            executor=executors[0]
-        )
-    elif args.runtime == 'slurm':
-        rt = runtime.SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
-    elif args.runtime == 'dist':
-        rt = runtime.DistributedSimpleRuntime(executors, verbose=args.verbose)
-    else:
-        warn_multi_exec(executors)
-        rt = runtime.LocalSimpleRuntime(
-            verbose=args.verbose, executor=executors[0]
-        )
-
     # load experiments
+    experiments: tp.List[exps.Experiment] = []
     if not args.pickled:
         # default: load python modules with experiments
-        experiments = []
         for path in args.experiments:
             modname, _ = os.path.splitext(os.path.basename(path))
 
@@ -327,46 +321,83 @@ def main():
             if spec.loader is None:
                 raise ExperimentModuleLoadError('spec.loader is None')
             spec.loader.exec_module(mod)
-            experiments += mod.experiments
-
-        if args.list:
-            for e in experiments:
-                print(e.name)
-            sys.exit(0)
-
-        for e in experiments:
-            if args.auto_dist and not isinstance(e, exps.DistributedExperiment):
-                e = runtime.auto_dist(e, executors, args.proxy_type)
-            # apply filter if any specified
-            if (args.filter) and (len(args.filter) > 0):
-                match = False
-                for f in args.filter:
-                    match = fnmatch.fnmatch(e.name, f)
-                    if match:
-                        break
-
-                if not match:
-                    continue
-
-            # if this is an experiment with a checkpoint we might have to create
-            # it
-            no_simbricks = e.no_simbricks
-            if e.checkpoint:
-                prereq = add_exp(
-                    e, rt, 0, None, True, False, no_simbricks, args
-                )
-            else:
-                prereq = None
-
-            for run in range(args.firstrun, args.firstrun + args.runs):
-                add_exp(
-                    e, rt, run, prereq, False, e.checkpoint, no_simbricks, args
-                )
+            experiments.extend(mod.experiments)
     else:
-        # otherwise load pickled run object
+        # load pickled experiment object
         for path in args.experiments:
             with open(path, 'rb') as f:
-                rt.add_run(pickle.load(f))
+                experiments.append(pickle.load(f))
+
+    # filter out experiments
+    if args.filter:
+        filtered_experiments = []
+        for exp in experiments:
+            match = False
+            for f in args.filter:
+                match = fnmatch.fnmatch(exp.name, f)
+                if match:
+                    filtered_experiments.append(exp)
+                    break
+
+        experiments = filtered_experiments
+
+    # list all experiments that would be run
+    if args.list:
+        for e in experiments:
+            print(e.name)
+        sys.exit(0)
+
+    # create slurm batch scripts
+    if args.slurm:
+        for exp in experiments:
+            runtime.create_batch_script(
+                exp,
+                args.container,
+                args.slurmdir,
+                args.repo,
+                args.runtime,
+                args.nodes,
+                args.auto_dist
+            )
+            print(
+                f'Created batch script for experiment {exp.name} in '
+                f'{args.slurmdir}'
+            )
+
+        sys.exit(0)
+
+    # initialize runtime
+    if args.runtime == 'parallel':
+        warn_multi_exec(executors)
+        rt = runtime.LocalParallelRuntime(
+            cores=args.cores,
+            mem=args.mem,
+            verbose=args.verbose,
+            executor=executors[0]
+        )
+    elif args.runtime == 'dist':
+        rt = runtime.DistributedSimpleRuntime(executors, verbose=args.verbose)
+    else:
+        warn_multi_exec(executors)
+        rt = runtime.LocalSimpleRuntime(
+            verbose=args.verbose, executor=executors[0]
+        )
+
+    for e in experiments:
+        if args.auto_dist and not isinstance(e, exps.DistributedExperiment):
+            e = runtime.auto_dist(e, executors, args.proxy_type)
+
+        # if this is an experiment with a checkpoint we might have to create it
+        no_simbricks = e.no_simbricks
+        if e.checkpoint:
+            prereq = add_exp(e, rt, 0, None, True, False, no_simbricks, args)
+        else:
+            prereq = None
+
+        # Create run from experiment or multiple runs (repetitions) if
+        # indicated. This effectively schedules its execution.
+        for run in range(args.firstrun, args.firstrun + args.runs):
+            add_exp(e, rt, run, prereq, False, e.checkpoint, no_simbricks, args)
 
     # register interrupt handler
     signal.signal(signal.SIGINT, lambda *_: rt.interrupt())

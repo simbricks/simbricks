@@ -172,7 +172,7 @@ class Component(object):
     async def started(self) -> None:
         pass
 
-    async def terminated(self, rc) -> None:
+    async def terminated(self, rc: int) -> None:
         pass
 
     async def process_out(self, lines: tp.List[str], eof: bool) -> None:
@@ -416,13 +416,13 @@ class RemoteExecutor(Executor):
         if verbose:
             print(f'{self.host_name}.await_file({path}) started')
 
-        to_its = timeout / delay
+        to_its = int(timeout / delay)
         loop_cmd = (
             f'i=0 ; while [ ! -e {path} ] ; do '
-            f'if [ $i -ge {to_its:u} ] ; then exit 1 ; fi ; '
+            f'if [ $i -ge {to_its} ] ; then exit 1 ; fi ; '
             f'sleep {delay} ; '
             'i=$(($i+1)) ; done; exit 0'
-        ) % (path, to_its, delay)
+        )
         parts = ['/bin/sh', '-c', loop_cmd]
         sc = self.create_component(
             f"{self.host_name}.await_file('{path}')",

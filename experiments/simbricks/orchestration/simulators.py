@@ -523,6 +523,23 @@ class Gem5Host(HostSim):
         return cmd
 
 
+class Gem5HostBuildImg(Gem5Host):
+    """
+    Same as `Gem5Host` but builds the required disk image. This is currently a
+    hack and will be removed once we add proper image support to the
+    orchestration framework.
+
+    When using this make sure that only one Gem5 simulator instance per physical
+    machine running simulators uses this class. Two concurrent image building
+    processes on a single machine can interfere and lead to experiment failure.
+    """
+
+    def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
+        cmds = [f'make -C {env.repodir} convert-images-raw']
+        cmds.extend(super().prep_cmds(env))
+        return cmds
+
+
 class SimicsHost(HostSim):
     """Simics host simulator."""
 
