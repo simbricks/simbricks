@@ -58,21 +58,26 @@ dependencies. This command will run an interactive shell in a new ephemeral
 container (deleted after the shell exits):
 
 ```Shell
-docker run --rm -it simbricks/simbricks /bin/bash
+docker run --rm -it --device /dev/kvm --privileged simbricks/simbricks /bin/bash
 ```
 
 If you are running on a Linux system with KVM support enabled, we recommend
 passing `/dev/kvm` into the container to drastically speed up some of the
-simulators:
+simulators. It is even required for some of them, e.g. gem5.
+
+Further, if you plan to use gem5, the container needs to be started with
+`--privileged` since it requires access to the `perf_event_open` syscall. In
+addition, `/proc/sys/kernel/perf_event_paranoid` has to to be set to 1 or lower
+on your host system. You can do so with
 
 ```Shell
-docker run --rm -it --device /dev/kvm simbricks/simbricks /bin/bash
+sudo sysctl -w kernel.perf_event_paranoid=1
 ```
 
-Finally, some of our host simulators, e.g., gem5 and Simics, require raw
+Finally, some of our host simulators, e.g. gem5 and Simics, require raw
 disk images. Since Docker doesn't handle large, sparse files well leading to
 large Docker image sizes, we only include disk images in the qcow format. To
-convert these to raw, run the following:
+convert these to raw, run the following inside the container:
 
 ```Shell
 make convert-images-raw
