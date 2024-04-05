@@ -68,6 +68,32 @@ qcow images by running the following (again, requires QEMU to be built first):
 
   $ make build-images-min
 
+.. _sec-gem5-perf:
+
+*********************************
+gem5 Panic PerfKvmCounter::attach
+*********************************
+
+gem5 needs access to the syscall ``perf_event_open``. To allow access,
+``/proc/sys/kernel/perf_event_paranoid`` has to be set to 1 or lower on the host
+system. You can check the current value with
+
+.. code-block:: bash
+
+  $ cat /proc/sys/kernel/perf_event_paranoid
+
+To change the setting, use this command:
+
+.. code-block:: bash
+
+  $ sudo sysctl -w kernel.perf_event_paranoid=1
+
+If you are using SimBricks from within a Docker container, you also need to
+start the container with the parameter ``--privileged`` for the
+``perf_event_open`` syscall to be accessible. Our VS Code dev container is
+configured to already do so, just start it as usual from within VS Code and you
+are good to go. Otherwise, add the parameter to your ``docker run`` command.
+
 ************************************
 Is My Simulation Stuck or Just Slow?
 ************************************

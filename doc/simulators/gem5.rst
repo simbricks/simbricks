@@ -119,4 +119,5 @@ Usage Notes
     will fail with an error and not silently fall back to something slower.
 
   * gem5-kvm configurations require ``/proc/sys/kernel/perf_event_paranoid`` to
-    be set to ``-1`` on the host system.
+    be set to ``1`` or lower on the host system. :ref:`sec-gem5-perf` describes
+    how to do so.
