@@ -166,13 +166,13 @@ for congestion_control in types_of_congestion_control:
             for i, server in enumerate(servers, 1):
                 host = e2e.E2ESimbricksHost(f'simbricksserver-{i}')
                 host.eth_latency = '1us'
-                host.simbricks_host = server.nics[0]
+                host.simbricks_component = server.nics[0]
                 topology.add_left_component(host)
 
             for i, client in enumerate(clients, 1):
                 host = e2e.E2ESimbricksHost(f'simbricksclient-{i}')
                 host.eth_latency = '1us'
-                host.simbricks_host = client.nics[0]
+                host.simbricks_component = client.nics[0]
                 topology.add_right_component(host)
 
             i = 0
