@@ -78,22 +78,22 @@ lint-clang-format:
 lint-yapf:
 	yapf --recursive --diff \
 		--exclude experiments/simbricks/orchestration/utils/graphlib.py \
-		-- results/ experiments/
+		-- results/ experiments/ doc/
 
 format-yapf:
 	yapf --recursive --in-place \
 		--exclude experiments/simbricks/orchestration/utils/graphlib.py \
 		--exclude experiments/out/ \
-		-- results/ experiments/
+		-- results/ experiments/ doc/
 
 lint-isort:
 	isort --diff \
 		--skip experiments/simbricks/orchestration/utils/graphlib.py \
-		results/ experiments/
+		results/ experiments/ doc/
 
 format-isort:
 	isort --skip experiments/simbricks/orchestration/utils/graphlib.py \
-		results/ experiments/
+		results/ experiments/ doc/
 
 lint: lint-cpplint lint-clang-format lint-python
 lint-all: lint lint-clang-tidy typecheck-python
