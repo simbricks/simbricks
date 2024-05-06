@@ -15,4 +15,10 @@ COPY --chown=${USERNAME}:${USERNAME} --from=builder /simbricks /simbricks
 WORKDIR /simbricks
 ENV PYTHONPATH=/simbricks/experiments
 RUN sudo cp docker/simbricks-run /usr/bin/ \
- && sudo chmod 755 /usr/bin/simbricks-run
+ && sudo chmod 755 /usr/bin/simbricks-run \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-system-x86_64 \
+    /usr/bin/qemu-system-x86_64 \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-system-x86_64 \
+    /usr/bin/kvm \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-img \
+    /usr/bin/qemu-img
