@@ -66,9 +66,10 @@ If you plan to simulate a topology with multiple hosts, it may be helpful to
 take a look at the module :mod-orchestration:`simulator_utils.py` in which we
 provide some helper functions to reduce the amount of code you have to write.
 
-Finally, to run your experiment, invoke ``experiments/run.py`` and provide the
-path to your experiment module. In our docker containers, you can also just use
-the following command from anywhere:
+Finally, to run your experiment, invoke
+:simbricks-repo:`experiments/run.py </blob/main/experiments/run.py>`
+and provide the path to your experiment module. In our docker containers, you
+can also just use the following command from anywhere:
 
 .. code-block:: bash
 
