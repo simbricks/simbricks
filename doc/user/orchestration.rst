@@ -63,11 +63,12 @@ insights when including a random or non-deterministic component. We call each
 execution a *run* of the experiment. Each run produces its own output JSON file.
 The file name includes the number of the run.
 
-The number of runs can be specified when invoking the orchestration framework,
-see :ref:`sec-command-line`. When using simulator checkpointing, we use one run
-to boot the simulator and take the checkpoint, and a second one to carry out the
-actual experiment. This is the reason for two output JSON files being produced
-in this case. For more information, see :ref:`sec-checkpointing`.
+The number of runs can be specified when invoking
+:simbricks-repo:`experiments/run.py </blob/main/experiments/run.py>`. When using
+simulator checkpointing, we use one run to boot the simulator and take the
+checkpoint, and a second one to carry out the actual experiment. This is the
+reason for two output JSON files being produced in this case. For more
+information, see :ref:`sec-checkpointing`.
 
 Component Simulators
 ====================
@@ -172,74 +173,6 @@ also possible to increase simulation performance by trading-off accuracy using a
 higher setting. For more information, refer to the section on
 :ref:`sec-synchronization` in the :ref:`page-architectural-overview`.
 
-
-.. _sec-command-line:
-
-******************************
-Running Experiments
-******************************
-
-To run experiments using our orchestration framework, use the
-:simbricks-repo:`experiments/run.py </blob/main/experiments/run.py>` script. For
-your convenience, you can also use ``simbricks-run`` in the Docker images from
-anywhere to run experiments. In practice, running experiments will look similar
-to this:
-
-.. code-block:: bash
-
-  $ python run.py --verbose --force pyexps/simple_ping.py
-  # only available inside docker images
-  $ simbricks-run --verbose --force pyexps/simple_ping.py
-
-Here are all the command line arguments for the
-:simbricks-repo:`experiments/run.py </blob/main/experiments/run.py>` script:
-
-.. code-block:: text
-
-  usage: run.py [-h] [--list] [--filter PATTERN [PATTERN ...]] [--pickled] [--runs N]
-                [--firstrun N] [--force] [--verbose] [--pcap] [--repo DIR] [--workdir DIR]
-                [--outdir DIR] [--cpdir DIR] [--hosts JSON_FILE] [--shmdir DIR]
-                [--parallel] [--cores N] [--mem N] [--slurm] [--slurmdir DIR] [--dist]
-                [--auto-dist] [--proxy-type TYPE]
-                EXP [EXP ...]
-
-  positional arguments:
-    EXP                   Python modules to load the experiments from
-
-  options:
-    -h, --help            show this help message and exit
-    --list                List available experiment names
-    --filter PATTERN [PATTERN ...]
-                          Only run experiments matching the given Unix shell style patterns
-    --pickled             Interpret experiment modules as pickled runs instead of .py files
-    --runs N              Number of repetition of each experiment
-    --firstrun N          ID for first run
-    --force               Run experiments even if output already exists (overwrites output)
-    --verbose             Verbose output, for example, print component simulators\' output
-    --pcap                Dump pcap file (if supported by component simulator)
-
-  Environment:
-    --repo DIR            SimBricks repository directory
-    --workdir DIR         Work directory base
-    --outdir DIR          Output directory base
-    --cpdir DIR           Checkpoint directory base
-    --hosts JSON_FILE     List of hosts to use (json)
-    --shmdir DIR          Shared memory directory base (workdir if not set)
-
-  Parallel Runtime:
-    --parallel            Use parallel instead of sequential runtime
-    --cores N             Number of cores to use for parallel runs
-    --mem N               Memory limit for parallel runs (in MB)
-
-  Slurm Runtime:
-    --slurm               Use slurm instead of sequential runtime
-    --slurmdir DIR        Slurm communication directory
-
-  Distributed Runtime:
-    --dist                Use sequential distributed runtime instead of local
-    --auto-dist           Automatically distribute non-distributed experiments
-    --proxy-type TYPE     Proxy type to use (sockets,rdma) for auto distribution
-
 ******************************
 Images
 ******************************
@@ -282,9 +215,10 @@ workload executed. Checkpointing can be enabled by setting the attribute
 
 When running an experiment multiple times, e.g. because you are tweaking the
 workload, the checkpoint doesn't have to be recreated all the time. When
-invoking the orchestration framework without the ``--force`` flag (see
-:ref:`sec-command-line`), it won't re-execute experiments and runs, for which an
-output JSON file already exists. So, if you delete only the output file of the
+invoking the
+:simbricks-repo:`orchestration framework </blob/main/experiments/run.py>`
+without the ``--force`` flag, it won't re-execute experiments and runs for which
+an output JSON file already exists. So if you delete only the output file of the
 second run, you can save the time for creating the checkpoint.
 
 ******************************
