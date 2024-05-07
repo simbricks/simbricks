@@ -26,7 +26,7 @@
 Architectural Overview
 ###################################
 
-On this page, we provide an overview of SimBrick's architecture and how it
+On this page, we provide an overview of SimBricks' architecture and how it
 connects existing simulators into an end-to-end virtual testbed. In the end, you
 should have all the required knowledge to extend SimBricks by adding a new
 Simulator or interface. Feel free to reach out to us if you have any questions
