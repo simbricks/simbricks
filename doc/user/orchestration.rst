@@ -130,23 +130,22 @@ guest system and the value is an IO handle of the file to be copied over.
   :members: run_cmds, config_files
 
 *******************************
-Synchronized vs. Unsynchronized
+Unsynchronized vs. Synchronized
 *******************************
 
-For most component simulators in your experiment, you can decide whether to run
-them synchronized or unsynchronized by setting
-:attr:`~simbricks.orchestration.simulators.PCIDevSim.sync_mode` or
-:attr:`~simbricks.orchestration.simulators.QemuHost.sync`. By default, all
-simulators run unsynchronized to simulate as fast as possible. When you are
-conducting measurements, however, you need to run synchronized, or you won't get
-meaningful performance numbers.
+SimBricks offers two modes of operation, unsynchronized and synchronized, which
+are defined on a per component basis. The default is the unsynchronized mode
+that is meant purely for functional testing. Unsynchronized components advance
+virtual time as quickly as they possibly can, which means that measurements
+taken on them are meaningless and cross-component measurements inaccurate.
 
-Running synchronized means that a simulator waits to process incoming messages
-from connected simulators at the correct timestamps. For technical details, see
-:ref:`sec-synchronization`. In contrast, unsynchronized lets a simulator advance
-its virtual time as fast as it can. It still handles and exchanges messages with
-connected simulators, but it won't wait for incoming messages and instead
-advances its virtual time when there's nothing available to process. 
+The synchronized mode, in contrast, is meant for accurate measurements and has
+to be enabled per component, for example, by setting
+:attr:`simbricks.orchestration.simulators.PCIDevSim.sync_mode` or
+:attr:`simbricks.orchestration.simulators.HostSim.sync_mode`. Running
+synchronized means that a simulator waits to process incoming messages from
+connected simulators at the correct timestamps. For technical details, see
+:ref:`sec-synchronization`.
 
 ***************************************
 Link Latency and Synchronization Period
