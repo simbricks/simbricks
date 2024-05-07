@@ -156,7 +156,3 @@ simulators. Below is an example of what this looks like.
         
         return cmd
 
-
-******************************
-Add a New Interface
-******************************

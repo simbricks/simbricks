@@ -293,8 +293,3 @@ Distributed Simulations
 
 For the moment, refer to our
 :simbricks-repo:`GitHub Q&A on this topic </discussions/73#discussioncomment-6682260>`.
-
-
-******************************
-Slurm
-******************************
