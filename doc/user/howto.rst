@@ -37,34 +37,34 @@ Create and Run an Experiment
 Experiments are defined in a declarative fashion inside Python modules using
 classes. Basically, create a `.py` file and add a global variable
 ``experiments``, a list which contains multiple instances of the class
-:class:`simbricks.orchestration.experiments.Experiment`, each one describing a
+:class:`~simbricks.orchestration.experiments.Experiment`, each one describing a
 standalone experiment. This is very helpful if you wish to evaluate your work in
 different environments, for example, you may want to swap out some simulator or
 investigate multiple topologies with different scale. 
 
 The class :class:`~simbricks.orchestration.experiments.Experiment` provides
 methods to add the simulators you wish to run. All available simulators can be
-found in the module :mod:`simbricks.orchestration.simulators`. Instantiating
+found in the module :mod-orchestration:`simulators.py`. Instantiating
 :class:`~simbricks.orchestration.simulators.HostSim` requires you to specify a
 :class:`~simbricks.orchestration.nodeconfig.NodeConfig`, which contains the
 configuration for your host, for example, its networking settings, how much
 system memory it should have, and most importantly, which applications to run by
 assigning an :class:`~simbricks.orchestration.nodeconfig.AppConfig`. You can
 find predefined classes for node and app configs in the module
-:mod:`simbricks.orchestration.nodeconfig`. Feel free to add new ones or just
-create a new class locally in your experiment's module. For more details, see :ref:`sec-orchestration`.
+:mod-orchestration:`nodeconfig.py`. Feel free to add new ones or just create a
+new class locally in your experiment's module. For more details, see
+:ref:`sec-orchestration`.
 
 The last step to complete your virtual testbed is to specify which virtual
 components connect to each other. You do this by invoking the respective methods
 on the simulators you have instantiated. See the different simulator types' base
-classes in the module :mod:`~simbricks.orchestration.simulators` for more
-information. A simple and complete experiment module in which a client host
-pings a server can be found :ref:`below <simple_ping_experiment>`.
+classes in the module :mod-orchestration:`simulators.py` for more information. A
+simple and complete experiment module in which a client host pings a server can
+be found :ref:`below <simple_ping_experiment>`.
 
 If you plan to simulate a topology with multiple hosts, it may be helpful to
-take a look at the module :mod:`simbricks.orchestration.simulator_utils` in
-which we provide some helper functions to reduce the amount of code you have to
-write.
+take a look at the module :mod-orchestration:`simulator_utils.py` in which we
+provide some helper functions to reduce the amount of code you have to write.
 
 Finally, to run your experiment, invoke ``experiments/run.py`` and provide the
 path to your experiment module. In our docker containers, you can also just use
@@ -106,13 +106,13 @@ Add a Node or Application Config
 
 A host's configuration and the workload to run are defined via
 :ref:`sec-node_app_config`. SimBricks already comes with a few examples in the
-module :mod:`simbricks.orchestration.nodeconfig`. If they don't fit your
-use-case, you need to add your own by overriding the pre-defined member
-functions of :class:`~simbricks.orchestration.nodeconfig.NodeConfig` and
-:class:`~simbricks.orchestration.nodeconfig.AppConfig`. The most notably is
-:meth:`~simbricks.orchestration.nodeconfig.AppConfig.run_cmds`, which defines
+module :mod-orchestration:`nodeconfig.py`. If they don't fit your use-case, you
+need to add your own by overriding the pre-defined member functions of
+:class:`~simbricks.orchestration.nodeconfig.NodeConfig` and
+:class:`~simbricks.orchestration.nodeconfig.AppConfig`. The most important one
+is :meth:`~simbricks.orchestration.nodeconfig.AppConfig.run_cmds`, which defines
 the commands to execute for your workload/application. Further information can
-be found in the module :mod:`simbricks.orchestration.nodeconfig` directly.
+be found in the module :mod-orchestration:`nodeconfig.py` directly.
 
 .. _sec-howto-custom_image:
 
@@ -130,10 +130,10 @@ SimBricks adapter for it. You can find the necessary information in the
 experiments and setting up the communication channels with other simulators more
 convenient, add a class for the simulator to the orchestration framework that
 inherits from :class:`~simbricks.orchestration.simulators.Simulator` or one of
-the more specialized base classes in :mod:`simbricks.orchestration.simulators`.
-In this class you define the command to execute the simulator together with
-further parameters, for example, to connect to the communication channels with
-other simulators. Below is an example of what this looks like.
+the more specialized base classes in :mod-orchestration:`simulators.py`. In
+this class you define the command to execute the simulator together with further
+parameters, for example, to connect to the communication channels with other
+simulators. Below is an example of what this looks like.
 
 .. code-block:: python
   :linenos:
