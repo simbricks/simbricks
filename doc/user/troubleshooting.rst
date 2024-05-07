@@ -109,7 +109,3 @@ If you invoked the orchestration framework in verbose mode (see
 terminal. If not then you have to stop the experiment via Ctrl+C to produce
 the output JSON file. All the simulators' output is logged
 there.
-
-************************************
-Understanding Simulation Performance
-************************************
