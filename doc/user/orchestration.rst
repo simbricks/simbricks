@@ -49,7 +49,8 @@ connected. To define one, instantiate the class
 :class:`~simbricks.orchestration.experiments.Experiment` in your own Python
 module, which has member functions to further define the component simulators to
 run. SimBricks comes with many pre-defined experiments, which can serve as
-starting guides and are located in the repository under ``experiments/pyexps``.
+starting guides and are located in the repository under
+:simbricks-repo:`experiments/pyexps </blob/main/experiments/pyexps>`.
 
 .. autoclass:: simbricks.orchestration.experiments.Experiment
   :members: add_host, add_pcidev, add_nic, add_network, checkpoint
@@ -179,9 +180,10 @@ Running Experiments
 ******************************
 
 To run experiments using our orchestration framework, use the
-``experiments/run.py`` script. For your convenience, you can also use
-``simbricks-run`` in the Docker images from anywhere to run experiments. In
-practice, running experiments will look similar to this:
+:simbricks-repo:`experiments/run.py </blob/main/experiments/run.py>` script. For
+your convenience, you can also use ``simbricks-run`` in the Docker images from
+anywhere to run experiments. In practice, running experiments will look similar
+to this:
 
 .. code-block:: bash
 
@@ -189,7 +191,8 @@ practice, running experiments will look similar to this:
   # only available inside docker images
   $ simbricks-run --verbose --force pyexps/simple_ping.py
 
-Here are all the command line arguments for the ``experiments/run.py`` script:
+Here are all the command line arguments for the
+:simbricks-repo:`experiments/run.py </blob/main/experiments/run.py>` script:
 
 .. code-block:: text
 
@@ -288,8 +291,8 @@ second run, you can save the time for creating the checkpoint.
 Distributed Simulations
 ******************************
 
-For the moment, refer to our `GitHub Q&A on this topic
-<https://github.com/simbricks/simbricks/discussions/73#discussioncomment-6682260>`_.
+For the moment, refer to our
+:simbricks-repo:`GitHub Q&A on this topic </discussions/73#discussioncomment-6682260>`.
 
 
 ******************************

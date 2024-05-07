@@ -94,10 +94,9 @@ ensures the fastest simulation time as long as every simulator runs on its own
 physical CPU core.
 
 For the messages itself, interface-specific protocols are defined on top of the
-base SimBricks protocol (`lib/simbricks/base/proto.h
-<https://github.com/simbricks/simbricks/blob/main/lib/simbricks/base/proto.h#L118-L131>`_).
-The base SimBricks protocol stores two important fields at fixed offsets within
-the header (first 64 bytes) of each message:
+base SimBricks protocol (:lib-simbricks:`base/proto.h#L118-L131`). The base
+SimBricks protocol stores two important fields at fixed offsets within the
+header (first 64 bytes) of each message:
 
 * ``own_type`` - An integer identifying the type of message, required to
   correctly interpret the message when processing it later.
@@ -109,25 +108,21 @@ interface-specific protocol. Additionally, the message size is freely
 configurable per interface to accommodate payloads of arbitrary size.
 
 Let's walk through the memory protocol as a simple example. It is defined in the
-file `lib/simbricks/mem/proto.h
-<https://github.com/simbricks/simbricks/blob/main/lib/simbricks/mem/proto.h>`_
-and is used for the simulation of memory disaggregated systems. The high-level
-idea of memory disaggregation is that the host's memory resides somewhere
-externally, for example, it could be attached via the network. To simulate such
-a system, we introduced a simple memory simulator. In terms of the interface,
-the host issues read or write requests to the memory. For reads, the memory
-replies with the read value as the message's payload. Writes can be either
-regular or posted. For the former, the memory replies with a completion message
-while posted writes are send-and-forget.
+file :lib-simbricks:`mem/proto.h` and is used for the simulation of memory
+disaggregated systems. The high-level idea of memory disaggregation is that the
+host's memory resides somewhere externally, for example, it could be attached
+via the network. To simulate such a system, we introduced a simple memory
+simulator. In terms of the interface, the host issues read or write requests to
+the memory. For reads, the memory replies with the read value as the message's
+payload. Writes can be either regular or posted. For the former, the memory
+replies with a completion message while posted writes are send-and-forget.
 
 Notice that this interface is asymmetric, which means that we have to take into
 account the two directions when defining the different message types: host to
 memory (h2m) and memory to host (m2h). An interface doesn't have to necessarily
 be asymmetric. SimBricks also comes with a protocol for Ethernet
-(`lib/simbricks/network/proto.h
-<https://github.com/simbricks/simbricks/blob/main/lib/simbricks/network/proto.h>`_).
-Here, both sides transmit Ethernet packets to the other side in a
-send-and-forget manner, which is symmetric.
+(:lib-simbricks:`network/proto.h`). Here, both sides transmit Ethernet packets
+to the other side in a send-and-forget manner, which is symmetric.
 
 To define the layout of the different message types for the memory or any other
 interface-specific protocol, we simply add a struct per type containing the

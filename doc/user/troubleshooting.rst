@@ -36,11 +36,10 @@ Getting Help
 ******************************
 
 We love to hear from you. If you have questions, want to discuss an idea, or
-encountered issues while using SimBricks, we are available on `Slack
-<https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA>`_
+encountered issues while using SimBricks, we are available on :slack:`Slack <>`
 for quick answers and interactive discussions. If you find bugs or want to
-request a feature, feel free to open an `issue on GitHub
-<https://github.com/simbricks/simbricks/issues>`_.
+request a feature, feel free to open an
+:simbricks-repo:`Issue on GitHub </issues>`.
 
 
 .. _sec-convert-qcow-images-to-raw:
