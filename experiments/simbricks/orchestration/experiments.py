@@ -162,3 +162,27 @@ class DistributedExperiment(Experiment):
             if s not in self.host_mapping:
                 return False
         return True
+
+    def resreq_mem(self) -> int:
+        """Maximum memory required to run all simulators assigned to any
+        host."""
+        mem_per_host = {}
+        for sim, host in self.host_mapping.items():
+            if not host in mem_per_host:
+                mem_per_host[host] = sim.resreq_mem()
+            else:
+                mem_per_host[host] += sim.resreq_mem()
+
+        return max(mem_per_host.values())
+
+    def resreq_cores(self) -> int:
+        """Maximum number of cores required to run all simulators assigned to
+        any host."""
+        cores_per_host = {}
+        for sim, host in self.host_mapping.items():
+            if not host in cores_per_host:
+                cores_per_host[host] = sim.resreq_cores()
+            else:
+                cores_per_host[host] += sim.resreq_cores()
+
+        return max(cores_per_host.values())

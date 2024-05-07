@@ -570,11 +570,9 @@ class NetperfClient(AppConfig):
         return [
             'netserver',
             'sleep 0.5',
-            f'netperf -H {self.server_ip} -l {self.duration_tp}',
-            (
-                f'netperf -H {self.server_ip} -l {self.duration_lat} -t TCP_RR'
-                ' -- -o mean_latency,p50_latency,p90_latency,p99_latency'
-            )
+            f'netperf -H {self.server_ip} -l {self.duration_tp} -D 1',
+            f'netperf -H {self.server_ip} -l {self.duration_lat} -t TCP_RR -D 1'
+            ' -- -o mean_latency,p50_latency,p90_latency,p99_latency'
         ]
 
 
