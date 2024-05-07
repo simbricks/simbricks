@@ -15,8 +15,9 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../experiments'))
-
+sys.path.append(os.path.abspath('../experiments'))
+sys.path.append(os.path.abspath('.'))
+from external_links import *
 
 # -- Project information -----------------------------------------------------
 
@@ -44,7 +45,8 @@ release = ''
 extensions = [
     'breathe',
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.napoleon',
+    'sphinx.ext.extlinks'
 ]
 
 # Add any paths that contain templates here, relative to this directory.

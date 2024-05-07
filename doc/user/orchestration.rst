@@ -71,18 +71,15 @@ in this case. For more information, see :ref:`sec-checkpointing`.
 Component Simulators
 ====================
 
-SimBricks comes with multiple, ready-to-use component simulators for your
-experiments in :mod:`simbricks.orchestration.simulators`. These include host,
-NIC, network, and PCIe device simulators. On the orchestration side, each
-simulator is implemented in a class deriving from
+SimBricks defines multiple, ready-to-use component simulators in the module
+:mod-orchestration:`simulators.py`. These include host, NIC, network, and PCIe
+device simulators. Each simulator is defined by a class deriving from
 :class:`~simbricks.orchestration.simulators.Simulator`, which provides the
 necessary commands for their execution. We also offer more specialized base
 classes for the different component types, which implement common member
 functions, for example, to connect NICs or network component simulators to a
 host simulator.
 
-.. automodule:: simbricks.orchestration.simulators
-  
 .. autoclass:: simbricks.orchestration.simulators.Simulator
   :members: prep_cmds, run_cmd, resreq_cores, resreq_mem
 
@@ -125,8 +122,6 @@ specify additional files to be copied into the host. These are specified as key
 value pairs, where the key represents the path/filename inside the simulated
 guest system and the value is an IO handle of the file to be copied over.
 
-.. automodule:: simbricks.orchestration.nodeconfig
-
 .. autoclass:: simbricks.orchestration.nodeconfig.NodeConfig
   :members: ip, prefix, mtu, cores, memory, disk_image, app, run_cmds,
     cleanup_cmds, config_files 
@@ -157,10 +152,10 @@ advances its virtual time when there's nothing available to process.
 Link Latency and Synchronization Period
 ***************************************
 
-Most of the pre-defined simulators in :mod:`simbricks.orchestration.simulators`
-provide an attribute for tuning link latencies and the synchronization period.
-Both are configured in nanoseconds and apply to the message flow from the
-configured simulator to connected ones.
+Most of the pre-defined simulators in :mod-orchestration:`simulators.py` provide
+an attribute for tuning link latencies and the synchronization period. Both are
+configured in nanoseconds and apply to the message flow from the configured
+simulator to connected ones.
 
 Some simulators have interfaces for different link types, for example, NIC
 simulators based on :class:`~simbricks.orchestration.simulators.NICSim` have a
