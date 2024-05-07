@@ -87,7 +87,7 @@ class NodeConfig():
         self.memory = 512
         """Amount of system memory in MB."""
         self.disk_image = 'base'
-        """Name of disk image to use."""
+        """Name of disk image to use or absolute path to image."""
         self.mtu = 1500
         """Networking MTU."""
         self.nockp = 0
