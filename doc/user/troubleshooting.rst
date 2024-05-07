@@ -101,11 +101,15 @@ It is possible to check the current timestamp of individual component
 simulators. If the timestamp of a simulator which is synchronizing with at least
 one other simulator isn't advancing, the whole simulation is stuck. Many of our
 component simulators print their timestamp when you send them a USR1 signal, for
-example, by running ``kill -s USR1 <insert_pid_of_simulator>``. By doing this
-multiple times, you can check whether the timestamp advances.
+example, by running
 
-If you invoked the orchestration framework in verbose mode (see
-:ref:`sec-command-line`), the current timestamp is printed directly in the
-terminal. If not then you have to stop the experiment via Ctrl+C to produce
-the output JSON file. All the simulators' output is logged
-there.
+.. code-block:: bash
+
+  $ kill -s USR1 <insert_pid_of_simulator>
+
+By doing this multiple times, you can check whether the timestamp advances. If
+you invoked the
+:simbricks-repo:`orchestration framework </blob/main/experiments/run.py>`
+with ``--verbose``, the current timestamp is printed directly in the terminal.
+If not then you have to stop the experiment via Ctrl+C to produce the output
+JSON file. All the simulators' output is logged there.
