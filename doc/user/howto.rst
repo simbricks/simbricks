@@ -125,16 +125,19 @@ Add a Custom Image
 Integrate a New Simulator
 ******************************
 
-The first step when integrating a new simulator into SimBricks is to implement a
-SimBricks adapter for it. You can find the necessary information in the
-:ref:`Simulator Adapters <Simulator Adapters>` section. To then make running
-experiments and setting up the communication channels with other simulators more
-convenient, add a class for the simulator to the orchestration framework that
-inherits from :class:`~simbricks.orchestration.simulators.Simulator` or one of
-the more specialized base classes in :mod-orchestration:`simulators.py`. In
-this class you define the command to execute the simulator together with further
-parameters, for example, to connect to the communication channels with other
-simulators. Below is an example of what this looks like.
+The first step is to implement a SimBricks adapter in the simulator you want to
+integrate. This adapter on one side uses the simulator's extension API to act as
+a native device and on the other side sends and receives SimBricks messages. You
+can find more information on adapters in our :ref:`page-architectural-overview`.
+
+To make running experiments and setting up the SimBricks communication channels
+to other simulators convenient, add a class for the simulator in
+:mod-orchestration:`simulators.py`` that inherits either from
+:class:`~simbricks.orchestration.simulators.Simulator` or one of the more
+specialized base classes in. In this class, you define the command(s) to execute
+the simulator together with further parameters, for example, to connect to the
+communication channels with other simulators. Below is an example of what this
+looks like.
 
 .. code-block:: python
   :linenos:
