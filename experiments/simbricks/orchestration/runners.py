@@ -187,7 +187,7 @@ class ExperimentBaseRunner(ABC):
         assert self.profile_int
         while True:
             await asyncio.sleep(self.profile_int)
-            for (_,sc) in self.running:
+            for (_, sc) in self.running:
                 await sc.sigusr1()
 
     async def run(self) -> ExpOutput:

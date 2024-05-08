@@ -20,12 +20,12 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import simbricks.orchestration.e2e_components as e2e
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
-import simbricks.orchestration.e2e_components as e2e
-from simbricks.orchestration.simulator_utils import create_tcp_cong_hosts
 from simbricks.orchestration.e2e_topologies import E2EDumbbellTopology
+from simbricks.orchestration.simulator_utils import create_tcp_cong_hosts
 
 # iperf TCP_multi_client test
 # naming convention following host-nic-net-app
@@ -48,9 +48,9 @@ num_simbricks_hosts = 1
 #max_k = 199680
 #k_step = 16640
 #k_step = 33280
-link_rate = 200 # in Mbps
-link_latency = 5 # in ms
-bdp = int(link_rate * link_latency / 1000 * 10**6) # Bandwidth-delay product
+link_rate = 200  # in Mbps
+link_latency = 5  # in ms
+bdp = int(link_rate * link_latency / 1000 * 10**6)  # Bandwidth-delay product
 cpu_freq = '5GHz'
 cpu_freq_qemu = '2GHz'
 sys_clock = '1GHz'  # if not set, default 1GHz
@@ -160,7 +160,7 @@ for congestion_control in types_of_congestion_control:
                 freq,
                 mtu,
                 congestion_control.gem5,
-                ip_start=2*num_ns3_hosts + num_simbricks_hosts + 1
+                ip_start=2 * num_ns3_hosts + num_simbricks_hosts + 1
             )
 
             for i, server in enumerate(servers, 1):

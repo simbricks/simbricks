@@ -22,12 +22,12 @@
 
 import typing as tp
 
+import simbricks.orchestration.e2e_components as e2e
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
-import simbricks.orchestration.e2e_components as e2e
-from simbricks.orchestration.simulator_utils import create_tcp_cong_hosts
 from simbricks.orchestration.e2e_helpers import E2ELinkAssigner, E2ELinkType
+from simbricks.orchestration.simulator_utils import create_tcp_cong_hosts
 
 mtu = 1500
 congestion_control = e2e.CongestionControl.CUBIC

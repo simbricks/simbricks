@@ -378,8 +378,7 @@ class I40eTCPCongNode(NodeConfig):
         return super().prepare_post_cp() + [
             'modprobe i40e',
             'ethtool -G eth0 rx 4096 tx 4096',
-            'ethtool -K eth0 tso off',
-            # 'ip link set eth0 txqueuelen 13888',
+            'ethtool -K eth0 tso off',  # 'ip link set eth0 txqueuelen 13888',
             f'ip link set dev eth0 mtu {self.mtu} up',
             f'ip addr add {self.ip}/{self.prefix} dev eth0',
         ]
