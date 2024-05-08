@@ -102,7 +102,9 @@ class ExpEnv(object):
         return f'{self.shm_base}/dev.shm.{sim.name}'
 
     def n2n_eth_path(
-        self, sim_l: 'simulators.Simulator', sim_c: 'simulators.Simulator',
+        self,
+        sim_l: 'simulators.Simulator',
+        sim_c: 'simulators.Simulator',
         suffix=''
     ) -> str:
         return f'{self.workdir}/n2n.eth.{sim_l.name}.{sim_c.name}.{suffix}'

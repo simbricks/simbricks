@@ -26,10 +26,10 @@ from __future__ import annotations
 import math
 import typing as tp
 
+from simbricks.orchestration import e2e_components as e2e
+from simbricks.orchestration.e2e_topologies import E2ETopology
 from simbricks.orchestration.experiment.experiment_environment import ExpEnv
 from simbricks.orchestration.nodeconfig import NodeConfig
-from simbricks.orchestration.e2e_topologies import E2ETopology
-from simbricks.orchestration import e2e_components as e2e
 
 
 class Simulator(object):

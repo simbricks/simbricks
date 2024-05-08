@@ -51,14 +51,14 @@ class E2ELinkAssigner():
         create_link: bool = True
     ):
         if create_link and link_type is None:
-            raise RuntimeError("Cannot create a link without link type")
+            raise RuntimeError('Cannot create a link without link type')
         if idd in self.links:
-            raise RuntimeError(f"Link {idd} already exists")
+            raise RuntimeError(f'Link {idd} already exists')
         link = {
-            "left": left_switch,
-            "right": right_switch,
-            "type": link_type,
-            "created": create_link
+            'left': left_switch,
+            'right': right_switch,
+            'type': link_type,
+            'created': create_link
         }
         if create_link:
             self._create_link(idd, link)
@@ -76,42 +76,40 @@ class E2ELinkAssigner():
 
     # TODO: set properties like latency
     def _create_link(self, idd: str, link):
-        left_switch = link["left"]
-        right_switch = link["right"]
-        link_type = link["type"]
+        left_switch = link['left']
+        right_switch = link['right']
+        link_type = link['type']
         if link_type == E2ELinkType.SIMBRICKS:
-            left_adapter = e2e.E2ENetworkSimbricks(f"_{idd}_left_adapter")
+            left_adapter = e2e.E2ENetworkSimbricks(f'_{idd}_left_adapter')
             left_adapter.listen = False
             left_switch.add_component(left_adapter)
-            link["left_adapter"] = left_adapter
-            right_adapter = e2e.E2ENetworkSimbricks(
-                f"_{idd}_right_adapter"
-            )
+            link['left_adapter'] = left_adapter
+            right_adapter = e2e.E2ENetworkSimbricks(f'_{idd}_right_adapter')
             right_adapter.listen = True
             right_switch.add_component(right_adapter)
-            link["right_adapter"] = right_adapter
+            link['right_adapter'] = right_adapter
         elif link_type == E2ELinkType.NS3_SIMPLE_CHANNEL:
-            ns3link = e2e.E2ESimpleChannel(f"_{idd}_link")
+            ns3link = e2e.E2ESimpleChannel(f'_{idd}_link')
             ns3link.left_node = left_switch
             ns3link.right_node = right_switch
-            link["ns3link"] = ns3link
+            link['ns3link'] = ns3link
 
     def set_link_type(self, idd: str, link_type: E2ELinkType):
         if idd not in self.links:
-            raise RuntimeError(f"Link {idd} not found")
+            raise RuntimeError(f'Link {idd} not found')
         link = self.links[idd]
-        if link["created"]:
-            raise RuntimeError("Cannot change type of already existing link")
-        link["type"] = link_type
+        if link['created']:
+            raise RuntimeError('Cannot change type of already existing link')
+        link['type'] = link_type
 
     def create_missing_links(self):
         for idd, link in self.links.items():
-            if link["created"]:
+            if link['created']:
                 continue
-            if link["type"] is None:
-                raise RuntimeError(f"Link {idd} has no type")
+            if link['type'] is None:
+                raise RuntimeError(f'Link {idd} has no type')
             self._create_link(idd, link)
-            link["created"] = True
+            link['created'] = True
 
     def assign_networks(self) -> tp.List[NS3E2ENet]:
         networks = []
@@ -119,7 +117,7 @@ class E2ELinkAssigner():
         while len(self.connected_switches) > 0:
             # create network and take next (random) switch
             net = NS3E2ENet()
-            net.name = f"_network_{len(networks)}"
+            net.name = f'_network_{len(networks)}'
             networks.append(net)
             next_switches = set()
             next_switches.add(self.connected_switches.pop())
@@ -129,28 +127,28 @@ class E2ELinkAssigner():
                 switch = next_switches.pop()
                 net.add_component(switch)
                 for link in self.switch_links[switch]:
-                    if link["type"] == E2ELinkType.SIMBRICKS:
-                        if link["left"] == switch:
-                            link["right_adapter"].simbricks_component = net
+                    if link['type'] == E2ELinkType.SIMBRICKS:
+                        if link['left'] == switch:
+                            link['right_adapter'].simbricks_component = net
                         else:
-                            assert link["right"] == switch
-                            link["left_adapter"].simbricks_component = net
-                    elif link["type"] == E2ELinkType.NS3_SIMPLE_CHANNEL:
+                            assert link['right'] == switch
+                            link['left_adapter'].simbricks_component = net
+                    elif link['type'] == E2ELinkType.NS3_SIMPLE_CHANNEL:
                         not_visited_switches = 0
-                        if link["left"] in self.connected_switches:
-                            next_switches.add(link["left"])
-                            self.connected_switches.remove(link["left"])
+                        if link['left'] in self.connected_switches:
+                            next_switches.add(link['left'])
+                            self.connected_switches.remove(link['left'])
                             not_visited_switches += 1
-                        if link["right"] in self.connected_switches:
-                            next_switches.add(link["right"])
-                            self.connected_switches.remove(link["right"])
+                        if link['right'] in self.connected_switches:
+                            next_switches.add(link['right'])
+                            self.connected_switches.remove(link['right'])
                             not_visited_switches += 1
                         assert not_visited_switches < 2
                         # if only one switch has been visited (namely the
                         # current switch), we see this link for the first time
                         if not_visited_switches == 1:
-                            net.add_component(link["ns3link"])
+                            net.add_component(link['ns3link'])
                     else:
-                        raise RuntimeError("Unknown link type")
+                        raise RuntimeError('Unknown link type')
 
         return networks

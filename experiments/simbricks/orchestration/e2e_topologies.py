@@ -38,9 +38,9 @@ class E2ETopology(ABC):
 class E2EDumbbellTopology(E2ETopology):
 
     def __init__(self):
-        self.left_switch = e2e.E2ESwitchNode("_leftSwitch")
-        self.right_switch = e2e.E2ESwitchNode("_rightSwitch")
-        self.link = e2e.E2ESimpleChannel("_link")
+        self.left_switch = e2e.E2ESwitchNode('_leftSwitch')
+        self.right_switch = e2e.E2ESwitchNode('_rightSwitch')
+        self.link = e2e.E2ESimpleChannel('_link')
         self.link.left_node = self.left_switch
         self.link.right_node = self.right_switch
 
