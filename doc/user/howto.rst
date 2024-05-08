@@ -121,6 +121,36 @@ be found in the module :mod-orchestration:`nodeconfig.py` directly.
 Add a Custom Image
 ******************************
 
+First off, make sure you actually need a custom image. You can find more
+information on this under :ref:`sec-images`. We have a tutorial in our
+:simbricks-examples:`examples repository <>` that highlights how to add a
+custom, out-of-tree image for a simple Memcached experiment. Further, we are
+currently reworking our orchestration framework to greatly simplify the process
+of defining your own custom image, abstracting away the need to manually build
+and manage it.
+
+For the moment, here is some additional information on the inner details of the
+image building process: We use `Packer <https://www.packer.io/>`_, which
+essentially starts a QEMU VM with internet access, boots up the kernel and then
+runs an installation script inside to change configs and install required
+packages either through ``apt`` or from source. You can find examples of
+installation scripts for our in-tree images under
+:simbricks-repo:`images/scripts </blob/main/images/scripts>`. The commands for
+building them reside in the file :simbricks-repo:`images/rules.mk
+</blob/main/images/rules.mk>`.
+
+The produced images are stored as ``images/output-<image_name>/<image-name>``.
+By default, we produce disk images in the compressed ``qcow2`` format. Some of
+our host simulators, e.g. gem5 and Simics, require raw disk images though, which
+are substantially larger. The ``qcow2`` can be easily converted to raw with
+``qemu-img convert``. For our in-tree images there's a Makefile target for this,
+which stores the converted images as
+``images/output-<image_name>/<image-name>.raw``.
+
+.. code-block:: bash
+
+  $ make convert-images-raw
+
 ******************************
 Integrate a New Simulator
 ******************************
