@@ -36,12 +36,12 @@ Currently, SimBricks includes the following simulators:
 
 ## Quick Start
 
-Depending on how you plan to use SimBricks, there are different ways to start
-using it. The quickest way to get started just running SimBricks is with our
-[pre-built Docker container images](https://hub.docker.com/u/simbricks).
-However, if you plan to make changes to SimBricks, you will have to build
-SimBricks from source, either through Docker, or on your local machine. The
-different ways are listed below in order of increasing effort required.
+Depending on how you plan to use SimBricks, there are different ways to start.
+The quickest way to just run something with SimBricks is through our [usage
+examples](https://github.com/simbricks/simbricks-examples). However, if you plan
+to make changes to SimBricks, you will have to build SimBricks from source,
+either through Docker, or on your local machine. The different ways are listed
+below in order of increasing effort required.
 
 **Please refer to
 [our documentation](https://simbricks.readthedocs.io/en/latest/) for more
@@ -51,24 +51,23 @@ details.**
 
 **This is the quickest way to get started using SimBricks.**
 
-We provide a [repository](https://github.com/simbricks/simbricks-examples) 
-that contains a series of examples including an easy-to-use and more interactive 
-introduction to SimBricks through a Jupyter Notebook showing first steps on how to orchestrate 
-and run simulations using SimBricks. The repository is set up for usage 
-with [GitHub codespaces](https://github.com/codespaces/new/simbricks/simbricks-examples/?quickstart=1) 
-which in conjunction with the Jupyter Notebook provide a very easy to use step-by-step introduction 
-to SimBricks.
+We provide a [repository](https://github.com/simbricks/simbricks-examples) that
+contains a series of examples including an easy-to-use and more interactive
+introduction to SimBricks through a Jupyter Notebook, showing first steps on how
+to orchestrate and run simulations using SimBricks. The repository supports
+directly running the interactive example together with small tweaks directly
+from browser through [GitHub
+codespaces](https://github.com/codespaces/new/simbricks/simbricks-examples/?quickstart=1).
 
-For more advanced use-cases the repository provides an example for users 
-on how one can provide custom disk images to simulated SimBricks hosts for non-trivial 
-use-cases, and a project on hardware acceleration composed of several milestones 
-guiding users through a complete SimBricks based development flow.  
-
-The repository is set up with a dev container configuration that makes running the 
-examples a breeze. For quick tests you can just open the repo in CodeSpaces. The 
-easiest way to use this locally is with vscode and its Dev Containers Extension. You can 
-find more details on how to use the provided experiments in the repositories 
-[README](https://github.com/simbricks/simbricks-examples/blob/main/README.md).
+For more advanced use-cases, there's also an example on how to build custom disk
+images for simulated SimBricks hosts and a project on custom hardware
+development, composed of several milestones highlighting how SimBricks can be
+used throughout the complete product cycle. You can use these as the basis to
+build your own experiments. For that, the repository also comes with a dev
+container configuration that makes running the examples a breeze. The easiest
+way to use this locally is with [VS Code](https://code.visualstudio.com/) and
+its [Dev Containers
+extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
 
 ### Using Pre-Built Docker Images
 
