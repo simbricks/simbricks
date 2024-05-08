@@ -2,6 +2,8 @@
 
 extlinks = {
     'simbricks-repo': ('https://github.com/simbricks/simbricks%s', 'README%s'),
+    'simbricks-examples':
+        ('https://github.com/simbricks/simbricks-examples%s', None),
     'gem5-fork': ('https://github.com/simbricks/gem5%s', None),
     'slack': (
         'https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA%s',
