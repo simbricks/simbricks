@@ -93,12 +93,6 @@ struct Peer {
   size_t intro_remote_len;
 };
 
-// Makro for accessing the e.g. a packet struct member without causing a
-// compiler warning becasue of non alignedness in case the struct accessed is
-// packed.
-#define MEMBER_NOWARN(structType, elementType, structPtr, memberName) \
-  ((elementType *)(((char *)(structPtr)) + offsetof(structType, memberName)))
-
 extern void *shm_base;
 extern size_t peer_num;
 extern struct Peer *peers;
