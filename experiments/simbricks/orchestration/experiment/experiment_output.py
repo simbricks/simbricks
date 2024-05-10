@@ -36,12 +36,12 @@ class ExpOutput(object):
 
     def __init__(self, exp: Experiment) -> None:
         self.exp_name = exp.name
-        self.metadata = exp.metadata
         self.start_time = None
         self.end_time = None
-        self.sims: tp.Dict[str, tp.Dict[str, tp.Union[str, tp.List[str]]]] = {}
         self.success = True
         self.interrupted = False
+        self.metadata = exp.metadata
+        self.sims: tp.Dict[str, tp.Dict[str, tp.Union[str, tp.List[str]]]] = {}
 
     def set_start(self) -> None:
         self.start_time = time.time()
@@ -70,7 +70,7 @@ class ExpOutput(object):
     def dump(self, outpath: str) -> None:
         pathlib.Path(outpath).parent.mkdir(parents=True, exist_ok=True)
         with open(outpath, 'w', encoding='utf-8') as file:
-            json.dump(self.__dict__, file, sort_keys=True, indent=4)
+            json.dump(self.__dict__, file, indent=4)
 
     def load(self, file: str) -> None:
         with open(file, 'r', encoding='utf-8') as fp:
