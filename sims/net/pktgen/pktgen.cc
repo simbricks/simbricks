@@ -277,8 +277,8 @@ static void sigusr2_handler(int dummy) {
 }
 #endif
 
-[[maybe_unused]] 
-static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id) {
+[[maybe_unused]] static void forward_pkt(const void *pkt_data, size_t pkt_len,
+                                         size_t port_id) {
   struct pcap_pkthdr ph;
   Port &dest_port = *ports[port_id];
 

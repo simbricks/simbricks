@@ -72,7 +72,7 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
     if (r->ParseArgs(end - start, argv + start))
       return -1;
 
-    auto *f = new boost::fibers::fiber([&runner = r](){ runner->RunMain(); });
+    auto *f = new boost::fibers::fiber([&runner = r]() { runner->RunMain(); });
     runners.push_back(r);
     fibers.push_back(f);
     start = end;
