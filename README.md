@@ -10,17 +10,27 @@
 
 ## What is SimBricks?
 
-SimBricks is a simulator framework aiming to enable true end-to-end simulation
-of modern data center network systems, including multiple servers running a full
-software stack with unmodified OS and applications, network topologies and
-devices, as well as other off the shelf and custom hardware components. Instead
-of designing a new simulator from scratch, SimBricks combines and connects
-multiple existing simulators for different components into a simulated full
-system. Our primary use-case for SimBricks is computer systems, networks, and
-architecture research. Our [paper](https://arxiv.org/abs/2012.14219) provides a
-more detailed discussion of technical details and use-cases.
+SimBricks is an open-source simulation framework for intricate HW-SW systems
+that enables rapid virtual prototyping and meaningful end-to-end evaluation in
+simulation. SimBricks modularly combines and connects battle-tested simulators
+for different components: machines (e.g. QEMU, gem5, Simics), hardware
+components (e.g. Verilator, Tofino, FEMU SSD), and networks (e.g. ns-3,
+OMNeT++). SimBricks simulations run unmodified full-system stacks, including
+applications, operating systems such as Linux, and hardware RTL.
 
-Currently, SimBricks includes the following simulators:
+#### Concrete use-cases:
+- Evaluating HW accelerators, from early design with simple behavioral models,
+  to simulating complete Verilog implementations, both as part of complete
+  systems with many instances of the accelerator and machines running full-blown
+  operating systems and real applications
+- Testing network protocols, topologies, and communication stacks for real
+  workloads in a potentially large system (we ran up to 1000 hosts so far)
+- Rapid RTL prototyping for FPGAs, no waiting for synthesis or fiddling with
+  timing initially
+- Our [paper](https://arxiv.org/abs/2012.14219) provides a more detailed
+discussion of technical details and use-cases
+
+#### Currently, SimBricks includes the following simulators:
 
 - [QEMU](https://www.qemu.org) (fast host simulator)
 - [gem5](https://www.gem5.org/) (flexible and detailed host simulator)
