@@ -26,7 +26,6 @@
 
 #include <string.h>
 
-#include <boost/bind.hpp>
 #include <boost/fiber/all.hpp>
 #include <thread>
 #include <vector>
@@ -73,8 +72,7 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
     if (r->ParseArgs(end - start, argv + start))
       return -1;
 
-    auto *f = new boost::fibers::fiber(
-        boost::bind(&CompRunner::RunMain, boost::ref(*r)));
+    auto *f = new boost::fibers::fiber([&runner = r]() { runner->RunMain(); });
     runners.push_back(r);
     fibers.push_back(f);
     start = end;
