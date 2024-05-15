@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SIMBRICKS_LOG_H_
-#define SIMBRICKS_LOG_H_
+#ifndef UTILS_LOG_H_
+#define UTILS_LOG_H_
 
 #include <stdio.h>
 
@@ -34,6 +34,7 @@
 #include <sstream>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 namespace sim_log {
 
@@ -59,7 +60,7 @@ class Log {
   FILE *file_ = nullptr;
   const bool is_file_ = false;
 
-  Log(FILE *file) : file_(file), is_file_(false) {
+  explicit Log(FILE *file) : file_(file), is_file_(false) {
   }
 
   Log(FILE *file, bool is_file) : file_(file), is_file_(is_file) {
@@ -128,14 +129,14 @@ class Logger {
  private:
   inline bool ShouldLog(LogLevel level) {
     auto &registry = Logger::GetRegistry();
-    return level >= registry.GetLevel() and
+    return level >= registry.GetLevel() &&
            registry.GetLevel() != LogLevel::off;
   }
 
   template <typename... Args>
   inline void log_internal(LogLevel level, FILE *out, const char *format,
                            Args... args) {
-    if (not ShouldLog(level)) {
+    if (!ShouldLog(level)) {
       return;
     }
     fprintf(out, "%s: ", GetRegistry().GetRepr(level));
@@ -144,7 +145,7 @@ class Logger {
   }
 
   inline void log_internal(LogLevel level, FILE *out, const char *to_print) {
-    if (not ShouldLog(level)) {
+    if (!ShouldLog(level)) {
       return;
     }
     fprintf(out, "%s: ", GetRegistry().GetRepr(level));
@@ -308,4 +309,4 @@ inline void LogError(const char *msg) {
 
 }  // namespace sim_log
 
-#endif  // SIMBRICKS_LOG_H_
+#endif  // UTILS_LOG_H_
