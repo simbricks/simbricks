@@ -35,6 +35,7 @@ extern "C" {
 #include <simbricks/nicif/nicif.h>
 }
 
+#include "lib/utils/log.h"
 namespace nicbm {
 
 static const size_t kMaxDmaLen = 2048;
@@ -136,6 +137,8 @@ class Runner {
   const char *shmPath_;
   struct SimbricksNicIf nicif_;
   struct SimbricksProtoPcieDevIntro dintro_;
+
+  sim_log::LogPtT log_ = sim_log::Log::createLog();
 
   volatile union SimbricksProtoPcieD2H *D2HAlloc();
   volatile union SimbricksProtoNetMsg *D2NAlloc();
