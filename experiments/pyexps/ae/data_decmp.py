@@ -36,6 +36,8 @@ if not os.path.isfile(out_file):
 with open(out_file, 'r', encoding='utf-8') as f:
     lines = f.readlines()
 
+    start_time = None
+    end_time = None
     for line in lines:
         if 'start:' in line:
             start_time = float(line.split()[1])
@@ -43,5 +45,7 @@ with open(out_file, 'r', encoding='utf-8') as f:
         if 'end:' in line:
             end_time = float(line.split()[1])
 
+    if start_time is None or end_time is None:
+        raise RuntimeError('could not find start/end time')
     time_diff = end_time - start_time
     print(f'SimTime: {time_diff} (s)')

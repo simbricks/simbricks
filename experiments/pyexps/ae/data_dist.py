@@ -55,6 +55,8 @@ for workload in types_of_host:
         with open(path_pat, 'r', encoding='utf-8') as f:
             read_lines = f.readlines()
 
+            start_time = None
+            end_time = None
             for l in read_lines:
                 if 'START' in l:
                     start_time = float(l.split()[1])
@@ -64,6 +66,8 @@ for workload in types_of_host:
                     end_time = float(l.split()[1])
                     #print("end_time: %d" % end_time)
 
+            if start_time is None or end_time is None:
+                raise RuntimeError('could not find start/end time')
             sim_time = (end_time - start_time) / 60
             line.append(f'{sim_time}')
 
