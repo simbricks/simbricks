@@ -174,7 +174,7 @@ for mem_lat in num_mem_lat:
 
             HostClass = gem5_kvm
 
-        if h == 'gt':
+        elif h == 'gt':
 
             def gem5_timing(node_config: node.NodeConfig):
                 gh = sim.Gem5Host(node_config)
@@ -186,6 +186,9 @@ for mem_lat in num_mem_lat:
 
         elif h == 'qk':
             HostClass = sim.QemuHost
+
+        else:
+            raise ValueError(f'unknown host type {h}')
 
         # Add hosts
         host_0 = HostClass(node_config0)

@@ -43,14 +43,16 @@ experiments = []
 for n in kinds_of_net:
     if n == 'wire':
         NetClass = sim.WireNet
-    if n == 'switch':
+    elif n == 'switch':
         NetClass = sim.SwitchNet
-    if n == 'dumbbell':
+    elif n == 'dumbbell':
         NetClass = sim.NS3DumbbellNet
-    if n == 'bridge':
+    elif n == 'bridge':
         NetClass = sim.NS3BridgeNet
-    if n == 'tofino':
+    elif n == 'tofino':
         NetClass = sim.TofinoNet
+    else:
+        raise ValueError(f'unknown network type {n}')
 
     # set nic sim
     for c in kinds_of_nic:
@@ -81,7 +83,7 @@ for n in kinds_of_net:
                 ip_start=2
             )
 
-        if c == 'cb':
+        elif c == 'cb':
             servers = create_basic_hosts(
                 e,
                 1,
@@ -104,7 +106,7 @@ for n in kinds_of_net:
                 ip_start=2
             )
 
-        if c == 'ib':
+        elif c == 'ib':
             servers = create_basic_hosts(
                 e,
                 1,
@@ -126,6 +128,9 @@ for n in kinds_of_net:
                 node.IperfTCPClient,
                 ip_start=2
             )
+
+        else:
+            raise ValueError(f'unknown nic type {c}')
 
         clients[0].wait = True
         clients[0].node_config.app.server_ip = servers[0].node_config.ip
