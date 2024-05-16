@@ -40,9 +40,6 @@ class ExpEnv(object):
         self.workdir = os.path.abspath(workdir)
         self.cpdir = os.path.abspath(cpdir)
         self.shm_base = self.workdir
-        self.utilsdir = f'{self.repodir}/experiments/simbricks/utils'
-        """Directory containing some utility scripts/binaries."""
-
         self.qemu_img_path = f'{self.repodir}/sims/external/qemu/build/qemu-img'
         self.qemu_path = (
             f'{self.repodir}/sims/external/qemu/build/'
