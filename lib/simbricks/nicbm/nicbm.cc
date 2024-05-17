@@ -41,7 +41,7 @@ extern "C" {
 #include <simbricks/base/proto.h>
 }
 
-#define DEBUG_NICBM 1
+// #define DEBUG_NICBM 1
 #define STAT_NICBM 1
 #define DMA_MAX_PENDING 64
 
@@ -215,9 +215,8 @@ void Runner::DmaDo(DMAOp &op) {
     volatile struct SimbricksProtoPcieD2HRead *read = &msg->read;
     if (maxlen < sizeof(struct SimbricksProtoPcieH2DReadcomp) + op.len_) {
       sim_log::LogError(
-          "issue_dma: write too big (%zu), can only fit up "
-          "to (%zu)\n",
-          op.len_, maxlen - sizeof(struct SimbricksProtoPcieH2DReadcomp));
+          "issue_dma: write too big (%zu), can only fit up to (%zu)\n", op.len_,
+          maxlen - sizeof(struct SimbricksProtoPcieH2DReadcomp));
       abort();
     }
 
@@ -576,7 +575,7 @@ Runner::Runner(Device &dev) : main_time_(0), dev_(dev), events_(EventCmp()) {
 }
 
 int Runner::ParseArgs(int argc, char *argv[]) {
-  if (argc < 4 || argc > 10) {
+  if (argc < 4 || argc > 11) {
     sim_log::LogError(
         "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
         "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
