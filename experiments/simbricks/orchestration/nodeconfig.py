@@ -70,12 +70,14 @@ class NodeConfig():
 
     def __init__(self) -> None:
         self.sim = 'qemu'
-        """The concrete simulator that runs this node config. This is used to
-        use execute different commands depending on the concrete simulator,
-        e.g., which command to use to end the simulation.
+        """
+        The concrete simulator that runs this node config. This is used to use
+        execute different commands depending on the concrete simulator, e.g.,
+        which command to use to end the simulation.
 
         TODO(Kaufi-Jonas): This is ugly. Refactor necessary commands to be
-        provided by the simulator's class directly."""
+        provided by the simulator's class directly.
+        """
         self.ip = '10.0.0.1'
         """IP address."""
         self.prefix = 24
@@ -93,7 +95,8 @@ class NodeConfig():
         self.tcp_congestion_control = 'bic'
         """TCP Congestion Control algorithm to use."""
         self.nockp = 0
-        """Do not create a checkpoint in Gem5.
+        """
+        Do not create a checkpoint in Gem5.
 
         TODO(Kaufi-Jonas): Seems we don't need this anymore since we specify
         whether to take a checkpoint experiment-wide. Otherwise, refactor this

@@ -97,14 +97,21 @@ class PCIDevSim(Simulator):
         super().__init__()
 
         self.sync_mode = 0
-        """Synchronization mode. 0 is running unsynchronized, 1 synchronized.
-        Depending on the concrete simulator, there may be additional modes."""
+        """
+        Synchronization mode.
+
+        0 is running unsynchronized, 1 synchronized. Depending on the concrete
+        simulator, there may be additional modes.
+        """
         self.start_tick = 0
-        """The timestamp at which to start the simulation. This is useful when
-        the simulator is only attached at a later point in time and needs to
-        synchronize with connected simulators. For example, this could be used
-        when taking checkpoints to only attach certain simulators after the
-        checkpoint has been taken."""
+        """
+        The timestamp at which to start the simulation.
+
+        This is useful when the simulator is only attached at a later point in
+        time and needs to synchronize with connected simulators. For example,
+        this could be used when taking checkpoints to only attach certain
+        simulators after the checkpoint has been taken.
+        """
         self.sync_period = 500
         """Period in nanoseconds of sending synchronization messages from this
         device to connected components."""
@@ -182,8 +189,12 @@ class NetSim(Simulator):
 
         self.opt = ''
         self.sync_mode = 0
-        """Synchronization mode. 0 is running unsynchronized, 1 synchronized.
-        Depending on the concrete simulator, there may be additional modes."""
+        """
+        Synchronization mode.
+
+        0 is running unsynchronized, 1 synchronized. Depending on the concrete
+        simulator, there may be additional modes.
+        """
         self.sync_period = 500
         """Synchronization period in nanoseconds from this network to connected
         components."""
@@ -287,7 +298,7 @@ class HostSim(Simulator):
     def __init__(self, node_config: NodeConfig) -> None:
         super().__init__()
         self.node_config = node_config
-        """System configuration for this simulated host. """
+        """System configuration for this simulated host."""
         self.wait = False
         """
         `True` - Wait for this simulator to finish execution. `False` - Don't
@@ -298,8 +309,12 @@ class HostSim(Simulator):
         self.cpu_freq = '4GHz'
 
         self.sync_mode = 0
-        """Synchronization mode. 0 is running unsynchronized, 1 synchronized.
-        Depending on the concrete simulator, there may be additional modes."""
+        """
+        Synchronization mode.
+
+        0 is running unsynchronized, 1 synchronized. Depending on the concrete
+        simulator, there may be additional modes.
+        """
         self.sync_period = 500
         """Period in nanoseconds of sending synchronization messages from this
         device to connected components."""
@@ -444,13 +459,16 @@ class Gem5Host(HostSim):
         self.extra_config_args = []
         self.variant = 'fast'
         self.modify_checkpoint_tick = True
-        """Whether to modify the event queue tick before restoring a checkpoint.
+        """
+        Whether to modify the event queue tick before restoring a checkpoint.
+
         When this is enabled, the restored checkpoint will start at event queue
         tick 0. This is a performance optimization since now, connected
         simulators don't have to simulate and synchronize until the restored
         tick before the actual workload can be executed. Disable this if you
         need to retain the differences in virtual time between multiple gem5
-        instances."""
+        instances.
+        """
 
     def resreq_cores(self) -> int:
         return 1
@@ -543,19 +561,30 @@ class SimicsHost(HostSim):
         node_config.sim = 'simics'
 
         self.cpu_class = 'x86-cooper-lake'
-        """Simics CPU class. Can be obtained by running `list-classes substr =
-        processor_` inside Simics."""
+        """
+        Simics CPU class.
+
+        Can be obtained by running `list-classes substr = processor_` inside
+        Simics.
+        """
         self.cpu_freq = 4000  # TODO Don't hide attribute in super class
-        """CPU frequency in MHz"""
+        """CPU frequency in MHz."""
         self.timing = False
-        """Whether to run Simics in a more precise timing mode. This adds a
-        cache model."""
+        """
+        Whether to run Simics in a more precise timing mode.
+
+        This adds a cache model.
+        """
         self.append_cmdline: tp.List[str] = []
         """Additional parameters to append on the command-line when invoking
         Simics."""
         self.interactive = False
-        """Whether to launch Simics in interactive GUI mode. This is helpful for
-        debugging, e.g. enabling log messages in the mid of the simulation."""
+        """
+        Whether to launch Simics in interactive GUI mode.
+
+        This is helpful for debugging, e.g. enabling log messages in the mid of
+        the simulation.
+        """
         self.debug_messages = False
         """Whether to enable debug messages of SimBricks adapter devices."""
 
@@ -846,7 +875,7 @@ class MemSwitchNet(NetSim):
     def __init__(self) -> None:
         super().__init__()
         self.sync = True
-        """ AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START """
+        """AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START."""
         self.mem_map = []
 
     def run_cmd(self, env: ExpEnv) -> str:

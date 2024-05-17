@@ -40,17 +40,20 @@ class Experiment(object):
     def __init__(self, name: str) -> None:
         self.name = name
         """
-        This experiment's name. Can be used to run only a selection of
-        experiments.
+        This experiment's name.
+
+        Can be used to run only a selection of experiments.
         """
         self.timeout: tp.Optional[int] = None
         """Timeout for experiment in seconds."""
         self.checkpoint = False
-        """Whether to use checkpoint and restore for simulators.
+        """
+        Whether to use checkpoint and restore for simulators.
 
         The most common use-case for this is accelerating host simulator startup
         by first running in a less accurate mode, then checkpointing the system
-        state after boot and running simulations from there."""
+        state after boot and running simulations from there.
+        """
         self.no_simbricks = False
         """If `true`, no simbricks adapters are used in any of the
         simulators."""

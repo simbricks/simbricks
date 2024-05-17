@@ -51,7 +51,7 @@ class NetProxy(SimProxy):
         self.n2ns: tp.List[tp.Tuple[tp.Tuple[Simulator, Simulator], bool]] = []
         """List of tuples ((netL,netC), with_listener)"""
         self.shm_size = 2048
-        """Shared memory size in GB"""
+        """Shared memory size in GB."""
 
     def start_delay(self) -> int:
         return 10

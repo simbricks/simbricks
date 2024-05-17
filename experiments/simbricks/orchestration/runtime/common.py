@@ -102,7 +102,7 @@ class Runtime(metaclass=ABCMeta):
         pass
 
     def interrupt(self) -> None:
-        """signals interrupt to runtime."""
+        """Signals interrupt to runtime."""
 
         # don't invoke interrupt handler multiple times as this would trigger
         # repeated CancelledError
