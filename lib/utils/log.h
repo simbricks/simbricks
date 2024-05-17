@@ -40,16 +40,12 @@ namespace sim_log {
 
 #define SIMLOG 1
 
-#define SIMLOG_ERROR 1
-#define SIMLOG_WARN 2
-#define SIMLOG_INFO 3
-#define SIMLOG_OFF 4
-
 enum LogLevel : int {
-  off = SIMLOG_OFF,
-  info = SIMLOG_INFO,
-  warn = SIMLOG_WARN,
-  error = SIMLOG_ERROR
+  debug   = 1,
+  info    = 2,
+  warn    = 3,
+  error   = 4,
+  off     = 5
 };
 
 class Log;
@@ -78,17 +74,17 @@ class Log {
     return std::make_unique<Log>(out);
   }
 
-  static LogPtT createLog(FILE* out, bool file) {
+  static LogPtT createLog(FILE *out, bool file) {
     if (out == nullptr) {
-        fprintf(stderr, "error: FILE* is null, fallback to stdout logging\n");
-        out = stdout;
+      fputs("error: FILE* is null, fallback to stdout logging\n", stderr);
+      out = stdout;
     }
     return std::make_unique<Log>(out, file);
   }
 
   static LogPtT createLog(const char *file_path) {
     if (file_path == nullptr) {
-      fprintf(stderr, "error: file_path is null, fallback to stdout logging\n");
+      fputs("error: file_path is null, fallback to stdout logging\n", stderr);
       return sim_log::Log::createLog();
     }
 
@@ -102,12 +98,14 @@ class LogRegistry {
       {LogLevel::off, "off"},
       {LogLevel::info, "info"},
       {LogLevel::warn, "warn"},
+      {LogLevel::debug, "debug"},
       {LogLevel::error, "error"}};
 
   LogLevel level_ = LogLevel::info;
+  bool enforce_flush_ = false;
 
  public:
-  LogLevel &GetLevel() {
+  LogLevel GetLevel() {
     return level_;
   }
 
@@ -115,11 +113,18 @@ class LogRegistry {
     level_ = level;
   }
 
+  void SetFlush(bool flush) {
+    enforce_flush_ = flush;
+  }
+
+  bool EnforceFlush() const {
+    return enforce_flush_;
+  }
+
   const char *GetRepr(LogLevel level) const {
     auto it = level_names_.find(level);
     if (it == level_names_.end()) {
-      static const char *undef{"undefined"};
-      return undef;
+      return "undefined";
     }
     return it->second;
   }
@@ -127,30 +132,36 @@ class LogRegistry {
 
 class Logger {
  private:
-  inline bool ShouldLog(LogLevel level) {
+  inline bool ShouldLog(LogLevel level) const {
     auto &registry = Logger::GetRegistry();
-    return level >= registry.GetLevel() &&
-           registry.GetLevel() != LogLevel::off;
+    return level >= registry.GetLevel() && registry.GetLevel() != LogLevel::off;
   }
 
   template <typename... Args>
   inline void log_internal(LogLevel level, FILE *out, const char *format,
-                           Args... args) {
+                           Args... args) const {
     if (!ShouldLog(level)) {
       return;
     }
-    fprintf(out, "%s: ", GetRegistry().GetRepr(level));
+    auto &registry = Logger::GetRegistry();
+    fprintf(out, "%s: ", registry.GetRepr(level));
     fprintf(out, format, args...);
-    fflush(out);
+    if (registry.EnforceFlush()) {
+      fflush(out);
+    }
   }
 
-  inline void log_internal(LogLevel level, FILE *out, const char *to_print) {
+  inline void log_internal(LogLevel level, FILE *out, const char *to_print)
+                           const {
     if (!ShouldLog(level)) {
       return;
     }
-    fprintf(out, "%s: ", GetRegistry().GetRepr(level));
-    fprintf(out, "%s", to_print);
-    fflush(out);
+    auto &registry = Logger::GetRegistry();
+    fprintf(out, "%s: ", registry.GetRepr(level));
+    fputs(to_print, out);
+    if (registry.EnforceFlush()) {
+      fflush(out);
+    }
   }
 
   Logger() = default;
@@ -168,34 +179,45 @@ class Logger {
     return registry;
   }
 
-  template <typename... Args>
-  inline void log_stdout_f(LogLevel level, const char *format,
-                           const Args &...args) {
-    this->log_internal(level, stdout, format, args...);
+  void Flush(LogPtT &log) const {
+    if (log == nullptr || log->file_ == nullptr) {
+      return;
+    }
+    fflush(log->file_);
   }
 
-  inline void log_stdout(LogLevel level, const char *to_print) {
-    this->log_internal(level, stdout, to_print);
+  void Flush() const {
+    fflush(stdout);
+  }
+
+  template <typename... Args>
+  inline void log_stdout_f(LogLevel level, const char *format,
+                           const Args &...args) const {
+    log_internal(level, stdout, format, args...);
+  }
+
+  inline void log_stdout(LogLevel level, const char *to_print) const {
+    log_internal(level, stdout, to_print);
   }
 
   template <typename... Args>
   void log_f(LogLevel level, LogPtT &log, const char *format,
-             const Args &...args) {
+             const Args &...args) const {
     if (log->file_ == nullptr) {
-      this->log_stdout(level, "log file is null. it should not be!\n");
-      this->log_stdout_f(level, format, args...);
+      log_stdout(level, "log file is null. it should not be!\n");
+      log_stdout_f(level, format, args...);
       return;
     }
-    this->log_internal(level, log->file_, format, args...);
+    log_internal(level, log->file_, format, args...);
   }
 
-  void log(LogLevel level, LogPtT &log, const char *to_print) {
+  void log(LogLevel level, LogPtT &log, const char *to_print) const {
     if (log->file_ == nullptr) {
-      this->log_stdout(level, "log file is null. it should not be!\n");
-      this->log_stdout(level, to_print);
+      log_stdout(level, "log file is null. it should not be!\n");
+      log_stdout(level, to_print);
       return;
     }
-    this->log_internal(level, log->file_, to_print);
+    log_internal(level, log->file_, to_print);
   }
 };
 
