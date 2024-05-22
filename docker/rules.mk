@@ -30,7 +30,12 @@ DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-base \
   simbricks/simbricks simbricks/simbricks-runenv simbricks/simbricks-min \
   simbricks/simbricks-dist-worker simbricks/simbricks-gem5opt
 
-docker-images:
+REQUIREMENTS_TXT := $(d)requirements.txt
+
+$(REQUIREMENTS_TXT):
+	cp requirements.txt $@
+
+docker-images: $(REQUIREMENTS_TXT)
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
@@ -88,5 +93,7 @@ docker-push:
 		$(DOCKER_IMAGES))) ; do \
 		docker image inspect $$i >/dev/null && docker push $$i ; \
 		done
+
+CLEAN := $(REQUIREMENTS_TXT)
 
 include mk/subdir_post.mk

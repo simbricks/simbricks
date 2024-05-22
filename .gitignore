@@ -23,6 +23,7 @@ sims/net/menshen/obj_dir
 sims/net/tofino/tofino
 doc/doxygen
 doc/_build
+docker/requirements.txt
 images/farmem/Module.symvers
 images/farmem/modules.order
 images/farmem/farmem.mod*
