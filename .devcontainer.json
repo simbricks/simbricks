@@ -3,8 +3,15 @@
 	"runArgs": [
 		"--device=/dev/kvm"
 	],
-	"extensions": [
-		"ms-python.python"
-	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-vscode.cpptools",
+				"mshr-h.veriloghdl",
+				"surfer-project.surfer"
+			]
+		}
+	},
 	"remoteUser": "simbricks"
 }
