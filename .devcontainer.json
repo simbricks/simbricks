@@ -13,5 +13,6 @@
 			]
 		}
 	},
-	"remoteUser": "simbricks"
+	"remoteUser": "simbricks",
+	"postStartCommand": "sudo chmod o+rw /dev/kvm"
 }
