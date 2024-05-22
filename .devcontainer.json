@@ -1,8 +1,7 @@
 {
 	"image": "simbricks/simbricks-build:latest",
 	"runArgs": [
-		"--device=/dev/kvm",
-		"--privileged"
+		"--device=/dev/kvm"
 	],
 	"extensions": [
 		"ms-python.python"
