@@ -1,6 +1,4 @@
-<img src="doc/simbricks.svg" alt="SimBricks Logo" width="300" />
-
-# SimBricks
+# <img src="doc/simbricks-text-horizontal.svg" alt="SimBricks" width="300" />
 
 [![CI pipeline status](https://gitlab.mpi-sws.org/simbricks/simbricks/badges/main/pipeline.svg)](https://gitlab.mpi-sws.org/simbricks/simbricks/-/commits/main)
 [![Documentation Status](https://readthedocs.org/projects/simbricks/badge/?version=latest)](https://simbricks.readthedocs.io/en/latest/?badge=latest)
