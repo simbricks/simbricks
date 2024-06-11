@@ -1,4 +1,6 @@
+import simbricks.orchestration.experiments as exp
 import simbricks.splitsim.specification as spec
+import simbricks.splitsim.impl as impl
 
 """
 Simple Ping Example:
@@ -37,3 +39,26 @@ ethchannel1.install(nic1, port1)
 
 # configure the software to run on the host
 host0.app = spec.PingClient('10.0.0.2')
+host1.app = spec.Sleep()
+
+"""
+Execution Config
+"""
+experiments = []
+
+e = exp.Experiment('simple_ping_sysconf')
+host_inst0 = impl.Gem5Sim(e)
+host_inst0.add(system.hosts[0])
+
+host_inst1 = impl.Gem5Sim(e)
+host_inst1.add(system.hosts[1])
+
+nic_inst0 = impl.I40eNicSim(e)
+nic_inst0.add(system.nics[0])
+nic_inst1 = impl.I40eNicSim(e)
+nic_inst1.add(system.nics[1])
+
+net_inst = impl.SwitchBMSim(e)
+net_inst.add(system.switches[0])
+
+experiments.append(e)
