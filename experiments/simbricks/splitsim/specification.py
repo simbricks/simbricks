@@ -1,5 +1,6 @@
 import io
 import typing as tp
+import tarfile
 import itertools
 
 class System():
@@ -12,9 +13,11 @@ class System():
         self.pci_channels: tp.List[PCI] = []
         self.eth_channels: tp.List[Eth] = []
 
+
 class Channel():
     def __init__(self) -> None:
         self.latency = 500 # nano second
+        self.sync_period = 500 # nano second
     def install(self, end_point0, end_point1) -> None:
         return
 
@@ -60,6 +63,7 @@ class Host():
         self.pci_channel: PCI = None
         self.nics: tp.List[NIC] = []
         self.nic_driver = 'i40e'
+        self.sim = None
 
         # HostSim & NodeConfig parameters
         self.cpu_freq = '3GHz'
@@ -77,11 +81,109 @@ class Host():
         """Name of disk image to use."""
         self.mtu = 1500
         """Networking MTU."""
+        self.sys_clock = '1GHz'
+        """system bus clock"""
         self.tcp_congestion_control = 'bic'
         """TCP Congestion Control algorithm to use."""
         self.app: tp.Optional[AppConfig] = None
         """Application to run on simulated host."""
+        self.nockp = 0
+        """Do not create a checkpoint in Gem5."""
 
+    
+    def config_str(self) -> str:
+        if self.sim == 'gem5':
+            cp_es = [] if self.nockp else ['m5 checkpoint']
+            exit_es = ['m5 exit']
+        else:
+            cp_es = ['echo ready to checkpoint']
+            exit_es = ['poweroff -f']
+
+        es = self.prepare_pre_cp() + self.app.prepare_pre_cp(self) + cp_es + \
+            self.prepare_post_cp() + self.app.prepare_post_cp(self) + \
+            self.run_cmds() + self.cleanup_cmds() + exit_es
+        return '\n'.join(es)
+
+    def make_tar(self, path: str) -> None:
+        with tarfile.open(path, 'w:') as tar:
+            # add main run script
+            cfg_i = tarfile.TarInfo('guest/run.sh')
+            cfg_i.mode = 0o777
+            cfg_f = self.strfile(self.config_str())
+            cfg_f.seek(0, io.SEEK_END)
+            cfg_i.size = cfg_f.tell()
+            cfg_f.seek(0, io.SEEK_SET)
+            tar.addfile(tarinfo=cfg_i, fileobj=cfg_f)
+            cfg_f.close()
+
+            # add additional config files
+            # for (n, f) in self.config_files().items():
+            #     f_i = tarfile.TarInfo('guest/' + n)
+            #     f_i.mode = 0o777
+            #     f.seek(0, io.SEEK_END)
+            #     f_i.size = f.tell()
+            #     f.seek(0, io.SEEK_SET)
+            #     tar.addfile(tarinfo=f_i, fileobj=f)
+            #     f.close()
+
+
+    def run_cmds(self) -> tp.List[str]:
+        """Commands to run on node."""
+        return self.app.run_cmds(self)
+
+    def cleanup_cmds(self) -> tp.List[str]:
+        """Commands to run to cleanup node."""
+        return []
+    
+    def prepare_pre_cp(self) -> tp.List[str]:
+        """Commands to run to prepare node before checkpointing."""
+        return [
+            'set -x',
+            'export HOME=/root',
+            'export LANG=en_US',
+            'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:' + \
+                '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"'
+        ]
+
+    def prepare_post_cp(self) -> tp.List[str]:
+        """Commands to run to prepare node after checkpoint restore."""
+        return []
+    
+
+    def strfile(self, s: str) -> io.BytesIO:
+        """
+        Helper function to convert a string to an IO handle for usage in
+        `config_files()`.
+
+        Using this, you can create a file with the string as its content on the
+        simulated node.
+        """
+        return io.BytesIO(bytes(s, encoding='UTF-8'))
+    
+
+class LinuxHost(Host):
+    def __init__(self, sys) -> None:
+        super().__init__(sys)
+        self.ifname = 'eth0'
+        self.drivers: tp.List[str] = []
+        self.force_mac_addr: tp.Optional[str] = None
+    
+
+    def prepare_post_cp(self) -> tp.List[str]:
+        l = []
+        for d in self.drivers:
+            if d[0] == '/':
+                l.append('insmod ' + d)
+            else:
+                l.append('modprobe ' + d)
+        if self.force_mac_addr:
+            l.append(
+                'ip link set dev ' + self.ifname + ' address ' +
+                self.force_mac_addr
+            )
+        l.append('ip link set dev ' + self.ifname + ' up')
+        l.append(f'ip addr add {self.ip}/{self.prefix} dev {self.ifname}')
+        return super().prepare_post_cp() + l
 
 """
 Pci device NIC
@@ -99,7 +201,8 @@ class NIC():
         self.mac: tp.Optional[str] = None
         self.host: tp.List[Host] = []
         self.net = [] # NIC or NetDev connected through eth channel
-        
+        self.sim = None
+
 
 class i40eNIC(NIC):
     def __init__(self, sys) -> None:
@@ -121,6 +224,8 @@ class NetDev():
         self.mac: tp.Optional[str] = None
         self.ip: tp.Optional[str] = None
         self.net = [] # NIC or NetDev connected through eth channel
+        self.sim = None
+
 
 class Switch():
     id_iter = itertools.count()
@@ -128,7 +233,13 @@ class Switch():
         self.id = next(self.id_iter)
         sys.switches.append(self)
         self.sync = True
+        # these two: set it when install the channel
+        self.sync_period = 500 # ns second
+        self.eth_latency = 500 # ns second
+        ###
         self.netdevs : tp.List[NetDev] = []
+        self.sim = None
+
     
     def install_netdev(self, netdev: NetDev):
         self.netdevs.append(netdev)
@@ -184,3 +295,11 @@ class PingClient(AppConfig):
     ### add commands for dummy Hosts here
 
 
+class Sleep(AppConfig):
+
+    def __init__(self, server_ip: str = '192.168.64.2') -> None:
+        super().__init__()
+        self.server_ip = server_ip
+    
+    def run_cmds(self, node: Host) -> tp.List[str]:
+        return ['sleep']
