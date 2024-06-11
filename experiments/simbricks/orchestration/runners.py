@@ -125,7 +125,7 @@ class ExperimentBaseRunner(ABC):
             path = self.env.cfgtar_path(host)
             if self.verbose:
                 print('preparing config tar:', path)
-            host.node_config.make_tar(self.env, path)
+            host.hosts[0].make_tar(path)
             executor = self.sim_executor(host)
             task = asyncio.create_task(executor.send_file(path, self.verbose))
             copies.append(task)
