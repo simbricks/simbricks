@@ -33,7 +33,7 @@ DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-base \
 REQUIREMENTS_TXT := $(d)requirements.txt
 
 $(REQUIREMENTS_TXT):
-	cp requirements.txt $@
+	cat requirements.txt doc/requirements.txt > $@
 
 docker-images: $(REQUIREMENTS_TXT)
 	docker build -t \
