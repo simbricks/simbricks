@@ -25,6 +25,7 @@ RUN apt-get update \
 	libpcap-dev \
 	libpixman-1-dev \
 	libprotobuf-dev \
+	locales \
 	ninja-build \
 	protobuf-compiler \
 	python-is-python3 \
@@ -36,6 +37,7 @@ RUN apt-get update \
 	wget \
 	nano \
 	vim \
+ && locale-gen en_US.UTF-8 \
  && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /tmp/requirements.txt
