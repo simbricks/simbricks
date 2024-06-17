@@ -48,17 +48,17 @@ experiments = []
 
 e = exp.Experiment('simple_ping_sysconf')
 host_inst0 = impl.Gem5Sim(e)
-host_inst0.add(system.hosts[0])
+host_inst0.add(host0)
 
 host_inst1 = impl.Gem5Sim(e)
-host_inst1.add(system.hosts[1])
+host_inst1.add(host1)
 
 nic_inst0 = impl.I40eNicSim(e)
-nic_inst0.add(system.nics[0])
+nic_inst0.add(nic0)
 nic_inst1 = impl.I40eNicSim(e)
-nic_inst1.add(system.nics[1])
+nic_inst1.add(nic1)
 
 net_inst = impl.SwitchBMSim(e)
-net_inst.add(system.switches[0])
+net_inst.add(switch)
 
 experiments.append(e)
