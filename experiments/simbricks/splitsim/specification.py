@@ -13,6 +13,9 @@ class System():
         self.pci_channels: tp.List[PCI] = []
         self.eth_channels: tp.List[Eth] = []
 
+class SimObject():
+    def __init__(self) -> None:
+        self.sync_period = 500 #nano second
 
 class Channel():
     def __init__(self) -> None:
@@ -62,7 +65,7 @@ class Host():
         self.sync = True
         self.pci_channel: PCI = None
         self.nics: tp.List[NIC] = []
-        self.nic_driver = 'i40e'
+        self.nic_driver = ['i40e']
         self.sim = None
 
         # HostSim & NodeConfig parameters
@@ -165,13 +168,12 @@ class LinuxHost(Host):
     def __init__(self, sys) -> None:
         super().__init__(sys)
         self.ifname = 'eth0'
-        self.drivers: tp.List[str] = []
         self.force_mac_addr: tp.Optional[str] = None
     
 
     def prepare_post_cp(self) -> tp.List[str]:
         l = []
-        for d in self.drivers:
+        for d in self.nic_driver:
             if d[0] == '/':
                 l.append('insmod ' + d)
             else:
