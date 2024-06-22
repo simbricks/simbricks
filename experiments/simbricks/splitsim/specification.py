@@ -95,7 +95,8 @@ class Host():
 
     
     def config_str(self) -> str:
-        if self.sim == 'gem5':
+        import simbricks.splitsim.impl as impl
+        if type(self.sim) is impl.Gem5Sim :
             cp_es = [] if self.nockp else ['m5 checkpoint']
             exit_es = ['m5 exit']
         else:
@@ -304,4 +305,4 @@ class Sleep(AppConfig):
         self.server_ip = server_ip
     
     def run_cmds(self, node: Host) -> tp.List[str]:
-        return ['sleep']
+        return ['sleep 10']
