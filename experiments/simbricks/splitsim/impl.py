@@ -105,7 +105,8 @@ class Gem5Sim(Simulator):
     
     def add(self, host: spec.Host):
         self.hosts.append(host)
-        host.sim = 'gem5'
+        self.nics = host.nics
+        host.sim = self
         self.name = f'{self.hosts[0].id}'
 
         self.experiment.add_host(self)
@@ -146,7 +147,7 @@ class Gem5Sim(Simulator):
 
         for dev in self.nics:
             cmd += (
-                f'--simbricks-pci=connect:{env.dev_pci_path(dev)}'
+                f'--simbricks-pci=connect:{env.dev_pci_path(dev.sim)}'
                 f':latency={self.pci_latency}ns'
                 f':sync_interval={self.sync_period}ns'
             )
