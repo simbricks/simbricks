@@ -181,7 +181,7 @@ class I40eNicSim(Simulator):
         cmd = (
             f'{env.dev_pci_path(self)} {env.nic_eth_path(self)}'
             f' {env.dev_shm_path(self)} {self.nics[0].sync} {self.start_tick}'
-            f' {self.nics[0].eth_channel.sync_period} {self.nics[0].pci_channel.latency} {self.nics[0].eth_channel.latency}'
+            f' {self.nics[0].sync_period} {self.nics[0].pci_channel.latency} {self.nics[0].eth_channel.latency}'
         )
         if self.nics[0].mac is not None:
             cmd += ' ' + (''.join(reversed(self.nics[0].mac.split(':'))))
