@@ -1,3 +1,4 @@
+import math
 import io
 import typing as tp
 import itertools
@@ -159,6 +160,7 @@ class HostSim(Simulator):
         """Period in nanoseconds of sending synchronization messages from this
         device to connected components."""
         self.pci_latency = 500
+        self.sync = True
         self.wait = True
     
     def full_name(self) -> str:
@@ -178,6 +180,7 @@ class HostSim(Simulator):
         self.name = f'{self.hosts[0].id}'
         self.sync_period = host.sync_period
         self.pci_latency = host.pci_channel.latency
+        self.sync = host.sync
 
         self.experiment.add_host(self)
     
@@ -259,6 +262,78 @@ class Gem5Sim(HostSim):
     def wait_terminate(self) -> bool:
         return self.wait
     
+class QemuSim(HostSim):
+
+    def __init__(self, e: exp.Experiment):
+        super().__init__(e)
+
+
+    def resreq_cores(self) -> int:
+        if self.sync:
+            return 1
+        else:
+            # change it to sum of all hosts
+            return self.hosts[0].cores + 1
+
+    def resreq_mem(self) -> int:
+        return 8192
+    
+
+    def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
+        return [
+            f'{env.qemu_img_path} create -f qcow2 -o '
+            f'backing_file="{env.hd_path(self.hosts[0].disk_image)}" '
+            f'{env.hdcopy_path(self)}'
+        ]
+
+    def run_cmd(self, env: ExpEnv) -> str:
+        accel = ',accel=kvm:tcg' if not self.sync else ''
+        if self.hosts[0].kcmd_append:
+            kcmd_append = ' ' + self.hosts[0].kcmd_append
+        else:
+            kcmd_append = ''
+
+        cmd = (
+            f'{env.qemu_path} -machine q35{accel} -serial mon:stdio '
+            '-cpu Skylake-Server -display none -nic none '
+            f'-kernel {env.qemu_kernel_path} '
+            f'-drive file={env.hdcopy_path(self)},if=ide,index=0,media=disk '
+            f'-drive file={env.cfgtar_path(self)},if=ide,index=1,media=disk,'
+            'driver=raw '
+            '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
+            f'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" '
+            f'-m {self.hosts[0].memory} -smp {self.hosts[0].cores} '
+        )
+
+        if self.sync:
+            unit = self.hosts[0].cpu_freq[-3:]
+            if unit.lower() == 'ghz':
+                base = 0
+            elif unit.lower() == 'mhz':
+                base = 3
+            else:
+                raise ValueError('cpu frequency specified in unsupported unit')
+            num = float(self.hosts[0].cpu_freq[:-3])
+            shift = base - int(math.ceil(math.log(num, 2)))
+
+            cmd += f' -icount shift={shift},sleep=off '
+
+        for dev in self.pcidevs:
+            cmd += f'-device simbricks-pci,socket={env.dev_pci_path(dev.sim)}'
+            if self.sync:
+                cmd += ',sync=on'
+                cmd += f',pci-latency={self.pci_latency}'
+                cmd += f',sync-period={self.sync_period}'
+                # if self.sync_drift is not None:
+                #     cmd += f',sync-drift={self.sync_drift}'
+                # if self.sync_offset is not None:
+                #     cmd += f',sync-offset={self.sync_offset}'
+            else:
+                cmd += ',sync=off'
+            cmd += ' '
+
+        return cmd
+
 
 class SwitchBMSim(Simulator):
 
