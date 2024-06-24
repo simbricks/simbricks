@@ -8,9 +8,10 @@ from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 class Simulator(object):
     """Base class for all simulators."""
 
-    def __init__(self) -> None:
+    def __init__(self, e: exp.Experiment) -> None:
         self.extra_deps: tp.List[Simulator] = []
         self.name = ''
+        self.experiment = e
 
     def resreq_cores(self) -> int:
         """
@@ -62,11 +63,93 @@ class Simulator(object):
     def wait_terminate(self) -> bool:
         return False
 
+class PCIDevSim(Simulator):
+    """Base class for PCIe device simulators."""
+
+    def __init__(self, e: exp.Experiment) -> None:
+        super().__init__(e)
+
+        self.start_tick = 0
+        """The timestamp at which to start the simulation. This is useful when
+        the simulator is only attached at a later point in time and needs to
+        synchronize with connected simulators. For example, this could be used
+        when taking checkpoints to only attach certain simulators after the
+        checkpoint has been taken."""
+
+    def full_name(self) -> str:
+        return 'dev.' + self.name
+
+    def is_nic(self) -> bool:
+        return False
+
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
+        return [env.dev_pci_path(self), env.dev_shm_path(self)]
+
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
+        return [env.dev_pci_path(self)]
+
+
+
+class NICSim(PCIDevSim):
+    """Base class for NIC simulators."""
+
+    def __init__(self, e: exp.Experiment) -> None:
+        super().__init__(e)
+        self.experiment = e
+        self.nics: tp.List[spec.NIC] = []
+        self.start_tick = 0
+
+    def add(self, nic: spec.NIC):
+        self.nics.append(nic)
+        nic.sim = self
+        self.experiment.add_nic(self)
+        self.name = f'{nic.id}'
+
+    def basic_args(self, env: ExpEnv, extra: tp.Optional[str] = None) -> str:
+        cmd = (
+            f'{env.dev_pci_path(self)} {env.nic_eth_path(self)}'
+            f' {env.dev_shm_path(self)} {self.nics[0].sync} {self.start_tick}'
+            f' {self.nics[0].sync_period} {self.nics[0].pci_channel.latency} {self.nics[0].eth_channel.latency}'
+        )
+        if self.nics[0].mac is not None:
+            cmd += ' ' + (''.join(reversed(self.nics[0].mac.split(':'))))
+
+        if extra is not None:
+            cmd += ' ' + extra
+        return cmd
+
+    def basic_run_cmd(
+        self, env: ExpEnv, name: str, extra: tp.Optional[str] = None
+    ) -> str:
+        cmd = f'{env.repodir}/sims/nic/{name} {self.basic_args(env, extra)}'
+        return cmd
+
+    def full_name(self) -> str:
+        return 'nic.' + self.name
+
+    def is_nic(self) -> bool:
+        return True
+
+    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
+        return super().sockets_cleanup(env) + [env.nic_eth_path(self)]
+
+    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
+        return super().sockets_wait(env) + [env.nic_eth_path(self)]
+
+
+class I40eNicSim(NICSim):
+
+    def __init__(self, e: exp.Experiment):
+        super().__init__(e)
+
+    def run_cmd(self, env: ExpEnv) -> str:
+        return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
+
 
 class Gem5Sim(Simulator):
 
     def __init__(self, e: exp.Experiment):
-        super().__init__()
+        super().__init__(e)
         self.experiment = e
         self.hosts: tp.List[spec.Host] = []
         self.nics: tp.List[spec.NIC] = []
@@ -160,63 +243,12 @@ class Gem5Sim(Simulator):
 
     def wait_terminate(self) -> bool:
         return self.wait
-
-
-class I40eNicSim(Simulator):
-
-    def __init__(self, e: exp.Experiment):
-        super().__init__()
-        self.experiment = e
-        self.nics: tp.List[spec.i40eNIC] = []
-        self.start_tick = 0
-
-    
-    def add(self, nic: spec.i40eNIC):
-        self.nics.append(nic)
-        nic.sim = self
-        self.experiment.add_nic(self)
-        self.name = f'{nic.id}'
-
-    def basic_args(self, env: ExpEnv, extra: tp.Optional[str] = None) -> str:
-        cmd = (
-            f'{env.dev_pci_path(self)} {env.nic_eth_path(self)}'
-            f' {env.dev_shm_path(self)} {self.nics[0].sync} {self.start_tick}'
-            f' {self.nics[0].sync_period} {self.nics[0].pci_channel.latency} {self.nics[0].eth_channel.latency}'
-        )
-        if self.nics[0].mac is not None:
-            cmd += ' ' + (''.join(reversed(self.nics[0].mac.split(':'))))
-
-        if extra is not None:
-            cmd += ' ' + extra
-        return cmd
-
-    def basic_run_cmd(
-        self, env: ExpEnv, name: str, extra: tp.Optional[str] = None
-    ) -> str:
-        cmd = f'{env.repodir}/sims/nic/{name} {self.basic_args(env, extra)}'
-        return cmd
-
-    def full_name(self) -> str:
-        return 'nic.' + self.name
-
-    def is_nic(self) -> bool:
-        return True
-
-    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
-        return super().sockets_cleanup(env) + [env.nic_eth_path(self)]
-
-    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
-        return super().sockets_wait(env) + [env.nic_eth_path(self)]
-    
-    def run_cmd(self, env: ExpEnv) -> str:
-        return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
-
     
 
 class SwitchBMSim(Simulator):
 
     def __init__(self, e: exp.Experiment):
-        super().__init__()
+        super().__init__(e)
         self.experiment = e
         self.switches: tp.List[spec.Switch] = []
         self.nicSim: tp.List[I40eNicSim] = []
