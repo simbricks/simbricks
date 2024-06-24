@@ -146,20 +146,51 @@ class I40eNicSim(NICSim):
         return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
 
 
-class Gem5Sim(Simulator):
+class HostSim(Simulator):
 
     def __init__(self, e: exp.Experiment):
         super().__init__(e)
         self.experiment = e
         self.hosts: tp.List[spec.Host] = []
-        self.nics: tp.List[spec.NIC] = []
+        # need to change type of list to PCI dev
+        self.pcidevs: tp.List[spec.NIC] = []
 
-        # move it to add
         self.sync_period = 500
         """Period in nanoseconds of sending synchronization messages from this
         device to connected components."""
         self.pci_latency = 500
+        self.wait = True
+    
+    def full_name(self) -> str:
+        return 'host.' + self.name
 
+    def dependencies(self) -> tp.List[Simulator]:
+        deps = []
+        for h in self.hosts:
+            for dev in h.nics:
+                deps.append(dev.sim)
+        return deps
+    
+    def add(self, host: spec.Host):
+        self.hosts.append(host)
+        self.pcidevs = host.nics
+        host.sim = self
+        self.name = f'{self.hosts[0].id}'
+        self.sync_period = host.sync_period
+        self.pci_latency = host.pci_channel.latency
+
+        self.experiment.add_host(self)
+    
+
+    def wait_terminate(self) -> bool:
+        return self.wait
+    
+
+class Gem5Sim(HostSim):
+
+    def __init__(self, e: exp.Experiment):
+        super().__init__(e)
+        self.experiment = e
         self.name = ''
 
         self.cpu_type_cp = 'X86KvmCPU'
@@ -178,22 +209,6 @@ class Gem5Sim(Simulator):
 
     def resreq_mem(self) -> int:
         return 4096
-
-    def dependencies(self) -> tp.List[Simulator]:
-        deps = []
-        for h in self.hosts:
-            for dev in h.nics:
-                deps.append(dev.sim)
-        return deps
-    
-    def add(self, host: spec.Host):
-        self.hosts.append(host)
-        self.nics = host.nics
-        host.sim = self
-        self.name = f'{self.hosts[0].id}'
-
-        self.experiment.add_host(self)
-
 
     def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
         cmds = [f'mkdir -p {env.gem5_cpdir(self)}']
@@ -228,7 +243,7 @@ class Gem5Sim(Simulator):
         )
 
 
-        for dev in self.nics:
+        for dev in self.pcidevs:
             cmd += (
                 f'--simbricks-pci=connect:{env.dev_pci_path(dev.sim)}'
                 f':latency={self.pci_latency}ns'
