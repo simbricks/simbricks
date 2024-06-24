@@ -17,10 +17,11 @@ class SimObject():
     def __init__(self) -> None:
         self.sync_period = 500 #nano second
 
-class Channel():
+class Channel(SimObject):
     def __init__(self) -> None:
+        super().__init__()
         self.latency = 500 # nano second
-        self.sync_period = 500 # nano second
+
     def install(self, end_point0, end_point1) -> None:
         return
 
@@ -56,20 +57,23 @@ class Eth(Channel):
         netdev1.eth_channel = self
 
     
-class Host():
+class Host(SimObject):
     id_iter = itertools.count()
 
     def __init__(self, sys) -> None:
+        super().__init__()
         self.id = next(self.id_iter)
         sys.hosts.append(self)
-        self.sync = True
+
         self.pci_channel: PCI = None
         self.nics: tp.List[NIC] = []
-        self.nic_driver = ['i40e']
         self.sim = None
+        self.nic_driver = ['i40e']
 
-        # HostSim & NodeConfig parameters
+        self.sync = True
+        """Synchronization mode. False is running unsynchronized, True synchronized."""
         self.cpu_freq = '3GHz'
+        """Simulated host frequency"""
         self.ip = '10.0.0.1'
         """IP address."""
         self.prefix = 24
@@ -90,6 +94,8 @@ class Host():
         """TCP Congestion Control algorithm to use."""
         self.app: tp.Optional[AppConfig] = None
         """Application to run on simulated host."""
+        self.kcmd_append = ''
+        """String to be appended to kernel command line."""
         self.nockp = 0
         """Do not create a checkpoint in Gem5."""
 
@@ -121,14 +127,14 @@ class Host():
             cfg_f.close()
 
             # add additional config files
-            # for (n, f) in self.config_files().items():
-            #     f_i = tarfile.TarInfo('guest/' + n)
-            #     f_i.mode = 0o777
-            #     f.seek(0, io.SEEK_END)
-            #     f_i.size = f.tell()
-            #     f.seek(0, io.SEEK_SET)
-            #     tar.addfile(tarinfo=f_i, fileobj=f)
-            #     f.close()
+            for (n, f) in self.config_files().items():
+                f_i = tarfile.TarInfo('guest/' + n)
+                f_i.mode = 0o777
+                f.seek(0, io.SEEK_END)
+                f_i.size = f.tell()
+                f.seek(0, io.SEEK_SET)
+                tar.addfile(tarinfo=f_i, fileobj=f)
+                f.close()
 
 
     def run_cmds(self) -> tp.List[str]:
@@ -138,6 +144,16 @@ class Host():
     def cleanup_cmds(self) -> tp.List[str]:
         """Commands to run to cleanup node."""
         return []
+    
+    def config_files(self) -> tp.Dict[str, tp.IO]:
+        """
+        Additional files to put inside the node, which are mounted under
+        `/tmp/guest/`.
+
+        Specified in the following format: `filename_inside_node`:
+        `IO_handle_of_file`
+        """
+        return self.app.config_files()
     
     def prepare_pre_cp(self) -> tp.List[str]:
         """Commands to run to prepare node before checkpointing."""
@@ -192,9 +208,10 @@ class LinuxHost(Host):
 Pci device NIC
 It has both pci and eth channel
 """
-class NIC():
+class NIC(SimObject):
     id_iter = itertools.count()
     def __init__(self, sys) -> None:
+        super().__init__()
         self.id = next(self.id_iter)
         sys.nics.append(self)
         self.sync = True
@@ -217,9 +234,10 @@ class i40eNIC(NIC):
 Network device
 It only has eth channel
 """
-class NetDev():
+class NetDev(SimObject):
     id_iter = itertools.count()
     def __init__(self) -> None:
+        super().__init__()
         self.id = next(self.id_iter)
         self.switch: Switch = None
         self.sync = True
@@ -230,9 +248,10 @@ class NetDev():
         self.sim = None
 
 
-class Switch():
+class Switch(SimObject):
     id_iter = itertools.count()
     def __init__(self, sys) -> None:
+        super().__init__()
         self.id = next(self.id_iter)
         sys.switches.append(self)
         self.sync = True
