@@ -204,6 +204,14 @@ class LinuxHost(Host):
         l.append(f'ip addr add {self.ip}/{self.prefix} dev {self.ifname}')
         return super().prepare_post_cp() + l
 
+    def config_files(self) -> tp.Dict[str, tp.IO]:
+        
+        for d in self.nic_driver:
+            if d[0] == '/':
+                m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
+        
+        return {**m, **super().config_files()}
+
 """
 Pci device NIC
 It has both pci and eth channel
@@ -229,7 +237,10 @@ class i40eNIC(NIC):
         super().__init__(sys)
         self.type = 'i40e'
 
-
+class CorundumNIC(NIC):
+    def __init__(self, sys) -> None:
+        super().__init__(sys)
+        self.type = 'corundum_bm'
 """
 Network device
 It only has eth channel
