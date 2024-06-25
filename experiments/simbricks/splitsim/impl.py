@@ -147,6 +147,15 @@ class I40eNicSim(NICSim):
         return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
 
 
+class CorundumBMNICSim(NICSim):
+    def __init__(self, e: exp.Experiment):
+        super().__init__(e)
+
+    def run_cmd(self, env: ExpEnv) -> str:
+        return self.basic_run_cmd(env, '/corundum_bm/corundum_bm')
+
+
+
 class HostSim(Simulator):
 
     def __init__(self, e: exp.Experiment):
