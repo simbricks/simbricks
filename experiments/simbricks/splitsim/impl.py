@@ -156,6 +156,23 @@ class CorundumBMNICSim(NICSim):
 
 
 
+
+class CorundumVerilatorNICSim(NICSim):
+
+    def __init__(self, e: exp.Experiment):
+        super().__init__(e)
+        self.clock_freq = 250  # MHz
+
+    def resreq_mem(self) -> int:
+        # this is a guess
+        return 512
+
+    def run_cmd(self, env: ExpEnv) -> str:
+        return self.basic_run_cmd(
+            env, '/corundum/corundum_verilator', str(self.clock_freq)
+        )
+
+
 class HostSim(Simulator):
 
     def __init__(self, e: exp.Experiment):
