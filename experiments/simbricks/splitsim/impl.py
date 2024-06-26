@@ -360,12 +360,12 @@ class QemuSim(HostSim):
 
         return cmd
 
+class NetSim(Simulator):
+    """Base class for network simulators."""
 
-class SwitchBMSim(Simulator):
-
-    def __init__(self, e: exp.Experiment):
+    def __init__(self, e: exp.Experiment) -> None:
         super().__init__(e)
-        self.experiment = e
+        self.opt = ''
         self.switches: tp.List[spec.Switch] = []
         self.nicSim: tp.List[I40eNicSim] = []
         self.wait = False
@@ -373,11 +373,11 @@ class SwitchBMSim(Simulator):
     def full_name(self) -> str:
         return 'net.' + self.name
     
-    
     def add(self, switch: spec.Switch):
         self.switches.append(switch)
         switch.sim = self
         self.experiment.add_network(self)
+        self.name = f'{switch.id}'
 
         for s in self.switches:
             for n in s.netdevs:
@@ -411,6 +411,13 @@ class SwitchBMSim(Simulator):
     def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
         cleanup = []
         return cleanup
+    
+
+
+class SwitchBMSim(NetSim):
+
+    def __init__(self, e: exp.Experiment):
+        super().__init__(e)
 
     def run_cmd(self, env: ExpEnv) -> str:
         cmd = env.repodir + '/sims/net/switch/net_switch'
