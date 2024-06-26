@@ -336,3 +336,29 @@ class Sleep(AppConfig):
     
     def run_cmds(self, node: Host) -> tp.List[str]:
         return ['sleep 10']
+
+
+class NetperfServer(AppConfig):
+
+    def run_cmds(self, node: Host) -> tp.List[str]:
+        return ['netserver', 'sleep infinity']
+
+
+class NetperfClient(AppConfig):
+
+    def __init__(self, server_ip: str = '192.168.64.1') -> None:
+        super().__init__()
+        self.server_ip = server_ip
+        self.duration_tp = 10
+        self.duration_lat = 10
+
+    def run_cmds(self, node: Host) -> tp.List[str]:
+        return [
+            'netserver',
+            'sleep 0.5',
+            f'netperf -H {self.server_ip} -l {self.duration_tp}',
+            (
+                f'netperf -H {self.server_ip} -l {self.duration_lat} -t TCP_RR'
+                ' -- -o mean_latency,p50_latency,p90_latency,p99_latency'
+            )
+        ]
