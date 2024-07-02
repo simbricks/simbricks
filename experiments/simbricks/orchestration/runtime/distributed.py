@@ -34,7 +34,7 @@ from simbricks.orchestration.runtime.common import Run, Runtime
 
 class DistributedSimpleRuntime(Runtime):
 
-    def __init__(self, executors, verbose=False):
+    def __init__(self, executors, verbose=False) -> None:
         super().__init__()
         self.runnable: tp.List[Run] = []
         self.complete: tp.List[Run] = []
@@ -43,13 +43,13 @@ class DistributedSimpleRuntime(Runtime):
 
         self._running: asyncio.Task
 
-    def add_run(self, run: Run):
+    def add_run(self, run: Run) -> None:
         if not isinstance(run.experiment, DistributedExperiment):
             raise RuntimeError('Only distributed experiments supported')
 
         self.runnable.append(run)
 
-    async def do_run(self, run: Run):
+    async def do_run(self, run: Run) -> None:
         runner = ExperimentDistributedRunner(
             self.executors,
             # we ensure the correct type in add_run()
@@ -57,6 +57,8 @@ class DistributedSimpleRuntime(Runtime):
             run.env,
             self.verbose
         )
+        if self.profile_int:
+            runner.profile_int = self.profile_int
 
         try:
             for executor in self.executors:
@@ -77,7 +79,7 @@ class DistributedSimpleRuntime(Runtime):
             )
         run.output.dump(run.outpath)
 
-    async def start(self):
+    async def start(self) -> None:
         for run in self.runnable:
             if self._interrupted:
                 return
@@ -85,15 +87,16 @@ class DistributedSimpleRuntime(Runtime):
             self._running = asyncio.create_task(self.do_run(run))
             await self._running
 
-    def interrupt(self):
-        super().interrupt()
+    def interrupt_handler(self) -> None:
         if self._running:
             self._running.cancel()
 
 
 def auto_dist(
-    e: Experiment, execs: tp.List[Executor], proxy_type: str = 'sockets'
-):
+    e: Experiment,
+    execs: tp.List[Executor],
+    proxy_type: str = 'sockets'
+) -> DistributedExperiment:
     """
     Converts an Experiment into a DistributedExperiment.
 

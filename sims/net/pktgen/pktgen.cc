@@ -277,46 +277,6 @@ static void sigusr2_handler(int dummy) {
 }
 #endif
 
-static void forward_pkt(const void *pkt_data, size_t pkt_len, size_t port_id) {
-  struct pcap_pkthdr ph;
-  Port &dest_port = *ports[port_id];
-
-  // log to pcap file if initialized
-  if (dumpfile) {
-    memset(&ph, 0, sizeof(ph));
-    ph.ts.tv_sec = cur_ts / 1000000000000ULL;
-    ph.ts.tv_usec = (cur_ts % 1000000000000ULL) / 1000ULL;
-    ph.caplen = pkt_len;
-    ph.len = pkt_len;
-    pcap_dump((unsigned char *)dumpfile, &ph, (unsigned char *)pkt_data);
-  }
-  // print sending tick: [packet type] source_IP -> dest_IP len:
-
-#ifdef NETSWITCH_DEBUG
-  uint16_t eth_proto;
-  struct ethhdr *hdr;
-  struct iphdr *iph;
-  hdr = (struct ethhdr *)pkt_data;
-  eth_proto = ntohs(hdr->h_proto);
-  iph = (struct iphdr *)(hdr + 1);
-  fprintf(stderr, "%20lu: ", cur_ts);
-  if (eth_proto == ETH_P_IP) {
-    fprintf(stderr, "[ IP] ");
-
-  } else if (eth_proto == ETH_P_ARP) {
-    fprintf(stderr, "[ARP] ");
-  } else {
-    fprintf(stderr, "unkwon eth type\n");
-  }
-
-  fprintf(stderr, "%8X -> %8X len: %lu\n ", iph->saddr, iph->daddr,
-          iph->tot_len + sizeof(struct ethhdr));
-#endif
-
-  if (!dest_port.TxPacket(pkt_data, pkt_len, cur_ts))
-    fprintf(stderr, "forward_pkt: dropping packet on port %zu\n", port_id);
-}
-
 static void pollq(Port &port, size_t iport) {
   // poll N2D queue
   // send packet
@@ -346,27 +306,6 @@ static void pollq(Port &port, size_t iport) {
     // stat received bytes
     pkt_recv_num++;
     pkt_recv_byte += pkt_len;
-
-    // Get MAC addresses
-    // MAC dst((const uint8_t *)pkt_data), src((const uint8_t *)pkt_data + 6);
-    // // MAC learning
-    // if (!(src == bcast_addr)) {
-    //   mac_table[src] = iport;
-    // }
-    // // L2 forwarding
-    // auto i = mac_table.find(dst);
-    // if (i != mac_table.end()) {
-    //   size_t eport = i->second;
-    //   forward_pkt(pkt_data, pkt_len, eport);
-    // } else {
-    //   // Broadcast
-    //   for (size_t eport = 0; eport < ports.size(); eport++) {
-    //     if (eport != iport) {
-    //       // Do not forward to ingress port
-    //       forward_pkt(pkt_data, pkt_len, eport);
-    //     }
-    //   }
-    // }
   } else if (poll == Port::kRxPollSync) {
 #ifdef NETSWITCH_STAT
     d2n_poll_sync += 1;

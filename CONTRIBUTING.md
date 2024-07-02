@@ -74,9 +74,9 @@ things privately.
 
 # Style Guides
 
-Please read through our style guides before preparing your contributions avoid
-unnecessary effort later to reformat code etc. before we can push it to the
-repository.
+Please read through our style guides before preparing your contributions to
+avoid unnecessary effort later to reformat code etc. before we can push it to
+the repository.
 
 ## Git Commits
 
@@ -124,10 +124,10 @@ should still adhere to the style guide.
 
 ## Python
 
-We require that all our Python code adhere to the
-[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
-Note that some legacy code may still have violations, but any new changes
-should still adhere to the style guide.
+We require that all our Python code adheres to the [Google Python Style
+Guide](https://google.github.io/styleguide/pyguide.html). Note that some legacy
+code may still have violations, but any new changes should still adhere to the
+style guide.
 
 
 # Attribution

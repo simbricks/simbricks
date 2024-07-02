@@ -37,20 +37,23 @@ class Experiment(object):
     Contains the simulators to be run and experiment-wide parameters.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
         """
-        This experiment's name. Can be used to run only a selection of
-        experiments.
+        This experiment's name.
+
+        Can be used to run only a selection of experiments.
         """
         self.timeout: tp.Optional[int] = None
         """Timeout for experiment in seconds."""
         self.checkpoint = False
-        """Whether to use checkpoint and restore for simulators.
+        """
+        Whether to use checkpoint and restore for simulators.
 
         The most common use-case for this is accelerating host simulator startup
         by first running in a less accurate mode, then checkpointing the system
-        state after boot and running simulations from there."""
+        state after boot and running simulations from there.
+        """
         self.no_simbricks = False
         """If `true`, no simbricks adapters are used in any of the
         simulators."""
@@ -64,13 +67,13 @@ class Experiment(object):
         """The network memory simulators to run."""
         self.networks: tp.List[NetSim] = []
         """The network simulators to run."""
-        self.metadata = {}
+        self.metadata: tp.Dict[str, tp.Any] = {}
 
     @property
     def nics(self):
         return filter(lambda pcidev: pcidev.is_nic(), self.pcidevs)
 
-    def add_host(self, sim: HostSim):
+    def add_host(self, sim: HostSim) -> None:
         """Add a host simulator to the experiment."""
         for h in self.hosts:
             if h.name == sim.name:
@@ -81,7 +84,7 @@ class Experiment(object):
         """Add a NIC simulator to the experiment."""
         self.add_pcidev(sim)
 
-    def add_pcidev(self, sim: PCIDevSim):
+    def add_pcidev(self, sim: PCIDevSim) -> None:
         """Add a PCIe device simulator to the experiment."""
         for d in self.pcidevs:
             if d.name == sim.name:
@@ -100,27 +103,27 @@ class Experiment(object):
                 raise ValueError('Duplicate netmems name')
         self.netmems.append(sim)
 
-    def add_network(self, sim: NetSim):
+    def add_network(self, sim: NetSim) -> None:
         """Add a network simulator to the experiment."""
         for n in self.networks:
             if n.name == sim.name:
                 raise ValueError('Duplicate net name')
         self.networks.append(sim)
 
-    def all_simulators(self):
+    def all_simulators(self) -> tp.Iterable[Simulator]:
         """Returns all simulators defined to run in this experiment."""
         return itertools.chain(
             self.hosts, self.pcidevs, self.memdevs, self.netmems, self.networks
         )
 
-    def resreq_mem(self):
+    def resreq_mem(self) -> int:
         """Memory required to run all simulators in this experiment."""
         mem = 0
         for s in self.all_simulators():
             mem += s.resreq_mem()
         return mem
 
-    def resreq_cores(self):
+    def resreq_cores(self) -> int:
         """Number of Cores required to run all simulators in this experiment."""
         cores = 0
         for s in self.all_simulators():
@@ -131,7 +134,7 @@ class Experiment(object):
 class DistributedExperiment(Experiment):
     """Describes a distributed simulation experiment."""
 
-    def __init__(self, name: str, num_hosts: int):
+    def __init__(self, name: str, num_hosts: int) -> None:
         super().__init__(name)
         self.num_hosts = num_hosts
         """Number of hosts to use."""
@@ -146,17 +149,17 @@ class DistributedExperiment(Experiment):
         else:
             self.proxies_connect.append(tp.cast(NetProxyConnecter, proxy))
 
-    def all_simulators(self):
+    def all_simulators(self) -> tp.Iterable[Simulator]:
         return itertools.chain(
             super().all_simulators(), self.proxies_listen, self.proxies_connect
         )
 
-    def assign_sim_host(self, sim: Simulator, host: int):
+    def assign_sim_host(self, sim: Simulator, host: int) -> None:
         """Assign host ID (< self.num_hosts) for a simulator."""
         assert 0 <= host < self.num_hosts
         self.host_mapping[sim] = host
 
-    def all_sims_assigned(self):
+    def all_sims_assigned(self) -> bool:
         """Check if all simulators are assigned to a host."""
         for s in self.all_simulators():
             if s not in self.host_mapping:

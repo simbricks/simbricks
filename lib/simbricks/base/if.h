@@ -337,7 +337,7 @@ static inline void SimbricksBaseIfOutSend(
  *
  * @param base_if   Base interface handle (connected).
  * @param timestamp Current timestamp (in picoseconds).
- * @return 0 if sync successfully sent, 1 if sync was unnecessary, -1 if a
+ * @return 0 if sync successfully sent or sync was unnecessary, -1 if a
  * necessary sync message could not be sent because the queue is full.
  */
 static inline int SimbricksBaseIfOutSync(struct SimbricksBaseIf *base_if,

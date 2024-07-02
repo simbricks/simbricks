@@ -305,6 +305,93 @@ queue_base::desc_ctx &lan_queue_rx::desc_ctx_create() {
   return *new rx_desc_ctx(*this);
 }
 
+/* determine if we should sample a ptp rx timestamp for this packet */
+bool lan_queue_rx::ptp_rx_sample(const void *data, size_t len) {
+  if (!(dev.regs.prtsyn_ctl_1 & I40E_PRTTSYN_CTL1_TSYNENA_MASK))
+    return false;
+
+  uint8_t tsyntype =
+      (dev.regs.prtsyn_ctl_1 & I40E_PRTTSYN_CTL1_TSYNTYPE_MASK) >>
+      I40E_PRTTSYN_CTL1_TSYNTYPE_SHIFT;
+  uint8_t udp_ena = (dev.regs.prtsyn_ctl_1 & I40E_PRTTSYN_CTL1_UDP_ENA_MASK) >>
+                    I40E_PRTTSYN_CTL1_UDP_ENA_SHIFT;
+  uint8_t v1messtype0 =
+      (dev.regs.prtsyn_ctl_1 & I40E_PRTTSYN_CTL1_V1MESSTYPE0_MASK) >>
+      I40E_PRTTSYN_CTL1_V1MESSTYPE0_SHIFT;
+  uint8_t v1messtype1 =
+      (dev.regs.prtsyn_ctl_1 & I40E_PRTTSYN_CTL1_V1MESSTYPE1_MASK) >>
+      I40E_PRTTSYN_CTL1_V1MESSTYPE1_SHIFT;
+  uint8_t v2messtype0 =
+      (dev.regs.prtsyn_ctl_1 & I40E_PRTTSYN_CTL1_V2MESSTYPE0_MASK) >>
+      I40E_PRTTSYN_CTL1_V2MESSTYPE0_SHIFT;
+  uint8_t v2messtype1 =
+      (dev.regs.prtsyn_ctl_1 & I40E_PRTTSYN_CTL1_V2MESSTYPE1_MASK) >>
+      I40E_PRTTSYN_CTL1_V2MESSTYPE1_SHIFT;
+
+  const headers::pkt_udp *udp =
+      reinterpret_cast<const headers::pkt_udp *>(data);
+  const void *ptp_start;
+  bool is_udp = false;
+
+  // TODO(antoinek): ipv6
+  if (udp->eth.type == htons(ETH_TYPE_IP) && udp->ip.proto == IP_PROTO_UDP) {
+    // no udp packet types enabled
+    if (tsyntype == 0)
+      return false;
+
+    uint16_t port = ntohs(udp->udp.dest);
+    if (!(port == 0x013F && (udp_ena == 1 || udp_ena == 3)) &&
+        !(port == 0x0140 && (udp_ena == 2 || udp_ena == 3)))
+      return false;
+
+    is_udp = true;
+    ptp_start = udp + 1;
+  } else if (udp->eth.type == htons(ETH_TYPE_PTP)) {
+    if (tsyntype == 1)
+      return false;
+
+    ptp_start = &udp->ip;
+  } else {
+    return false;
+  }
+
+  const headers::ptp_v1_hdr *v1 =
+      reinterpret_cast<const headers::ptp_v1_hdr *>(ptp_start);
+  const headers::ptp_v2_hdr *v2 =
+      reinterpret_cast<const headers::ptp_v2_hdr *>(ptp_start);
+
+  /* handle ptp v1 */
+  if (v1->version_ptp == 1) {
+    /* check if v1 is allowed*/
+    if (tsyntype != 1)
+      return false;
+
+    if (v1messtype0 == 0xff || v1messtype1 == 0xff)
+      return true;
+    if (v1->msg_type == v1messtype0 || v1->msg_type == v1messtype1)
+      return true;
+
+    return false;
+  } else if (v2->version_ptp == 2) {
+    /* check if no v1 packets allowed*/
+    if (tsyntype == 1)
+      return false;
+    if (tsyntype == 0 && is_udp)
+      return false;
+    if (tsyntype == 3)
+      return v2->msg_type < 8;
+
+    if (v2messtype0 == 0xf)
+      return true;
+
+    if (v2->msg_type == v2messtype0 || v2->msg_type == v2messtype1)
+      return true;
+    return false;
+  }
+
+  return false;
+}
+
 void lan_queue_rx::packet_received(const void *data, size_t pktlen,
                                    uint32_t h) {
   size_t num_descs = (pktlen + dbuff_size - 1) / dbuff_size;
@@ -320,6 +407,21 @@ void lan_queue_rx::packet_received(const void *data, size_t pktlen,
     return;
   }
 
+  // sample ptp rx timestamp if enabled, packet matches conditions, and a free
+  // rx timestamp register can be found.
+  int rxtime_id = -1;
+  if (ptp_rx_sample(data, pktlen)) {
+    for (int i = 0; i < 4; i++) {
+      if (!dev.regs.prtsyn_rxtime_lock[i]) {
+        dev.regs.prtsyn_rxtime[i] = dev.ptp.phc_read();
+        dev.regs.prtsyn_rxtime_lock[i] = true;
+        dev.regs.prtsyn_stat_1 |= 1 << (I40E_PRTTSYN_STAT_1_RXT0_SHIFT + i);
+        rxtime_id = i;
+        break;
+      }
+    }
+  }
+
   for (size_t i = 0; i < num_descs; i++) {
     rx_desc_ctx &ctx = *dcache.front();
 
@@ -332,9 +434,9 @@ void lan_queue_rx::packet_received(const void *data, size_t pktlen,
     const uint8_t *buf = (const uint8_t *)data + (dbuff_size * i);
     if (i == num_descs - 1) {
       // last packet
-      ctx.packet_received(buf, pktlen - dbuff_size * i, true);
+      ctx.packet_received(buf, pktlen - dbuff_size * i, true, rxtime_id);
     } else {
-      ctx.packet_received(buf, dbuff_size, false);
+      ctx.packet_received(buf, dbuff_size, false, -1);
     }
   }
 }
@@ -352,7 +454,7 @@ void lan_queue_rx::rx_desc_ctx::process() {
 }
 
 void lan_queue_rx::rx_desc_ctx::packet_received(const void *data, size_t pktlen,
-                                                bool last) {
+                                                bool last, int rxtime_id) {
   // we only use fields in the lowest 16b anyways, even if set to 32b
   union i40e_16byte_rx_desc *rxd =
       reinterpret_cast<union i40e_16byte_rx_desc *>(desc);
@@ -371,6 +473,15 @@ void lan_queue_rx::rx_desc_ctx::packet_received(const void *data, size_t pktlen,
     rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_EOF_SHIFT);
     // TODO(antoinek): only if checksums are correct
     rxd->wb.qword1.status_error_len |= (1 << I40E_RX_DESC_STATUS_L3L4P_SHIFT);
+
+    // if an rx timestamp was assigned, need to report ts register id in
+    // descriptor
+    if (rxtime_id >= 0) {
+      rxd->wb.qword1.status_error_len |= ((uint32_t)rxtime_id)
+                                         << I40E_RX_DESC_STATUS_TSYNINDX_SHIFT;
+      rxd->wb.qword1.status_error_len |=
+          (1 << I40E_RX_DESC_STATUS_TSYNVALID_SHIFT);
+    }
   }
   data_write(addr, pktlen, data);
 }
@@ -444,6 +555,7 @@ bool lan_queue_tx::trigger_tx_packet() {
   uint64_t d1;
   uint32_t iipt, l4t, pkt_len, total_len = 0, data_limit;
   bool tso = false;
+  bool tsyn = false;
   uint32_t tso_mss = 0, tso_paylen = 0;
   uint16_t maclen = 0, iplen = 0, l4len = 0;
 
@@ -470,6 +582,7 @@ bool lan_queue_tx::trigger_tx_packet() {
         ((d1 & I40E_TXD_CTX_QW1_CMD_MASK) >> I40E_TXD_CTX_QW1_CMD_SHIFT);
     tso = !!(cmd & I40E_TX_CTX_DESC_TSO);
     tso_mss = (d1 & I40E_TXD_CTX_QW1_MSS_MASK) >> I40E_TXD_CTX_QW1_MSS_SHIFT;
+    tsyn = !!(cmd & I40E_TX_CTX_DESC_TSYN);
 
 #ifdef DEBUG_LAN
     log << "  tso=" << tso << " mss=" << tso_mss << logger::endl;
@@ -622,6 +735,19 @@ bool lan_queue_tx::trigger_tx_packet() {
     if (tso && tso_off < total_len) {
       tso_len = hdrlen;
       return true;
+    }
+  }
+
+  // PTP transmit timestamping
+  if (tsyn) {
+    dev.regs.prtsyn_txtime = dev.ptp.phc_read();
+
+    lanmgr.dev.regs.prtsyn_stat_0 |= I40E_PRTTSYN_STAT_0_TXTIME_MASK;
+    if ((dev.regs.prtsyn_ctl_0 & I40E_PRTTSYN_CTL0_TXTIME_INT_ENA_MASK) &&
+        (lanmgr.dev.regs.pfint_icr0_ena & I40E_PFINT_ICR0_ENA_TIMESYNC_MASK)) {
+      lanmgr.dev.regs.pfint_icr0 |=
+          I40E_PFINT_ICR0_INTEVENT_MASK | I40E_PFINT_ICR0_TIMESYNC_MASK;
+      lanmgr.dev.SignalInterrupt(0, 0);
     }
   }
 

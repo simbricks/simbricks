@@ -1,12 +1,18 @@
 {
-	"initializeCommand": "docker pull simbricks/simbricks-build",
 	"image": "simbricks/simbricks-build:latest",
 	"runArgs": [
-		"--device=/dev/kvm",
-		"--privileged"
+		"--device=/dev/kvm"
 	],
-	"extensions": [
-		"ms-python.python"
-	],
-	"remoteUser": "simbricks"
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-vscode.cpptools",
+				"mshr-h.veriloghdl",
+				"surfer-project.surfer"
+			]
+		}
+	},
+	"remoteUser": "simbricks",
+	"postStartCommand": "sudo chmod o+rw /dev/kvm"
 }

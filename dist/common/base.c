@@ -177,14 +177,20 @@ int BasePeerSetupQueues(struct Peer *peer) {
           li->l2c_nentries, li->c2l_elen, li->c2l_nentries);
 #endif
 
-  if (ShmAlloc(li->l2c_elen * li->l2c_nentries, &li->l2c_offset)) {
+  uint64_t l2c_offset = 0;
+  if (ShmAlloc(li->l2c_elen * li->l2c_nentries, &l2c_offset)) {
     fprintf(stderr, "PeerNetSetupQueues: ShmAlloc l2c failed");
     return 1;
   }
-  if (ShmAlloc(li->c2l_elen * li->c2l_nentries, &li->c2l_offset)) {
+  li->l2c_offset = l2c_offset;
+
+  uint64_t c2l_offset = 0;
+  if (ShmAlloc(li->c2l_elen * li->c2l_nentries, &c2l_offset)) {
     fprintf(stderr, "PeerNetSetupQueues: ShmAlloc c2l failed");
     return 1;
   }
+  li->c2l_offset = c2l_offset;
+
   peer->shm_fd = shm_fd;
   peer->shm_base = shm_base;
 

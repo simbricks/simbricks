@@ -7,8 +7,9 @@ on:
 
 jobs:
   lint-clang-format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
-    - run: |
-        make lint-clang-format
+    - uses: actions/checkout@v4
+    - run: sudo apt update
+    - run: sudo apt install clang-format
+    - run: make lint-clang-format

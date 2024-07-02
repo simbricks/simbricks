@@ -191,6 +191,16 @@ int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
   int flags;
   struct SimbricksBaseIfParams *params = &base_if->params;
 
+  /* make sure the socket path does not exceed the limits of saun.sun_path */
+  if (strlen(params->sock_path) >= sizeof(saun.sun_path)) {
+    fprintf(stderr,
+            "SimbricksBaseIfListen: socket path %s is too long "
+            "(exceeding %lu characters)\n",
+            params->sock_path, sizeof(saun.sun_path) - 1);
+    errno = ENAMETOOLONG;
+    return -1;
+  }
+
   /* make sure we have enough space in the memory pool */
   base_if->shm = pool;
   size_t in_len = params->in_num_entries * params->in_entries_size;
@@ -258,6 +268,16 @@ int SimbricksBaseIfConnect(struct SimbricksBaseIf *base_if) {
   struct sockaddr_un saun;
   int flags;
   struct SimbricksBaseIfParams *params = &base_if->params;
+
+  /* make sure the socket path does not exceed the limits of saun.sun_path */
+  if (strlen(params->sock_path) >= sizeof(saun.sun_path)) {
+    fprintf(stderr,
+            "SimbricksBaseIfConnect: socket path %s is too long "
+            "(exceeding %lu characters)\n",
+            params->sock_path, sizeof(saun.sun_path) - 1);
+    errno = ENAMETOOLONG;
+    return -1;
+  }
 
   base_if->listener = false;
 

@@ -1,3 +1,5 @@
+ARG REGISTRY=
+ARG TAG=:latest
 FROM ubuntu:focal
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive \
@@ -77,8 +79,13 @@ RUN make -j `nproc` build-images-min COMPRESSED_IMAGES=true \
  && bash docker/cleanup_images.sh
 ENV PYTHONPATH=/simbricks/experiments
 RUN sudo cp docker/simbricks-run /usr/bin/ \
- && sudo chmod 755 /usr/bin/simbricks-run
-
+ && sudo chmod 755 /usr/bin/simbricks-run \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-system-x86_64 \
+    /usr/bin/qemu-system-x86_64 \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-system-x86_64 \
+    /usr/bin/kvm \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-img \
+    /usr/bin/qemu-img
 RUN mkdir /tofino
 COPY docker/bf-sde.tgz /tofino
 WORKDIR /tofino

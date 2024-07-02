@@ -1,4 +1,6 @@
-FROM simbricks/simbricks-build:latest
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks-build${TAG}
 COPY . /simbricks
 WORKDIR /simbricks
 RUN make -j `nproc` ENABLE_VERILATOR=y
@@ -11,7 +13,14 @@ RUN git submodule update --init sims/external/gem5 \
 RUN git submodule update --init sims/external/femu \
  && make -j `nproc` sims/external/femu/ready
 RUN git submodule update --init sims/external/ns-3 \
- && make -j `nproc` sims/external/ns-3/ready
+ && make -j `nproc` sims/external/ns-3/ready \
+ && bash docker/cleanup_ns3.sh
 ENV PYTHONPATH=/simbricks/experiments
 RUN sudo cp docker/simbricks-run /usr/bin/ \
- && sudo chmod 755 /usr/bin/simbricks-run
+ && sudo chmod 755 /usr/bin/simbricks-run \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-system-x86_64 \
+    /usr/bin/qemu-system-x86_64 \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-system-x86_64 \
+    /usr/bin/kvm \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-img \
+    /usr/bin/qemu-img

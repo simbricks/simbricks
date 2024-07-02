@@ -37,67 +37,67 @@ Create and Run an Experiment
 Experiments are defined in a declarative fashion inside Python modules using
 classes. Basically, create a `.py` file and add a global variable
 ``experiments``, a list which contains multiple instances of the class
-:class:`simbricks.orchestration.experiments.Experiment`, each one describing a
+:class:`~simbricks.orchestration.experiments.Experiment`, each one describing a
 standalone experiment. This is very helpful if you wish to evaluate your work in
 different environments, for example, you may want to swap out some simulator or
 investigate multiple topologies with different scale. 
 
 The class :class:`~simbricks.orchestration.experiments.Experiment` provides
 methods to add the simulators you wish to run. All available simulators can be
-found in the module :mod:`simbricks.orchestration.simulators`. Instantiating
+found in the module :mod-orchestration:`simulators.py`. Instantiating
 :class:`~simbricks.orchestration.simulators.HostSim` requires you to specify a
 :class:`~simbricks.orchestration.nodeconfig.NodeConfig`, which contains the
 configuration for your host, for example, its networking settings, how much
 system memory it should have, and most importantly, which applications to run by
 assigning an :class:`~simbricks.orchestration.nodeconfig.AppConfig`. You can
 find predefined classes for node and app configs in the module
-:mod:`simbricks.orchestration.nodeconfig`. Feel free to add new ones or just
-create a new class locally in your experiment's module. For more details, see :ref:`sec-orchestration`.
+:mod-orchestration:`nodeconfig.py`. Feel free to add new ones or just create a
+new class locally in your experiment's module. For more details, see
+:ref:`sec-orchestration`.
 
 The last step to complete your virtual testbed is to specify which virtual
 components connect to each other. You do this by invoking the respective methods
 on the simulators you have instantiated. See the different simulator types' base
-classes in the module :mod:`~simbricks.orchestration.simulators` for more
-information. A simple and complete experiment module in which a client host
-pings a server can be found :ref:`below <simple_ping_experiment>`.
+classes in the module :mod-orchestration:`simulators.py` for more information. A
+simple and complete experiment module in which a client host pings a server can
+be found :ref:`below <simple_ping_experiment>`.
 
 If you plan to simulate a topology with multiple hosts, it may be helpful to
-take a look at the module :mod:`simbricks.orchestration.simulator_utils` in
-which we provide some helper functions to reduce the amount of code you have to
-write.
+take a look at the module :mod-orchestration:`simulator_utils.py` in which we
+provide some helper functions to reduce the amount of code you have to write.
 
-Finally, to run your experiment, invoke ``<repository>/experiments/run.py`` and
-provide the path to your experiment module. In our docker containers, you can
-just use the following command from anywhere:
+Finally, to run your experiment, invoke
+:simbricks-repo:`experiments/run.py </blob/main/experiments/run.py>`
+and provide the path to your experiment module. In our docker containers, you
+can also just use the following command from anywhere:
 
 .. code-block:: bash
 
   $ simbricks-run --verbose --force <path_to_your_module.py>
 
 ``--verbose`` prints all simulators' output to the terminal and ``--force``
-forces execution even if there already exist result files for the same
-experiment. If ``simbricks-run`` is not available, you can always do 
+forces execution even if there already exist result files for the experiment. If
+``simbricks-run`` is not available, you can always do 
 
 .. code-block:: bash
   
-  # from the repository's root directory
   $ cd experiments
   $ python run.py --verbose --force <path_to_your_module.py>
 
-While running, you can interrupt the experiment using CTRL+C in your terminal.
+While running, you can interrupt the experiment using Ctrl+C in your terminal.
 This will cleanly stop all simulators and collect their output in a JSON file in
 the directory ``experiments/out/<experiment_name>``. These are the necessary
 basics to create and run your first experiment. Have fun.
 
 .. literalinclude:: /../experiments/pyexps/simple_ping.py
   :linenos:
-  :lines: 25-
+  :lines: 29-
   :language: python
   :name: simple_ping_experiment
   :caption: A simple experiment with a client host pinging a server, both are
     connected through a network switch. The setup of the two hosts could be
     simplified by using
-    :func:`~simbricks.orchestration.simulator_utils.create_basic_hosts`.
+    :func:`simbricks.orchestration.simulator_utils.create_basic_hosts`.
 
 .. _sec-howto-nodeconfig:
 
@@ -105,19 +105,15 @@ basics to create and run your first experiment. Have fun.
 Add a Node or Application Config
 ********************************
 
-The configuration for a host and the commands to run for your workload are
-defined via a :ref:`sec-node_config` and :ref:`sec-app_config`. SimBricks
-already offers some concrete implementations in the module
-:mod:`simbricks.orchestration.nodeconfig`. If they don't fit your use-case, you
-need to implement your own by overwriting the pre-defined member functions.
-
-When using one of our pre-defined node configs, you probably need to provide
-your own app config to run the workload you have in mind. The easiest way is to
-create a child class for that directly in your experiment module, and override
-the methods of interest, most notably
-:meth:`~simbricks.orchestration.nodeconfig.AppConfig.run_cmds`, which defines
-the command that is executed to run your application. Further information can be
-found in the module :mod:`simbricks.orchestration.nodeconfig`.
+A host's configuration and the workload to run are defined via
+:ref:`sec-node_app_config`. SimBricks already comes with a few examples in the
+module :mod-orchestration:`nodeconfig.py`. If they don't fit your use-case, you
+need to add your own by overriding the pre-defined member functions of
+:class:`~simbricks.orchestration.nodeconfig.NodeConfig` and
+:class:`~simbricks.orchestration.nodeconfig.AppConfig`. The most important one
+is :meth:`~simbricks.orchestration.nodeconfig.AppConfig.run_cmds`, which defines
+the commands to execute for your workload/application. Further information can
+be found in the module :mod-orchestration:`nodeconfig.py` directly.
 
 .. _sec-howto-custom_image:
 
@@ -125,51 +121,71 @@ found in the module :mod:`simbricks.orchestration.nodeconfig`.
 Add a Custom Image
 ******************************
 
+First off, make sure you actually need a custom image. You can find more
+information on this under :ref:`sec-images`. We have a tutorial in our
+:simbricks-examples:`examples repository <>` that highlights how to add a
+custom, out-of-tree image for a simple Memcached experiment. Further, we are
+currently reworking our orchestration framework to greatly simplify the process
+of defining your own custom image, abstracting away the need to manually build
+and manage it.
+
+For the moment, here is some additional information on the inner details of the
+image building process: We use `Packer <https://www.packer.io/>`_, which
+essentially starts a QEMU VM with internet access, boots up the kernel and then
+runs an installation script inside to change configs and install required
+packages either through ``apt`` or from source. You can find examples of
+installation scripts for our in-tree images under
+:simbricks-repo:`images/scripts </blob/main/images/scripts>`. The commands for
+building them reside in the file :simbricks-repo:`images/rules.mk
+</blob/main/images/rules.mk>`.
+
+The produced images are stored as ``images/output-<image_name>/<image-name>``.
+By default, we produce disk images in the compressed ``qcow2`` format. Some of
+our host simulators, e.g. gem5 and Simics, require raw disk images though, which
+are substantially larger. The ``qcow2`` can be easily converted to raw with
+``qemu-img convert``. For our in-tree images there's a Makefile target for this,
+which stores the converted images as
+``images/output-<image_name>/<image-name>.raw``.
+
+.. code-block:: bash
+
+  $ make convert-images-raw
+
 ******************************
 Integrate a New Simulator
 ******************************
 
-The first step when integrating a new simulator into SimBricks is to implement a
-SimBricks adapter for it. You can find the necessary information in the
-:ref:`Simulator Adapters <Simulator Adapters>` section. After that, we need to
-add a class for the simulator in the SimBricks orchestration framework such that
-it can be used when defining experiments. This class basically wraps a command
-for launching the simulator and needs to inherit from
-:class:`~simbricks.orchestration.simulators.Simulator` and implement relevant
-methods. There are several more specialized child classes in the module
-:mod:`simbricks.orchestration.simulators` for typical categories of simulators,
-which already offer the interfaces to collect parameters like which other
-simulators to connect to necessary for creating the launch command. Examples are
-:class:`~simbricks.orchestration.simulators.PCIDevSim`,
-:class:`~simbricks.orchestration.simulators.NICSim`,
-:class:`~simbricks.orchestration.simulators.NetSim`, and
-:class:`~simbricks.orchestration.simulators.HostSim`. You can find an example
-below of adding a class for the ``NS3`` network simulator.
+The first step is to implement a SimBricks adapter in the simulator you want to
+integrate. This adapter on one side uses the simulator's extension API to act as
+a native device and on the other side sends and receives SimBricks messages. You
+can find more information on adapters in our :ref:`page-architectural-overview`.
+
+To make running experiments and setting up the SimBricks communication channels
+to other simulators convenient, add a class for the simulator in
+:mod-orchestration:`simulators.py`` that inherits either from
+:class:`~simbricks.orchestration.simulators.Simulator` or one of the more
+specialized base classes in. In this class, you define the command(s) to execute
+the simulator together with further parameters, for example, to connect to the
+communication channels with other simulators. Below is an example of what this
+looks like.
 
 .. code-block:: python
   :linenos:
-  :caption: Class implementing the ``NS3`` network simulator in the SimBricks
-    orchestration framework.
+  :caption: Orchestration framework class for WireNet, a simple Ethernet wire
+    that attaches to the SimBricks Ethernet adapters of two simulators.
 
-  class NS3BridgeNet(NetSim):
+  class WireNet(NetSim):
 
     def run_cmd(self, env):
-        ports = ''
-        for (_, n) in self.connect_sockets(env):
-            ports += '--CosimPort=' + n + ' '
-
+        connects = self.connect_sockets(env)
+        assert len(connects) == 2
         cmd = (
-            f'{env.repodir}/sims/external/ns-3'
-            f'/cosim-run.sh cosim cosim-bridge-example {ports} {self.opt}'
+            f'{env.repodir}/sims/net/wire/net_wire {connects[0][1]}'
+            f' {connects[1][1]} {self.sync_mode} {self.sync_period}'
+            f' {self.eth_latency}'
         )
-        print(cmd)
-
+        if env.pcap_file:
+            cmd += ' ' + env.pcap_file
+        
         return cmd
 
-
-******************************
-Add a New Interface
-******************************
-
-.. automodule:: simbricks.orchestration.simulator_utils
-  :members:

@@ -51,7 +51,11 @@ class SysbenchMemoryBenchmark(node.AppConfig):
         self.disaggregated = disaggregated
         """Whether to use disaggregated memory."""
         self.time_limit = time_limit
-        """Time limit for sysbench benchmark in seconds. 0 to disable limit."""
+        """
+        Time limit for sysbench benchmark in seconds.
+
+        0 to disable limit.
+        """
         self.num_threads = num_threads
         """Number of cores to run the benchmark on in parallel."""
 

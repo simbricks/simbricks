@@ -1,4 +1,6 @@
-FROM simbricks/simbricks:latest
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks${TAG}
 RUN apt-get update \
  && apt-get install -y \
 	openssh-server \

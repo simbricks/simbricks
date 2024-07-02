@@ -24,60 +24,61 @@ import typing as tp
 
 from simbricks.orchestration.simulators import NICSim, Simulator
 
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.experiment import experiment_environment
+
 
 class SimProxy(Simulator):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.name = ''
         # set by the experiment runner
         self.ip = ''
         self.listen = False
 
-    def full_name(self):
+    def full_name(self) -> str:
         return 'proxy.' + self.name
 
 
 class NetProxy(SimProxy):
     """Proxy for connections between NICs and networks."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.nics: tp.List[tp.Tuple[NICSim, bool]] = []
         """List of tuples (nic, with_listener)"""
-        self.n2ns: tp.List[tp.Tuple[tp.Tuple[NetProxyListener,
-                                             NetProxyConnecter],
-                                    bool]] = []
+        self.n2ns: tp.List[tp.Tuple[tp.Tuple[Simulator, Simulator], bool]] = []
         """List of tuples ((netL,netC), with_listener)"""
         self.shm_size = 2048
-        """Shared memory size in GB"""
+        """Shared memory size in GB."""
 
-    def start_delay(self):
+    def start_delay(self) -> int:
         return 10
 
 
 class NetProxyListener(NetProxy):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.port = 12345
-        self.connecter = None
+        self.connecter: NetProxyConnecter
         self.listen = True
 
-    def add_nic(self, nic):
+    def add_nic(self, nic: NICSim) -> None:
         self.nics.append((nic, True))
 
         # the network this nic connects to now also depends on the peer
         nic.network.extra_deps.append(self.connecter)
 
     # add net2net connection with listening network on the listener side
-    def add_n2n(self, net_c, net_l):
+    def add_n2n(self, net_c: Simulator, net_l: Simulator) -> None:
         self.n2ns.append(((net_c, net_l), True))
 
         # the connecting network depends on our peer
         net_c.extra_deps.append(self.connecter)
 
-    def dependencies(self):
+    def dependencies(self) -> tp.List[Simulator]:
         deps = []
         for (nic, local) in self.nics:
             if local:
@@ -87,7 +88,8 @@ class NetProxyListener(NetProxy):
                 deps.append(net_l)
         return deps
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self,
+                        env: 'experiment_environment.ExpEnv') -> tp.List[str]:
         socks = []
         for (nic, local) in self.nics:
             if not local:
@@ -98,7 +100,8 @@ class NetProxyListener(NetProxy):
         return []
 
     # sockets to wait for indicating the simulator is ready
-    def sockets_wait(self, env):
+    def sockets_wait(self,
+                     env: 'experiment_environment.ExpEnv') -> tp.List[str]:
         socks = []
         for (nic, local) in self.nics:
             if not local:
@@ -108,7 +111,7 @@ class NetProxyListener(NetProxy):
                 socks.append(env.n2n_eth_path(net_l, net_c))
         return socks
 
-    def run_cmd_base(self, env):
+    def run_cmd_base(self, env: 'experiment_environment.ExpEnv') -> str:
         cmd = (f'-s {env.proxy_shm_path(self)} '
                f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
@@ -125,26 +128,26 @@ class NetProxyListener(NetProxy):
 
 class NetProxyConnecter(NetProxy):
 
-    def __init__(self, listener: NetProxyListener):
+    def __init__(self, listener: NetProxyListener) -> None:
         super().__init__()
         self.listener = listener
         listener.connecter = self
         self.nics = listener.nics
         self.n2ns = listener.n2ns
 
-    def add_nic(self, nic):
+    def add_nic(self, nic: NICSim) -> None:
         self.nics.append((nic, False))
 
         # the network this nic connects to now also depends on the proxy
         nic.network.extra_deps.append(self.listener)
 
     # add net2net connection with listening network on the connection side
-    def add_n2n(self, net_c, net_l):
+    def add_n2n(self, net_c: Simulator, net_l: Simulator) -> None:
         self.n2ns.append(((net_c, net_l), False))
         # the connecting network depends on our peer
         net_c.extra_deps.append(self.listener)
 
-    def dependencies(self):
+    def dependencies(self) -> tp.List[Simulator]:
         deps = [self.listener]
         for (nic, local) in self.nics:
             if not local:
@@ -154,7 +157,8 @@ class NetProxyConnecter(NetProxy):
                 deps.append(net_l)
         return deps
 
-    def sockets_cleanup(self, env):
+    def sockets_cleanup(self,
+                        env: 'experiment_environment.ExpEnv') -> tp.List[str]:
         socks = []
         for (nic, local) in self.nics:
             if local:
@@ -165,7 +169,8 @@ class NetProxyConnecter(NetProxy):
         return []
 
     # sockets to wait for indicating the simulator is ready
-    def sockets_wait(self, env):
+    def sockets_wait(self,
+                     env: 'experiment_environment.ExpEnv') -> tp.List[str]:
         socks = []
         for (nic, local) in self.nics:
             if local:
@@ -175,7 +180,7 @@ class NetProxyConnecter(NetProxy):
                 socks.append(env.n2n_eth_path(net_l, net_c))
         return socks
 
-    def run_cmd_base(self, env):
+    def run_cmd_base(self, env: 'experiment_environment.ExpEnv') -> str:
         cmd = (f'-s {env.proxy_shm_path(self)} '
                f'-S {self.shm_size} ')
         for (nic, local) in self.nics:
@@ -192,7 +197,7 @@ class NetProxyConnecter(NetProxy):
 
 class RDMANetProxyListener(NetProxyListener):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: 'experiment_environment.ExpEnv') -> str:
         cmd = f'{env.repodir}/dist/rdma/net_rdma -l '
         cmd += super().run_cmd_base(env)
         return cmd
@@ -200,7 +205,7 @@ class RDMANetProxyListener(NetProxyListener):
 
 class RDMANetProxyConnecter(NetProxyConnecter):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: 'experiment_environment.ExpEnv') -> str:
         cmd = f'{env.repodir}/dist/rdma/net_rdma '
         cmd += super().run_cmd_base(env)
         return cmd
@@ -208,7 +213,7 @@ class RDMANetProxyConnecter(NetProxyConnecter):
 
 class SocketsNetProxyListener(NetProxyListener):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: 'experiment_environment.ExpEnv') -> str:
         cmd = f'{env.repodir}/dist/sockets/net_sockets -l '
         cmd += super().run_cmd_base(env)
         return cmd
@@ -216,7 +221,7 @@ class SocketsNetProxyListener(NetProxyListener):
 
 class SocketsNetProxyConnecter(NetProxyConnecter):
 
-    def run_cmd(self, env):
+    def run_cmd(self, env: 'experiment_environment.ExpEnv') -> str:
         cmd = f'{env.repodir}/dist/sockets/net_sockets '
         cmd += super().run_cmd_base(env)
         return cmd

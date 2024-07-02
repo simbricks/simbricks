@@ -32,9 +32,3 @@ Developer Guide
    :caption: Contents:
 
    devel/arch
-   devel/interface
-   devel/sync
-   devel/adapter
-   devel/style
-
-

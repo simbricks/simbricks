@@ -15,5 +15,3 @@ sims/nic/i40e_bm/*.h
 lib/simbricks/*/*.c
 lib/simbricks/*/*.cc
 lib/simbricks/*/*.h
-trace/*.cc
-trace/*.h
