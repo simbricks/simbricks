@@ -109,6 +109,7 @@ $(d)bmv2/ready: $(d)bmv2 $(lib_netif)
 	+cd $< && ./autogen.sh && \
 	CPPFLAGS=-I$(abspath $(lib_dir)) ./configure && \
 	make -j
+	touch $@
 
 bmv2-clean:
 	-cd $(EXTERNAL_SIMS_DIR)bmv2 && $(MAKE) clean
