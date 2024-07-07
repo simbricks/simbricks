@@ -66,6 +66,7 @@ RUN cd /tmp \
  && make -j`nproc` \
  && make install \
  && rm -rf /tmp/thrift
+ ENV LD_LIBRARY_PATH=/usr/local/lib
 
 # Add non-root user for vs code devcontainer.
 ARG USERNAME=simbricks
