@@ -32,18 +32,18 @@ from simbricks.orchestration.simulator_utils import create_basic_hosts
 # net:  wire/switch/dumbbell/bridge
 # app: UDPs
 
-kinds_of_host = ["qemu"]
-kinds_of_nic = ["cv", "cb", "ib"]
-kinds_of_net = ["wire", "switch", "dumbbell", "bridge", "tofino", "bmv2"]
-kinds_of_app = ["UDPs"]
+kinds_of_host = ['qemu']
+kinds_of_nic = ['cv', 'cb', 'ib']
+kinds_of_net = ['wire', 'switch', 'dumbbell', 'bridge', 'tofino', 'bmv2']
+kinds_of_app = ['UDPs']
 
-rate = "200m"
+rate = '200m'
 
 experiments = []
 
 # set network sim
 for n in kinds_of_net:
-    if n == "wire":
+    if n == 'wire':
         NetClass = sim.WireNet
     elif n == 'switch':
         NetClass = sim.SwitchNet
@@ -61,76 +61,76 @@ for n in kinds_of_net:
     # set nic sim
     for c in kinds_of_nic:
         net = NetClass()
-        e = exp.Experiment("qemu-" + c + "-" + n + "-" + "UDPs")
+        e = exp.Experiment('qemu-' + c + '-' + n + '-' + 'UDPs')
         e.add_network(net)
 
-        if c == "cv":
+        if c == 'cv':
             servers = create_basic_hosts(
                 e,
                 1,
-                "server",
+                'server',
                 net,
                 sim.CorundumVerilatorNIC,
                 sim.QemuHost,
                 node.CorundumLinuxNode,
-                node.IperfUDPServer,
+                node.IperfUDPServer
             )
             clients = create_basic_hosts(
                 e,
                 1,
-                "client",
+                'client',
                 net,
                 sim.CorundumVerilatorNIC,
                 sim.QemuHost,
                 node.CorundumLinuxNode,
                 node.IperfUDPClient,
-                ip_start=2,
+                ip_start=2
             )
 
         elif c == 'cb':
             servers = create_basic_hosts(
                 e,
                 1,
-                "server",
+                'server',
                 net,
                 sim.CorundumBMNIC,
                 sim.QemuHost,
                 node.CorundumLinuxNode,
-                node.IperfUDPServer,
+                node.IperfUDPServer
             )
             clients = create_basic_hosts(
                 e,
                 1,
-                "client",
+                'client',
                 net,
                 sim.CorundumBMNIC,
                 sim.QemuHost,
                 node.CorundumLinuxNode,
                 node.IperfUDPClient,
-                ip_start=2,
+                ip_start=2
             )
 
         elif c == 'ib':
             servers = create_basic_hosts(
                 e,
                 1,
-                "server",
+                'server',
                 net,
                 sim.I40eNIC,
                 sim.QemuHost,
                 node.I40eLinuxNode,
-                node.IperfUDPServer,
+                node.IperfUDPServer
             )
             clients = create_basic_hosts(
                 e,
                 1,
-                "client",
+                'client',
                 net,
                 sim.I40eNIC,
                 sim.QemuHost,
                 node.I40eLinuxNode,
                 node.IperfUDPClient,
-                ip_start=2,
+                ip_start=2
             )
 
         else:
