@@ -910,6 +910,35 @@ class TofinoNet(NetSim):
         return cmd
 
 
+class BMV2Net(NetSim):
+
+    def __init__(self):
+        super().__init__()
+        self.sync = False
+
+    def run_cmd(self, env):
+        cmd = (
+            f'{env.repodir}/sims/external/bmv2'
+            f'/targets/simple_switch/simple_switch'
+        )
+        cmd += (
+            f' --use-simbricks --sync-interval {self.sync_period}'
+            f' --link-latency {self.eth_latency}'
+        )
+
+        if self.sync:
+            cmd += ' --sync-eth'
+        port = 0
+        for _, n in self.connect_sockets(env):
+            cmd += f' -i {port}@{n}'
+            port += 1
+        cmd += ' ' + env.repodir + '/sims/net/p4/basic.json'
+
+        print(cmd)
+
+        return cmd
+
+
 class NS3E2ENet(NetSim):
 
     def __init__(self) -> None:
