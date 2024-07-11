@@ -30,8 +30,10 @@ EXTERNAL_SIMS_DIR := $(d)
 
 $(eval $(call subdir,simics))
 
-external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready
-.PHONY: external gem5-clean qemu-clean ns-3-clean femu-clean
+external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready $(d)bmv2/ready
+.PHONY: external gem5-clean qemu-clean ns-3-clean femu-clean bmv2-clean
+
+
 
 $(d)gem5:
 	git clone https://github.com/simbricks/gem5.git $@
@@ -100,6 +102,19 @@ femu-clean:
 	-+cd $(EXTERNAL_SIMS_DIR)femu && $(MAKE) clean
 	rm -f $(EXTERNAL_SIMS_DIR)femu/ready
 
+$(d)bmv2:
+	git clone https://github.com/simbricks/bmv2.git $@
+
+$(d)bmv2/ready: $(d)bmv2 $(lib_netif)
+	+cd $< && ./autogen.sh && \
+	CPPFLAGS=-I$(abspath $(lib_dir)) ./configure && \
+	$(MAKE) -j
+	touch $@
+
+bmv2-clean:
+	-cd $(EXTERNAL_SIMS_DIR)bmv2 && $(MAKE) clean
+	rm -f $(EXTERNAL_SIMS_DIR)bmv2/ready
+
 DISTCLEAN := $(d)gem5 $(d)qemu $(d)ns-3 $(d)femu
-EXTERNAL_CLEAN_TASKS := gem5-clean qemu-clean ns-3-clean femu-clean
+EXTERNAL_CLEAN_TASKS := gem5-clean qemu-clean ns-3-clean femu-clean bmv2-clean
 include mk/subdir_post.mk
