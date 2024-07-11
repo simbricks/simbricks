@@ -19,12 +19,17 @@ RUN apt-get update \
 	libboost-coroutine-dev \
 	libboost-fiber-dev \
 	libboost-iostreams-dev \
+	libboost-program-options-dev \
 	libelf-dev \
 	libglib2.0-dev \
+	libgmp-dev \
 	libgoogle-perftools-dev \
+	libnanomsg-dev \
 	libpcap-dev \
 	libpixman-1-dev \
 	libprotobuf-dev \
+	libssl-dev \
+	libtool \
 	locales \
 	ninja-build \
 	protobuf-compiler \
@@ -53,6 +58,15 @@ RUN cd /tmp \
  && make -j`nproc` \
  && make install \
  && rm -rf /tmp/verilator
+RUN cd /tmp \
+ && git clone https://github.com/apache/thrift.git \
+ && cd thrift \
+ && ./bootstrap.sh \
+ && ./configure \
+ && make -j`nproc` \
+ && make install \
+ && ldconfig \
+ && rm -rf /tmp/thrift
 
 # Add non-root user for vs code devcontainer.
 ARG USERNAME=simbricks
