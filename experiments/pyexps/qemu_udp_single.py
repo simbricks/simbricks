@@ -34,7 +34,7 @@ from simbricks.orchestration.simulator_utils import create_basic_hosts
 
 kinds_of_host = ['qemu']
 kinds_of_nic = ['cv', 'cb', 'ib']
-kinds_of_net = ['wire', 'switch', 'dumbbell', 'bridge', 'tofino']
+kinds_of_net = ['wire', 'switch', 'dumbbell', 'bridge', 'tofino', 'bmv2']
 kinds_of_app = ['UDPs']
 
 rate = '200m'
@@ -53,6 +53,8 @@ for n in kinds_of_net:
         NetClass = sim.NS3BridgeNet
     elif n == 'tofino':
         NetClass = sim.TofinoNet
+    elif n == 'bmv2':
+        NetClass = sim.BMV2Net
     else:
         raise ValueError(f'unknown network type {n}')
 
