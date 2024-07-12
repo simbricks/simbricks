@@ -58,7 +58,7 @@ struct AXIOperation {
 
 /* Acts as the read part of an AXI Subordinate / Slave component */
 template <size_t BytesAddr, size_t BytesId, size_t BytesData,
-          size_t MaxInFlight = 64>
+          size_t MaxInFlight = 16>
 class AXISubordinateRead {
  public:
   static_assert(BytesAddr <= 8);
@@ -146,7 +146,7 @@ class AXISubordinateRead {
 
 /* Acts as the write part of an AXI Subordinate / Slave component */
 template <size_t BytesAddr, size_t BytesId, size_t BytesData,
-          size_t MaxInFlight = 64>
+          size_t MaxInFlight = 16>
 class AXISubordinateWrite {
  public:
   static_assert(BytesAddr <= 8);
