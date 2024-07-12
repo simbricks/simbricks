@@ -184,6 +184,7 @@ class AXILManager {
   ReadPortT read_port_;
   WritePortT write_port_;
   std::deque<std::variant<AXILOperationR, AXILOperationW>> pending_{};
+  enum { NONE, READ, WRITE } step_on_ = NONE;
 
  public:
   AXILManager(uint8_t *ar_addr, const uint8_t &ar_ready, uint8_t &ar_valid,
@@ -360,23 +361,22 @@ void AXILManager<BytesAddr, BytesData>::step(uint64_t cur_ts) {
   if (pending_.empty()) {
     return;
   }
+  step_on_ = NONE;
   auto &axi_op = pending_.front();
   if (std::holds_alternative<AXILOperationR>(axi_op)) {
     read_port_.step(cur_ts);
+    step_on_ = READ;
   } else if (std::holds_alternative<AXILOperationW>(axi_op)) {
     write_port_.step(cur_ts);
+    step_on_ = WRITE;
   }
 }
 
 template <size_t BytesAddr, size_t BytesData>
 void AXILManager<BytesAddr, BytesData>::step_apply() {
-  if (pending_.empty()) {
-    return;
-  }
-  auto &axi_op = pending_.front();
-  if (std::holds_alternative<AXILOperationR>(axi_op)) {
+  if (step_on_ == READ) {
     read_port_.step_apply();
-  } else if (std::holds_alternative<AXILOperationW>(axi_op)) {
+  } else if (step_on_ == WRITE) {
     write_port_.step_apply();
   }
 }
