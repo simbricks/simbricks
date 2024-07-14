@@ -933,7 +933,11 @@ class BMV2Net(NetSim):
         for _, n in self.connect_sockets(env):
             cmd += f' -i {port}@{n}'
             port += 1
-        cmd += f' {env.repodir}/{self.p4_path}'
+
+        if self.p4_path.startswith('/'):
+            cmd += f' {self.p4_path}'
+        else:
+            cmd += f' {env.repodir}/{self.p4_path}'
 
         print(cmd)
 
