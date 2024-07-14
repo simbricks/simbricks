@@ -915,6 +915,7 @@ class BMV2Net(NetSim):
     def __init__(self):
         super().__init__()
         self.sync = False
+        self.p4_path = 'sims/net/p4/basic.json'
 
     def run_cmd(self, env):
         cmd = (
@@ -932,7 +933,7 @@ class BMV2Net(NetSim):
         for _, n in self.connect_sockets(env):
             cmd += f' -i {port}@{n}'
             port += 1
-        cmd += ' ' + env.repodir + '/sims/net/p4/basic.json'
+        cmd += f' {env.repodir}/{self.p4_path}'
 
         print(cmd)
 
