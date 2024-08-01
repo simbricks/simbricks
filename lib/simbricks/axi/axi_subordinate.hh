@@ -35,8 +35,8 @@
 #include <optional>
 #include <unordered_map>
 
-// #define AXI_R_DEBUG 0
-// #define AXI_W_DEBUG 0
+// #define AXI_R_DEBUG
+// #define AXI_W_DEBUG
 
 namespace simbricks {
 struct AXIOperation {
@@ -258,7 +258,7 @@ void AXISubordinateRead<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
 
   /* data stream complete */
   if (r_last_ && r_valid_ && r_ready_) {
-#if AXI_R_DEBUG
+#ifdef AXI_R_DEBUG
     std::cout << main_time_ << " AXI R: completed id=0x" << std::hex
               << cur_op_->id << std::dec << "\n";
 #endif
@@ -272,7 +272,7 @@ void AXISubordinateRead<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
     r_id_tmp_ = 0;
   } else if (r_ready_ && r_valid_) {
     /* data handshake complete, issue the next data segment */
-#if AXI_R_DEBUG
+#ifdef AXI_R_DEBUG
     std::cout << main_time_ << " AXI R: data handshake id=0x" << std::hex
               << cur_op_->id << std::dec << " off=" << cur_off_ << "\n";
 #endif
@@ -295,7 +295,7 @@ void AXISubordinateRead<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
     assert(
         res.second &&
         "AXISubordinateRead::step() id_op_map_.emplace() must be successful");
-#if AXI_R_DEBUG
+#ifdef AXI_R_DEBUG
     std::cout << main_time_ << " AXI R: new op addr=" << axi_op.addr
               << " len=" << axi_op.len << " id=0x" << std::hex << axi_op.id
               << std::dec << "\n";
@@ -310,7 +310,7 @@ void AXISubordinateRead<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
   if (cur_op_ == nullptr && !pending_.empty()) {
     AXIOperation &axi_op = pending_.front();
     if (axi_op.completed) {
-#if AXI_R_DEBUG
+#ifdef AXI_R_DEBUG
       std::cout << main_time_ << " AXI R: starting response id=0x" << std::hex
                 << axi_op.id << std::dec << "\n";
 #endif
@@ -337,7 +337,7 @@ template <size_t BytesAddr, size_t BytesId, size_t BytesData,
           size_t MaxInFlight>
 void AXISubordinateRead<BytesAddr, BytesId, BytesData, MaxInFlight>::read_done(
     uint64_t simbricks_id, const uint8_t *data) {
-#if AXI_R_DEBUG
+#ifdef AXI_R_DEBUG
   std::cout << main_time_ << " AXI R: read_done id=0x" << std::hex
             << simbricks_id << std::dec << "\n";
 #endif
@@ -373,7 +373,7 @@ void AXISubordinateWrite<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
 
   /* write response handshake complete */
   if (b_valid_ && b_ready_) {
-#if AXI_W_DEBUG
+#ifdef AXI_W_DEBUG
     std::cout << main_time_
               << " AXI W: response handshake complete id=" << b_id_tmp_ << "\n";
 #endif
@@ -393,7 +393,7 @@ void AXISubordinateWrite<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
     uint64_t step_size = pow2(aw_size_);
     assert(aw_burst_ == 1 && "we currently only support INCR bursts");
     size_t len = step_size * (aw_len_ + 1);
-#if AXI_W_DEBUG
+#ifdef AXI_W_DEBUG
     std::cout << main_time_ << " AXI W: new request id=" << axi_id
               << " addr=" << addr << " len=" << len
               << " step_size=" << step_size << "\n";
@@ -405,7 +405,7 @@ void AXISubordinateWrite<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
   /* handshake on data port, read next segment*/
   if (w_valid_ && w_ready_) {
     size_t align = (cur_op_->addr + cur_off_) % BytesData;
-#if AXI_W_DEBUG
+#ifdef AXI_W_DEBUG
     std::cout << "AXI W next segment: id=" << cur_op_->id
               << " cur_off=" << cur_off_ << " step_size=" << cur_op_->step_size
               << " align=" << align << "\n";
@@ -418,7 +418,7 @@ void AXISubordinateWrite<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
 
     /* last segment of data, send write request */
     if (w_last_) {
-#if AXI_W_DEBUG
+#ifdef AXI_W_DEBUG
       std::cout << "AXI W Issuing request for id=" << cur_op_->id
                 << " addr=" << cur_op_->addr << " len=" << cur_op_->len << "\n";
 #endif
@@ -448,7 +448,7 @@ template <size_t BytesAddr, size_t BytesId, size_t BytesData,
           size_t MaxInFlight>
 void AXISubordinateWrite<BytesAddr, BytesId, BytesData,
                          MaxInFlight>::write_done(uint64_t axi_id) {
-#if AXI_W_DEBUG
+#ifdef AXI_W_DEBUG
   std::cout << main_time_ << " AXI W completed write for id=" << axi_id << "\n";
 #endif
   num_pending_--;

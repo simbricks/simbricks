@@ -37,8 +37,8 @@
 #include <utility>
 #include <variant>
 
-// #define AXIL_R_DEBUG 0
-// #define AXIL_W_DEBUG 0
+// #define AXIL_R_DEBUG
+// #define AXIL_W_DEBUG
 
 namespace simbricks {
 struct AXILOperationR {
@@ -251,7 +251,7 @@ void AXILManagerReadPort<BytesAddr, BytesData>::step(uint64_t cur_ts) {
     assert(cur_op_ != nullptr);
     ar_valid_tmp_ = 0;
     ar_addr_tmp_ = 0;
-#if AXIL_R_DEBUG
+#ifdef AXIL_R_DEBUG
     std::cout << main_time_
               << " AXIL R addr handshake done id=" << cur_op_->req_id << "\n";
 #endif
@@ -260,7 +260,7 @@ void AXILManagerReadPort<BytesAddr, BytesData>::step(uint64_t cur_ts) {
   /* data handshake complete */
   if (r_ready_ && r_valid_) {
     assert(cur_op_ != nullptr);
-#if AXIL_R_DEBUG
+#ifdef AXIL_R_DEBUG
     std::cout << main_time_
               << " AXIL R read data segment id=" << cur_op_->req_id << "\n";
 #endif
@@ -275,7 +275,7 @@ void AXILManagerReadPort<BytesAddr, BytesData>::step(uint64_t cur_ts) {
     handling_op_ = true;
     ar_addr_tmp_ = cur_op_->addr;
     ar_valid_tmp_ = 1;
-#if AXIL_R_DEBUG
+#ifdef AXIL_R_DEBUG
     std::cout << main_time_ << " AXIL R issuing new op id=" << cur_op_->req_id
               << " addr=" << cur_op_->addr << "\n";
 #endif
@@ -303,7 +303,7 @@ void AXILManagerWritePort<BytesAddr, BytesData>::step(uint64_t cur_ts) {
   if (aw_valid_ && aw_ready_) {
     aw_valid_tmp_ = 0;
     aw_addr_tmp_ = 0;
-#if AXIL_W_DEBUG
+#ifdef AXIL_W_DEBUG
     std::cout << main_time_
               << " AXIL W addr handshake done id=" << cur_op_->req_id << "\n";
 #endif
@@ -311,7 +311,7 @@ void AXILManagerWritePort<BytesAddr, BytesData>::step(uint64_t cur_ts) {
 
   /* handshake for data complete */
   if (w_ready_ && w_valid_) {
-#if AXIL_W_DEBUG
+#ifdef AXIL_W_DEBUG
     std::cout << main_time_
               << " AXIL W data handshake done id=" << cur_op_->req_id << "\n";
 #endif
@@ -321,7 +321,7 @@ void AXILManagerWritePort<BytesAddr, BytesData>::step(uint64_t cur_ts) {
 
   /* response handshake complete */
   if (b_ready_ && b_valid_) {
-#if AXIL_W_DEBUG
+#ifdef AXIL_W_DEBUG
     std::cout << main_time_ << " AXIL W completed id=" << cur_op_->req_id
               << "\n";
 #endif
@@ -332,7 +332,7 @@ void AXILManagerWritePort<BytesAddr, BytesData>::step(uint64_t cur_ts) {
 
   /* issue new request */
   if (!handling_op_ && cur_op_ != nullptr) {
-#if AXIL_W_DEBUG
+#ifdef AXIL_W_DEBUG
     std::cout << main_time_ << " AXIL W issuing new op id=" << cur_op_->req_id
               << " addr=" << cur_op_->addr << "\n";
 #endif
