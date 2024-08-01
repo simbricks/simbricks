@@ -351,7 +351,8 @@ template <size_t BytesAddr, size_t BytesId, size_t BytesData,
 void AXISubordinateRead<BytesAddr, BytesId, BytesData,
                         MaxInFlight>::send_next_data_segment() {
   size_t align = (cur_op_->addr + cur_off_) % BytesData;
-  size_t num_bytes = std::min(BytesData - align, cur_op_->step_size);
+  size_t num_bytes = std::min(
+      {BytesData - align, cur_op_->step_size, cur_op_->len - cur_off_});
   std::memset(r_data_tmp_, 0, BytesData);
   std::memcpy(r_data_tmp_ + align, cur_op_->buf.get() + cur_off_, num_bytes);
 
@@ -409,7 +410,8 @@ void AXISubordinateWrite<BytesAddr, BytesId, BytesData, MaxInFlight>::step(
               << " cur_off=" << cur_off_ << " step_size=" << cur_op_->step_size
               << " align=" << align << "\n";
 #endif
-    size_t num_bytes = std::min(BytesData - align, cur_op_->step_size);
+    size_t num_bytes = std::min(
+        {BytesData - align, cur_op_->step_size, cur_op_->len - cur_off_});
     std::memcpy(cur_op_->buf.get() + cur_off_, w_data_ + align, num_bytes);
     cur_off_ += num_bytes;
     assert(cur_off_ <= cur_op_->len && "AXI W cur_off_ > cur_op_->len");
