@@ -536,6 +536,13 @@ class Gem5Host(HostSim):
         return cmd
 
 
+class Gem5KvmHost(Gem5Host):
+
+    def __init__(self, node_config: NodeConfig) -> None:
+        super().__init__(node_config)
+        self.cpu_type = 'X86KvmCPU'
+
+
 class SimicsHost(HostSim):
     """Simics host simulator."""
 
