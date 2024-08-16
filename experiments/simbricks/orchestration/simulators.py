@@ -86,7 +86,7 @@ class Simulator(object):
     def start_delay(self) -> int:
         return 5
 
-    def wait_terminate(self) -> bool:
+    def wait_terminate(self, env: ExpEnv) -> bool:
         return False
 
 
@@ -243,7 +243,7 @@ class NetSim(Simulator):
     def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return [s for (_, s) in self.listen_sockets(env)]
 
-    def wait_terminate(self) -> bool:
+    def wait_terminate(self, env: ExpEnv) -> bool:
         return self.wait
 
     def init_network(self) -> None:
@@ -368,7 +368,7 @@ class HostSim(Simulator):
             deps.append(dev)
         return deps
 
-    def wait_terminate(self) -> bool:
+    def wait_terminate(self, env: ExpEnv) -> bool:
         return self.wait
 
 
@@ -534,6 +534,9 @@ class Gem5Host(HostSim):
 
         cmd += ' '.join(self.extra_config_args)
         return cmd
+
+    def wait_terminate(self, env: ExpEnv) -> bool:
+        return True if env.create_cp else self.wait
 
 
 class Gem5KvmHost(Gem5Host):
@@ -717,6 +720,9 @@ class SimicsHost(HostSim):
         )
 
         return cmd + '-e run'
+
+    def wait_terminate(self, env: ExpEnv) -> bool:
+        return True if env.create_cp else self.wait
 
 
 class CorundumVerilatorNIC(NICSim):
