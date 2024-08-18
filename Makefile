@@ -124,7 +124,9 @@ help:
 	@echo "  clang-format: reformat source (use with caution)"
 
 .PHONY: all clean clean-external clean-all distclean lint lint-all \
-	lint-cpplint lint-clang-tidy lint-clang-format clang-format help
+	lint-cpplint lint-clang-tidy lint-clang-format clang-format help \
+	lint-yapf format-yapf lint-isort format-isort lint-pylint typecheck-python \
+	lint-python
 
 include mk/subdir_post.mk
 -include $(DEPS_ALL)
