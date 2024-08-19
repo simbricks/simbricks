@@ -26,6 +26,8 @@ import io
 import tarfile
 import typing as tp
 
+from simbricks.orchestration.experiment.experiment_environment import ExpEnv
+
 
 class AppConfig():
     """Defines the application to run on a node or host."""
@@ -120,7 +122,7 @@ class NodeConfig():
             self.run_cmds() + self.cleanup_cmds() + exit_es
         return '\n'.join(es)
 
-    def make_tar(self, path: str) -> None:
+    def make_tar(self, env: ExpEnv, path: str) -> None:
         with tarfile.open(path, 'w:') as tar:
             # add main run script
             cfg_i = tarfile.TarInfo('guest/run.sh')
@@ -133,7 +135,7 @@ class NodeConfig():
             cfg_f.close()
 
             # add additional config files
-            for (n, f) in self.config_files().items():
+            for (n, f) in self.config_files(env).items():
                 f_i = tarfile.TarInfo('guest/' + n)
                 f_i.mode = 0o777
                 f.seek(0, io.SEEK_END)
@@ -164,7 +166,8 @@ class NodeConfig():
         """Commands to run to cleanup node."""
         return []
 
-    def config_files(self) -> tp.Dict[str, tp.IO]:
+    # pylint: disable=unused-argument
+    def config_files(self, env: ExpEnv) -> tp.Dict[str, tp.IO]:
         """
         Additional files to put inside the node, which are mounted under
         `/tmp/guest/`.
@@ -224,9 +227,9 @@ class CorundumLinuxNode(LinuxNode):
         self.drivers.append('/tmp/guest/mqnic.ko')
 
     # pylint: disable=consider-using-with
-    def config_files(self) -> tp.Dict[str, tp.IO]:
-        m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
-        return {**m, **super().config_files()}
+    def config_files(self, env: ExpEnv) -> tp.Dict[str, tp.IO]:
+        m = {'mqnic.ko': open(f'{env.repodir}/images/mqnic/mqnic.ko', 'rb')}
+        return {**m, **super().config_files(env)}
 
 
 class E1000LinuxNode(LinuxNode):
@@ -268,7 +271,7 @@ class MtcpNode(NodeConfig):
             f'ip addr add {self.ip}/{self.prefix} dev dpdk0'
         ]
 
-    def config_files(self) -> tp.Dict[str, tp.IO]:
+    def config_files(self, env: ExpEnv) -> tp.Dict[str, tp.IO]:
         m = {
             'mtcp.conf':
                 self.strfile(
@@ -286,7 +289,7 @@ class MtcpNode(NodeConfig):
                 )
         }
 
-        return {**m, **super().config_files()}
+        return {**m, **super().config_files(env)}
 
 
 class TASNode(NodeConfig):
