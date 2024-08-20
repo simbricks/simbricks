@@ -60,6 +60,7 @@ class ExperimentBaseRunner(ABC):
         graph = {}
         for sim in sims:
             deps = sim.dependencies() + sim.extra_deps
+            print(f'deps of {sim}: {sim.dependencies()}')
             graph[sim] = set()
             for d in deps:
                 graph[sim].add(d)
@@ -196,6 +197,7 @@ class ExperimentBaseRunner(ABC):
         try:
             self.out.set_start()
             graph = self.sim_graph()
+            print(graph)
             ts = graphlib.TopologicalSorter(graph)
             ts.prepare()
             while ts.is_active():
