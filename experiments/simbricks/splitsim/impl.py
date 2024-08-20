@@ -5,6 +5,7 @@ import itertools
 import simbricks.splitsim.specification as spec
 import simbricks.orchestration.experiments as exp
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
+import tarfile
 
 class Simulator(object):
     """Base class for all simulators."""
@@ -102,7 +103,7 @@ class NICSim(PCIDevSim):
 
     def add(self, nic: spec.NIC):
         self.nics.append(nic)
-        nic.sim = self
+        # nic.sim = self
         self.experiment.add_nic(self)
         self.name = f'{nic.id}'
 
@@ -178,7 +179,7 @@ class HostSim(Simulator):
     def __init__(self, e: exp.Experiment):
         super().__init__(e)
         self.experiment = e
-        self.hosts: tp.List[spec.Host] = []
+        self.hosts: spec.Host = []
         # need to change type of list to PCI dev
         self.pcidevs: tp.List[spec.NIC] = []
 
@@ -197,19 +198,44 @@ class HostSim(Simulator):
         for h in self.hosts:
             for dev in h.nics:
                 deps.append(dev.sim)
+        print(f'host deps: {deps}')
         return deps
     
     def add(self, host: spec.Host):
-        self.hosts.append(host)
+        self.hosts = host
         self.pcidevs = host.nics
-        host.sim = self
-        self.name = f'{self.hosts[0].id}'
+        # host.sim = self
+        self.name = f'{self.hosts.id}'
         self.sync_period = host.sync_period
         self.pci_latency = host.pci_channel.latency
         self.sync = host.sync
 
         self.experiment.add_host(self)
-    
+
+    def config_str(self) -> str:
+        return []
+
+    def make_tar(self, path: str) -> None:
+        with tarfile.open(path, 'w:') as tar:
+            # add main run script
+            cfg_i = tarfile.TarInfo('guest/run.sh')
+            cfg_i.mode = 0o777
+            cfg_f = self.strfile(self.config_str())
+            cfg_f.seek(0, io.SEEK_END)
+            cfg_i.size = cfg_f.tell()
+            cfg_f.seek(0, io.SEEK_SET)
+            tar.addfile(tarinfo=cfg_i, fileobj=cfg_f)
+            cfg_f.close()
+
+            # add additional config files
+            for (n, f) in self.hosts.config_files().items():
+                f_i = tarfile.TarInfo('guest/' + n)
+                f_i.mode = 0o777
+                f.seek(0, io.SEEK_END)
+                f_i.size = f.tell()
+                f.seek(0, io.SEEK_SET)
+                tar.addfile(tarinfo=f_i, fileobj=f)
+                f.close()    
 
     def wait_terminate(self) -> bool:
         return self.wait
@@ -238,6 +264,15 @@ class Gem5Sim(HostSim):
 
     def resreq_mem(self) -> int:
         return 4096
+
+    def config_str(self) -> str:
+        cp_es = [] if self.nockp else ['m5 checkpoint']
+        exit_es = ['m5 exit']
+        es = self.hosts.prepare_pre_cp() + self.hosts.app.prepare_pre_cp(self) + cp_es + \
+            self.hosts.prepare_post_cp() + self.hosts.app.prepare_post_cp(self) + \
+            self.hosts.run_cmds() + self.hosts.cleanup_cmds() + exit_es
+        return '\n'.join(es)
+
 
     def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
         cmds = [f'mkdir -p {env.gem5_cpdir(self)}']
@@ -304,6 +339,14 @@ class QemuSim(HostSim):
     def resreq_mem(self) -> int:
         return 8192
     
+    def config_str(self) -> str:
+        cp_es = ['echo ready to checkpoint']
+        exit_es = ['poweroff -f']
+        es = self.hosts.prepare_pre_cp() + self.hosts.app.prepare_pre_cp(self) + cp_es + \
+            self.hosts.prepare_post_cp() + self.hosts.app.prepare_post_cp(self) + \
+            self.hosts.run_cmds() + self.hosts.cleanup_cmds() + exit_es
+        return '\n'.join(es)
+
 
     def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
         return [
@@ -375,13 +418,14 @@ class NetSim(Simulator):
     
     def add(self, switch: spec.Switch):
         self.switches.append(switch)
-        switch.sim = self
+        # switch.sim = self
         self.experiment.add_network(self)
         self.name = f'{switch.id}'
 
-        for s in self.switches:
-            for n in s.netdevs:
-                 self.nicSim.append(n.net[0].sim)
+
+        for ndev in switch.netdevs:
+            
+            self.nicSim.append(n.net[0].sim)
 
     def connect_sockets(self, env: ExpEnv) -> tp.List[tp.Tuple[Simulator, str]]:
         sockets = []

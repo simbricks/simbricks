@@ -67,7 +67,7 @@ class Host(SimObject):
 
         self.pci_channel: PCI = None
         self.nics: tp.List[NIC] = []
-        self.sim = None
+        # self.sim = None
         self.nic_driver = ['i40e']
 
         self.sync = True
@@ -98,43 +98,6 @@ class Host(SimObject):
         """String to be appended to kernel command line."""
         self.nockp = 0
         """Do not create a checkpoint in Gem5."""
-
-    
-    def config_str(self) -> str:
-        import simbricks.splitsim.impl as impl
-        if type(self.sim) is impl.Gem5Sim :
-            cp_es = [] if self.nockp else ['m5 checkpoint']
-            exit_es = ['m5 exit']
-        else:
-            cp_es = ['echo ready to checkpoint']
-            exit_es = ['poweroff -f']
-
-        es = self.prepare_pre_cp() + self.app.prepare_pre_cp(self) + cp_es + \
-            self.prepare_post_cp() + self.app.prepare_post_cp(self) + \
-            self.run_cmds() + self.cleanup_cmds() + exit_es
-        return '\n'.join(es)
-
-    def make_tar(self, path: str) -> None:
-        with tarfile.open(path, 'w:') as tar:
-            # add main run script
-            cfg_i = tarfile.TarInfo('guest/run.sh')
-            cfg_i.mode = 0o777
-            cfg_f = self.strfile(self.config_str())
-            cfg_f.seek(0, io.SEEK_END)
-            cfg_i.size = cfg_f.tell()
-            cfg_f.seek(0, io.SEEK_SET)
-            tar.addfile(tarinfo=cfg_i, fileobj=cfg_f)
-            cfg_f.close()
-
-            # add additional config files
-            for (n, f) in self.config_files().items():
-                f_i = tarfile.TarInfo('guest/' + n)
-                f_i.mode = 0o777
-                f.seek(0, io.SEEK_END)
-                f_i.size = f.tell()
-                f.seek(0, io.SEEK_SET)
-                tar.addfile(tarinfo=f_i, fileobj=f)
-                f.close()
 
 
     def run_cmds(self) -> tp.List[str]:
@@ -205,7 +168,7 @@ class LinuxHost(Host):
         return super().prepare_post_cp() + l
 
     def config_files(self) -> tp.Dict[str, tp.IO]:
-        
+        m = {}
         for d in self.nic_driver:
             if d[0] == '/':
                 m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
@@ -229,7 +192,7 @@ class NIC(SimObject):
         self.mac: tp.Optional[str] = None
         self.host: tp.List[Host] = []
         self.net = [] # NIC or NetDev connected through eth channel
-        self.sim = None
+        # self.sim = None
 
 
 class i40eNIC(NIC):
@@ -256,7 +219,7 @@ class NetDev(SimObject):
         self.mac: tp.Optional[str] = None
         self.ip: tp.Optional[str] = None
         self.net = [] # NIC or NetDev connected through eth channel
-        self.sim = None
+        # self.sim = None
 
 
 class Switch(SimObject):
@@ -271,7 +234,7 @@ class Switch(SimObject):
         self.eth_latency = 500 # ns second
         ###
         self.netdevs : tp.List[NetDev] = []
-        self.sim = None
+        # self.sim = None
 
     
     def install_netdev(self, netdev: NetDev):
