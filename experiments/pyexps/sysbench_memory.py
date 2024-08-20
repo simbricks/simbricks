@@ -28,6 +28,7 @@ Used to compare latency and throughput of disaggregated memory to local one.
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
+from simbricks.orchestration.experiment.experiment_environment import ExpEnv
 
 host_types = ['gem5', 'simics']
 mem_types = ['local', 'basicmem']
@@ -60,9 +61,9 @@ class SysbenchMemoryBenchmark(node.AppConfig):
         """Number of cores to run the benchmark on in parallel."""
 
     # pylint: disable=consider-using-with
-    def config_files(self):
-        m = {'farmem.ko': open('../images/farmem/farmem.ko', 'rb')}
-        return {**m, **super().config_files()}
+    def config_files(self, env: ExpEnv):
+        m = {'farmem.ko': open(f'{env.repodir}/images/farmem/farmem.ko', 'rb')}
+        return {**m, **super().config_files(env)}
 
     def run_cmds(self, _):
         cmds = [

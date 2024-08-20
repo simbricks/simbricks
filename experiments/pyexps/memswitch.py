@@ -23,6 +23,7 @@
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
+from simbricks.orchestration.experiment.experiment_environment import ExpEnv
 
 experiments = []
 num_of_netmem = [1, 2, 3, 4]
@@ -45,10 +46,10 @@ class MemTest(node.AppConfig):
         self.disaggregated = disaggregated
         self.time_limit = time_limit
 
-    def config_files(self):
+    def config_files(self, env: ExpEnv):
         # pylint: disable-next=consider-using-with
-        m = {'farmem.ko': open('../images/farmem/farmem.ko', 'rb')}
-        return {**m, **super().config_files()}
+        m = {'farmem.ko': open(f'{env.repodir}/images/farmem/farmem.ko', 'rb')}
+        return {**m, **super().config_files(env)}
 
     def run_cmds(self, _):
         commands = [
