@@ -46,7 +46,8 @@ class AppConfig():
         restored."""
         return []
 
-    def config_files(self) -> tp.Dict[str, tp.IO]:
+    # pylint: disable=unused-argument
+    def config_files(self, env: ExpEnv) -> tp.Dict[str, tp.IO]:
         """
         Additional files to put inside the node, which are mounted under
         `/tmp/guest/`.
@@ -175,7 +176,7 @@ class NodeConfig():
         Specified in the following format: `filename_inside_node`:
         `IO_handle_of_file`
         """
-        return self.app.config_files()
+        return self.app.config_files(env)
 
     def strfile(self, s: str) -> io.BytesIO:
         """
