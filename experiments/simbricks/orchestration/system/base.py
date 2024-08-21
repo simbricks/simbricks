@@ -21,10 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from abc import (abstractmethod, ABC)
-import io
 import typing as tp
-import tarfile
-import itertools
 
 class System():
     """ Defines System configuration of the whole simulation """
