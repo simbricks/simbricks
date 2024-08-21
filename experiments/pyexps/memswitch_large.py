@@ -20,10 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import simbricks.orchestration.experiment.experiment_environment as env
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
-from simbricks.orchestration.experiment.experiment_environment import ExpEnv
 
 experiments = []
 num_mem_lat = [500, 100, 20]  #ns
@@ -47,10 +47,13 @@ class MemTest(node.AppConfig):
         self.disaggregated = disaggregated
         self.time_limit = time_limit
 
-    def config_files(self, env: ExpEnv):
-        # pylint: disable-next=consider-using-with
-        m = {'farmem.ko': open(f'{env.repodir}/images/farmem/farmem.ko', 'rb')}
-        return {**m, **super().config_files(env)}
+    def config_files(self, environment: env.ExpEnv):
+        m = {
+            'farmem.ko':
+                # pylint: disable-next=consider-using-with
+                open(f'{environment.repodir}/images/farmem/farmem.ko', 'rb')
+        }
+        return {**m, **super().config_files(environment)}
 
     def run_cmds(self, _):
         commands = []

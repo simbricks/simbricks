@@ -20,10 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import simbricks.orchestration.experiment.experiment_environment as env
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as nodec
 import simbricks.orchestration.simulators as sim
-from simbricks.orchestration.experiment.experiment_environment import ExpEnv
 
 experiments = []
 
@@ -35,9 +35,12 @@ class FarMemTest(nodec.AppConfig):
         self.size = size
 
     # pylint: disable=consider-using-with
-    def config_files(self, env: ExpEnv):
-        m = {'farmem.ko': open(f'{env.repodir}/images/farmem/farmem.ko', 'rb')}
-        return {**m, **super().config_files(env)}
+    def config_files(self, environment: env.ExpEnv):
+        m = {
+            'farmem.ko':
+                open(f'{environment.repodir}/images/farmem/farmem.ko', 'rb')
+        }
+        return {**m, **super().config_files(environment)}
 
     def run_cmds(self, node):
         return [
