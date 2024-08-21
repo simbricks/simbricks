@@ -24,6 +24,8 @@ import itertools
 import typing as tp
 
 from simbricks.orchestration import simulators
+import simbricks.orchestration.simulation as simulation
+import simbricks.orchestration.system as system
 from simbricks.orchestration.proxy import NetProxyConnecter, NetProxyListener
 from simbricks.orchestration.simulators import (
     HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
@@ -68,6 +70,9 @@ class Experiment(object):
         self.networks: tp.List[NetSim] = []
         """The network simulators to run."""
         self.metadata: tp.Dict[str, tp.Any] = {}
+
+        self.sys_sim_map: tp.Dict[system.Component, simulation.Simulator] = {}
+        """System component and its simulator pairs"""
 
     @property
     def nics(self):
