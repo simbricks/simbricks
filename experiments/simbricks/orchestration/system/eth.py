@@ -20,9 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import typing as tp
-
-import simbricks.orchestration.system.base as base
+from simbricks.orchestration.system import base
 
 
 class EthInterface(base.Interface):
@@ -50,7 +48,7 @@ class EthSimpleNIC(base.Component):
 class EthSwitch(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.eth_ifs: tp.List[EthInterface] = []
+        self.eth_ifs: list[EthInterface] = []
 
     def if_add(self, i: EthInterface) -> None:
         self.eth_ifs.append(i)

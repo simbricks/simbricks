@@ -20,24 +20,21 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import typing as tp
-from abc import (ABC, abstractmethod)
+import abc
 import os.path
-
-if tp.TYPE_CHECKING:  # prevent cyclic import
-    import simbricks.orchestration.system.host as host
-    import simbricks.orchestration.experiment.experiment_environment as expenv
+from simbricks.orchestration.system.host import base
+from simbricks.orchestration.experiment import experiment_environment as expenv
 
 
-class DiskImage(ABC):
+class DiskImage(abc.ABC):
     def __init__(self, h: host.Host) -> None:
         self.host = h
 
-    @abstractmethod
-    def available_formats(self) -> tp.List[str]:
+    @abc.abstractmethod
+    def available_formats(self) -> list[str]:
         return []
 
-    @abstractmethod
+    @abc.abstractmethod
     async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
         pass
 
@@ -47,9 +44,9 @@ class ExternalDiskImage(DiskImage):
     def __init__(self, h: host.FullSystemHost, path: str) -> None:
         super().__init__(h)
         self.path = path
-        self.formats = ['raw', 'qcow2']
+        self.formats = ["raw", "qcow2"]
 
-    def available_formats(self) -> tp.List[str]:
+    def available_formats(self) -> list[str]:
         return self.formats
 
     async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
@@ -62,19 +59,19 @@ class DistroDiskImage(DiskImage):
     def __init__(self, h: host.FullSystemHost, name: str) -> None:
         super().__init__(h)
         self.name = name
-        self.formats = ['raw', 'qcow2']
+        self.formats = ["raw", "qcow2"]
 
-    def available_formats(self) -> tp.List[str]:
+    def available_formats(self) -> list[str]:
         return self.formats
 
     async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
         path = env.hd_path(self.name)
-        if format == 'raw':
-            path += '.raw'
-        elif format == 'qcow':
+        if format == "raw":
+            path += ".raw"
+        elif format == "qcow":
             pass
         else:
-            raise RuntimeError('Unsupported disk format')
+            raise RuntimeError("Unsupported disk format")
         assert os.path.isfile(self.path)
         return self.path
 
@@ -84,8 +81,8 @@ class LinuxConfigDiskImage(DiskImage):
     def __init__(self, h: host.LinuxHost) -> None:
         super().__init__(h)
 
-    def available_formats(self) -> tp.List[str]:
-        return ['raw']
+    def available_formats(self) -> list[str]:
+        return ["raw"]
 
     async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
         # TODO: build tar from host path parameters and then return path
@@ -100,8 +97,8 @@ class PackerDiskImage(DiskImage):
         super().__init__(h)
         self.config_path = packer_config_path
 
-    def available_formats(self) -> tp.List[str]:
-        return ['raw', 'qcow']
+    def available_formats(self) -> list[str]:
+        return ["raw", "qcow"]
 
     async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
         # TODO: invoke packer to build the image if necessary

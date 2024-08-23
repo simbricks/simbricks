@@ -20,9 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import typing as tp
-
-import simbricks.orchestration.system.base as base
+from simbricks.orchestration.system import base
 
 
 class MemHostInterface(base.Interface):
@@ -59,5 +57,5 @@ class MemSimpleDevice(base.Component):
         super().__init__(s)
         self.mem_if = MemDeviceInterface()
 
-    def interfaces(self) -> tp.List[base.Interface]:
+    def interfaces(self) -> list[base.Interface]:
         return [self.mem_if]

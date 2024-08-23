@@ -20,28 +20,29 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import typing as tp
-
-import simbricks.orchestration.system.base as base
-import simbricks.orchestration.system.pcie as pcie
-import simbricks.orchestration.system.eth as eth
+from simbricks.orchestration.system import base
+from simbricks.orchestration.system import pcie
+from simbricks.orchestration.system import eth
 
 
 class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
 
-    def interfaces(self) -> tp.List[base.Interface]:
+    def interfaces(self) -> list[base.Interface]:
         return [self.pci_if, self.eth_if]
 
 
 class IntelI40eNIC(SimplePCIeNIC):
-    pass
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
 
 
 class IntelE1000NIC(SimplePCIeNIC):
-    pass
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
 
 
 class CorundumNIC(SimplePCIeNIC):
-    pass
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)

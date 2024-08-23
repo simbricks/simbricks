@@ -21,22 +21,53 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing as tp
-import abc
 import io
-from simbricks.orchestration.system.host import base
-from simbricks.orchestration.experiment import experiment_environment as expenv
+from os import path
+from simbricks.orchestration.system import base
+from simbricks.orchestration.system import eth
+from simbricks.orchestration.system import mem
+from simbricks.orchestration.system import pcie
+from simbricks.orchestration.system.host import disk_images
+from simbricks.orchestration.system.host import app
 
 
-class Application(abc.ABC):
-    def __init__(self, h: host.Host) -> None:
-        self.host = h
+class Host(base.Component):
+    def __init__(self, s: base.System):
+        super().__init__(s)
+        self.ifs: list[pcie.PCIeHostInterface] = []
+        self.applications: list[Application]
+
+    def interfaces(self) -> list[base.Interface]:
+        return self.pcie_ifs + self.eth_ifs + self.mem_ifs
+
+    def add_if(self, i: base.Interface) -> None:
+        self.ifs.append(i)
+
+    def add_app(self, a: Application) -> None:
+        self.applications.append(a)
 
 
-# Note AK: Maybe we can factor most of the duplicate calls with the host out
-# into a separate module.
-class LinuxApplication(abc.ABC):
-    def __init__(self, h: host.LinuxHost) -> None:
-        self.host = h
+class FullSystemHost(Host):
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
+        self.memory = 512
+        self.cores = 1
+        self.cpu_freq = '3GHz'
+        self.disks: list[disk_images.DiskImage] = []
+
+    def add_disk(self, disk: DiskImage) -> None:
+        self.disks.append(disk)
+
+
+class LinuxHost(FullSystemHost):
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
+        self.applications: list[LinuxApplication] = []
+        self.load_modules = []
+        self.kcmd_append = ''
+
+    def add_app(self, a: LinuxApplication) -> None:
+        self.applications.append(a)
 
     def run_cmds(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run on node."""
@@ -54,16 +85,19 @@ class LinuxApplication(abc.ABC):
         Specified in the following format: `filename_inside_node`:
         `IO_handle_of_file`
         """
-        return {}
+        cfg_files = {}
+        for app in self.applications:
+            cfg_files |= self.app.config_files(env)
+        return cfg_files
 
     def prepare_pre_cp(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
         return [
-            "set -x",
-            "export HOME=/root",
-            "export LANG=en_US",
-            'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:'
-            + '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"',
+            'set -x',
+            'export HOME=/root',
+            'export LANG=en_US',
+            'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:' + \
+                '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"'
         ]
 
     def prepare_post_cp(self, env: expenv.ExpEnv) -> list[str]:
@@ -78,4 +112,4 @@ class LinuxApplication(abc.ABC):
         Using this, you can create a file with the string as its content on the
         simulated node.
         """
-        return io.BytesIO(bytes(s, encoding="UTF-8"))
+        return io.BytesIO(bytes(s, encoding='UTF-8'))
