@@ -20,9 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import typing as tp
-
-import simbricks.orchestration.system.base as base
+from simbricks.orchestration.system import base
 
 
 class PCIeHostInterface(base.Interface):

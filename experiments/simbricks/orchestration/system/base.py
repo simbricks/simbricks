@@ -20,36 +20,36 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from abc import (abstractmethod, ABC)
-import typing as tp
+import abc
 
-class System():
-    """ Defines System configuration of the whole simulation """
+
+class System:
+    """Defines System configuration of the whole simulation"""
 
     def __init__(self) -> None:
-        self.hosts: tp.List[Component] = []
+        self.hosts: list[Component] = []
 
     def add_component(self, c: Component) -> None:
         assert c.system == self
 
 
-class Component(ABC):
+class Component(abc.ABC):
     def __init__(self, s: System) -> None:
         s.system = s
         s.add_component(self)
 
-    @abstractmethod
-    def interfaces(self) -> tp.List[Interface]:
-        return None
+    @abc.abstractmethod
+    def interfaces(self) -> list[Interface]:
+        return []
 
-    def channels(self) -> tp.List[Channel]:
+    def channels(self) -> list[Channel]:
         return [i.channel for i in self.interfaces() if i.is_connected()]
 
 
-class Interface(ABC):
+class Interface(abc.ABC):
     def __init__(self, c: Component) -> None:
         self.component = c
-        self.channel: tp.Optional[Channel] = None
+        self.channel: Channel | None = None
 
     def is_connected(self) -> bool:
         return self.channel is not None
@@ -62,13 +62,13 @@ class Interface(ABC):
         self.channel = c
 
 
-class Channel(ABC):
+class Channel(abc.ABC):
     def __init__(self, a: Interface, b: Interface) -> None:
         self.latency = 500
         self.a: Interface = a
         self.b: Interface = b
 
-    def interfaces(self) -> tp.List[Interface]:
+    def interfaces(self) -> list[Interface]:
         return [self.a, self.b]
 
     def disconnect(self):
