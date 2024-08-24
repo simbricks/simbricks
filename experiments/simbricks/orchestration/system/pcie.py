@@ -58,5 +58,5 @@ class PCIeSimpleDevice(base.Component):
         super().__init__(s)
         self.pci_if = PCIeDeviceInterface()
 
-    def interfaces(self) -> tp.List[base.Interface]:
+    def interfaces(self) -> list[base.Interface]:
         return [self.pci_if]
