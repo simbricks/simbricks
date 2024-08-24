@@ -28,14 +28,14 @@ from simbricks.orchestration.experiment import experiment_environment as expenv
 
 
 class Application(abc.ABC):
-    def __init__(self, h: host.Host) -> None:
+    def __init__(self, h: base.Host) -> None:
         self.host = h
 
 
 # Note AK: Maybe we can factor most of the duplicate calls with the host out
 # into a separate module.
 class LinuxApplication(abc.ABC):
-    def __init__(self, h: host.LinuxHost) -> None:
+    def __init__(self, h: base.LinuxHost) -> None:
         self.host = h
 
     def run_cmds(self, env: expenv.ExpEnv) -> list[str]:
