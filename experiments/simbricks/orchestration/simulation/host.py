@@ -20,55 +20,51 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.orchestration.simulation.base as base
-import simbricks.orchestration.system as system
+import io
+import tarfile
+import math
 import typing as tp
+import simbricks.orchestration.simulation.base as sim_base
+import simbricks.orchestration.system.host.base as system_host
+import simbricks.orchestration.system.pcie as system_pcie
+import simbricks.orchestration.system as system
 import simbricks.orchestration.experiments as exp
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 
 
-class HostSim(Simulator):
+class HostSim(sim_base.Simulator):
 
     def __init__(self, e: exp.Experiment):
         super().__init__(e)
-        self.experiment = e
-        self.hosts: spec.Host = []
-        # need to change type of list to PCI dev
-        self.pcidevs: tp.List[spec.NIC] = []
-
-        self.sync_period = 500
-        """Period in nanoseconds of sending synchronization messages from this
-        device to connected components."""
-        self.pci_latency = 500
-        self.sync = True
+        self.hosts: system_host.Host = []
         self.wait = True
     
     def full_name(self) -> str:
         return 'host.' + self.name
 
-    def dependencies(self) -> tp.List[Simulator]:
+    def dependencies(self) -> tp.List[sim_base.Simulator]:
         deps = []
         for h in self.hosts:
-            for dev in h.nics:
-                deps.append(dev.sim)
-        print(f'host deps: {deps}')
+            for dev in h.ifs:
+                # todo: find_sim looks up all the component-simulator mappings
+                #  from experimetn object and returns the simulator used for this component
+                deps.append(find_sim(dev.component, self.experiment)) 
         return deps
     
-    def add(self, host: spec.Host):
-        self.hosts = host
-        self.pcidevs = host.nics
-        # host.sim = self
+    def add(self, host: system_host.Host):
+        self.hosts.append(host)
         self.name = f'{self.hosts.id}'
-        self.sync_period = host.sync_period
-        self.pci_latency = host.pci_channel.latency
-        self.sync = host.sync
-
         self.experiment.add_host(self)
 
     def config_str(self) -> str:
         return []
 
     def make_tar(self, path: str) -> None:
+
+        # TODO: update it to make multiple tar files for each host component
+        # Make tar file for the first host component
+        # One tar file for all the hosts in the simulator.
+
         with tarfile.open(path, 'w:') as tar:
             # add main run script
             cfg_i = tarfile.TarInfo('guest/run.sh')
@@ -81,7 +77,8 @@ class HostSim(Simulator):
             cfg_f.close()
 
             # add additional config files
-            for (n, f) in self.hosts.config_files().items():
+            host = self.hosts[0]
+            for (n, f) in host.config_files().items():
                 f_i = tarfile.TarInfo('guest/' + n)
                 f_i.mode = 0o777
                 f.seek(0, io.SEEK_END)
@@ -98,7 +95,6 @@ class Gem5Sim(HostSim):
 
     def __init__(self, e: exp.Experiment):
         super().__init__(e)
-        self.experiment = e
         self.name = ''
 
         self.cpu_type_cp = 'X86KvmCPU'
@@ -121,9 +117,10 @@ class Gem5Sim(HostSim):
     def config_str(self) -> str:
         cp_es = [] if self.nockp else ['m5 checkpoint']
         exit_es = ['m5 exit']
-        es = self.hosts.prepare_pre_cp() + self.hosts.app.prepare_pre_cp(self) + cp_es + \
-            self.hosts.prepare_post_cp() + self.hosts.app.prepare_post_cp(self) + \
-            self.hosts.run_cmds() + self.hosts.cleanup_cmds() + exit_es
+        host = self.hosts[0]
+        es = host.prepare_pre_cp() + host.app.prepare_pre_cp(self) + cp_es + \
+            host.prepare_post_cp() + host.app.prepare_post_cp(self) + \
+            host.run_cmds() + host.cleanup_cmds() + exit_es
         return '\n'.join(es)
 
 
@@ -160,11 +157,18 @@ class Gem5Sim(HostSim):
         )
 
 
-        for dev in self.pcidevs:
+        for dev in self.hosts[0].ifs:
+            if (dev == dev.channel.a):
+                peer_if = dev.channel.b
+            else:
+                peer_if = dev.channel.a 
+
+            peer_sim = find_sim(peer_if, self.experiment)
+            chn_sim = find_sim(dev.channel)
             cmd += (
-                f'--simbricks-pci=connect:{env.dev_pci_path(dev.sim)}'
-                f':latency={self.pci_latency}ns'
-                f':sync_interval={self.sync_period}ns'
+                f'--simbricks-pci=connect:{env.dev_pci_path(peer_sim)}'
+                f':latency={dev.channel.latency}ns'
+                f':sync_interval={chn_sim.sync_period}ns'
             )
             if cpu_type == 'TimingSimpleCPU':
                 cmd += ':sync'
