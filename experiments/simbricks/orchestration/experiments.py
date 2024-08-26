@@ -24,8 +24,21 @@ import itertools
 import typing as tp
 
 from simbricks.orchestration import simulators
-import simbricks.orchestration.simulation as simulation
-import simbricks.orchestration.system as system
+import simbricks.orchestration.simulation.base as sim_base
+import simbricks.orchestration.simulation.net as sim_net
+import simbricks.orchestration.simulation.host as sim_host
+import simbricks.orchestration.simulation.channel as sim_channel
+import simbricks.orchestration.simulation.pcidev as sim_pcidev
+
+
+
+import simbricks.orchestration.system.base as system_base
+import simbricks.orchestration.system.host.base as system_host_base
+import simbricks.orchestration.system.eth as system_eth
+import simbricks.orchestration.system.mem as system_mem
+import simbricks.orchestration.system.nic as system_nic
+import simbricks.orchestration.system.pcie as system_pcie
+
 from simbricks.orchestration.proxy import NetProxyConnecter, NetProxyListener
 from simbricks.orchestration.simulators import (
     HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
@@ -71,7 +84,7 @@ class Experiment(object):
         """The network simulators to run."""
         self.metadata: tp.Dict[str, tp.Any] = {}
 
-        self.sys_sim_map: tp.Dict[system.Component, simulation.Simulator] = {}
+        self.sys_sim_map: tp.Dict[system_base.Component, sim_base.Simulator] = {}
         """System component and its simulator pairs"""
 
     @property
@@ -134,6 +147,14 @@ class Experiment(object):
         for s in self.all_simulators():
             cores += s.resreq_cores()
         return cores
+    
+    def find_sim(self, comp: system_base.Component) -> sim_base.Simulator:
+        """Returns the used simulator object for the system component."""
+        for c, sim in self.sys_sim_map.items():
+            if c == comp:
+                return sim
+            
+        raise Exception("Simulator Not Found")
 
 
 class DistributedExperiment(Experiment):
