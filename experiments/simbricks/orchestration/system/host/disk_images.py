@@ -21,13 +21,15 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import abc
+import io
 import os.path
+import tarfile
 from simbricks.orchestration.system.host import base
 from simbricks.orchestration.experiment import experiment_environment as expenv
 
 
 class DiskImage(abc.ABC):
-    def __init__(self, h: host.Host) -> None:
+    def __init__(self, h: base.Host) -> None:
         self.host = h
 
     @abc.abstractmethod
@@ -41,7 +43,7 @@ class DiskImage(abc.ABC):
 
 # Disk image where user just provides a path
 class ExternalDiskImage(DiskImage):
-    def __init__(self, h: host.FullSystemHost, path: str) -> None:
+    def __init__(self, h: base.FullSystemHost, path: str) -> None:
         super().__init__(h)
         self.path = path
         self.formats = ["raw", "qcow2"]
@@ -56,7 +58,7 @@ class ExternalDiskImage(DiskImage):
 
 # Disk images shipped with simbricks
 class DistroDiskImage(DiskImage):
-    def __init__(self, h: host.FullSystemHost, name: str) -> None:
+    def __init__(self, h: base.FullSystemHost, name: str) -> None:
         super().__init__(h)
         self.name = name
         self.formats = ["raw", "qcow2"]
@@ -78,22 +80,44 @@ class DistroDiskImage(DiskImage):
 
 # Builds the Tar with the commands to run etc.
 class LinuxConfigDiskImage(DiskImage):
-    def __init__(self, h: host.LinuxHost) -> None:
+    def __init__(self, h: base.LinuxHost) -> None:
         super().__init__(h)
+        self.host: base.LinuxHost
 
     def available_formats(self) -> list[str]:
         return ["raw"]
 
     async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
         # TODO: build tar from host path parameters and then return path
-        pass
+        path = env.dynamic_img_path(self, format)
+        with tarfile.open(path, 'w:') as tar:
+            # add main run script
+            cfg_i = tarfile.TarInfo('guest/run.sh')
+            cfg_i.mode = 0o777
+            cfg_f = self.host.strfile(self.host.config_str())
+            cfg_f.seek(0, io.SEEK_END)
+            cfg_i.size = cfg_f.tell()
+            cfg_f.seek(0, io.SEEK_SET)
+            tar.addfile(tarinfo=cfg_i, fileobj=cfg_f)
+            cfg_f.close()
+
+            # add additional config files
+            for (n, f) in self.host.config_files(env).items():
+                f_i = tarfile.TarInfo('guest/' + n)
+                f_i.mode = 0o777
+                f.seek(0, io.SEEK_END)
+                f_i.size = f.tell()
+                f.seek(0, io.SEEK_SET)
+                tar.addfile(tarinfo=f_i, fileobj=f)
+                f.close()
+
 
 
 # This is an additional example: building disk images directly from python
 # Could of course also have a version that generates the packer config from
 # python
 class PackerDiskImage(DiskImage):
-    def __init__(self, h: host.FullSystemHost, packer_config_path: str) -> None:
+    def __init__(self, h: base.FullSystemHost, packer_config_path: str) -> None:
         super().__init__(h)
         self.config_path = packer_config_path
 

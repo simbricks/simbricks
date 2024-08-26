@@ -36,6 +36,7 @@ class System:
 class Component(abc.ABC):
     def __init__(self, s: System) -> None:
         s.system = s
+        s.parameters = {}
         s.add_component(self)
 
     @abc.abstractmethod
