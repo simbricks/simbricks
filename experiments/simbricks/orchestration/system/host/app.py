@@ -34,17 +34,24 @@ class Application(abc.ABC):
 
 # Note AK: Maybe we can factor most of the duplicate calls with the host out
 # into a separate module.
-class LinuxApplication(abc.ABC):
+class BaseLinuxApplication(abc.ABC):
     def __init__(self, h: base.LinuxHost) -> None:
         self.host = h
+        self.start_delay: float | None = None
+        self.end_delay: float | None = None
+        self.wait = True
 
+    @abc.abstractmethod
     def run_cmds(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run on node."""
-        return self.app.run_cmds(self)
+        pass
 
     def cleanup_cmds(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run to cleanup node."""
-        return []
+        if self.end_delay is None:
+            return []
+        else:
+            return [f'sleep {self.start_delay}']
 
     def config_files(self, env: expenv.ExpEnv) -> dict[str, tp.IO]:
         """
@@ -68,7 +75,10 @@ class LinuxApplication(abc.ABC):
 
     def prepare_post_cp(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run to prepare node after checkpoint restore."""
-        return []
+        if self.end_delay is None:
+            return []
+        else:
+            return [f'sleep {self.end_delay}']
 
     def strfile(self, s: str) -> io.BytesIO:
         """
@@ -79,3 +89,48 @@ class LinuxApplication(abc.ABC):
         simulated node.
         """
         return io.BytesIO(bytes(s, encoding="UTF-8"))
+
+
+class PingClient(BaseLinuxApplication):
+    def __init__(self, server_ip: str = '192.168.64.1') -> None:
+        super().__init__()
+        self.server_ip = server_ip
+
+    def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
+        return [f'ping {self.server_ip} -c 10']
+
+
+class Sleep(BaseLinuxApplication):
+    def __init__(self, delay: float = 10) -> None:
+        super().__init__()
+        self.delay = delay
+
+    def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
+        return [f'sleep {self.delay}']
+
+
+class NetperfServer(BaseLinuxApplication):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
+        return ['netserver', 'sleep infinity']
+
+
+class NetperfClient(BaseLinuxApplication):
+    def __init__(self, server_ip: str = '192.168.64.1') -> None:
+        super().__init__()
+        self.server_ip = server_ip
+        self.duration_tp = 10
+        self.duration_lat = 10
+
+    def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
+        return [
+            'netserver',
+            'sleep 0.5',
+            f'netperf -H {self.server_ip} -l {self.duration_tp}',
+            (
+                f'netperf -H {self.server_ip} -l {self.duration_lat} -t TCP_RR'
+                ' -- -o mean_latency,p50_latency,p90_latency,p99_latency'
+            )
+        ]
