@@ -48,13 +48,14 @@ class HostSim(sim_base.Simulator):
             for dev in h.ifs:
                 # todo: find_sim looks up all the component-simulator mappings
                 #  from experimetn object and returns the simulator used for this component
-                deps.append(find_sim(dev.component, self.experiment)) 
+                deps.append(self.experiment.find_sim(dev.component)) 
         return deps
     
     def add(self, host: system_host.Host):
         self.hosts.append(host)
         self.name = f'{self.hosts.id}'
         self.experiment.add_host(self)
+        self.experiment.sys_sim_map[host] = self
 
     def config_str(self) -> str:
         return []
@@ -163,8 +164,8 @@ class Gem5Sim(HostSim):
             else:
                 peer_if = dev.channel.a 
 
-            peer_sim = find_sim(peer_if, self.experiment)
-            chn_sim = find_sim(dev.channel)
+            peer_sim = self.experiment.find_sim(peer_if)
+            chn_sim = self.experiment.find_sim(dev.channel)
             cmd += (
                 f'--simbricks-pci=connect:{env.dev_pci_path(peer_sim)}'
                 f':latency={dev.channel.latency}ns'
@@ -199,22 +200,22 @@ class QemuSim(HostSim):
     def config_str(self) -> str:
         cp_es = ['echo ready to checkpoint']
         exit_es = ['poweroff -f']
-        es = self.hosts.prepare_pre_cp() + self.hosts.app.prepare_pre_cp(self) + cp_es + \
-            self.hosts.prepare_post_cp() + self.hosts.app.prepare_post_cp(self) + \
-            self.hosts.run_cmds() + self.hosts.cleanup_cmds() + exit_es
+        es = self.hosts[0].prepare_pre_cp() + self.hosts[0].app.prepare_pre_cp(self) + cp_es + \
+            self.hosts[0].prepare_post_cp() + self.hosts[0].app.prepare_post_cp(self) + \
+            self.hosts[0].run_cmds() + self.hosts[0].cleanup_cmds() + exit_es
         return '\n'.join(es)
 
 
     def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
         return [
             f'{env.qemu_img_path} create -f qcow2 -o '
-            f'backing_file="{env.hd_path(self.hosts[0].disk_image)}" '
+            f'backing_file="{env.hd_path(self.hosts[0].disks[0])}" '
             f'{env.hdcopy_path(self)}'
         ]
 
     def run_cmd(self, env: ExpEnv) -> str:
         accel = ',accel=kvm:tcg' if not self.sync else ''
-        if self.hosts[0].kcmd_append:
+        if self.hosts[0].disks[0].kcmd_append:
             kcmd_append = ' ' + self.hosts[0].kcmd_append
         else:
             kcmd_append = ''
@@ -244,12 +245,20 @@ class QemuSim(HostSim):
 
             cmd += f' -icount shift={shift},sleep=off '
 
-        for dev in self.pcidevs:
-            cmd += f'-device simbricks-pci,socket={env.dev_pci_path(dev.sim)}'
+        for dev in self.hosts[0].ifs:
+            if (dev == dev.channel.a):
+                peer_if = dev.channel.b
+            else:
+                peer_if = dev.channel.a 
+            
+            peer_sim = self.experiment.find_sim(peer_if)
+            chn_sim = self.experiment.find_sim(dev.channel)
+
+            cmd += f'-device simbricks-pci,socket={env.dev_pci_path(peer_sim)}'
             if self.sync:
                 cmd += ',sync=on'
-                cmd += f',pci-latency={self.pci_latency}'
-                cmd += f',sync-period={self.sync_period}'
+                cmd += f',pci-latency={dev.channel.latency}'
+                cmd += f',sync-period={chn_sim.sync_period}'
                 # if self.sync_drift is not None:
                 #     cmd += f',sync-drift={self.sync_drift}'
                 # if self.sync_offset is not None:
