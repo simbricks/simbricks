@@ -22,7 +22,6 @@
 
 import itertools
 import typing as tp
-
 from simbricks.orchestration import simulators
 import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.simulation.net as sim_net
@@ -59,7 +58,7 @@ class Experiment(object):
 
         Can be used to run only a selection of experiments.
         """
-        self.timeout: tp.Optional[int] = None
+        self.timeout: int | None = None
         """Timeout for experiment in seconds."""
         self.checkpoint = False
         """
@@ -72,20 +71,41 @@ class Experiment(object):
         self.no_simbricks = False
         """If `true`, no simbricks adapters are used in any of the
         simulators."""
-        self.hosts: tp.List[HostSim] = []
+        self.hosts: list[HostSim] = []
         """The host simulators to run."""
-        self.pcidevs: tp.List[PCIDevSim] = []
+        self.pcidevs: list[PCIDevSim] = []
         """The PCIe device simulators to run."""
-        self.memdevs: tp.List[simulators.MemDevSim] = []
+        self.memdevs: list[simulators.MemDevSim] = []
         """The memory device simulators to run."""
-        self.netmems: tp.List[simulators.NetMemSim] = []
+        self.netmems: list[simulators.NetMemSim] = []
         """The network memory simulators to run."""
-        self.networks: tp.List[NetSim] = []
+        self.networks: list[NetSim] = []
         """The network simulators to run."""
-        self.metadata: tp.Dict[str, tp.Any] = {}
+        self.metadata: dict[str, tp.Any] = {}
 
-        self.sys_sim_map: tp.Dict[system_base.Component, sim_base.Simulator] = {}
+        self.sys_sim_map: dict[system.Component, simulation.Simulator] = {}
         """System component and its simulator pairs"""
+
+        self._chan_map: dict[system.Channel, simulation.channel.Channel] = {}
+        """Channel spec and its instanciation"""
+
+    def add_spec_sim_map(self, sys: system.component, sim: simulation.Simulator):
+        """ Add a mapping from specification to simulation instance"""
+        if sys in sys_sim_map:
+            raise Exception("system component is already mapped by simulator")
+        self.sys_sim_map[sys] = sim
+
+    def is_channel_instantiated(self, chan: system.Channel) -> bool:
+        return chan in self._chan_map
+
+    def retrieve_or_create_channel(self, chan: system.Channel) -> simulation.channel.Channel:
+        if self.is_channel_instantiated(chan):
+            return self._chan_map[chan]
+
+        # TODO: pass in specification into channel constructor
+        channel = simulation.channel.Channel(self)
+        self._chan_map[chan] = channel
+        return channel
 
     @property
     def nics(self):
@@ -98,7 +118,7 @@ class Experiment(object):
                 raise ValueError('Duplicate host name')
         self.hosts.append(sim)
 
-    def add_nic(self, sim: tp.Union[NICSim, I40eMultiNIC]):
+    def add_nic(self, sim: NICSim | I40eMultiNIC):
         """Add a NIC simulator to the experiment."""
         self.add_pcidev(sim)
 
@@ -164,12 +184,12 @@ class DistributedExperiment(Experiment):
         super().__init__(name)
         self.num_hosts = num_hosts
         """Number of hosts to use."""
-        self.host_mapping: tp.Dict[Simulator, int] = {}
+        self.host_mapping: dict[Simulator, int] = {}
         """Mapping from simulator to host ID."""
-        self.proxies_listen: tp.List[NetProxyListener] = []
-        self.proxies_connect: tp.List[NetProxyConnecter] = []
+        self.proxies_listen: list[NetProxyListener] = []
+        self.proxies_connect: list[NetProxyConnecter] = []
 
-    def add_proxy(self, proxy: tp.Union[NetProxyListener, NetProxyConnecter]):
+    def add_proxy(self, proxy: NetProxyListener | NetProxyConnecter):
         if proxy.listen:
             self.proxies_listen.append(tp.cast(NetProxyListener, proxy))
         else:
