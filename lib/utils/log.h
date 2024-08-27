@@ -283,6 +283,10 @@ inline void LogError(const char *msg) {
   sim_log::Logger::GetLogger().log_stdout(LogLevel::error, msg);
 }
 
+inline void FlushLog() {
+  sim_log::Logger::GetLogger().Flush();
+}
+
 #else
 
 template <typename... Args>
