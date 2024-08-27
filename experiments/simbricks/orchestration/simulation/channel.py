@@ -21,14 +21,25 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing as tp
-import simbricks.orchestration.simulation.base as base
+import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.experiments as exp
+import simbricks.orchestration.system.base as system_base
+
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 
-class Channel(base.Simulator):
+class Channel(sim_base.Simulator):
 
     def __init__(self, e: exp.Experiment):
         super().__init__(e)
         self.sync_period = 500 # nano second
+        self.sys_channel: system_base.Channel = None
+    
+    def full_name(self) -> str:
+        return 'channel.' + self.name
+    
+    def add(self, ch: system_base.Channel):
+        self.sys_channel = ch
+        self.name = f'{ch.id}'
+        self.experiment.sys_sim_map[ch] = self
 
     
