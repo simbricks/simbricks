@@ -1,5 +1,5 @@
-# Copyright 2021 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2021-2024, Max Planck Institute for Software Systems,
+# National University of Singapore, and Carnegie Mellon University
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -22,10 +22,15 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,corundum))
-$(eval $(call subdir,corundum_bm))
-$(eval $(call subdir,e1000_gem5))
-$(eval $(call subdir,enso_bm))
-$(eval $(call subdir,i40e_bm))
+bin_enso_bm := $(d)enso_bm
 
+OBJS := $(addprefix $(d),enso_bm.o logger.o)
+
+$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
+
+$(bin_enso_bm): $(OBJS) $(lib_nicbm) $(lib_nicif) $(lib_netif) $(lib_pcie) \
+    $(lib_base) -lboost_fiber -lboost_context -lpthread
+
+CLEAN := $(bin_enso_bm) $(OBJS)
+ALL := $(bin_enso_bm)
 include mk/subdir_post.mk
