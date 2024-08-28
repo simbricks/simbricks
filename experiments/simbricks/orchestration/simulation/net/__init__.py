@@ -19,27 +19,3 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-import typing as tp
-import simbricks.orchestration.simulation.base as sim_base
-import simbricks.orchestration.experiments as exp
-import simbricks.orchestration.system.base as system_base
-
-from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
-
-
-class Channel(sim_base.Simulator):
-
-    def __init__(self, e: exp.Experiment, chan: system_base.Channel):
-        super().__init__(e)
-        self._synchronized: bool = True
-        self.sync_period: int = 500  # nano second
-        self.sys_channel: system_base.Channel = chan
-
-    def full_name(self) -> str:
-        return "channel." + self.name
-
-    # def add(self, ch: system_base.Channel):
-    #     self.sys_channel = ch
-    #     self.name = f"{ch.id}"
-    #     self.experiment.sys_sim_map[ch] = self
