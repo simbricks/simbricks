@@ -29,8 +29,6 @@ import simbricks.orchestration.simulation.host as sim_host
 import simbricks.orchestration.simulation.channel as sim_channel
 import simbricks.orchestration.simulation.pcidev as sim_pcidev
 
-
-
 import simbricks.orchestration.system.base as system_base
 import simbricks.orchestration.system.host.base as system_host_base
 import simbricks.orchestration.system.eth as system_eth
@@ -40,7 +38,12 @@ import simbricks.orchestration.system.pcie as system_pcie
 
 from simbricks.orchestration.proxy import NetProxyConnecter, NetProxyListener
 from simbricks.orchestration.simulators import (
-    HostSim, I40eMultiNIC, NetSim, NICSim, PCIDevSim, Simulator
+    HostSim,
+    I40eMultiNIC,
+    NetSim,
+    NICSim,
+    PCIDevSim,
+    Simulator,
 )
 
 
@@ -86,24 +89,25 @@ class Experiment(object):
         self.sys_sim_map: dict[system.Component, simulation.Simulator] = {}
         """System component and its simulator pairs"""
 
-        self._chan_map: dict[system.Channel, simulation.channel.Channel] = {}
+        self._chan_map: dict[system_base.Channel, sim_channel.Channel] = {}
         """Channel spec and its instanciation"""
 
     def add_spec_sim_map(self, sys: system.component, sim: simulation.Simulator):
-        """ Add a mapping from specification to simulation instance"""
+        """Add a mapping from specification to simulation instance"""
         if sys in sys_sim_map:
             raise Exception("system component is already mapped by simulator")
         self.sys_sim_map[sys] = sim
 
-    def is_channel_instantiated(self, chan: system.Channel) -> bool:
+    def is_channel_instantiated(self, chan: system_base.Channel) -> bool:
         return chan in self._chan_map
 
-    def retrieve_or_create_channel(self, chan: system.Channel) -> simulation.channel.Channel:
+    def retrieve_or_create_channel(
+        self, chan: system_base.Channel
+    ) -> sim_channel.Channel:
         if self.is_channel_instantiated(chan):
             return self._chan_map[chan]
 
-        # TODO: pass in specification into channel constructor
-        channel = simulation.channel.Channel(self)
+        channel = sim_channel.Channel(self, chan)
         self._chan_map[chan] = channel
         return channel
 
@@ -115,7 +119,7 @@ class Experiment(object):
         """Add a host simulator to the experiment."""
         for h in self.hosts:
             if h.name == sim.name:
-                raise ValueError('Duplicate host name')
+                raise ValueError("Duplicate host name")
         self.hosts.append(sim)
 
     def add_nic(self, sim: NICSim | I40eMultiNIC):
@@ -126,26 +130,26 @@ class Experiment(object):
         """Add a PCIe device simulator to the experiment."""
         for d in self.pcidevs:
             if d.name == sim.name:
-                raise ValueError('Duplicate pcidev name')
+                raise ValueError("Duplicate pcidev name")
         self.pcidevs.append(sim)
 
     def add_memdev(self, sim: simulators.MemDevSim):
         for d in self.memdevs:
             if d.name == sim.name:
-                raise ValueError('Duplicate memdev name')
+                raise ValueError("Duplicate memdev name")
         self.memdevs.append(sim)
 
     def add_netmem(self, sim: simulators.NetMemSim):
         for d in self.netmems:
             if d.name == sim.name:
-                raise ValueError('Duplicate netmems name')
+                raise ValueError("Duplicate netmems name")
         self.netmems.append(sim)
 
     def add_network(self, sim: NetSim) -> None:
         """Add a network simulator to the experiment."""
         for n in self.networks:
             if n.name == sim.name:
-                raise ValueError('Duplicate net name')
+                raise ValueError("Duplicate net name")
         self.networks.append(sim)
 
     def all_simulators(self) -> tp.Iterable[Simulator]:
@@ -167,13 +171,13 @@ class Experiment(object):
         for s in self.all_simulators():
             cores += s.resreq_cores()
         return cores
-    
+
     def find_sim(self, comp: system_base.Component) -> sim_base.Simulator:
         """Returns the used simulator object for the system component."""
         for c, sim in self.sys_sim_map.items():
             if c == comp:
                 return sim
-            
+
         raise Exception("Simulator Not Found")
 
 

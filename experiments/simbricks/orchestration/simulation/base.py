@@ -20,17 +20,22 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import typing as tp
+import abc
 import simbricks.orchestration.experiments as exp
-from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
+from simbricks.orchestration.system import base as sys_base
+from simbricks.orchestration.simulation import channel as sim_chan
+from simbricks.orchestration.experiment import experiment_environment_new as exp_env
+from simbricks.orchestration.instantiation import base as inst_base
 
-class Simulator(object):
+
+class Simulator(abc.ABC):
     """Base class for all simulators."""
 
     def __init__(self, e: exp.Experiment) -> None:
-        self.extra_deps: tp.List[Simulator] = []
-        self.name = ''
+        self.extra_deps: list[Simulator] = []
+        self.name = ""
         self.experiment = e
+        self._components: set[sys_base.Component] = []
 
     def resreq_cores(self) -> int:
         """
@@ -50,30 +55,51 @@ class Simulator(object):
 
     def full_name(self) -> str:
         """Full name of the simulator."""
-        return ''
+        return ""
 
     # pylint: disable=unused-argument
-    def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
+    def prep_cmds(self, env: exp_env.ExpEnv) -> list[str]:
         """Commands to prepare execution of this simulator."""
         return []
 
-    # pylint: disable=unused-argument
-    def run_cmd(self, env: ExpEnv) -> tp.Optional[str]:
-        """Command to execute this simulator."""
-        return None
+    # TODO: call this in subclasses
+    def _add_component(self, comp: sys_base.Channel) -> None:
+        self._components.add(comp)
 
-    def dependencies(self):
+    def _chan_needs_instance(self, chan: sys_base.Channel) -> bool:
+        if (
+            chan.a.component in self._components
+            and chan.b.component in self._components
+        ):
+            return False
+        return True
+
+    def _get_sock_path(
+        self, inst: inst_base.Instantiation, chan: sys_base.Channel
+    ) -> tuple[sim_chan.Channel, inst_base.Socket] | tuple[None, None]:
+        if not self._chan_needs_instance(chan):
+            return None, None
+        channel = self.experiment.retrieve_or_create_channel(chan)
+        return channel, inst.get_socket_path(channel)
+
+    # pylint: disable=unused-argument
+    @abc.abstractmethod
+    def run_cmd(self, env: exp_env.ExpEnv) -> str:
+        """Command to execute this simulator."""
+        return ""
+
+    def dependencies(self) -> list[Simulator]:
         """Other simulators to execute before this one."""
         return []
 
     # Sockets to be cleaned up
     # pylint: disable=unused-argument
-    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
+    def sockets_cleanup(self, env: exp_env.ExpEnv) -> list[str]:
         return []
 
     # sockets to wait for indicating the simulator is ready
     # pylint: disable=unused-argument
-    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
+    def sockets_wait(self, env: exp_env.ExpEnv) -> list[str]:
         return []
 
     def start_delay(self) -> int:
