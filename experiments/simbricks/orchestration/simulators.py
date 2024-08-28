@@ -86,7 +86,7 @@ class Simulator(object):
     def start_delay(self) -> int:
         return 5
 
-    def wait_terminate(self) -> bool:
+    def wait_terminate(self, env: ExpEnv) -> bool:
         return False
 
 
@@ -243,7 +243,7 @@ class NetSim(Simulator):
     def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
         return [s for (_, s) in self.listen_sockets(env)]
 
-    def wait_terminate(self) -> bool:
+    def wait_terminate(self, env: ExpEnv) -> bool:
         return self.wait
 
     def init_network(self) -> None:
@@ -368,7 +368,7 @@ class HostSim(Simulator):
             deps.append(dev)
         return deps
 
-    def wait_terminate(self) -> bool:
+    def wait_terminate(self, env: ExpEnv) -> bool:
         return self.wait
 
 
@@ -444,6 +444,15 @@ class QemuHost(HostSim):
         # qemu does not currently support mem device ports
         assert len(self.memdevs) == 0
         return cmd
+
+
+class QemuIcountHost(QemuHost):
+    """QEMU host simulator that uses instruction counting for
+    synchronization."""
+
+    def __init__(self, node_config: NodeConfig) -> None:
+        super().__init__(node_config)
+        self.sync = True
 
 
 class Gem5Host(HostSim):
@@ -534,6 +543,16 @@ class Gem5Host(HostSim):
 
         cmd += ' '.join(self.extra_config_args)
         return cmd
+
+    def wait_terminate(self, env: ExpEnv) -> bool:
+        return True if env.create_cp else self.wait
+
+
+class Gem5KvmHost(Gem5Host):
+
+    def __init__(self, node_config: NodeConfig) -> None:
+        super().__init__(node_config)
+        self.cpu_type = 'X86KvmCPU'
 
 
 class SimicsHost(HostSim):
@@ -710,6 +729,9 @@ class SimicsHost(HostSim):
         )
 
         return cmd + '-e run'
+
+    def wait_terminate(self, env: ExpEnv) -> bool:
+        return True if env.create_cp else self.wait
 
 
 class CorundumVerilatorNIC(NICSim):

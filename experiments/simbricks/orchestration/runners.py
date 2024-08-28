@@ -103,7 +103,7 @@ class ExperimentBaseRunner(ABC):
         if delay > 0:
             await asyncio.sleep(delay)
 
-        if sim.wait_terminate():
+        if sim.wait_terminate(self.env):
             self.wait_sims.append(sc)
 
         if self.verbose:
@@ -125,7 +125,7 @@ class ExperimentBaseRunner(ABC):
             path = self.env.cfgtar_path(host)
             if self.verbose:
                 print('preparing config tar:', path)
-            host.node_config.make_tar(path)
+            host.node_config.make_tar(self.env, path)
             executor = self.sim_executor(host)
             task = asyncio.create_task(executor.send_file(path, self.verbose))
             copies.append(task)
