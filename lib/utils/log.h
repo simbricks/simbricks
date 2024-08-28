@@ -331,6 +331,9 @@ inline void LogError(const char *fmt, Args &&...args) {
 inline void LogError(const char *msg) {
 }
 
+inline void FlushLog() {
+}
+
 #endif
 
 }  // namespace sim_log
