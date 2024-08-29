@@ -22,7 +22,6 @@
 
 import abc
 import sys
-from 
 from simbricks.orchestration import experiments
 from simbricks.orchestration.simulation import base
 from simbricks.orchestration.system import eth
@@ -52,7 +51,7 @@ class NetSim(base.Simulator):
     # TODO
     def sockets_cleanup(self, env: exp_env.ExpEnv) -> list[str]:
         pass
-    
+
     # TODO
     def sockets_wait(self, env: exp_env.ExpEnv) -> list[str]:
         pass
@@ -93,10 +92,10 @@ class SwitchNet(NetSim):
         run_sync = False
         sockets: list[inst_base.Socket] = []
         for chan in self._switch_spec.channels():
-            channel, socket = self._get_sock_path(inst=inst, chan=chan)
+            channel, socket = self._get_socket_and_chan(inst=inst, chan=chan)
             if channel is None or socket is None:
-                continue            
-            
+                continue
+
             sync_period = min(sync_period, channel.sync_period)
             run_sync = run_sync or channel._synchronized
             sock_paths.append(socket)
@@ -104,25 +103,23 @@ class SwitchNet(NetSim):
         assert sync_period is not None
         assert eth_latency is not None
 
-        cmd = env.repodir + "/sims/net/switch/net_switch"
+        cmd = inst.join_repo_base("/sims/net/switch/net_switch")
         cmd += f" -S {sync_period} -E {eth_latency}"
 
         if not run_sync:
             cmd += " -u"
 
+        # TODO: pcap_file --> no env!!!
         if len(env.pcap_file) > 0:
             cmd += " -p " + env.pcap_file
 
-        connect = ''
-        listen = ''
-        for sock in sockets:
-            if sock._type == inst_base.SockType.LISTEN:
-                listen += " -h " + sock._path
-            else:
-                connect += " -s " + sock._path
+        listen, connect = base.Simulator.split_sockets_by_type(sockets)
 
-        cmd += connect
-        cmd += listen
+        for sock in connect:
+            cmd += " -s " + sock._path
+
+        for sock in listen:
+            cmd += " -h " + sock._path
 
         return cmd
 
