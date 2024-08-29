@@ -37,6 +37,26 @@ class Simulator(abc.ABC):
         self.experiment = e
         self._components: set[sys_base.Component] = []
 
+    @staticmethod
+    def filter_sockets(
+        sockets: list[inst_base.Socket],
+        filter_type: inst_base.SockType = inst_base.SockType.LISTEN,
+    ) -> list[inst_base.Socket]:
+        res = filter(lambda sock: sock._type == filter_type, sockets)
+        return res
+
+    @staticmethod
+    def split_sockets_by_type(
+        sockets: list[inst_base.Socket],
+    ) -> tuple[sockets : list[inst_base.Socket], sockets : list[inst_base.Socket]]:
+        listen = Simulator.filter_sockets(
+            sockets=sockets, filter_type=inst_base.SockType.LISTEN
+        )
+        connect = Simulator.filter_sockets(
+            sockets=sockets, filter_type=inst_base.SockType.CONNECT
+        )
+        return listen, connect
+
     def resreq_cores(self) -> int:
         """
         Number of cores this simulator requires during execution.
@@ -64,6 +84,8 @@ class Simulator(abc.ABC):
 
     # TODO: call this in subclasses
     def _add_component(self, comp: sys_base.Channel) -> None:
+        if comp in self._components:
+            raise Exception("cannot add the same specification twice to a simulator")
         self._components.add(comp)
 
     def _chan_needs_instance(self, chan: sys_base.Channel) -> bool:
@@ -74,13 +96,35 @@ class Simulator(abc.ABC):
             return False
         return True
 
-    def _get_sock_path(
+    def _get_my_interface(self, chan: sys_base.Channel) -> sys_base.Interface:
+        interface = None
+        for inter in chan.interfaces():
+            if inter.component in self._components:
+                assert interface is None
+                interface = inter
+
+        if interface is None:
+            raise Exception(
+                "unable to find channel interface for simulators specification"
+            )
+
+        return interface
+
+    def _get_socket_and_chan(
         self, inst: inst_base.Instantiation, chan: sys_base.Channel
     ) -> tuple[sim_chan.Channel, inst_base.Socket] | tuple[None, None]:
+        # check if this channel is simulator internal, i.e. doesn't need a shared memory queue
         if not self._chan_needs_instance(chan):
             return None, None
+
+        # create channel simualtion object
         channel = self.experiment.retrieve_or_create_channel(chan)
-        return channel, inst.get_socket_path(channel)
+
+        # create the socket to listen on or connect to
+        my_interface = self._get_my_interface(chan)
+        socket = inst.get_socket(my_interface)
+
+        return (channel, socket)
 
     # pylint: disable=unused-argument
     @abc.abstractmethod

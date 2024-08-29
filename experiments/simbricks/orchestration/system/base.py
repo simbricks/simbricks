@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import abc
+import itertools
 
 
 class System:
@@ -33,11 +34,20 @@ class System:
         assert c.system == self
 
 
-class Component(abc.ABC):
+class IdObj(abc.ABC):
+    __id_iter = itertools.count()
+
+    def __init__(self):
+        self._id = next(self.__id_iter)
+
+
+class Component(IdObj):
+
     def __init__(self, s: System) -> None:
         s.system = s
         s.parameters = {}
         s.add_component(self)
+        self.name: str = ""
 
     @abc.abstractmethod
     def interfaces(self) -> list[Interface]:
@@ -47,7 +57,7 @@ class Component(abc.ABC):
         return [i.channel for i in self.interfaces() if i.is_connected()]
 
 
-class Interface(abc.ABC):
+class Interface(IdObj):
     def __init__(self, c: Component) -> None:
         self.component = c
         self.channel: Channel | None = None
@@ -63,7 +73,7 @@ class Interface(abc.ABC):
         self.channel = c
 
 
-class Channel(abc.ABC):
+class Channel(IdObj):
     def __init__(self, a: Interface, b: Interface) -> None:
         self.latency = 500
         self.a: Interface = a
