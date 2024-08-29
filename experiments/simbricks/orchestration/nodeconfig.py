@@ -346,7 +346,7 @@ class EnsoNode(NodeConfig):
         self.enso_parent_dir = '/root'
         self.local_enso_dir: tp.Optional[str] = None
         self.vm_mount_name = 'enso'
-    
+
     @property
     def enso_dir(self) -> str:
         return f'{self.enso_parent_dir}/{self.vm_mount_name}'
@@ -370,7 +370,7 @@ class EnsoNode(NodeConfig):
             f'cd {self.enso_dir}',
             './scripts/sw_setup.sh 16384 32768 true',
         ]
-        
+
         return cmds
 
     def prepare_post_cp(self) -> tp.List[str]:
@@ -380,7 +380,7 @@ class EnsoNode(NodeConfig):
             'bash -x ./install',
         ]
         return cmds
-    
+
     def config_files(self, environment: env.ExpEnv) -> tp.Dict[str, tp.IO]:
         files = super().config_files(environment)
         if self.local_enso_dir is not None:
@@ -831,7 +831,9 @@ class RPCClient(AppConfig):
             f'sleep {self.time}'
         ]
 
+
 class EnsoEchoServer(AppConfig):
+
     def __init__(self) -> None:
         self.threads = 1
         self.queues = 2
@@ -851,11 +853,12 @@ class EnsoEchoServer(AppConfig):
 
 
 class EnsoGen(AppConfig):
+
     def __init__(self) -> None:
         self.start_delay = 5
         self.end_delay = 5
 
-        self.pcap = "{node.enso_dir}/scripts/sample_pcaps/2_64_1_2.pcap"
+        self.pcap = '{node.enso_dir}/scripts/sample_pcaps/2_64_1_2.pcap'
         self.count = 10
         self.rate = 100  # Gbps
 
@@ -863,7 +866,7 @@ class EnsoGen(AppConfig):
         if not isinstance(node, EnsoNode):
             raise ValueError('EnsoGen is only supported on EnsoNode')
         pcap_path = self.pcap
-        if "{node.enso_dir}" in pcap_path:
+        if '{node.enso_dir}' in pcap_path:
             pcap_path = pcap_path.format(node=node)
         cmd = (
             f'sudo ./scripts/ensogen.sh {pcap_path} {self.rate} '
@@ -877,6 +880,7 @@ class EnsoGen(AppConfig):
             cmd,
             f'sleep {self.end_delay}'
         ]
+
 
 ################################################################################
 

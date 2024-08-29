@@ -19,10 +19,8 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""
-Experiment, which simulates two hosts with Enso one running an echo server and
-the other EnsoGen.
-"""
+"""Experiment, which simulates two hosts with Enso one running an echo server
+and the other EnsoGen."""
 
 import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.nodeconfig as node
@@ -31,14 +29,13 @@ from simbricks.orchestration.simulator_utils import create_basic_hosts
 
 experiments = []
 
-e = exp.Experiment(
-    'echo-qemu-switch-enso_bm'
-)
+e = exp.Experiment('echo-qemu-switch-enso_bm')
 
 net = sim.SwitchNet()
 net.sync = False
 
 e.add_network(net)
+
 
 def enso_local():
     n = node.EnsoNode()
@@ -47,10 +44,12 @@ def enso_local():
     # n.local_enso_dir = "/enso"
     return n
 
+
 def configured_ensogen():
     n = node.EnsoGen()
     n.count = 1000  # Number of packets to send.
     return n
+
 
 servers = create_basic_hosts(
     e,
