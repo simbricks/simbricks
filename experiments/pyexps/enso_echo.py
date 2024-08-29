@@ -27,6 +27,24 @@ import simbricks.orchestration.nodeconfig as node
 import simbricks.orchestration.simulators as sim
 from simbricks.orchestration.simulator_utils import create_basic_hosts
 
+
+class EnsoLocal(node.EnsoNode):
+
+    def __init__(self):
+        super().__init__()
+        self.local_enso_dir = None
+
+        # Uncomment to specify a local Enso directory to copy to the node.
+        # self.local_enso_dir = "/enso"
+
+
+class ConfiguredEnsoGen(node.EnsoGen):
+
+    def __init__(self):
+        super().__init__()
+        self.count = 1000  # Number of packets to send.
+
+
 experiments = []
 
 e = exp.Experiment('echo-qemu-switch-enso_bm')
@@ -36,21 +54,6 @@ net.sync = False
 
 e.add_network(net)
 
-
-def enso_local():
-    n = node.EnsoNode()
-
-    # Uncomment to specify a local Enso directory to copy to the node.
-    # n.local_enso_dir = "/enso"
-    return n
-
-
-def configured_ensogen():
-    n = node.EnsoGen()
-    n.count = 1000  # Number of packets to send.
-    return n
-
-
 servers = create_basic_hosts(
     e,
     1,
@@ -58,7 +61,7 @@ servers = create_basic_hosts(
     net,
     sim.EnsoBMNIC,
     sim.QemuHost,
-    enso_local,
+    EnsoLocal,
     node.EnsoEchoServer
 )
 
@@ -69,8 +72,8 @@ clients = create_basic_hosts(
     net,
     sim.EnsoBMNIC,
     sim.QemuHost,
-    enso_local,
-    configured_ensogen,
+    EnsoLocal,
+    ConfiguredEnsoGen,
     ip_start=2
 )
 

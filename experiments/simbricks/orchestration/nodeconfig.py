@@ -381,6 +381,7 @@ class EnsoNode(NodeConfig):
         ]
         return cmds
 
+    # pylint: disable=consider-using-with
     def config_files(self, environment: env.ExpEnv) -> tp.Dict[str, tp.IO]:
         files = super().config_files(environment)
         if self.local_enso_dir is not None:

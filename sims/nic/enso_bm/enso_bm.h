@@ -79,13 +79,14 @@ class dma_base : public nicbm::DMAOp {
   void Issue();
 
  protected:
-  enso_bm* context_;
+  enso_bm *context_;
   dma_base *next_dma_ = nullptr;
 };
 
 class dma_write : public dma_base {
  public:
-  dma_write(enso_bm *context, uint64_t dest_addr, size_t len, const uint8_t *data, logger &log);
+  dma_write(enso_bm *context, uint64_t dest_addr, size_t len,
+            const uint8_t *data, logger &log);
   virtual ~dma_write();
   virtual void done();
 
@@ -95,7 +96,8 @@ class dma_write : public dma_base {
 
 class dma_read : public dma_base {
  public:
-  dma_read(enso_bm *context, uint64_t source_addr, size_t len, uint8_t *buffer, logger &log);
+  dma_read(enso_bm *context, uint64_t source_addr, size_t len, uint8_t *buffer,
+           logger &log);
   virtual ~dma_read();
   virtual void done();
 
@@ -107,7 +109,7 @@ class rx_pipeline {
  public:
   bool enable_rr = false;
 
-  rx_pipeline(enso_bm *context);
+  explicit rx_pipeline(enso_bm *context);
   virtual ~rx_pipeline();
   void enqueue_packet(const uint8_t *data, size_t len);
   void add_flow_table_entry(uint16_t dst_port, uint16_t src_port,
@@ -130,7 +132,7 @@ class rx_pipeline {
 
 class tx_pipeline {
  public:
-  tx_pipeline(enso_bm *context);
+  explicit tx_pipeline(enso_bm *context);
   virtual ~tx_pipeline();
   void enqueue_data(const uint8_t *data, size_t len);
 

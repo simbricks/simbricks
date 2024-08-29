@@ -35,6 +35,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <string>
 
 namespace enso_bm {
 
