@@ -20,22 +20,27 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
 import abc
-import simbricks.orchestration.experiments as exp
-from simbricks.orchestration.system import base as sys_base
-from simbricks.orchestration.simulation import channel as sim_chan
+import typing as tp
+import simbricks.orchestration.system as sys_conf
 from simbricks.orchestration.experiment import experiment_environment_new as exp_env
 from simbricks.orchestration.instantiation import base as inst_base
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.simulation import (
+        Channel, HostSim, PCIDevSim, NetSim
+    )
+
 
 
 class Simulator(abc.ABC):
     """Base class for all simulators."""
 
-    def __init__(self, e: exp.Experiment) -> None:
+    def __init__(self, e: Simulation) -> None:
         self.extra_deps: list[Simulator] = []
         self.name = ""
         self.experiment = e
-        self._components: set[sys_base.Component] = []
+        self._components: set[sys_conf.Component] = []
 
     @staticmethod
     def filter_sockets(
@@ -83,12 +88,12 @@ class Simulator(abc.ABC):
         return []
 
     # TODO: call this in subclasses
-    def _add_component(self, comp: sys_base.Channel) -> None:
+    def _add_component(self, comp: sys_conf.Channel) -> None:
         if comp in self._components:
             raise Exception("cannot add the same specification twice to a simulator")
         self._components.add(comp)
 
-    def _chan_needs_instance(self, chan: sys_base.Channel) -> bool:
+    def _chan_needs_instance(self, chan: sys_conf.Channel) -> bool:
         if (
             chan.a.component in self._components
             and chan.b.component in self._components
@@ -96,7 +101,7 @@ class Simulator(abc.ABC):
             return False
         return True
 
-    def _get_my_interface(self, chan: sys_base.Channel) -> sys_base.Interface:
+    def _get_my_interface(self, chan: sys_conf.Channel) -> sys_conf.Interface:
         interface = None
         for inter in chan.interfaces():
             if inter.component in self._components:
@@ -111,8 +116,8 @@ class Simulator(abc.ABC):
         return interface
 
     def _get_socket_and_chan(
-        self, inst: inst_base.Instantiation, chan: sys_base.Channel
-    ) -> tuple[sim_chan.Channel, inst_base.Socket] | tuple[None, None]:
+        self, inst: inst_base.Instantiation, chan: sys_conf.Channel
+    ) -> tuple[sys_conf.Channel, inst_base.Socket] | tuple[None, None]:
         # check if this channel is simulator internal, i.e. doesn't need a shared memory queue
         if not self._chan_needs_instance(chan):
             return None, None
@@ -151,3 +156,137 @@ class Simulator(abc.ABC):
 
     def wait_terminate(self) -> bool:
         return False
+
+
+class Simulation(object):
+    """
+    Base class for all simulation experiments.
+
+    Contains the simulators to be run and experiment-wide parameters.
+    """
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        """
+        This experiment's name.
+
+        Can be used to run only a selection of experiments.
+        """
+        self.timeout: int | None = None
+        """Timeout for experiment in seconds."""
+        self.checkpoint = False
+        """
+        Whether to use checkpoint and restore for simulators.
+
+        The most common use-case for this is accelerating host simulator startup
+        by first running in a less accurate mode, then checkpointing the system
+        state after boot and running simulations from there.
+        """
+        self.no_simbricks = False
+        """If `true`, no simbricks adapters are used in any of the
+        simulators."""
+        self.hosts: list[HostSim] = []
+        """The host simulators to run."""
+        self.pcidevs: list[PCIDevSim] = []
+        """The PCIe device simulators to run."""
+        self.memdevs: list[MemDevSim] = []
+        """The memory device simulators to run."""
+        self.netmems: list[NetMemSim] = []
+        """The network memory simulators to run."""
+        self.networks: list[NetSim] = []
+        """The network simulators to run."""
+        self.metadata: dict[str, tp.Any] = {}
+
+        self.sys_sim_map: dict[sys_conf.Component, Simulator] = {}
+        """System component and its simulator pairs"""
+
+        self._chan_map: dict[sys_conf.Channel, Channel] = {}
+        """Channel spec and its instanciation"""
+
+    def add_spec_sim_map(self, sys: sys_conf.Component, sim: Simulator):
+        """Add a mapping from specification to simulation instance"""
+        if sys in self.sys_sim_map:
+            raise Exception("system component is already mapped by simulator")
+        self.sys_sim_map[sys] = sim
+
+    def is_channel_instantiated(self, chan: Channel) -> bool:
+        return chan in self._chan_map
+
+    def retrieve_or_create_channel(
+        self, chan: sys_conf.Channel
+    ) -> Channel:
+        if self.is_channel_instantiated(chan):
+            return self._chan_map[chan]
+
+        channel = Channel(self, chan)
+        self._chan_map[chan] = channel
+        return channel
+
+    @property
+    def nics(self):
+        return filter(lambda pcidev: pcidev.is_nic(), self.pcidevs)
+
+    def add_host(self, sim: HostSim) -> None:
+        """Add a host simulator to the experiment."""
+        for h in self.hosts:
+            if h.name == sim.name:
+                raise ValueError("Duplicate host name")
+        self.hosts.append(sim)
+
+    def add_nic(self, sim: NICSim | I40eMultiNIC):
+        """Add a NIC simulator to the experiment."""
+        self.add_pcidev(sim)
+
+    def add_pcidev(self, sim: PCIDevSim) -> None:
+        """Add a PCIe device simulator to the experiment."""
+        for d in self.pcidevs:
+            if d.name == sim.name:
+                raise ValueError("Duplicate pcidev name")
+        self.pcidevs.append(sim)
+
+    def add_memdev(self, sim: simulators.MemDevSim):
+        for d in self.memdevs:
+            if d.name == sim.name:
+                raise ValueError("Duplicate memdev name")
+        self.memdevs.append(sim)
+
+    def add_netmem(self, sim: simulators.NetMemSim):
+        for d in self.netmems:
+            if d.name == sim.name:
+                raise ValueError("Duplicate netmems name")
+        self.netmems.append(sim)
+
+    def add_network(self, sim: NetSim) -> None:
+        """Add a network simulator to the experiment."""
+        for n in self.networks:
+            if n.name == sim.name:
+                raise ValueError("Duplicate net name")
+        self.networks.append(sim)
+
+    def all_simulators(self) -> tp.Iterable[Simulator]:
+        """Returns all simulators defined to run in this experiment."""
+        return itertools.chain(
+            self.hosts, self.pcidevs, self.memdevs, self.netmems, self.networks
+        )
+
+    def resreq_mem(self) -> int:
+        """Memory required to run all simulators in this experiment."""
+        mem = 0
+        for s in self.all_simulators():
+            mem += s.resreq_mem()
+        return mem
+
+    def resreq_cores(self) -> int:
+        """Number of Cores required to run all simulators in this experiment."""
+        cores = 0
+        for s in self.all_simulators():
+            cores += s.resreq_cores()
+        return cores
+
+    def find_sim(self, comp: sys_conf.Component) -> sim_base.Simulator:
+        """Returns the used simulator object for the system component."""
+        for c, sim in self.sys_sim_map.items():
+            if c == comp:
+                return sim
+
+        raise Exception("Simulator Not Found")

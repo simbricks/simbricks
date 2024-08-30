@@ -20,17 +20,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.orchestration.simulation.base as base
-import simbricks.orchestration.system as system
+import simbricks.orchestration.simulation as sim_conf
+import simbricks.orchestration.system as sys_conf
 import typing as tp
-import simbricks.orchestration.experiments as exp
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 
 
-class PCIDevSim(base.Simulator):
+class PCIDevSim(sim_conf.Simulator):
     """Base class for PCIe device simulators."""
 
-    def __init__(self, e: exp.Experiment) -> None:
+    def __init__(self, e: sim_conf.Simulation) -> None:
         super().__init__(e)
 
         self.start_tick = 0
@@ -57,13 +56,13 @@ class PCIDevSim(base.Simulator):
 class NICSim(PCIDevSim):
     """Base class for NIC simulators."""
 
-    def __init__(self, e: exp.Experiment) -> None:
+    def __init__(self, e: sim_conf.Simulation) -> None:
         super().__init__(e)
         self.experiment = e
-        self.nics: tp.List[spec.NIC] = []
+        self.nics: tp.List[sim_conf.PCIDevSim] = []
         self.start_tick = 0
 
-    def add(self, nic: spec.NIC):
+    def add(self, nic: sim_conf.PCIDevSim):
         self.nics.append(nic)
         # nic.sim = self
         self.experiment.add_nic(self)
@@ -103,7 +102,7 @@ class NICSim(PCIDevSim):
 
 class I40eNicSim(NICSim):
 
-    def __init__(self, e: exp.Experiment):
+    def __init__(self, e: sim_conf.Simulation):
         super().__init__(e)
 
     def run_cmd(self, env: ExpEnv) -> str:
@@ -111,7 +110,7 @@ class I40eNicSim(NICSim):
 
 
 class CorundumBMNICSim(NICSim):
-    def __init__(self, e: exp.Experiment):
+    def __init__(self, e: sim_conf.Simulation):
         super().__init__(e)
 
     def run_cmd(self, env: ExpEnv) -> str:
@@ -122,7 +121,7 @@ class CorundumBMNICSim(NICSim):
 
 class CorundumVerilatorNICSim(NICSim):
 
-    def __init__(self, e: exp.Experiment):
+    def __init__(self, e: sim_conf.Simulation):
         super().__init__(e)
         self.clock_freq = 250  # MHz
 
