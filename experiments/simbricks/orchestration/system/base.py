@@ -44,6 +44,7 @@ class IdObj(abc.ABC):
 class Component(IdObj):
 
     def __init__(self, s: System) -> None:
+        super().__init__()
         s.system = s
         s.parameters = {}
         s.add_component(self)
@@ -59,6 +60,7 @@ class Component(IdObj):
 
 class Interface(IdObj):
     def __init__(self, c: Component) -> None:
+        super().__init__()
         self.component = c
         self.channel: Channel | None = None
 
@@ -75,6 +77,7 @@ class Interface(IdObj):
 
 class Channel(IdObj):
     def __init__(self, a: Interface, b: Interface) -> None:
+        super().__init__()
         self.latency = 500
         self.a: Interface = a
         self.b: Interface = b
