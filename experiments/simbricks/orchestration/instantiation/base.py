@@ -61,7 +61,7 @@ class Instantiation:
     ):
         self._simulation = simulation
         self._env: InstantiationEnvironment = env
-        self._socket_tracker: set[tuple[simulation.channel.Channel, SockType]] = set()
+        self._socket_tracker: dict[simulation.channel.Channel, SockType] = {}
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
@@ -108,12 +108,32 @@ class Instantiation:
             case _:
                 raise Exception("cannot create socket path for given interface type")
 
+    def _is_liste_nor_connect(self, interface: system.base.Interface) -> SockType:
+        # We use the channel to determine if the socket is a listening or connecting socket.
+        # We perform lookup by using the channel as the channel is unique for both
+        # interfaces connected to it.
+        if not interface.is_connected():
+            raise Exception(
+                "cannot determine the socket type to use for an interface that isn't connected to a channel"
+            )
+
+        chan = interface.channel
+        if not chan in self._socket_tracker:
+            self._socket_tracker[chan] = SockType.LISTEN
+            return SockType.LISTEN
+
+        ty = self._socket_tracker[chan]
+        if ty == SockType.LISTEN:
+            return SockType.CONNECT
+        else:
+            return SockType.LISTEN
+
     def get_socket(self, interface: system.base.Interface) -> Socket:
 
-        # TODO: use self._socket_tracker to determine socket type that is needed
-        sock_type = SockType.LISTEN
+        # determine socket type that is needed
+        sock_type = self._is_liste_nor_connect(interface=interface)
 
-        # TODO: generate socket path
+        # generate socket path
         sock_path = self._interface_to_sock_path(interface=interface)
 
         return Socket(sock_path, sock_type)
