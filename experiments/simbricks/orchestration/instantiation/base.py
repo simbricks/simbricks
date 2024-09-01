@@ -123,9 +123,12 @@ class Instantiation:
             )
         self._socket_tracker[channel] = socket
 
-    def _get_socket_by_interface(self, interface: system.base.Interface) -> str | None:
-        # TODO
-        pass
+    def _get_socket_by_interface(
+        self, interface: system.base.Interface
+    ) -> Socket | None:
+        channel = self._get_chan_by_interface(interface=interface)
+        socket = self._get_socket_by_channel(channel=channel)
+        return socket
 
     def _interface_to_sock_path(self, interface: system.base.Interface) -> str:
         basepath = pathlib.Path(self._env._workdir)
@@ -163,6 +166,7 @@ class Instantiation:
         socket = self._get_socket_by_interface(interface=interface)
         if socket is not None:
             new_socket = self._create_opposing_socket(socket=socket)
+            return new_socket
 
         # neither connecting nor listening side already created a socket, thus we
         # create a completely new 'CONNECT' socket
@@ -170,10 +174,8 @@ class Instantiation:
         # create the socket path
         sock_path = self._interface_to_sock_path(interface=interface)
         new_socket = Socket(path=sock_path, ty=sock_type)
-
         # update the socket tracker mapping for other side
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
-
         return new_socket
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
