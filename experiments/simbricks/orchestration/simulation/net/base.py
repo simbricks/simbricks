@@ -31,8 +31,8 @@ from simbricks.orchestration.instantiation import base as inst_base
 class NetSim(base.Simulator):
     """Base class for network simulators."""
 
-    def __init__(self, e: exp.Experiment) -> None:
-        super().__init__(e)
+    def __init__(self, e: exp.Experiment, relative_executable_path: str = "") -> None:
+        super().__init__(e, relative_executable_path=relative_executable_path)
         # TODO: do we want them here?
         self._switch_specs = []
         self._host_specs = []
@@ -68,10 +68,52 @@ class NetSim(base.Simulator):
         return []
 
 
-class SwitchNet(NetSim):
+class WireNet(NetSim):
 
     def __init__(self, e: exp.Experiment) -> None:
-        super().__init__(e)
+        super().__init__(e, relative_executable_path="/sims/net/wire/net_wire")
+        # TODO: probably we want to store these in a common base class...
+        self._wire_comp: eth.EthWire | None = None
+
+    def add_wire(self, wire: eth.EthWire):
+        assert self._wire_comp is None
+        super()._add_component(wire)
+        self._wire_comp = wire
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        eth_latency = None
+        sync_period = None
+        run_sync = False
+        channels, sockets = self._get_channels_and_sockets(inst=inst)
+        assert len(sockets) == 2
+        for channel in channels:
+            sync_period = min(sync_period, channel.sync_period)
+            run_sync = run_sync or channel._synchronized
+            if (
+                channel.sys_channel.eth_latency != eth_latency
+                and eth_latency is not None
+            ):
+                raise Exception("non unique eth latency")
+            eth_latency = channel.sys_channel.eth_latency
+
+        assert sync_period is not None
+        assert eth_latency is not None
+
+        cmd = inst.join_repo_base(self._relative_executable_path)
+        cmd += f"{sockets[0]} {sockets[1]} {run_sync} {sync_period} {eth_latency}"
+
+        # TODO
+        if len(env.pcap_file) > 0:
+            cmd += " " + env.pcap_file
+        return cmd
+
+
+class SwitchNet(NetSim):
+
+    def __init__(
+        self, e: exp.Experiment, relative_executable_path="/sims/net/switch/net_switch"
+    ) -> None:
+        super().__init__(e, relative_executable_path=relative_executable_path)
         # TODO: probably we want to store these in a common base class...
         self._switch_spec: eth.EthSwitch | None = None
 
@@ -79,31 +121,28 @@ class SwitchNet(NetSim):
         assert self._switch_spec is None
         super()._add_component(switch_spec)
         self._switch_spec = switch_spec
-        self.experimente.add_spec_sim_map(self._switch_spec, self)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         assert self._switch_spec is not None
 
-        eth_latency = self._switch_spec.channels()[0].latency
-        if any(lat != eth_latency for chan in self._switch_spec.channels()):
-            raise Exception("SwitchNet currently only supports single eth latency")
-
+        eth_latency = None
         sync_period = None
         run_sync = False
-        sockets: list[inst_base.Socket] = []
-        for chan in self._switch_spec.channels():
-            channel, socket = self._get_socket_and_chan(inst=inst, chan=chan)
-            if channel is None or socket is None:
-                continue
-
+        channels, sockets = self._get_channels_and_sockets(inst=inst)
+        for channel in channels:
             sync_period = min(sync_period, channel.sync_period)
             run_sync = run_sync or channel._synchronized
-            sock_paths.append(socket)
+            if (
+                channel.sys_channel.eth_latency != eth_latency
+                and eth_latency is not None
+            ):
+                raise Exception("non unique eth latency")
+            eth_latency = channel.sys_channel.eth_latency
 
         assert sync_period is not None
         assert eth_latency is not None
 
-        cmd = inst.join_repo_base("/sims/net/switch/net_switch")
+        cmd = inst.join_repo_base(self._relative_executable_path)
         cmd += f" -S {sync_period} -E {eth_latency}"
 
         if not run_sync:
@@ -132,3 +171,22 @@ class SwitchNet(NetSim):
             cleanup.append(s)
             cleanup.append(s + "-shm")
         return cleanup
+
+
+class MemSwitchNet(SwitchNet):
+
+    def __init__(self, e: exp.Experiment) -> None:
+        super().__init__(e, relative_executable_path="/sims/mem/memswitch/memswitch")
+        self.sync = True
+        """AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START."""
+        self.mem_map = []
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        cmd = super().run_cmd(inst)
+
+        for m in self.mem_map:
+            cmd += " -m " + f" {m[0]},{m[1]},{m[2]},"
+            cmd += "".join(reversed(m[3].split(":")))
+            cmd += f",{m[4]}"
+
+        return cmd

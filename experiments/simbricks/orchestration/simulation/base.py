@@ -26,21 +26,20 @@ import typing as tp
 import simbricks.orchestration.system as sys_conf
 from simbricks.orchestration.experiment import experiment_environment_new as exp_env
 from simbricks.orchestration.instantiation import base as inst_base
-if tp.TYPE_CHECKING:
-    from simbricks.orchestration.simulation import (
-        Channel, HostSim, PCIDevSim, NetSim
-    )
 
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.simulation import Channel, HostSim, PCIDevSim, NetSim
 
 
 class Simulator(abc.ABC):
     """Base class for all simulators."""
 
-    def __init__(self, e: Simulation) -> None:
+    def __init__(self, e: Simulation, relative_executable_path: str = "") -> None:
         self.extra_deps: list[Simulator] = []
         self.name = ""
         self.experiment = e
         self._components: set[sys_conf.Component] = []
+        self._relative_executable_path: str = relative_executable_path
 
     @staticmethod
     def filter_sockets(
@@ -88,10 +87,11 @@ class Simulator(abc.ABC):
         return []
 
     # TODO: call this in subclasses
-    def _add_component(self, comp: sys_conf.Channel) -> None:
+    def _add_component(self, comp: sys_base.Component) -> None:
         if comp in self._components:
             raise Exception("cannot add the same specification twice to a simulator")
         self._components.add(comp)
+        self.experiment.add_spec_sim_map(comp, self)
 
     def _chan_needs_instance(self, chan: sys_conf.Channel) -> bool:
         if (
@@ -115,6 +115,7 @@ class Simulator(abc.ABC):
 
         return interface
 
+    # TODO: change method to take interface
     def _get_socket_and_chan(
         self, inst: inst_base.Instantiation, chan: sys_conf.Channel
     ) -> tuple[sys_conf.Channel, inst_base.Socket] | tuple[None, None]:
@@ -130,6 +131,28 @@ class Simulator(abc.ABC):
         socket = inst.get_socket(my_interface)
 
         return (channel, socket)
+
+    def _get_channels_and_sockets(
+        self, inst: inst_base.Instantiation
+    ) -> tuple[list[sim_chan.Channel], list[inst_base.Socket]]:
+
+        channels = []
+        sockets = []
+
+        for comp_spec in self._components:
+
+            # TODO: use interfaces() method instead of channels
+            for chan in comp_spec.channels():
+
+                channel, socket = self._get_socket_and_chan(inst=inst, chan=chan)
+
+                if channel is None or socket is None:
+                    continue
+
+                channels.append(channel)
+                sockets.append(socket)
+
+        return channels, sockets
 
     # pylint: disable=unused-argument
     @abc.abstractmethod
@@ -212,9 +235,7 @@ class Simulation(object):
     def is_channel_instantiated(self, chan: Channel) -> bool:
         return chan in self._chan_map
 
-    def retrieve_or_create_channel(
-        self, chan: sys_conf.Channel
-    ) -> Channel:
+    def retrieve_or_create_channel(self, chan: sys_conf.Channel) -> Channel:
         if self.is_channel_instantiated(chan):
             return self._chan_map[chan]
 
