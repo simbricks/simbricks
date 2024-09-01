@@ -61,7 +61,7 @@ class Instantiation:
     ):
         self._simulation = simulation
         self._env: InstantiationEnvironment = env
-        self._socket_tracker: dict[simulation.channel.Channel, SockType] = {}
+        self._socket_tracker: dict[simulation.channel.Channel, Socket] = {}
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
@@ -96,47 +96,85 @@ class Instantiation:
     #    def proxy_shm_path(self, sim: "simulators.Simulator") -> str:
     #        return f"{self.shm_base}/proxy.shm.{sim.name}"
 
+    def _get_chan_by_interface(
+        self, interface: system.base.Interface
+    ) -> simulation.channel.Channel:
+        if not interface.is_connected():
+            raise Exception(
+                "cannot determine channel by interface, interface isn't connecteds"
+            )
+        channel = interface.channel
+        return channel
+
+    def _get_socket_by_channel(
+        self, channel: simualtion.channel.Channel
+    ) -> Socket | None:
+        if not channel in self._socket_tracker:
+            return None
+        return self._socket_tracker[channel]
+
+    def _updated_tracker_mapping(
+        self, interface: system.base.Interface, socket: Socket
+    ) -> None:
+        channel = self._get_chan_by_interface(interface=interface)
+        if channel in self._socket_tracker:
+            raise Exception(
+                "cannot update socket tracker mapping, channel is already mapped"
+            )
+        self._socket_tracker[channel] = socket
+
+    def _get_socket_by_interface(self, interface: system.base.Interface) -> str | None:
+        # TODO
+        pass
+
     def _interface_to_sock_path(self, interface: system.base.Interface) -> str:
         basepath = pathlib.Path(self._env._workdir)
+
+        channel = self._get_chan_by_interface(interface=interface)
+        sys_channel = channel.sys_channel
+        queue_ident = f"{sys_channel.a._id}.{sys_channel._id}.{sys_channel.b._id}"
+
+        queue_type = None
         match interface:
             case PCIeHostInterface() | PCIeDeviceInterface():
-                return f"{self._env._shm_base}/shm.pci/{interface.component.name}.{interface._id}"
+                queue_type = "shm.pci"
             case MemDeviceInterface() | MemHostInterface():
-                return f"{self._env._shm_base}/shm.mem/{interface.component.name}.{interface._id}"
+                queue_type = "shm.mem"
             case EthInterface():
-                return f"{self._env._shm_base}/shm.eth/{interface.component.name}.{interface._id}"
+                queue_type = "shm.eth"
             case _:
                 raise Exception("cannot create socket path for given interface type")
 
-    def _is_liste_nor_connect(self, interface: system.base.Interface) -> SockType:
-        # We use the channel to determine if the socket is a listening or connecting socket.
-        # We perform lookup by using the channel as the channel is unique for both
-        # interfaces connected to it.
-        if not interface.is_connected():
-            raise Exception(
-                "cannot determine the socket type to use for an interface that isn't connected to a channel"
-            )
+        assert queue_type is not None
+        return f"{self._env._shm_base}/{queue_type}/{queue_ident}"
 
-        chan = interface.channel
-        if not chan in self._socket_tracker:
-            self._socket_tracker[chan] = SockType.LISTEN
-            return SockType.LISTEN
-
-        ty = self._socket_tracker[chan]
-        if ty == SockType.LISTEN:
-            return SockType.CONNECT
-        else:
-            return SockType.LISTEN
+    def _create_opposing_socket(self, socket: Socket) -> Socket:
+        new_ty = (
+            SockType.LISTEN if socket._type == SockType.CONNECT else SockType.LISTEN
+        )
+        new_path = socket._path
+        new_socket = Socket(path=new_path, ty=new_ty)
+        return new_socket
 
     def get_socket(self, interface: system.base.Interface) -> Socket:
+        # The other side already created a socket, we just create the opposing
+        # side (i.e. connect or listening depending on the already created type)
+        # and return
+        socket = self._get_socket_by_interface(interface=interface)
+        if socket is not None:
+            new_socket = self._create_opposing_socket(socket=socket)
 
-        # determine socket type that is needed
-        sock_type = self._is_liste_nor_connect(interface=interface)
-
-        # generate socket path
+        # neither connecting nor listening side already created a socket, thus we
+        # create a completely new 'CONNECT' socket
+        sock_type = SockType.CONNECT
+        # create the socket path
         sock_path = self._interface_to_sock_path(interface=interface)
+        new_socket = Socket(path=sock_path, ty=sock_type)
 
-        return Socket(sock_path, sock_type)
+        # update the socket tracker mapping for other side
+        self._updated_tracker_mapping(interface=interface, socket=new_socket)
+
+        return new_socket
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
 

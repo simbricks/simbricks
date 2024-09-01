@@ -30,7 +30,7 @@ class EthInterface(base.Interface):
     def connect(self, c: base.Channel) -> None:
         # Note AK: a bit ugly, but I think we can't get around a rt check here
         if not c is isinstance(c, EthChannel):
-            raise TypeError('EthInterface only connects to EthChannel')
+            raise TypeError("EthInterface only connects to EthChannel")
         super().connect(c)
 
 
@@ -45,10 +45,28 @@ class EthSimpleNIC(base.Component):
         self.eth_if = EthInterface()
 
 
-class EthSwitch(base.Component):
+class BaseEthNetComponent(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.eth_ifs: list[EthInterface] = []
+        self.eth_ifs: EthInterface = []
 
     def if_add(self, i: EthInterface) -> None:
         self.eth_ifs.append(i)
+
+    def interfaces(self) -> list[Interface]:
+        return self.eth_ifs
+
+
+class EthWire(BaseEthNetComponent):
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
+
+    def if_add(self, i: EthInterface) -> None:
+        if len(self.eth_ifs) > 2:
+            raise Exception("one can only add 2 interfaces to a EthWire")
+        self.eth_ifs.append(i)
+
+
+class EthSwitch(BaseEthNetComponent):
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
