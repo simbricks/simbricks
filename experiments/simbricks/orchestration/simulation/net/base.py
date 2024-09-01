@@ -22,7 +22,6 @@
 
 import abc
 import sys
-from simbricks.orchestration import experiments
 from simbricks.orchestration.simulation import base
 from simbricks.orchestration.system import eth
 from simbricks.orchestration.instantiation import base as inst_base
@@ -31,8 +30,10 @@ from simbricks.orchestration.instantiation import base as inst_base
 class NetSim(base.Simulator):
     """Base class for network simulators."""
 
-    def __init__(self, e: exp.Experiment, relative_executable_path: str = "") -> None:
-        super().__init__(e, relative_executable_path=relative_executable_path)
+    def __init__(
+        self, simulation: base.Simulation, relative_executable_path: str = ""
+    ) -> None:
+        super().__init__(simulation, relative_executable_path=relative_executable_path)
         # TODO: do we want them here?
         self._switch_specs = []
         self._host_specs = []
@@ -70,8 +71,10 @@ class NetSim(base.Simulator):
 
 class WireNet(NetSim):
 
-    def __init__(self, e: exp.Experiment) -> None:
-        super().__init__(e, relative_executable_path="/sims/net/wire/net_wire")
+    def __init__(self, simulation: base.Simulation) -> None:
+        super().__init__(
+            simulation=simulation, relative_executable_path="/sims/net/wire/net_wire"
+        )
         # TODO: probably we want to store these in a common base class...
         self._wire_comp: eth.EthWire | None = None
 
@@ -111,9 +114,13 @@ class WireNet(NetSim):
 class SwitchNet(NetSim):
 
     def __init__(
-        self, e: exp.Experiment, relative_executable_path="/sims/net/switch/net_switch"
+        self,
+        simulation: base.Simulation,
+        relative_executable_path="/sims/net/switch/net_switch",
     ) -> None:
-        super().__init__(e, relative_executable_path=relative_executable_path)
+        super().__init__(
+            simulation=simulation, relative_executable_path=relative_executable_path
+        )
         # TODO: probably we want to store these in a common base class...
         self._switch_spec: eth.EthSwitch | None = None
 
@@ -175,9 +182,11 @@ class SwitchNet(NetSim):
 
 class MemSwitchNet(SwitchNet):
 
-    def __init__(self, e: exp.Experiment) -> None:
-        super().__init__(e, relative_executable_path="/sims/mem/memswitch/memswitch")
-        self.sync = True
+    def __init__(self, simulation: base.Simulation) -> None:
+        super().__init__(
+            simulation=simulation,
+            relative_executable_path="/sims/mem/memswitch/memswitch",
+        )
         """AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START."""
         self.mem_map = []
 
