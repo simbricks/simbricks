@@ -28,16 +28,24 @@ from simbricks.orchestration.experiment import experiment_environment_new as exp
 from simbricks.orchestration.instantiation import base as inst_base
 
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.simulation import Channel, HostSim, PCIDevSim, NetSim
+    from simbricks.orchestration.simulation import (
+        Channel,
+        HostSim,
+        PCIDevSim,
+        NetSim,
+        base as sim_base,
+    )
 
 
 class Simulator(abc.ABC):
     """Base class for all simulators."""
 
-    def __init__(self, e: Simulation, relative_executable_path: str = "") -> None:
+    def __init__(
+        self, simulation: sim_base.Simulation, relative_executable_path: str = ""
+    ) -> None:
         self.extra_deps: list[Simulator] = []
-        self.name = ""
-        self.experiment = e
+        self.name: str = ""
+        self.experiment: sim_base.Simulation = simulation
         self._components: set[sys_conf.Component] = []
         self._relative_executable_path: str = relative_executable_path
 
