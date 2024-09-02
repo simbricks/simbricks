@@ -46,12 +46,14 @@ class InstantiationEnvironment:
         workdir: str = pathlib.Path(),
         cpdir: str = pathlib.Path(),
         shm_base: str = pathlib.Path(),
+        output_base: str = pathlib.Path(),
     ):
         # TODO: add more parameters that wont change during instantiation
         self._repodir: str = pathlib.Path(repo_path).absolute()
         self._workdir: str = pathlib.Path(workdir).absolute()
         self._cpdir: str = pathlib.Path(cpdir).absolute()
-        self._shm_base = pathlib.Path(workdir).joinpath(shm_base).absolute()
+        self._shm_base: str = pathlib.Path(workdir).joinpath(shm_base).absolute()
+        self._output_base: str = pathlib.Path(workdir).joinpath(output_base).absolute()
 
 
 class Instantiation:
@@ -61,7 +63,11 @@ class Instantiation:
     ):
         self._simulation = simulation
         self._env: InstantiationEnvironment = env
-        self._socket_tracker: dict[simulation.channel.Channel, Socket] = {}
+        # we track sockets per channel and interface:
+        # - per channel tracking is for ensuring that listening as well as connecting simulator use the same socket path
+        # - per interface mapping is helpful for simulators to access their particular socket objects for cleanup and there alike
+        self._socket_per_channel: dict[simulation.channel.Channel, Socket] = {}
+        self._socket_per_interface: dict[system.base.Interface, Socket] = {}
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
@@ -109,26 +115,36 @@ class Instantiation:
     def _get_socket_by_channel(
         self, channel: simualtion.channel.Channel
     ) -> Socket | None:
-        if not channel in self._socket_tracker:
+        if not channel in self._socket_per_channel:
             return None
-        return self._socket_tracker[channel]
+        return self._socket_per_channel[channel]
 
     def _updated_tracker_mapping(
         self, interface: system.base.Interface, socket: Socket
     ) -> None:
+        # update channel mapping
         channel = self._get_chan_by_interface(interface=interface)
-        if channel in self._socket_tracker:
-            raise Exception(
-                "cannot update socket tracker mapping, channel is already mapped"
-            )
-        self._socket_tracker[channel] = socket
+        if channel not in self._socket_per_channel:
+            self._socket_per_channel[channel] = socket
 
-    def _get_socket_by_interface(
+        # update interface mapping
+        if interface in self._socket_per_interface:
+            raise Exception("an interface cannot be associated with two sockets")
+        self._socket_per_interface[interface] = socket
+
+    def _get_opposing_socket_by_interface(
         self, interface: system.base.Interface
     ) -> Socket | None:
         channel = self._get_chan_by_interface(interface=interface)
         socket = self._get_socket_by_channel(channel=channel)
         return socket
+
+    def _get_socket_by_interface(
+        self, interface: system.base.Interface
+    ) -> Socket | None:
+        if interface not in self._socket_per_interface:
+            return None
+        return self._socket_per_interface[interface]
 
     def _interface_to_sock_path(self, interface: system.base.Interface) -> str:
         basepath = pathlib.Path(self._env._workdir)
@@ -160,12 +176,16 @@ class Instantiation:
         return new_socket
 
     def get_socket(self, interface: system.base.Interface) -> Socket:
-        # The other side already created a socket, we just create the opposing
-        # side (i.e. connect or listening depending on the already created type)
-        # and return
+        # check if already a socket is associated with this interface
         socket = self._get_socket_by_interface(interface=interface)
         if socket is not None:
+            return socket
+
+        # Check if other side already created a socket, and create an opposing one
+        socket = self._get_opposing_socket_by_interface(interface=interface)
+        if socket is not None:
             new_socket = self._create_opposing_socket(socket=socket)
+            self._updated_tracker_mapping(interface=interface, socket=new_socket)
             return new_socket
 
         # neither connecting nor listening side already created a socket, thus we
@@ -180,12 +200,20 @@ class Instantiation:
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
 
-    def join_repo_base(self, relative_path: str) -> str:
-        path = pathlib.Path(self._env._repodir)
+    def _join_paths(self, base: str = "", relative_path: str = "") -> str:
+        path = pathlib.Path(base)
         path.joinpath(relative_path)
         if not path.exists():
-            raise Exception(f"couldn't join {self._env._repodir} and {relative_path}")
+            raise Exception(f"couldn't join {base} and {relative_path}")
         return path.absolute()
+
+    def join_repo_base(self, relative_path: str) -> str:
+        return self._join_paths(base=self._env._repodir, relative_path=relative_path)
+
+    def join_output_base(self, relative_path: str) -> str:
+        return self._join_paths(
+            base=self._env._output_base, relative_path=relative_path
+        )
 
     def hd_path(self, hd_name_or_path: str) -> str:
         if Instantiation.is_absolute_exists(hd_name_or_path):

@@ -50,10 +50,6 @@ class NetSim(base.Simulator):
         return deps
 
     # TODO
-    def sockets_cleanup(self, env: exp_env.ExpEnv) -> list[str]:
-        pass
-
-    # TODO
     def sockets_wait(self, env: exp_env.ExpEnv) -> list[str]:
         pass
 
@@ -73,10 +69,13 @@ class WireNet(NetSim):
 
     def __init__(self, simulation: base.Simulation) -> None:
         super().__init__(
-            simulation=simulation, relative_executable_path="/sims/net/wire/net_wire"
+            simulation=simulation,
+            relative_executable_path="/sims/net/wire/net_wire",
+            relative_pcap_file_path=None,
         )
         # TODO: probably we want to store these in a common base class...
         self._wire_comp: eth.EthWire | None = None
+        self._relative_pcap_file_path: str | None = relative_pcap_file_path
 
     def add_wire(self, wire: eth.EthWire):
         assert self._wire_comp is None
@@ -105,9 +104,11 @@ class WireNet(NetSim):
         cmd = inst.join_repo_base(self._relative_executable_path)
         cmd += f"{sockets[0]} {sockets[1]} {run_sync} {sync_period} {eth_latency}"
 
-        # TODO
-        if len(env.pcap_file) > 0:
-            cmd += " " + env.pcap_file
+        if self._relative_pcap_file_path is not None:
+            pcap_file = inst.join_output_base(
+                relative_path=self._relative_pcap_file_path
+            )
+            cmd += " " + pcap_file
         return cmd
 
 
@@ -117,12 +118,14 @@ class SwitchNet(NetSim):
         self,
         simulation: base.Simulation,
         relative_executable_path="/sims/net/switch/net_switch",
+        relative_pcap_file_path=None,
     ) -> None:
         super().__init__(
             simulation=simulation, relative_executable_path=relative_executable_path
         )
         # TODO: probably we want to store these in a common base class...
         self._switch_spec: eth.EthSwitch | None = None
+        self._relative_pcap_file_path: str | None = relative_pcap_file_path
 
     def add_switch(self, switch_spec: eth.EthSwitch):
         assert self._switch_spec is None
@@ -155,9 +158,11 @@ class SwitchNet(NetSim):
         if not run_sync:
             cmd += " -u"
 
-        # TODO: pcap_file --> no env!!!
-        if len(env.pcap_file) > 0:
-            cmd += " -p " + env.pcap_file
+        if self._relative_pcap_file_path is not None:
+            pcap_file = inst.join_output_base(
+                relative_path=self._relative_pcap_file_path
+            )
+            cmd += " " + pcap_file
 
         listen, connect = base.Simulator.split_sockets_by_type(sockets)
 
@@ -169,23 +174,16 @@ class SwitchNet(NetSim):
 
         return cmd
 
-    # TODO
-    def sockets_cleanup(self, env: exp_env.ExpEnv) -> list[str]:
-        # cleanup here will just have listening eth sockets, switch also creates
-        # shm regions for each with a "-shm" suffix
-        cleanup = []
-        for s in super().sockets_cleanup(env):
-            cleanup.append(s)
-            cleanup.append(s + "-shm")
-        return cleanup
-
 
 class MemSwitchNet(SwitchNet):
 
-    def __init__(self, simulation: base.Simulation) -> None:
+    def __init__(
+        self, simulation: base.Simulation, relative_pcap_file_path=None
+    ) -> None:
         super().__init__(
             simulation=simulation,
             relative_executable_path="/sims/mem/memswitch/memswitch",
+            relative_pcap_file_path=relative_pcap_file_path,
         )
         """AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START."""
         self.mem_map = []

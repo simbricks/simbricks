@@ -94,7 +94,6 @@ class Simulator(abc.ABC):
         """Commands to prepare execution of this simulator."""
         return []
 
-    # TODO: call this in subclasses
     def _add_component(self, comp: sys_base.Component) -> None:
         if comp in self._components:
             raise Exception("cannot add the same specification twice to a simulator")
@@ -115,29 +114,29 @@ class Simulator(abc.ABC):
             if inter.component in self._components:
                 assert interface is None
                 interface = inter
-
         if interface is None:
             raise Exception(
                 "unable to find channel interface for simulators specification"
             )
-
         return interface
 
-    # TODO: change method to take interface
+    def _get_sys_chan(self, interface: sys_conf.Interface) -> sys_conf.Channel:
+        if not interface.is_connected():
+            raise Exception("interface does not need a channel as it is not connected")
+        return interface.channel
+
     def _get_socket_and_chan(
-        self, inst: inst_base.Instantiation, chan: sys_conf.Channel
+        self, inst: inst_base.Instantiation, interface: sys_conf.Interface
     ) -> tuple[sys_conf.Channel, inst_base.Socket] | tuple[None, None]:
-        # check if this channel is simulator internal, i.e. doesn't need a shared memory queue
+        # get the channel associated with this interface
+        chan = self._get_sys_chan(interface=interface)
+        # check if interfaces channel is simulator internal, i.e. doesnt need an instanciation
         if not self._chan_needs_instance(chan):
             return None, None
-
         # create channel simualtion object
         channel = self.experiment.retrieve_or_create_channel(chan)
-
         # create the socket to listen on or connect to
-        my_interface = self._get_my_interface(chan)
-        socket = inst.get_socket(my_interface)
-
+        socket = inst.get_socket(interface=interface)
         return (channel, socket)
 
     def _get_channels_and_sockets(
@@ -148,12 +147,11 @@ class Simulator(abc.ABC):
         sockets = []
 
         for comp_spec in self._components:
+            for interface in comp_spec.interfaces():
 
-            # TODO: use interfaces() method instead of channels
-            for chan in comp_spec.channels():
-
-                channel, socket = self._get_socket_and_chan(inst=inst, chan=chan)
-
+                channel, socket = self._get_socket_and_chan(
+                    inst=inst, interface=interface
+                )
                 if channel is None or socket is None:
                     continue
 
@@ -172,10 +170,17 @@ class Simulator(abc.ABC):
         """Other simulators to execute before this one."""
         return []
 
-    # Sockets to be cleaned up
+    # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument
-    def sockets_cleanup(self, env: exp_env.ExpEnv) -> list[str]:
-        return []
+    def sockets_cleanup(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
+        sockets = []
+        for comp_spec in self._components:
+            for interface in comp_spec.interfaces():
+                socket = inst.get_socket(interface=interface)
+                if socket._type == inst_base.SockType.CONNECT:
+                    sockets.append(socket)
+
+        return sockets
 
     # sockets to wait for indicating the simulator is ready
     # pylint: disable=unused-argument
