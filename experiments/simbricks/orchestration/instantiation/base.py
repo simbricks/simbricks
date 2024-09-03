@@ -47,6 +47,7 @@ class InstantiationEnvironment:
         cpdir: str = pathlib.Path(),
         shm_base: str = pathlib.Path(),
         output_base: str = pathlib.Path(),
+        tmp_simulation_files: str = pathlib.Path(),
     ):
         # TODO: add more parameters that wont change during instantiation
         self._repodir: str = pathlib.Path(repo_path).absolute()
@@ -54,6 +55,9 @@ class InstantiationEnvironment:
         self._cpdir: str = pathlib.Path(cpdir).absolute()
         self._shm_base: str = pathlib.Path(workdir).joinpath(shm_base).absolute()
         self._output_base: str = pathlib.Path(workdir).joinpath(output_base).absolute()
+        self._tmp_simulation_files: str = (
+            pathlib.Path(workdir).joinpath(tmp_simulation_files).absolute()
+        )
 
 
 class Instantiation:
@@ -156,31 +160,45 @@ class Instantiation:
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
 
-    def _join_paths(self, base: str = "", relative_path: str = "") -> str:
+    def _join_paths(
+        self, base: str = "", relative_path: str = "", enforce_existence=True
+    ) -> str:
         path = pathlib.Path(base)
         path.joinpath(relative_path)
-        if not path.exists():
+        if not path.exists() and enforce_existence:
             raise Exception(f"couldn't join {base} and {relative_path}")
         return path.absolute()
 
     def join_repo_base(self, relative_path: str) -> str:
-        return self._join_paths(base=self._env._repodir, relative_path=relative_path)
+        return self._join_paths(
+            base=self._env._repodir, relative_path=relative_path, enforce_existence=True
+        )
 
     def join_output_base(self, relative_path: str) -> str:
         return self._join_paths(
-            base=self._env._output_base, relative_path=relative_path
+            base=self._env._output_base,
+            relative_path=relative_path,
+            enforce_existence=True,
         )
 
     def hd_path(self, hd_name_or_path: str) -> str:
         if Instantiation.is_absolute_exists(hd_name_or_path):
             return hd_name_or_path
+        path = self._join_paths(
+            base=self._env._repodir,
+            relative_path=f"/images/output-{hd_name_or_path}/{hd_name_or_path}",
+            enforce_existence=True,
+        )
+        return path
 
-        path = pathlib.Path(
-            f"{self._env._repodir}/images/output-{hd_name_or_path}/{hd_name_or_path}"
+    def join_tmp_base(self, relative_path: str) -> str:
+        return self._join_paths(
+            base=self._env._tmp_simulation_files,
+            relative_path=filename,
+            enforce_existence=False,
         )
 
-        return path.absolute()
-
-    def dynamic_img_path(self, format: str) -> str:
-        # TODO
-        return ""
+    def dynamic_img_path(self, filename: str) -> str:
+        return self._join_paths(
+            base=self._env._tmp_simulation_files, relative_path=filename
+        )
