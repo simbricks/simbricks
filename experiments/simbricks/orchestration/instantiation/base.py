@@ -63,10 +63,6 @@ class Instantiation:
     ):
         self._simulation = simulation
         self._env: InstantiationEnvironment = env
-        # we track sockets per channel and interface:
-        # - per channel tracking is for ensuring that listening as well as connecting simulator use the same socket path
-        # - per interface mapping is helpful for simulators to access their particular socket objects for cleanup and there alike
-        self._socket_per_channel: dict[simulation.channel.Channel, Socket] = {}
         self._socket_per_interface: dict[system.base.Interface, Socket] = {}
 
     @staticmethod
@@ -74,70 +70,26 @@ class Instantiation:
         path = pathlib.Path(path)
         return path.is_absolute() and path.is_file()
 
-    #    def dev_pci_path(self, sim) -> str:
-    #        return f"{self.workdir}/dev.pci.{sim.name}"
-    #
-    #    def dev_mem_path(self, sim: "simulators.Simulator") -> str:
-    #        return f"{self.workdir}/dev.mem.{sim.name}"
-    #
-    #    def nic_eth_path(self, sim: "simulators.Simulator") -> str:
-    #        return f"{self.workdir}/nic.eth.{sim.name}"
-    #
-    #    def dev_shm_path(self, sim: "simulators.Simulator") -> str:
-    #        return f"{self.shm_base}/dev.shm.{sim.name}"
-    #
-    #    def n2n_eth_path(
-    #        self, sim_l: "simulators.Simulator", sim_c: "simulators.Simulator", suffix=""
-    #    ) -> str:
-    #        return f"{self.workdir}/n2n.eth.{sim_l.name}.{sim_c.name}.{suffix}"
-    #
-    #    def net2host_eth_path(self, sim_n, sim_h) -> str:
-    #        return f"{self.workdir}/n2h.eth.{sim_n.name}.{sim_h.name}"
-    #
-    #    def net2host_shm_path(
-    #        self, sim_n: "simulators.Simulator", sim_h: "simulators.Simulator"
-    #    ) -> str:
-    #        return f"{self.workdir}/n2h.shm.{sim_n.name}.{sim_h.name}"
-    #
-    #    def proxy_shm_path(self, sim: "simulators.Simulator") -> str:
-    #        return f"{self.shm_base}/proxy.shm.{sim.name}"
-
     def _get_chan_by_interface(
         self, interface: system.base.Interface
-    ) -> simulation.channel.Channel:
+    ) -> system.Channel:
         if not interface.is_connected():
             raise Exception(
                 "cannot determine channel by interface, interface isn't connecteds"
             )
-        channel = interface.channel
-        return channel
+        return interface.channel
 
-    def _get_socket_by_channel(
-        self, channel: simualtion.channel.Channel
-    ) -> Socket | None:
-        if not channel in self._socket_per_channel:
-            return None
-        return self._socket_per_channel[channel]
+    def _get_opposing_interface(self, interface: system.Interface) -> system.Interface:
+        channel = self._get_chan_by_interface(interface=interface)
+        return channel.a if channel.a is not interface else channel.b
 
     def _updated_tracker_mapping(
         self, interface: system.base.Interface, socket: Socket
     ) -> None:
-        # update channel mapping
-        channel = self._get_chan_by_interface(interface=interface)
-        if channel not in self._socket_per_channel:
-            self._socket_per_channel[channel] = socket
-
         # update interface mapping
         if interface in self._socket_per_interface:
             raise Exception("an interface cannot be associated with two sockets")
         self._socket_per_interface[interface] = socket
-
-    def _get_opposing_socket_by_interface(
-        self, interface: system.base.Interface
-    ) -> Socket | None:
-        channel = self._get_chan_by_interface(interface=interface)
-        socket = self._get_socket_by_channel(channel=channel)
-        return socket
 
     def _get_socket_by_interface(
         self, interface: system.base.Interface
@@ -146,12 +98,18 @@ class Instantiation:
             return None
         return self._socket_per_interface[interface]
 
+    def _get_opposing_socket_by_interface(
+        self, interface: system.base.Interface
+    ) -> Socket | None:
+        opposing_interface = self._get_opposing_interface(interface=interface)
+        socket = self._get_socket_by_interface(interface=opposing_interface)
+        return socket
+
     def _interface_to_sock_path(self, interface: system.base.Interface) -> str:
         basepath = pathlib.Path(self._env._workdir)
 
         channel = self._get_chan_by_interface(interface=interface)
-        sys_channel = channel.sys_channel
-        queue_ident = f"{sys_channel.a._id}.{sys_channel._id}.{sys_channel.b._id}"
+        queue_ident = f"{channel.a._id}.{channel._id}.{channel.b._id}"
 
         queue_type = None
         match interface:
@@ -191,10 +149,8 @@ class Instantiation:
         # neither connecting nor listening side already created a socket, thus we
         # create a completely new 'CONNECT' socket
         sock_type = SockType.CONNECT
-        # create the socket path
         sock_path = self._interface_to_sock_path(interface=interface)
         new_socket = Socket(path=sock_path, ty=sock_type)
-        # update the socket tracker mapping for other side
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
         return new_socket
 
