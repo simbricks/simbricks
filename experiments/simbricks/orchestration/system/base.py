@@ -45,7 +45,7 @@ class Component(IdObj):
 
     def __init__(self, s: System) -> None:
         super().__init__()
-        s.system = s
+        self.system = s
         s.parameters = {}
         s.add_component(self)
         self.name: str = ""
