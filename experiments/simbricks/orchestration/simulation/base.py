@@ -141,7 +141,7 @@ class Simulator(abc.ABC):
         sockets = []
         for comp_spec in self._components:
             for interface in comp_spec.interfaces():
-                socket = self._get_socket_and_chan(inst=inst, interface=interface)
+                socket = self._get_socket(inst=inst, interface=interface)
                 if socket is None:
                     continue
                 sockets.append(socket)
