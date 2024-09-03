@@ -125,40 +125,43 @@ class Simulator(abc.ABC):
             raise Exception("interface does not need a channel as it is not connected")
         return interface.channel
 
-    def _get_socket_and_chan(
+    def _get_socket(
         self, inst: inst_base.Instantiation, interface: sys_conf.Interface
-    ) -> tuple[sys_conf.Channel, inst_base.Socket] | tuple[None, None]:
+    ) -> inst_base.Socket | None:
         # get the channel associated with this interface
         chan = self._get_sys_chan(interface=interface)
         # check if interfaces channel is simulator internal, i.e. doesnt need an instanciation
         if not self._chan_needs_instance(chan):
-            return None, None
-        # create channel simualtion object
-        channel = self.experiment.retrieve_or_create_channel(chan)
+            return None
         # create the socket to listen on or connect to
         socket = inst.get_socket(interface=interface)
-        return (channel, socket)
+        return socket
 
-    def _get_channels_and_sockets(
-        self, inst: inst_base.Instantiation
-    ) -> tuple[list[sim_chan.Channel], list[inst_base.Socket]]:
-
-        channels = []
+    def _get_sockets(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
         sockets = []
-
         for comp_spec in self._components:
             for interface in comp_spec.interfaces():
-
-                channel, socket = self._get_socket_and_chan(
-                    inst=inst, interface=interface
-                )
-                if channel is None or socket is None:
+                socket = self._get_socket_and_chan(inst=inst, interface=interface)
+                if socket is None:
                     continue
-
-                channels.append(channel)
                 sockets.append(socket)
 
-        return channels, sockets
+        return sockets
+
+    def _get_channel(self, chan: sys_conf.Channel) -> sim_chan.Channel | None:
+        if self._chan_needs_instance(chan):
+            return self.experiment.retrieve_or_create_channel(chan=chan)
+        return None
+
+    def _get_channels(self, inst: inst_base.Instantiation) -> list[sim_chan.Channel]:
+        channels = []
+        for comp_spec in self._components:
+            for chan in self.experiment.retrieve_or_create_channel(chan=chan):
+                channel = self._get_channel(chan=chan)
+                if channel is None:
+                    continue
+                channels.append(channel)
+        return channels
 
     # pylint: disable=unused-argument
     @abc.abstractmethod

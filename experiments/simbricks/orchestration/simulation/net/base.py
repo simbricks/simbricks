@@ -86,8 +86,7 @@ class WireNet(NetSim):
         eth_latency = None
         sync_period = None
         run_sync = False
-        channels, sockets = self._get_channels_and_sockets(inst=inst)
-        assert len(sockets) == 2
+        channels = self._get_channels(inst=inst) 
         for channel in channels:
             sync_period = min(sync_period, channel.sync_period)
             run_sync = run_sync or channel._synchronized
@@ -100,6 +99,9 @@ class WireNet(NetSim):
 
         assert sync_period is not None
         assert eth_latency is not None
+
+        sockets = self._get_sockets(inst=inst)
+        assert len(sockets) == 2
 
         cmd = inst.join_repo_base(self._relative_executable_path)
         cmd += f"{sockets[0]} {sockets[1]} {run_sync} {sync_period} {eth_latency}"
@@ -138,7 +140,7 @@ class SwitchNet(NetSim):
         eth_latency = None
         sync_period = None
         run_sync = False
-        channels, sockets = self._get_channels_and_sockets(inst=inst)
+        channels = self._get_channels(inst=inst)
         for channel in channels:
             sync_period = min(sync_period, channel.sync_period)
             run_sync = run_sync or channel._synchronized
@@ -164,6 +166,7 @@ class SwitchNet(NetSim):
             )
             cmd += " " + pcap_file
 
+        sockets = self._get_sockets(inst=inst)
         listen, connect = base.Simulator.split_sockets_by_type(sockets)
 
         for sock in connect:
