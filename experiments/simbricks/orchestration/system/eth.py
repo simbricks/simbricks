@@ -53,7 +53,7 @@ class BaseEthNetComponent(base.Component):
     def if_add(self, i: EthInterface) -> None:
         self.eth_ifs.append(i)
 
-    def interfaces(self) -> list[Interface]:
+    def interfaces(self) -> list[EthInterface]:
         return self.eth_ifs
 
 
