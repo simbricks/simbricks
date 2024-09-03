@@ -176,8 +176,9 @@ class LinuxHost(BaseLinuxHost):
 
             # Force MAC if requested
             if 'force_mac_addr' in i.parameters:
+                mac = i.parameters['force_mac_addr']
                 l.append(f'ip link set dev {ifn} address '
-                         f'{i.parameters['force_mac_addr']}')
+                         f'{mac}')
 
             # Bring interface up
             l.append(f'ip link set dev {ifn} up')
