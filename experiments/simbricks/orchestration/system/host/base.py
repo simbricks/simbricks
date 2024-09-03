@@ -24,19 +24,18 @@ import typing as tp
 import io
 from os import path
 from simbricks.orchestration.experiment import experiment_environment as expenv
-from simbricks.orchestration.system import base
-from simbricks.orchestration.system import eth
-from simbricks.orchestration.system import mem
-from simbricks.orchestration.system import pcie
-from simbricks.orchestration.system.host import disk_images
-from simbricks.orchestration.system.host import app
+from simbricks.orchestration.system import base as base
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.system import (eth, mem, pcie)
+    from simbricks.orchestration.system.host import disk_images
+    from simbricks.orchestration.system.host import app
 
 
 class Host(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
         self.ifs: list[base.Interface] = []
-        self.applications: list[app.Application]
+        self.applications: list['Application']
 
     def interfaces(self) -> list[base.Interface]:
         return self.pcie_ifs + self.eth_ifs + self.mem_ifs
@@ -44,7 +43,7 @@ class Host(base.Component):
     def add_if(self, i: base.Interface) -> None:
         self.ifs.append(i)
 
-    def add_app(self, a: app.Application) -> None:
+    def add_app(self, a: 'Application') -> None:
         self.applications.append(a)
 
 
@@ -54,26 +53,26 @@ class FullSystemHost(Host):
         self.memory = 512
         self.cores = 1
         self.cpu_freq = '3GHz'
-        self.disks: list[disk_images.DiskImage] = []
+        self.disks: list['DiskImage'] = []
 
-    def add_disk(self, disk: disk_images.DiskImage) -> None:
+    def add_disk(self, disk: 'DiskImage') -> None:
         self.disks.append(disk)
 
 
 class BaseLinuxHost(FullSystemHost):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.applications: list[app.BaseLinuxApplication] = []
+        self.applications: list['BaseLinuxApplication'] = []
         self.load_modules = []
         self.kcmd_append = ''
 
-    def add_app(self, a: app.BaseLinuxApplication) -> None:
+    def add_app(self, a: 'BaseLinuxApplication') -> None:
         self.applications.append(a)
 
     def _concat_app_cmds(
             self,
             env: expenv.ExpEnv,
-            mapper: tp.Callable[[app.BaseLinuxApplication, expenv.ExpEnv],
+            mapper: tp.Callable[['BaseLinuxApplication', expenv.ExpEnv],
                                 list[str]]
             ) -> list[str]:
         """

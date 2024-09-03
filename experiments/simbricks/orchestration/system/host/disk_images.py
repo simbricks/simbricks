@@ -24,12 +24,14 @@ import abc
 import io
 import os.path
 import tarfile
-from simbricks.orchestration.system.host import base
+import typing as tp
 from simbricks.orchestration.experiment import experiment_environment as expenv
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.system.host import base
 
 
 class DiskImage(abc.ABC):
-    def __init__(self, h: base.Host) -> None:
+    def __init__(self, h: 'Host') -> None:
         self.host = h
 
     @abc.abstractmethod
@@ -43,7 +45,7 @@ class DiskImage(abc.ABC):
 
 # Disk image where user just provides a path
 class ExternalDiskImage(DiskImage):
-    def __init__(self, h: base.FullSystemHost, path: str) -> None:
+    def __init__(self, h: 'FullSystemHost', path: str) -> None:
         super().__init__(h)
         self.path = path
         self.formats = ["raw", "qcow2"]
@@ -58,7 +60,7 @@ class ExternalDiskImage(DiskImage):
 
 # Disk images shipped with simbricks
 class DistroDiskImage(DiskImage):
-    def __init__(self, h: base.FullSystemHost, name: str) -> None:
+    def __init__(self, h: 'FullSystemHost', name: str) -> None:
         super().__init__(h)
         self.name = name
         self.formats = ["raw", "qcow2"]
@@ -80,7 +82,7 @@ class DistroDiskImage(DiskImage):
 
 # Builds the Tar with the commands to run etc.
 class LinuxConfigDiskImage(DiskImage):
-    def __init__(self, h: base.LinuxHost) -> None:
+    def __init__(self, h: 'LinuxHost') -> None:
         super().__init__(h)
         self.host: base.LinuxHost
 
@@ -117,7 +119,7 @@ class LinuxConfigDiskImage(DiskImage):
 # Could of course also have a version that generates the packer config from
 # python
 class PackerDiskImage(DiskImage):
-    def __init__(self, h: base.FullSystemHost, packer_config_path: str) -> None:
+    def __init__(self, h: 'FullSystemHost', packer_config_path: str) -> None:
         super().__init__(h)
         self.config_path = packer_config_path
 

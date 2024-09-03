@@ -23,19 +23,20 @@
 import typing as tp
 import abc
 import io
-from simbricks.orchestration.system.host import base
 from simbricks.orchestration.experiment import experiment_environment as expenv
 
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.system.host import base
 
 class Application(abc.ABC):
-    def __init__(self, h: base.Host) -> None:
+    def __init__(self, h: 'Host') -> None:
         self.host = h
 
 
 # Note AK: Maybe we can factor most of the duplicate calls with the host out
 # into a separate module.
 class BaseLinuxApplication(abc.ABC):
-    def __init__(self, h: base.LinuxHost) -> None:
+    def __init__(self, h: 'LinuxHost') -> None:
         self.host = h
         self.start_delay: float | None = None
         self.end_delay: float | None = None
