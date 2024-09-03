@@ -73,7 +73,7 @@ class BaseLinuxHost(FullSystemHost):
     def _concat_app_cmds(
             self,
             env: expenv.ExpEnv,
-            mapper: tp.Callable[[app.LinuxApplication, expenv.ExpEnv],
+            mapper: tp.Callable[[app.BaseLinuxApplication, expenv.ExpEnv],
                                 list[str]]
             ) -> list[str]:
         """
