@@ -56,7 +56,7 @@ class PCIeChannel(base.Channel):
 class PCIeSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
-        self.pci_if = PCIeDeviceInterface()
+        self.pci_if = PCIeDeviceInterface(self)
 
     def interfaces(self) -> list[base.Interface]:
         return [self.pci_if]

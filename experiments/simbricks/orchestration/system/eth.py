@@ -42,7 +42,7 @@ class EthChannel(base.Channel):
 class EthSimpleNIC(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.eth_if = EthInterface()
+        self.eth_if = EthInterface(self)
 
 
 class BaseEthNetComponent(base.Component):
