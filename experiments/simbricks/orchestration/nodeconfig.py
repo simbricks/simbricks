@@ -196,6 +196,19 @@ class LinuxNode(NodeConfig):
         self.ifname = 'eth0'
         self.drivers: tp.List[str] = []
         self.force_mac_addr: tp.Optional[str] = None
+        self.hostname: str | None = 'ubuntu'
+
+    def prepare_pre_cp(self) -> tp.List[str]:
+        """Commands to run to prepare node before checkpointing."""
+        to_prepare = super().prepare_pre_cp()
+        set_hostname = []
+        if self.hostname is not None:
+            set_hostname = [
+                f'hostname -b {self.hostname}',
+                f'echo "127.0.1.1 {self.hostname}\n" >> /etc/hosts'
+            ]
+        to_prepare.extend(set_hostname)
+        return to_prepare
 
     def prepare_post_cp(self) -> tp.List[str]:
         l = []
