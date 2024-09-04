@@ -22,7 +22,8 @@
 
 from __future__ import annotations
 import abc
-import itertools
+from simbricks.orchestration.utils import base
+
 
 class System:
     """Defines System configuration of the whole simulation"""
@@ -35,14 +36,7 @@ class System:
         self.all_component.append(c)
 
 
-class IdObj(abc.ABC):
-    __id_iter = itertools.count()
-
-    def __init__(self):
-        self._id = next(self.__id_iter)
-
-
-class Component(IdObj):
+class Component(base.IdObj):
 
     def __init__(self, s: System) -> None:
         super().__init__()
@@ -59,7 +53,7 @@ class Component(IdObj):
         return [i.channel for i in self.interfaces() if i.is_connected()]
 
 
-class Interface(IdObj):
+class Interface(base.IdObj):
     def __init__(self, c: Component) -> None:
         super().__init__()
         self.component = c
@@ -76,7 +70,7 @@ class Interface(IdObj):
         self.channel = c
 
 
-class Channel(IdObj):
+class Channel(base.IdObj):
     def __init__(self, a: Interface, b: Interface) -> None:
         super().__init__()
         self.latency = 500

@@ -26,6 +26,7 @@ import typing as tp
 import simbricks.orchestration.system as sys_conf
 from simbricks.orchestration.experiment import experiment_environment_new as exp_env
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.simulation import (
@@ -37,12 +38,13 @@ if tp.TYPE_CHECKING:
     )
 
 
-class Simulator(abc.ABC):
+class Simulator(utils_base.IdObj):
     """Base class for all simulators."""
 
     def __init__(
         self, simulation: sim_base.Simulation, relative_executable_path: str = ""
     ) -> None:
+        super().__init__()
         self.extra_deps: list[Simulator] = []
         self.name: str = ""
         self.experiment: sim_base.Simulation = simulation
