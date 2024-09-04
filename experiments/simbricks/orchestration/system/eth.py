@@ -42,8 +42,11 @@ class EthChannel(base.Channel):
 class EthSimpleNIC(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
+        self.ip = None
         self.eth_if = EthInterface(self)
 
+    def add_ipv4(self, ip: str) -> None:
+        self.ip = ip
 
 class BaseEthNetComponent(base.Component):
     def __init__(self, s: base.System) -> None:
