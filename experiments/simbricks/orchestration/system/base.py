@@ -28,10 +28,11 @@ class System:
     """Defines System configuration of the whole simulation"""
 
     def __init__(self) -> None:
-        self.hosts: list[Component] = []
+        self.all_component: list[Component] = []
 
     def add_component(self, c: Component) -> None:
         assert c.system == self
+        self.all_component.append(c)
 
 
 class IdObj(abc.ABC):
