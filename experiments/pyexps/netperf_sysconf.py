@@ -1,7 +1,7 @@
-import simbricks.orchestration.experiments as exp
-import simbricks.splitsim.specification as spec
-import simbricks.splitsim.impl as impl
-import simbricks.splitsim.runobj as runobj
+
+import simbricks.orchestration.system as system
+import simbricks.orchestration.simulation as sim
+import simbricks.orchestration.instantiation as inst
 """
 Netperf Example:
 One Client: Host_0, One Server: Host1 connected through a switch
@@ -11,28 +11,30 @@ This scripts generates the experiments with all the combinations of different ex
 """
 
 # host_types = ['qemu', 'gem5', 'qt']
-host_types = ['qemu']
-nic_types = ['bm', 'vr']
+host_types = ['gem5']
+nic_types = ['bm']
 net_types = ['switch']
 experiments = []
 
-system = spec.System()
+sys = system.System()
 
 # create a host instance and a NIC instance then install the NIC on the host
-host0 = spec.LinuxHost(system)
-nic0 = spec.CorundumNIC(system)
-host0.nic_driver = ['/tmp/guest/mqnic.ko']
-host0.ip = '10.0.0.1'
-pcichannel0 = spec.PCI(system)
-pcichannel0.install(host0, nic0)
+host0 = system.I40ELinuxHost(sys)
+pcie0 = system.PCIeHostInterface(host0)
+host0.add_if(pcie0)
+nic0 = system.IntelI40eNIC(sys)
+nic0.add_ipv4('10.0.0.1')
+pcichannel0 = system.PCIeChannel(pcie0, nic0.pci_if)
 
-host1 = spec.LinuxHost(system)
-nic1 = spec.CorundumNIC(system)
-host1.nic_driver = ['/tmp/guest/mqnic.ko']
-host1.ip = '10.0.0.2'
-pcichannel1 = spec.PCI(system)
-pcichannel1.install(host1, nic1)
+# create a host instance and a NIC instance then install the NIC on the host
+host1 = system.I40ELinuxHost(sys)
+pcie1 = system.PCIeHostInterface(host1)
+host1.add_if(pcie0)
+nic1 = system.IntelI40eNIC(sys)
+nic1.add_ipv4('10.0.0.2')
+pcichannel1 = system.PCIeChannel(pcie1, nic1.pci_if)
 
+'''
 port0 = spec.NetDev()
 port1 = spec.NetDev()
 switch = spec.Switch(system)
@@ -111,3 +113,4 @@ for host_type in host_types:
                 print(sim)
 
             experiments.append(e)
+        '''
