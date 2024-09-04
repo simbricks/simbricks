@@ -20,10 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration import simulation
-from simbricks.orchestration import system
 import enum
 import pathlib
+from simbricks.orchestration.utils import base
+from simbricks.orchestration import simulation
+from simbricks.orchestration import system
 
 
 class SockType(enum.Enum):
@@ -38,7 +39,7 @@ class Socket:
         self._type = ty
 
 
-class InstantiationEnvironment:
+class InstantiationEnvironment(base.IdObj):
 
     def __init__(
         self,
@@ -49,6 +50,7 @@ class InstantiationEnvironment:
         output_base: str = pathlib.Path(),
         tmp_simulation_files: str = pathlib.Path(),
     ):
+        super().__init__()
         # TODO: add more parameters that wont change during instantiation
         self._repodir: str = pathlib.Path(repo_path).absolute()
         self._workdir: str = pathlib.Path(workdir).absolute()
@@ -60,11 +62,12 @@ class InstantiationEnvironment:
         )
 
 
-class Instantiation:
+class Instantiation(base.IdObj):
 
     def __init__(
         self, simulation, env: InstantiationEnvironment = InstantiationEnvironment()
     ):
+        super().__init__()
         self._simulation = simulation
         self._env: InstantiationEnvironment = env
         self._socket_per_interface: dict[system.base.Interface, Socket] = {}
@@ -159,6 +162,10 @@ class Instantiation:
         return new_socket
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
+
+    def prepare_environment(self) -> None:
+        TODO
+        raise Exception("not implemented")
 
     def _join_paths(
         self, base: str = "", relative_path: str = "", enforce_existence=True
