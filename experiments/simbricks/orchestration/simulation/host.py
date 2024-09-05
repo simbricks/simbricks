@@ -25,18 +25,19 @@ import tarfile
 import math
 import typing as tp
 import simbricks.orchestration.simulation.base as sim_base
-import simbricks.orchestration.system.host.base as system_host
 import simbricks.orchestration.system.pcie as system_pcie
 import simbricks.orchestration.system as system
-import simbricks.orchestration.experiments as exp
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
+
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.system.host.base import (Host)
 
 
 class HostSim(sim_base.Simulator):
 
-    def __init__(self, e: exp.Experiment):
+    def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
-        self.hosts: system_host.Host = []
+        self.hosts: tp.List['Host']
         self.wait = True
     
     def full_name(self) -> str:
@@ -51,7 +52,7 @@ class HostSim(sim_base.Simulator):
                 deps.append(self.experiment.find_sim(dev.component)) 
         return deps
     
-    def add(self, host: system_host.Host):
+    def add(self, host: 'Host'):
         self.hosts.append(host)
         self.name = f'{self.hosts.id}'
         self.experiment.add_host(self)
@@ -94,7 +95,7 @@ class HostSim(sim_base.Simulator):
 
 class Gem5Sim(HostSim):
 
-    def __init__(self, e: exp.Experiment):
+    def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
         self.name = ''
 
@@ -183,7 +184,7 @@ class Gem5Sim(HostSim):
     
 class QemuSim(HostSim):
 
-    def __init__(self, e: exp.Experiment):
+    def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
 
 

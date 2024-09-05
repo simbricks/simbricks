@@ -22,7 +22,7 @@
 
 from __future__ import annotations
 import abc
-from simbricks.orchestration.utils import base
+from simbricks.orchestration.utils import base as util_base
 
 
 class System:
@@ -36,7 +36,7 @@ class System:
         self.all_component.append(c)
 
 
-class Component(base.IdObj):
+class Component(util_base.IdObj):
 
     def __init__(self, s: System) -> None:
         super().__init__()
@@ -53,7 +53,7 @@ class Component(base.IdObj):
         return [i.channel for i in self.interfaces() if i.is_connected()]
 
 
-class Interface(base.IdObj):
+class Interface(util_base.IdObj):
     def __init__(self, c: Component) -> None:
         super().__init__()
         self.component = c
@@ -70,7 +70,7 @@ class Interface(base.IdObj):
         self.channel = c
 
 
-class Channel(base.IdObj):
+class Channel(util_base.IdObj):
     def __init__(self, a: Interface, b: Interface) -> None:
         super().__init__()
         self.latency = 500

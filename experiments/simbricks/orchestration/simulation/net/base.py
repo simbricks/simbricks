@@ -22,16 +22,17 @@
 
 import abc
 import sys
-from simbricks.orchestration.simulation import base
+import simbricks.orchestration.simulation.base as sim_base
 from simbricks.orchestration.system import eth
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 
 
-class NetSim(base.Simulator):
+class NetSim(sim_base.Simulator):
     """Base class for network simulators."""
 
     def __init__(
-        self, simulation: base.Simulation, relative_executable_path: str = ""
+        self, simulation: sim_base.Simulation, relative_executable_path: str = ""
     ) -> None:
         super().__init__(simulation, relative_executable_path=relative_executable_path)
         # TODO: do we want them here?
@@ -41,7 +42,7 @@ class NetSim(base.Simulator):
     def full_name(self) -> str:
         return "net." + self.name
 
-    def dependencies(self) -> list[base.Simulator]:
+    def dependencies(self) -> list[sim_base.Simulator]:
         # TODO
         deps = []
         for s in self.switches:
@@ -50,7 +51,7 @@ class NetSim(base.Simulator):
         return deps
 
     # TODO
-    def sockets_wait(self, env: exp_env.ExpEnv) -> list[str]:
+    def sockets_wait(self, env: ExpEnv) -> list[str]:
         pass
 
     def wait_terminate(self) -> bool:
@@ -60,14 +61,14 @@ class NetSim(base.Simulator):
     def init_network(self) -> None:
         pass
 
-    def sockets_cleanup(self, env: exp_env.ExpEnv) -> list[str]:
+    def sockets_cleanup(self, env: ExpEnv) -> list[str]:
         # TODO
         return []
 
 
 class WireNet(NetSim):
 
-    def __init__(self, simulation: base.Simulation) -> None:
+    def __init__(self, simulation: sim_base.Simulation) -> None:
         super().__init__(
             simulation=simulation,
             relative_executable_path="/sims/net/wire/net_wire",
@@ -75,7 +76,7 @@ class WireNet(NetSim):
         )
         # TODO: probably we want to store these in a common base class...
         self._wire_comp: eth.EthWire | None = None
-        self._relative_pcap_file_path: str | None = relative_pcap_file_path
+        self._relative_pcap_file_path: str | None = 'relative_pcap_file_path'
 
     def add_wire(self, wire: eth.EthWire):
         assert self._wire_comp is None
@@ -118,7 +119,7 @@ class SwitchNet(NetSim):
 
     def __init__(
         self,
-        simulation: base.Simulation,
+        simulation: sim_base.Simulation,
         relative_executable_path="/sims/net/switch/net_switch",
         relative_pcap_file_path=None,
     ) -> None:
@@ -167,7 +168,7 @@ class SwitchNet(NetSim):
             cmd += " " + pcap_file
 
         sockets = self._get_sockets(inst=inst)
-        listen, connect = base.Simulator.split_sockets_by_type(sockets)
+        listen, connect = sim_base.Simulator.split_sockets_by_type(sockets)
 
         for sock in connect:
             cmd += " -s " + sock._path
@@ -181,7 +182,7 @@ class SwitchNet(NetSim):
 class MemSwitchNet(SwitchNet):
 
     def __init__(
-        self, simulation: base.Simulation, relative_pcap_file_path=None
+        self, simulation: sim_base.Simulation, relative_pcap_file_path=None
     ) -> None:
         super().__init__(
             simulation=simulation,

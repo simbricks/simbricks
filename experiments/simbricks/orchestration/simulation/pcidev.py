@@ -20,16 +20,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.orchestration.simulation as sim_conf
 import simbricks.orchestration.system as sys_conf
 import typing as tp
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
+from simbricks.orchestration.simulation import base
 
 
-class PCIDevSim(sim_conf.Simulator):
+class PCIDevSim(base.Simulator):
     """Base class for PCIe device simulators."""
 
-    def __init__(self, e: sim_conf.Simulation) -> None:
+    def __init__(self, e: base.Simulation) -> None:
         super().__init__(e)
 
         self.start_tick = 0
@@ -56,13 +56,13 @@ class PCIDevSim(sim_conf.Simulator):
 class NICSim(PCIDevSim):
     """Base class for NIC simulators."""
 
-    def __init__(self, e: sim_conf.Simulation) -> None:
+    def __init__(self, e: base.Simulation) -> None:
         super().__init__(e)
         self.experiment = e
-        self.nics: tp.List[sim_conf.PCIDevSim] = []
+        self.nics: tp.List[PCIDevSim] = []
         self.start_tick = 0
 
-    def add(self, nic: sim_conf.PCIDevSim):
+    def add(self, nic: PCIDevSim):
         self.nics.append(nic)
         # nic.sim = self
         self.experiment.add_nic(self)
@@ -102,7 +102,7 @@ class NICSim(PCIDevSim):
 
 class I40eNicSim(NICSim):
 
-    def __init__(self, e: sim_conf.Simulation):
+    def __init__(self, e: 'Simulation'):
         super().__init__(e)
 
     def run_cmd(self, env: ExpEnv) -> str:
@@ -110,7 +110,7 @@ class I40eNicSim(NICSim):
 
 
 class CorundumBMNICSim(NICSim):
-    def __init__(self, e: sim_conf.Simulation):
+    def __init__(self, e: 'Simulation'):
         super().__init__(e)
 
     def run_cmd(self, env: ExpEnv) -> str:
@@ -121,7 +121,7 @@ class CorundumBMNICSim(NICSim):
 
 class CorundumVerilatorNICSim(NICSim):
 
-    def __init__(self, e: sim_conf.Simulation):
+    def __init__(self, e: 'Simulation'):
         super().__init__(e)
         self.clock_freq = 250  # MHz
 
