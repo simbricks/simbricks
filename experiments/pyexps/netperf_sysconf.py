@@ -34,22 +34,22 @@ nic1 = system.IntelI40eNIC(sys)
 nic1.add_ipv4('10.0.0.2')
 pcichannel1 = system.PCIeChannel(pcie1, nic1.pci_if)
 
-'''
-port0 = spec.NetDev()
-port1 = spec.NetDev()
-switch = spec.Switch(system)
-switch.install_netdev(port0)
-switch.install_netdev(port1)
+# create switch and its ports
+switch = system.EthSwitch(sys)
+netif0 = system.EthInterface(switch)
+switch.if_add(netif0)
+netif1 = system.EthInterface(switch)
+switch.if_add(netif1)
 
-ethchannel0 = spec.Eth(system)
-ethchannel0.install(nic0, port0)
-ethchannel1 = spec.Eth(system)
-ethchannel1.install(nic1, port1)
+# create channels and connect the switch to the host nics
+ethchannel0 = system.EthChannel(switch.eth_ifs[0], nic0.eth_if)
+ethchannel1 = system.EthChannel(switch.eth_ifs[1], nic1.eth_if)
 
 # configure the software to run on the host
-host0.app = spec.NetperfClient('10.0.0.2')
-host1.app = spec.NetperfServer()
+host0.add_app(system.NetperfClient(host0, nic1.ip))
+host1.add_app(system.NetperfServer(host1))
 
+'''
 """
 Execution Config
 """
