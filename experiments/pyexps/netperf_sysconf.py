@@ -12,7 +12,7 @@ This scripts generates the experiments with all the combinations of different ex
 
 # host_types = ['qemu', 'gem5', 'qt']
 host_types = ['gem5']
-nic_types = ['bm']
+nic_types = ['i40e', 'vr']
 net_types = ['switch']
 experiments = []
 
@@ -49,68 +49,63 @@ ethchannel1 = system.EthChannel(switch.eth_ifs[1], nic1.eth_if)
 host0.add_app(system.NetperfClient(host0, nic1.ip))
 host1.add_app(system.NetperfServer(host1))
 
-'''
 """
 Execution Config
 """
 for host_type in host_types:
     for nic_type in nic_types:
         for net_type in net_types:
-            e = exp.Experiment(
+            e = sim.Simulation(
                 'n-' + host_type + '-' + nic_type + '-' + net_type
             )
-            allobj = runobj.AllObj()
-
             # Host
             if host_type == 'gem5':
-                host_sim = impl.Gem5Sim
+                host_sim = sim.Gem5Sim
             elif host_type == 'qemu':
 
                 def qemu_sim(e):
-                    h = impl.QemuSim(e)
+                    h = sim.QemuSim(e)
                     h.sync = False
                     return h
                 host_sim = qemu_sim
 
             elif host_type == 'qt':
-                host_sim = impl.QemuSim
+                host_sim = sim.QemuSim
             else:
                 raise NameError(host_type)
-            
+
             # NIC
-            if nic_type == 'bm':
-                nic_sim = impl.CorundumBMNICSim
+            if nic_type == 'i40e':
+                nic_sim = sim.I40eNicSim
             elif nic_type == 'vr':
-                nic_sim = impl.CorundumVerilatorNICSim
+                nic_sim = sim.CorundumVerilatorNICSim
             else:
                 raise NameError(nic_type)
 
             # Net
             if net_type == 'switch':
-                net_sim = impl.SwitchBMSim
+                net_sim = sim.SwitchNet
             else:
                 raise NameError(net_type)
 
-
-            host_inst0 = host_sim(e, allobj)
+            host_inst0 = host_sim(e)
             host_inst0.add(host0)
 
-            host_inst1 = host_sim(e, allobj)
+            host_inst1 = host_sim(e)
             host_inst1.add(host1)
 
-            nic_inst0 = nic_sim(e, allobj)
+            nic_inst0 = nic_sim(e)
             nic_inst0.add(nic0)
 
-            nic_inst1 = nic_sim(e, allobj)
+            nic_inst1 = nic_sim(e)
             nic_inst1.add(nic1)
 
-            net_inst = net_sim(e, allobj)
+            net_inst = net_sim(e)
             net_inst.add(switch)
             
             print(e.name + "   all simulators:")
             sims = e.all_simulators()
-            for sim in sims:
-                print(sim)
+            for s in sims:
+                print(s)
 
             experiments.append(e)
-        '''
