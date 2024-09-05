@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import asyncio
 import itertools
 import shlex
@@ -46,12 +48,12 @@ from simbricks.orchestration.runtime_new import command_executor
 
 class ExperimentBaseRunner(abc.ABC):
 
-    def __init__(self, simulation: sim_base.Simulation, inst_env: inst_base.InstantiationEnvironment, verbose: bool) -> None:
-        self._simulation: sim_base.Simulation = exp
-        self._inst_env: inst_base.InstantiationEnvironment = env
+    def __init__(self, simulation: sim_base.Simulation, instantiation: inst_base.Instantiation, verbose: bool) -> None:
+        self._simulation: sim_base.Simulation = simulation
+        self._instantiation: inst_base.Instantiation = instantiation
         self._verbose: bool = verbose
         self._profile_int: int | None = None
-        self._out = ExpOutput(exp) # TODO: wtf shall this whitchcraft be
+        self._out = sim_base.SimulationOutput(self._simulation)
         self._running: list[tuple[sim_base.Simulator, simulation_executor.SimpleComponent]] = []
         self._sockets: list[tuple[simulation_executor.Executor, str]] = []
         self._wait_sims: list[simulation_executor.Component] = []
@@ -75,12 +77,12 @@ class ExperimentBaseRunner(abc.ABC):
         """Start a simulator and wait for it to be ready."""
 
         name = sim.full_name()
-        if self.verbose:
+        if self._verbose:
             print(f'{self._simulation.name}: starting {name}')
 
-        run_cmd = sim.run_cmd(self.env)
+        run_cmd = sim.run_cmd(self._instantiation)
         if run_cmd is None:
-            if self.verbose:
+            if self._verbose:
                 print(f'{self._simulation.name}: started dummy {name}')
             return
 
@@ -90,16 +92,16 @@ class ExperimentBaseRunner(abc.ABC):
             name, shlex.split(run_cmd), verbose=self.verbose, canfail=True
         )
         await sc.start()
-        self.running.append((sim, sc))
+        self._running.append((sim, sc))
 
         # add sockets for cleanup
-        for s in sim.sockets_cleanup(self.env):
-            self.sockets.append((executor, s))
+        for s in sim.sockets_cleanup(self.env): # TODO: FIXME
+            self._sockets.append((executor, s))
 
         # Wait till sockets exist
-        wait_socks = sim.sockets_wait(self.env)
+        wait_socks = sim.sockets_wait(self.env) # TODO: FIXME
         if wait_socks:
-            if self.verbose:
+            if self._verbose:
                 print(f'{self.exp.name}: waiting for sockets {name}')
 
             await executor.await_files(wait_socks, verbose=self.verbose)
@@ -127,10 +129,12 @@ class ExperimentBaseRunner(abc.ABC):
     async def prepare(self) -> None:
         # generate config tars
         copies = []
+        # TODO: FIXME
         for host in self.exp.hosts:
             path = self.env.cfgtar_path(host)
             if self.verbose:
                 print('preparing config tar:', path)
+            # TODO: FIXME
             host.node_config.make_tar(self.env, path)
             executor = self.sim_executor(host)
             task = asyncio.create_task(executor.send_file(path, self.verbose))
@@ -139,12 +143,13 @@ class ExperimentBaseRunner(abc.ABC):
 
         # prepare all simulators in parallel
         sims = []
-        for sim in self.exp.all_simulators():
-            prep_cmds = list(sim.prep_cmds(self.env))
+        # TODO: FIXME
+        for sim in self._simulation.all_simulators():
+            prep_cmds = list(sim.prep_cmds(inst=self._instantiation))
             executor = self.sim_executor(sim)
             task = asyncio.create_task(
                 executor.run_cmdlist(
-                    'prepare_' + self.exp.name, prep_cmds, verbose=self.verbose
+                    'prepare_' + self._simulation.name, prep_cmds, verbose=self._verbose
                 )
             )
             sims.append(task)
@@ -157,9 +162,9 @@ class ExperimentBaseRunner(abc.ABC):
         for sc in self.wait_sims:
             await sc.wait()
 
-    async def terminate_collect_sims(self) -> ExpOutput:
+    async def terminate_collect_sims(self) -> sim_base.SimulationOutput:
         """Terminates all simulators and collects output."""
-        self.out.set_end()
+        self._out.set_end()
         if self.verbose:
             print(f'{self.exp.name}: cleaning up')
 
@@ -167,40 +172,40 @@ class ExperimentBaseRunner(abc.ABC):
 
         # "interrupt, terminate, kill" all processes
         scs = []
-        for _, sc in self.running:
+        for _, sc in self._running:
             scs.append(asyncio.create_task(sc.int_term_kill()))
         await asyncio.gather(*scs)
 
         # wait for all processes to terminate
-        for _, sc in self.running:
+        for _, sc in self._running:
             await sc.wait()
 
         # remove all sockets
         scs = []
-        for (executor, sock) in self.sockets:
+        for (executor, sock) in self._sockets:
             scs.append(asyncio.create_task(executor.rmtree(sock)))
         if scs:
             await asyncio.gather(*scs)
 
         # add all simulator components to the output
-        for sim, sc in self.running:
-            self.out.add_sim(sim, sc)
+        for sim, sc in self._running:
+            self._out.add_sim(sim, sc)
 
         await self.after_cleanup()
-        return self.out
+        return self._out
 
     async def profiler(self):
-        assert self.profile_int
+        assert self._profile_int
         while True:
-            await asyncio.sleep(self.profile_int)
-            for (_, sc) in self.running:
+            await asyncio.sleep(self._profile_int)
+            for (_, sc) in self._running:
                 await sc.sigusr1()
 
-    async def run(self) -> ExpOutput:
+    async def run(self) -> sim_base.SimulationOutput:
         profiler_task = None
 
         try:
-            self.out.set_start()
+            self._out.set_start()
             graph = self.sim_graph()
             print(graph)
             ts = graphlib.TopologicalSorter(graph)
@@ -219,16 +224,16 @@ class ExperimentBaseRunner(abc.ABC):
                 for sim in sims:
                     ts.done(sim)
 
-            if self.profile_int:
+            if self._profile_int:
                 profiler_task = asyncio.create_task(self.profiler())
             await self.before_wait()
             await self.wait_for_sims()
         except asyncio.CancelledError:
-            if self.verbose:
-                print(f'{self.exp.name}: interrupted')
-            self.out.set_interrupted()
+            if self._verbose:
+                print(f'{self._simulation.name}: interrupted')
+            self._out.set_interrupted()
         except:  # pylint: disable=bare-except
-            self.out.set_failed()
+            self._out.set_failed()
             traceback.print_exc()
 
         if profiler_task:
@@ -262,6 +267,7 @@ class ExperimentSimpleRunner(ExperimentBaseRunner):
         return self._executor
 
 
+# TODO: FIXME
 class ExperimentDistributedRunner(ExperimentBaseRunner):
     """Simple experiment runner with just one executor."""
 

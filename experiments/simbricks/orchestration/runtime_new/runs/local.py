@@ -72,9 +72,11 @@ class LocalSimpleRuntime(run_base.Runtime):
         # if the log is huge, this step takes some time
         if self._verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
-        
-        # TODO: FIXME
-        run._output.dump(run.outpath)
+
+        output_path = run._instantiation.get_simulation_output_path(
+            run_number=run._run_nr
+        )
+        run._output.dump(outpath=output_path)
 
     async def start(self) -> None:
         """Execute the runs defined in `self.runnable`."""
@@ -147,7 +149,11 @@ class LocalParallelRuntime(run_base.Runtime):
         # if the log is huge, this step takes some time
         if self.verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
-        run._output.dump(output path) # TODO: FIXME
+
+        output_path = run._instantiation.get_simulation_output_path(
+            run_number=run._run_nr
+        )
+        run._output.dump(outpath=output_path)
         print("finished run ", run.name())
         return run
 

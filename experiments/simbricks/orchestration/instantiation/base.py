@@ -266,3 +266,10 @@ class Instantiation(util_base.IdObj):
         return self._join_paths(
             base=self._env._tmp_simulation_files, relative_path=filename
         )
+
+    def get_simulation_output_path(self, run_number: int) -> str:
+        return self._join_paths(
+            base=self._env._output_base,
+            relative_path=f"/{self._simulation.name}-{run_number}.json",
+            enforce_existence=False,
+        )
