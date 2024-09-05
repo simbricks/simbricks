@@ -22,11 +22,13 @@
 
 from __future__ import annotations
 import abc
+import time
 import typing as tp
 import simbricks.orchestration.system as sys_conf
 from simbricks.orchestration.experiment import experiment_environment_new as exp_env
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.utils import base as utils_base
+from simbricks.orchestration.runtime_new import command_executor
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.simulation import (
@@ -171,6 +173,7 @@ class Simulator(utils_base.IdObj):
         """Command to execute this simulator."""
         return ""
 
+    # TODO: FIXME
     def dependencies(self) -> list[Simulator]:
         """Other simulators to execute before this one."""
         return []
@@ -198,8 +201,11 @@ class Simulator(utils_base.IdObj):
     def wait_terminate(self) -> bool:
         return False
 
+    def supports_checkpointing(self) -> bool:
+        return False
 
-class Simulation(object):
+
+class Simulation(utils_base.IdObj):
     """
     Base class for all simulation experiments.
 
@@ -207,6 +213,7 @@ class Simulation(object):
     """
 
     def __init__(self, name: str) -> None:
+        super().__init__()
         self.name = name
         """
         This experiment's name.
@@ -223,9 +230,6 @@ class Simulation(object):
         by first running in a less accurate mode, then checkpointing the system
         state after boot and running simulations from there.
         """
-        self.no_simbricks = False
-        """If `true`, no simbricks adapters are used in any of the
-        simulators."""
         self.hosts: list[HostSim] = []
         """The host simulators to run."""
         self.pcidevs: list[PCIDevSim] = []
@@ -304,6 +308,8 @@ class Simulation(object):
 
     def all_simulators(self) -> tp.Iterable[Simulator]:
         """Returns all simulators defined to run in this experiment."""
+        # TODO: FIXME
+        raise Exception("needs fixed implementation")
         return itertools.chain(
             self.hosts, self.pcidevs, self.memdevs, self.netmems, self.networks
         )
@@ -324,8 +330,57 @@ class Simulation(object):
 
     def find_sim(self, comp: sys_conf.Component) -> sim_base.Simulator:
         """Returns the used simulator object for the system component."""
-        for c, sim in self.sys_sim_map.items():
-            if c == comp:
-                return sim
+        if comp not in self.sys_sim_map:
+            raise Exception("Simulator Not Found")
+        return self.sys_sim_map[comp]
 
-        raise Exception("Simulator Not Found")
+    def enable_checkpointing_if_supported() -> None:
+        raise Exception("not implemented")
+
+    def is_checkpointing_enabled(self) -> bool:
+        raise Exception("not implemented")
+
+
+class SimulationOutput:
+    """Manages an experiment's output."""
+
+    def __init__(self, sim: Simulation) -> None:
+        self._sim_name: str = sim.name
+        self._start_time: float = None
+        self._end_time: float = None
+        self._success: bool = True
+        self._interrupted: bool = False
+        self._metadata = exp.metadata
+        self._sims: dict[str, dict[str, str | list[str]]] = {}
+
+    def set_start(self) -> None:
+        self._start_time = time.time()
+
+    def set_end(self) -> None:
+        self.end_time = time.time()
+
+    def set_failed(self) -> None:
+        self.success = False
+
+    def set_interrupted(self) -> None:
+        self.success = False
+        self.interrupted = True
+
+    def add_sim(self, sim: Simulator, comp: command_executor.Component) -> None:
+        obj = {
+            "class": sim.__class__.__name__,
+            "cmd": comp.cmd_parts,
+            "stdout": comp.stdout,
+            "stderr": comp.stderr,
+        }
+        self._sims[sim.full_name()] = obj
+
+    def dump(self, outpath: str) -> None:
+        pathlib.Path(outpath).parent.mkdir(parents=True, exist_ok=True)
+        with open(outpath, "w", encoding="utf-8") as file:
+            json.dump(self.__dict__, file, indent=4)
+
+    def load(self, file: str) -> None:
+        with open(file, "r", encoding="utf-8") as fp:
+            for k, v in json.load(fp).items():
+                self.__dict__[k] = v
