@@ -78,9 +78,10 @@ class WireNet(NetSim):
         self._wire_comp: eth.EthWire | None = None
         self._relative_pcap_file_path: str | None = 'relative_pcap_file_path'
 
-    def add_wire(self, wire: eth.EthWire):
+    def add(self, wire: eth.EthWire):
         assert self._wire_comp is None
         super()._add_component(wire)
+        self.experiment.add_network(self)
         self._wire_comp = wire
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
@@ -130,9 +131,10 @@ class SwitchNet(NetSim):
         self._switch_spec: eth.EthSwitch | None = None
         self._relative_pcap_file_path: str | None = relative_pcap_file_path
 
-    def add_switch(self, switch_spec: eth.EthSwitch):
+    def add(self, switch_spec: eth.EthSwitch):
         assert self._switch_spec is None
         super()._add_component(switch_spec)
+        self.experiment.add_network(self)
         self._switch_spec = switch_spec
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
