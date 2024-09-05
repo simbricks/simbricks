@@ -93,8 +93,8 @@ class BaseLinuxApplication(abc.ABC):
 
 
 class PingClient(BaseLinuxApplication):
-    def __init__(self, server_ip: str = '192.168.64.1') -> None:
-        super().__init__()
+    def __init__(self, h: 'LinuxHost', server_ip: str = '192.168.64.1') -> None:
+        super().__init__(h)
         self.server_ip = server_ip
 
     def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
@@ -102,8 +102,8 @@ class PingClient(BaseLinuxApplication):
 
 
 class Sleep(BaseLinuxApplication):
-    def __init__(self, delay: float = 10) -> None:
-        super().__init__()
+    def __init__(self, h: 'LinuxHost', delay: float = 10) -> None:
+        super().__init__(h)
         self.delay = delay
 
     def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
@@ -111,16 +111,16 @@ class Sleep(BaseLinuxApplication):
 
 
 class NetperfServer(BaseLinuxApplication):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, h: 'LinuxHost') -> None:
+        super().__init__(h)
 
     def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
         return ['netserver', 'sleep infinity']
 
 
 class NetperfClient(BaseLinuxApplication):
-    def __init__(self, server_ip: str = '192.168.64.1') -> None:
-        super().__init__()
+    def __init__(self, h: 'LinuxHost', server_ip: str = '192.168.64.1') -> None:
+        super().__init__(h)
         self.server_ip = server_ip
         self.duration_tp = 10
         self.duration_lat = 10
