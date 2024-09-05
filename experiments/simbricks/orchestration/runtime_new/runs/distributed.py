@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import asyncio
 import typing as tp
 
@@ -27,39 +29,46 @@ from simbricks.orchestration import proxy
 from simbricks.orchestration.exectools import Executor
 from simbricks.orchestration.experiments import DistributedExperiment, Experiment
 from simbricks.orchestration.runtime_new import simulation_executor
-from simbricks.orchestration.runtime_new.runs import base
+from simbricks.orchestration.runtime_new import command_executor
+from simbricks.orchestration.runtime_new.runs import base as run_base
+from simbricks.orchestration.simulation import base as sim_base
 
 
 class DistributedSimpleRuntime(base.Runtime):
 
-    def __init__(self, executors, verbose=False) -> None:
+    def __init__(
+        self,
+        executors: dict[sim_base.Simulator, command_executor.Executor],
+        verbose: bool = False,
+    ) -> None:
         super().__init__()
-        self.runnable: list[base.Run] = []
-        self.complete: list[base.Run] = []
-        self.verbose = verbose
-        self.executors = executors
+        self._runnable: list[run_base.Run] = []
+        self._complete: list[run_base.Run] = []
+        self._verbose: bool = verbose
+        self._executors: dict[sim_base.Simulator, command_executor.Executor] = executors
+        self._running: asyncio.Task | None = None
 
-        self._running: asyncio.Task
-
-    def add_run(self, run: base.Run) -> None:
-        if not isinstance(run.experiment, DistributedExperiment):
+    def add_run(self, run: run_base.Run) -> None:
+        # TODO: FIXME
+        if not isinstance(run._simulation, DistributedExperiment):
             raise RuntimeError("Only distributed experiments supported")
 
-        self.runnable.append(run)
+        self._runnable.append(run)
 
-    async def do_run(self, run: base.Run) -> None:
+    async def do_run(self, run: run_base.Run) -> None:
+        # TODO: FIXME Distributed Experiments needs fixing
         runner = simulation_executor.ExperimentDistributedRunner(
-            self.executors,
+            self._executors,
             # we ensure the correct type in add_run()
-            tp.cast(DistributedExperiment, run.experiment),
-            run.env,
-            self.verbose,
+            tp.cast(DistributedExperiment, run._simulation),
+            run._instantiation,
+            self._verbose,
         )
-        if self.profile_int:
-            runner.profile_int = self.profile_int
+        if self._profile_int:
+            runner._profile_int = self._profile_int
 
         try:
-            for executor in self.executors:
+            for executor in self._executors:
                 await run.prep_dirs(executor)
             await runner.prepare()
         except asyncio.CancelledError:
@@ -67,16 +76,20 @@ class DistributedSimpleRuntime(base.Runtime):
             # simulators yet
             return
 
-        run.output = await runner.run()  # already handles CancelledError
-        self.complete.append(run)
+        run._output = await runner.run()  # already handles CancelledError
+        self._complete.append(run)
 
         # if the log is huge, this step takes some time
-        if self.verbose:
+        if self._verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
-        run.output.dump(run.outpath)
+
+        output_path = run._instantiation.get_simulation_output_path(
+            run_number=run._run_nr
+        )
+        run._output.dump(outpath=output_path)
 
     async def start(self) -> None:
-        for run in self.runnable:
+        for run in self._runnable:
             if self._interrupted:
                 return
 
@@ -84,11 +97,11 @@ class DistributedSimpleRuntime(base.Runtime):
             await self._running
 
     def interrupt_handler(self) -> None:
-        if self._running:
+        if self._running is not None:
             self._running.cancel()
 
 
-# TODO: fix this function
+# TODO: FIXME
 def auto_dist(
     e: Experiment, execs: list[Executor], proxy_type: str = "sockets"
 ) -> DistributedExperiment:

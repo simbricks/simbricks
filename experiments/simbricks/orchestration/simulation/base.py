@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
+
 import abc
 import time
 import typing as tp
@@ -94,7 +95,7 @@ class Simulator(utils_base.IdObj):
         return ""
 
     # pylint: disable=unused-argument
-    def prep_cmds(self, env: exp_env.ExpEnv) -> list[str]:
+    def prep_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         """Commands to prepare execution of this simulator."""
         return []
 
@@ -169,7 +170,7 @@ class Simulator(utils_base.IdObj):
 
     # pylint: disable=unused-argument
     @abc.abstractmethod
-    def run_cmd(self, env: exp_env.ExpEnv) -> str:
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
         """Command to execute this simulator."""
         return ""
 
@@ -180,6 +181,7 @@ class Simulator(utils_base.IdObj):
 
     # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument
+    # TODO: FIXME
     def sockets_cleanup(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
         sockets = []
         for comp_spec in self._components:
@@ -192,6 +194,7 @@ class Simulator(utils_base.IdObj):
 
     # sockets to wait for indicating the simulator is ready
     # pylint: disable=unused-argument
+    # TODO: FIXME
     def sockets_wait(self, env: exp_env.ExpEnv) -> list[str]:
         return []
 
@@ -357,14 +360,14 @@ class SimulationOutput:
         self._start_time = time.time()
 
     def set_end(self) -> None:
-        self.end_time = time.time()
+        self._end_time = time.time()
 
     def set_failed(self) -> None:
-        self.success = False
+        self._success = False
 
     def set_interrupted(self) -> None:
-        self.success = False
-        self.interrupted = True
+        self._success = False
+        self._interrupted = True
 
     def add_sim(self, sim: Simulator, comp: command_executor.Component) -> None:
         obj = {
