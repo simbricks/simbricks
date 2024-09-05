@@ -20,11 +20,15 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import enum
 import pathlib
-from simbricks.orchestration.utils import base
-from simbricks.orchestration import simulation
-from simbricks.orchestration import system
+import shutil
+from simbricks.orchestration.utils import base as util_base
+from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.system import base as sys_base
+from simbricks.orchestration.runtime_new import command_executor
 
 
 class SockType(enum.Enum):
@@ -39,80 +43,86 @@ class Socket:
         self._type = ty
 
 
-class InstantiationEnvironment(base.IdObj):
+class InstantiationEnvironment(util_base.IdObj):
 
     def __init__(
         self,
         repo_path: str = pathlib.Path(__file__).parents[3].resolve(),
-        workdir: str = pathlib.Path(),
-        cpdir: str = pathlib.Path(),
-        shm_base: str = pathlib.Path(),
-        output_base: str = pathlib.Path(),
-        tmp_simulation_files: str = pathlib.Path(),
+        workdir: str = pathlib.Path().resolve(),
+        cpdir: str = pathlib.Path().resolve(),
+        create_cp: bool = False,
+        restore_cp: bool = False,
+        shm_base: str = pathlib.Path().resolve(),
+        output_base: str = pathlib.Path().resolve(),
+        tmp_simulation_files: str = pathlib.Path().resolve(),
     ):
         super().__init__()
         # TODO: add more parameters that wont change during instantiation
         self._repodir: str = pathlib.Path(repo_path).absolute()
         self._workdir: str = pathlib.Path(workdir).absolute()
-        self._cpdir: str = pathlib.Path(cpdir).absolute()
-        self._shm_base: str = pathlib.Path(workdir).joinpath(shm_base).absolute()
-        self._output_base: str = pathlib.Path(workdir).joinpath(output_base).absolute()
-        self._tmp_simulation_files: str = (
-            pathlib.Path(workdir).joinpath(tmp_simulation_files).absolute()
+        self._cpdir: str = pathlib.Path(self._workdir).joinpath(cpdir).absolute()
+        self._shm_base: str = pathlib.Path(self._workdir).joinpath(shm_base).absolute()
+        self._output_base: str = (
+            pathlib.Path(self._workdir).joinpath(output_base).absolute()
         )
+        self._tmp_simulation_files: str = (
+            pathlib.Path(self._workdir).joinpath(tmp_simulation_files).absolute()
+        )
+        self._create_cp = create_cp
+        self._restore_cp = restore_cp
 
 
-class Instantiation(base.IdObj):
+class Instantiation(util_base.IdObj):
 
     def __init__(
-        self, simulation, env: InstantiationEnvironment = InstantiationEnvironment()
+        self,
+        simulation: sim_base.Simulation,
+        env: InstantiationEnvironment = InstantiationEnvironment(),
     ):
         super().__init__()
-        self._simulation = simulation
+        self._simulation: sim_base.Simulation = simulation
         self._env: InstantiationEnvironment = env
-        self._socket_per_interface: dict[system.base.Interface, Socket] = {}
+        self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
         path = pathlib.Path(path)
         return path.is_absolute() and path.is_file()
 
-    def _get_chan_by_interface(
-        self, interface: system.base.Interface
-    ) -> system.Channel:
+    def _get_chan_by_interface(self, interface: sys_base.Interface) -> sys_base.Channel:
         if not interface.is_connected():
             raise Exception(
                 "cannot determine channel by interface, interface isn't connecteds"
             )
         return interface.channel
 
-    def _get_opposing_interface(self, interface: system.Interface) -> system.Interface:
+    def _get_opposing_interface(
+        self, interface: sys_base.Interface
+    ) -> sys_base.Interface:
         channel = self._get_chan_by_interface(interface=interface)
         return channel.a if channel.a is not interface else channel.b
 
     def _updated_tracker_mapping(
-        self, interface: system.base.Interface, socket: Socket
+        self, interface: sys_base.Interface, socket: Socket
     ) -> None:
         # update interface mapping
         if interface in self._socket_per_interface:
             raise Exception("an interface cannot be associated with two sockets")
         self._socket_per_interface[interface] = socket
 
-    def _get_socket_by_interface(
-        self, interface: system.base.Interface
-    ) -> Socket | None:
+    def _get_socket_by_interface(self, interface: sys_base.Interface) -> Socket | None:
         if interface not in self._socket_per_interface:
             return None
         return self._socket_per_interface[interface]
 
     def _get_opposing_socket_by_interface(
-        self, interface: system.base.Interface
+        self, interface: sys_base.Interface
     ) -> Socket | None:
         opposing_interface = self._get_opposing_interface(interface=interface)
         socket = self._get_socket_by_interface(interface=opposing_interface)
         return socket
 
-    def _interface_to_sock_path(self, interface: system.base.Interface) -> str:
+    def _interface_to_sock_path(self, interface: sys_base.Interface) -> str:
         basepath = pathlib.Path(self._env._workdir)
 
         channel = self._get_chan_by_interface(interface=interface)
@@ -140,7 +150,7 @@ class Instantiation(base.IdObj):
         new_socket = Socket(path=new_path, ty=new_ty)
         return new_socket
 
-    def get_socket(self, interface: system.base.Interface) -> Socket:
+    def get_socket(self, interface: sys_base.Interface) -> Socket:
         # check if already a socket is associated with this interface
         socket = self._get_socket_by_interface(interface=interface)
         if socket is not None:
@@ -163,9 +173,56 @@ class Instantiation(base.IdObj):
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
 
-    def prepare_environment(self) -> None:
-        TODO
-        raise Exception("not implemented")
+    def wrkdir(self) -> str:
+        return pathlib.Path(self._env._workdir).absolute()
+
+    def shm_base_dir(self) -> str:
+        return pathlib.Path(self._env._shm_base).absolute()
+
+    def checkpointing_enabled(self) -> bool:
+        # TODO: not sure if needed wanted here like this
+        return self._simulation.checkpointing_enabled()
+
+    def create_cp(self) -> bool:
+        return self._env._create_cp
+
+    def cpdir(self) -> str:
+        return pathlib.Path(self._env._cpdir).absolute()
+
+    def wrkdir(self) -> str:
+        return pathlib.Path(self._env._workdir).absolute()
+
+    async def prepare_directories(
+        self, executor: command_executor.Executor = command_executor.LocalExecutor()
+    ) -> None:
+
+        # DISCLAIMER: that we poass the executor in here is an artifact of the
+        # sub-optimal distributed executions as we may need a remote executor to
+        # remove or create folders on other machines. In an ideal wolrd, we have
+        # some sort of runtime on each machine that executes thus making pasing
+        # an executor in here obsolete...
+
+        wrkdir = self._instantiation.wrkdir()
+        shutil.rmtree(wrkdir, ignore_errors=True)
+        await executor.rmtree(wrkdir)
+
+        shm_base = self.shm_base_dir()
+        shutil.rmtree(shm_base, ignore_errors=True)
+        await executor.rmtree(shm_base)
+
+        cpdir = self.cpdir()
+        if self.create_cp():
+            shutil.rmtree(cpdir, ignore_errors=True)
+            await executor.rmtree(cpdir)
+
+        pathlib.Path(wrkdir).mkdir(parents=True, exist_ok=True)
+        await executor.mkdir(wrkdir)
+
+        pathlib.Path(cpdir).mkdir(parents=True, exist_ok=True)
+        await executor.mkdir(cpdir)
+
+        pathlib.Path(shm_base).mkdir(parents=True, exist_ok=True)
+        await executor.mkdir(shm_base)
 
     def _join_paths(
         self, base: str = "", relative_path: str = "", enforce_existence=True
