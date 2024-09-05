@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import abc
+import itertools
 import time
 import typing as tp
 import simbricks.orchestration.system as sys_conf
@@ -51,7 +52,7 @@ class Simulator(utils_base.IdObj):
         self.extra_deps: list[Simulator] = []
         self.name: str = ""
         self.experiment: sim_base.Simulation = simulation
-        self._components: set[sys_conf.Component] = []
+        self._components: set[sys_conf.Component] = set()
         self._relative_executable_path: str = relative_executable_path
 
     @staticmethod
@@ -311,8 +312,6 @@ class Simulation(utils_base.IdObj):
 
     def all_simulators(self) -> tp.Iterable[Simulator]:
         """Returns all simulators defined to run in this experiment."""
-        # TODO: FIXME
-        raise Exception("needs fixed implementation")
         return itertools.chain(
             self.hosts, self.pcidevs, self.memdevs, self.netmems, self.networks
         )

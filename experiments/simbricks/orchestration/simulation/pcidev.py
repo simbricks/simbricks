@@ -59,14 +59,15 @@ class NICSim(PCIDevSim):
     def __init__(self, e: base.Simulation) -> None:
         super().__init__(e)
         self.experiment = e
-        self.nics: tp.List[PCIDevSim] = []
+        self.nics: tp.List[sys_conf.SimplePCIeNIC] = []
         self.start_tick = 0
 
-    def add(self, nic: PCIDevSim):
+    def add(self, nic: sys_conf.SimplePCIeNIC):
         self.nics.append(nic)
         # nic.sim = self
         self.experiment.add_nic(self)
-        self.name = f'{nic.id}'
+        self.experiment.sys_sim_map[nic] = self
+        self.name = f'{nic._id}'
 
     def basic_args(self, env: ExpEnv, extra: tp.Optional[str] = None) -> str:
         cmd = (

@@ -37,7 +37,7 @@ class HostSim(sim_base.Simulator):
 
     def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
-        self.hosts: tp.List['Host']
+        self.hosts: tp.List['Host'] = []
         self.wait = True
     
     def full_name(self) -> str:
@@ -54,7 +54,7 @@ class HostSim(sim_base.Simulator):
     
     def add(self, host: 'Host'):
         self.hosts.append(host)
-        self.name = f'{self.hosts.id}'
+        self.name = f'{self._id}'
         self.experiment.add_host(self)
         self.experiment.sys_sim_map[host] = self
 
