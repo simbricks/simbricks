@@ -21,16 +21,13 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing as tp
-import simbricks.orchestration.simulation.base as sim_base
-import simbricks.orchestration.experiments as exp
 import simbricks.orchestration.system.base as system_base
-
-from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
+import simbricks.orchestration.simulation.base as sim_base
 
 
 class Channel(sim_base.Simulator):
 
-    def __init__(self, e: exp.Experiment, chan: system_base.Channel):
+    def __init__(self, e: sim_base.Simulation, chan: system_base.Channel):
         super().__init__(e)
         self._synchronized: bool = True
         self.sync_period: int = 500  # nano second
