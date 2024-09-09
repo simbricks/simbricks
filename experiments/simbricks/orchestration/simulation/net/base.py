@@ -74,33 +74,19 @@ class WireNet(NetSim):
             relative_executable_path="/sims/net/wire/net_wire",
             relative_pcap_file_path=None,
         )
-        # TODO: probably we want to store these in a common base class...
         self._wire_comp: eth.EthWire | None = None
-        self._relative_pcap_file_path: str | None = 'relative_pcap_file_path'
+        self._relative_pcap_file_path: str | None = "relative_pcap_file_path"
 
     def add(self, wire: eth.EthWire):
         assert self._wire_comp is None
         super()._add_component(wire)
-        self.experiment.add_network(self)
         self._wire_comp = wire
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        eth_latency = None
-        sync_period = None
-        run_sync = False
-        channels = self._get_channels(inst=inst) 
-        for channel in channels:
-            sync_period = min(sync_period, channel.sync_period)
-            run_sync = run_sync or channel._synchronized
-            if (
-                channel.sys_channel.eth_latency != eth_latency
-                and eth_latency is not None
-            ):
-                raise Exception("non unique eth latency")
-            eth_latency = channel.sys_channel.eth_latency
-
-        assert sync_period is not None
-        assert eth_latency is not None
+        channels = self._get_channels(inst=inst)
+        eth_latency, sync_period, sync = (
+            sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
+        )
 
         sockets = self._get_sockets(inst=inst)
         assert len(sockets) == 2
@@ -127,35 +113,21 @@ class SwitchNet(NetSim):
         super().__init__(
             simulation=simulation, relative_executable_path=relative_executable_path
         )
-        # TODO: probably we want to store these in a common base class...
         self._switch_spec: eth.EthSwitch | None = None
         self._relative_pcap_file_path: str | None = relative_pcap_file_path
 
     def add(self, switch_spec: eth.EthSwitch):
         assert self._switch_spec is None
         super()._add_component(switch_spec)
-        self.experiment.add_network(self)
         self._switch_spec = switch_spec
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         assert self._switch_spec is not None
 
-        eth_latency = None
-        sync_period = None
-        run_sync = False
         channels = self._get_channels(inst=inst)
-        for channel in channels:
-            sync_period = min(sync_period, channel.sync_period)
-            run_sync = run_sync or channel._synchronized
-            if (
-                channel.sys_channel.eth_latency != eth_latency
-                and eth_latency is not None
-            ):
-                raise Exception("non unique eth latency")
-            eth_latency = channel.sys_channel.eth_latency
-
-        assert sync_period is not None
-        assert eth_latency is not None
+        eth_latency, sync_period, sync = (
+            sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
+        )
 
         cmd = inst.join_repo_base(self._relative_executable_path)
         cmd += f" -S {sync_period} -E {eth_latency}"
