@@ -27,7 +27,6 @@ import enum
 import pathlib
 import shutil
 from simbricks.orchestration.utils import base as util_base
-from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.runtime_new import command_executor
 
@@ -77,11 +76,9 @@ class Instantiation(util_base.IdObj):
 
     def __init__(
         self,
-        simulation: sim_base.Simulation,
         env: InstantiationEnvironment = InstantiationEnvironment(),
     ):
         super().__init__()
-        self._simulation: sim_base.Simulation = simulation
         self._env: InstantiationEnvironment = env
         self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
 
@@ -216,10 +213,6 @@ class Instantiation(util_base.IdObj):
     def shm_base_dir(self) -> str:
         return pathlib.Path(self._env._shm_base).absolute()
 
-    def checkpointing_enabled(self) -> bool:
-        # TODO: not sure if needed wanted here like this
-        return self._simulation.checkpointing_enabled()
-
     def create_cp(self) -> bool:
         return self._env._create_cp
 
@@ -294,7 +287,7 @@ class Instantiation(util_base.IdObj):
 
     # TODO: fixme
     def cfgtar_path(self, sim: Simulator) -> str:
-        return f'{self.workdir}/cfg.{sim.name}.tar'
+        return f"{self.workdir}/cfg.{sim.name}.tar"
 
     def join_tmp_base(self, relative_path: str) -> str:
         return self._join_paths(

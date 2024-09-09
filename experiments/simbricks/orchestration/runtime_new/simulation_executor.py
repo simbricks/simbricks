@@ -31,6 +31,7 @@ import abc
 
 from simbricks.orchestration.utils import graphlib
 
+from simbricks.orchestration.simulation import output
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.runtime_new import command_executor
@@ -43,7 +44,7 @@ class ExperimentBaseRunner(abc.ABC):
         self._instantiation: inst_base.Instantiation = instantiation
         self._verbose: bool = verbose
         self._profile_int: int | None = None
-        self._out = sim_base.SimulationOutput(self._simulation)
+        self._out = output.SimulationOutput(self._simulation)
         self._running: list[tuple[sim_base.Simulator, command_executor.SimpleComponent]] = []
         self._sockets: list[tuple[command_executor.Executor, inst_base.Socket]] = []
         self._wait_sims: list[command_executor.Component] = []
@@ -152,7 +153,7 @@ class ExperimentBaseRunner(abc.ABC):
         for sc in self._wait_sims:
             await sc.wait()
 
-    async def terminate_collect_sims(self) -> sim_base.SimulationOutput:
+    async def terminate_collect_sims(self) -> output.SimulationOutput:
         """Terminates all simulators and collects output."""
         self._out.set_end()
         if self._verbose:
@@ -187,7 +188,7 @@ class ExperimentBaseRunner(abc.ABC):
             for (_, sc) in self._running:
                 await sc.sigusr1()
 
-    async def run(self) -> sim_base.SimulationOutput:
+    async def run(self) -> output.SimulationOutput:
         profiler_task = None
 
         try:
