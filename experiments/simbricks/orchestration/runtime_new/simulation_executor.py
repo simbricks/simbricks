@@ -33,7 +33,6 @@ from simbricks.orchestration.utils import graphlib
 
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.runtime_new import simulation_executor
 from simbricks.orchestration.runtime_new import command_executor
 
 
@@ -45,12 +44,12 @@ class ExperimentBaseRunner(abc.ABC):
         self._verbose: bool = verbose
         self._profile_int: int | None = None
         self._out = sim_base.SimulationOutput(self._simulation)
-        self._running: list[tuple[sim_base.Simulator, simulation_executor.SimpleComponent]] = []
-        self._sockets: list[tuple[simulation_executor.Executor, inst_base.Socket]] = []
-        self._wait_sims: list[simulation_executor.Component] = []
+        self._running: list[tuple[sim_base.Simulator, command_executor.SimpleComponent]] = []
+        self._sockets: list[tuple[command_executor.Executor, inst_base.Socket]] = []
+        self._wait_sims: list[command_executor.Component] = []
 
     @abc.abstractmethod
-    def sim_executor(self, simulator: sim_base.Simulator) -> simulation_executor.Executor:
+    def sim_executor(self, simulator: sim_base.Simulator) -> command_executor.Executor:
         pass
 
     def sim_graph(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
@@ -124,18 +123,17 @@ class ExperimentBaseRunner(abc.ABC):
         # TODO: FIXME
         for host in self.exp.hosts:
             path = self.env.cfgtar_path(host)
-            if self.verbose:
+            if self._verbose:
                 print('preparing config tar:', path)
             # TODO: FIXME
             host.node_config.make_tar(self.env, path)
             executor = self.sim_executor(host)
-            task = asyncio.create_task(executor.send_file(path, self.verbose))
+            task = asyncio.create_task(executor.send_file(path, self._verbose))
             copies.append(task)
         await asyncio.gather(*copies)
 
         # prepare all simulators in parallel
         sims = []
-        # TODO: FIXME
         for sim in self._simulation.all_simulators():
             prep_cmds = list(sim.prep_cmds(inst=self._instantiation))
             executor = self.sim_executor(sim)
@@ -149,16 +147,16 @@ class ExperimentBaseRunner(abc.ABC):
 
     async def wait_for_sims(self) -> None:
         """Wait for simulators to terminate (the ones marked to wait on)."""
-        if self.verbose:
-            print(f'{self.exp.name}: waiting for hosts to terminate')
-        for sc in self.wait_sims:
+        if self._verbose:
+            print(f'{self._simulation.name}: waiting for hosts to terminate')
+        for sc in self._wait_sims:
             await sc.wait()
 
     async def terminate_collect_sims(self) -> sim_base.SimulationOutput:
         """Terminates all simulators and collects output."""
         self._out.set_end()
-        if self.verbose:
-            print(f'{self.exp.name}: cleaning up')
+        if self._verbose:
+            print(f'{self._simulation.name}: cleaning up')
 
         await self.before_cleanup()
 
@@ -261,14 +259,14 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
 
     # TODO: FIXME
     def __init__(
-        self, execs: dict[sim -> Executor], exp: DistributedExperiment, *args, **kwargs
+        self, execs: dict[sim -> command_executor.Executor], exp: DistributedExperiment, *args, **kwargs
     ) -> None:
         self.execs = execs
         super().__init__(exp, *args, **kwargs)
         self.exp = exp  # overrides the type in the base class
         assert self.exp.num_hosts <= len(execs)
 
-    def sim_executor(self, sim) -> Executor:
+    def sim_executor(self, sim) -> command_executor.Executor:
         h_id = self.exp.host_mapping[sim]
         return self.execs[h_id]
 

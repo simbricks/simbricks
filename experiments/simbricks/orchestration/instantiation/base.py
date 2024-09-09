@@ -292,6 +292,10 @@ class Instantiation(util_base.IdObj):
         )
         return path
 
+    # TODO: fixme
+    def cfgtar_path(self, sim: Simulator) -> str:
+        return f'{self.workdir}/cfg.{sim.name}.tar'
+
     def join_tmp_base(self, relative_path: str) -> str:
         return self._join_paths(
             base=self._env._tmp_simulation_files,
