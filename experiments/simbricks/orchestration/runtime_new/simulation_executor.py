@@ -55,7 +55,7 @@ class ExperimentBaseRunner(abc.ABC):
         self._profile_int: int | None = None
         self._out = sim_base.SimulationOutput(self._simulation)
         self._running: list[tuple[sim_base.Simulator, simulation_executor.SimpleComponent]] = []
-        self._sockets: list[tuple[simulation_executor.Executor, str]] = []
+        self._sockets: list[tuple[simulation_executor.Executor, inst_base.Socket]] = []
         self._wait_sims: list[simulation_executor.Component] = []
 
     @abc.abstractmethod
@@ -95,27 +95,28 @@ class ExperimentBaseRunner(abc.ABC):
         self._running.append((sim, sc))
 
         # add sockets for cleanup
-        for s in sim.sockets_cleanup(self.env): # TODO: FIXME
-            self._sockets.append((executor, s))
+        for sock in sim.sockets_cleanup(inst=self._instantiation):
+            self._sockets.append((executor, sock))
 
         # Wait till sockets exist
-        wait_socks = sim.sockets_wait(self.env) # TODO: FIXME
-        if wait_socks:
+        wait_socks = sim.sockets_wait(inst=self._instantiation)
+        if len(wait_socks) > 0:
             if self._verbose:
-                print(f'{self.exp.name}: waiting for sockets {name}')
-
-            await executor.await_files(wait_socks, verbose=self.verbose)
+                print(f'{self._simulation.name}: waiting for sockets {name}')
+            await self._instantiation.wait_for_sockets(executor=executor, sockets=wait_socks)
+            if self._verbose:
+                print(f'{self._simulation.name}: waited successfully for sockets {name}')
 
         # add time delay if required
         delay = sim.start_delay()
         if delay > 0:
             await asyncio.sleep(delay)
 
-        if sim.wait_terminate(self.env):
-            self.wait_sims.append(sc)
+        if sim.wait_terminate():
+            self._wait_sims.append(sc)
 
         if self.verbose:
-            print(f'{self.exp.name}: started {name}')
+            print(f'{self._simulation.name}: started {name}')
 
     async def before_wait(self) -> None:
         pass
@@ -181,11 +182,7 @@ class ExperimentBaseRunner(abc.ABC):
             await sc.wait()
 
         # remove all sockets
-        scs = []
-        for (executor, sock) in self._sockets:
-            scs.append(asyncio.create_task(executor.rmtree(sock)))
-        if scs:
-            await asyncio.gather(*scs)
+        await self._instantiation.cleanup_sockets(sockets=self._sockets)
 
         # add all simulator components to the output
         for sim, sc in self._running:
