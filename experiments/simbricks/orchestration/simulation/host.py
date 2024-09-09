@@ -56,8 +56,9 @@ class HostSim(sim_base.Simulator):
     def add(self, host: 'Host'):
         self.hosts.append(host)
         self.name = f'{self._id}'
-        self.experiment.add_host(self)
-        self.experiment.sys_sim_map[host] = self
+        # TODO: FIXME, call super method...
+        # self.experiment.add_host(self)
+        # self.experiment.sys_sim_map[host] = self
 
     def config_str(self) -> str:
         return []
@@ -170,8 +171,8 @@ class Gem5Sim(HostSim):
                 f':latency={dev.channel.latency}ns'
                 f':sync_interval={chn_sim.sync_period}ns'
             )
-            if cpu_type == 'TimingSimpleCPU' and: #TODO
-                cmd += ':sync'
+            # if cpu_type == 'TimingSimpleCPU' and: #TODO: FIXME
+            #     cmd += ':sync'
             cmd += ' '
 
         return cmd

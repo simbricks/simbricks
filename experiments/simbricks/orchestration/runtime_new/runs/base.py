@@ -29,6 +29,7 @@ import shutil
 import typing as tp
 import abc
 
+from simbricks.orchestration.simulation import output
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.runtime_new import command_executor
@@ -50,7 +51,7 @@ class Run:
         self._simulation: sim_base.Simulation = simulation
         self._run_nr = next(self.__run_nr)
         self._instantiation: inst_base.Instantiation = instantiation
-        self._output: sim_base.SimulationOutput | None = output
+        self._output: output.SimulationOutput | None = output
         self._prereq: Run | None = prereq
         self._job_id: int | None = job_id
         """Slurm job id."""

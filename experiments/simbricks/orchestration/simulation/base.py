@@ -27,11 +27,9 @@ import itertools
 import time
 import typing as tp
 import simbricks.orchestration.system as sys_conf
-from simbricks.orchestration.experiment import experiment_environment_new as exp_env
-from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.simulation import channel as sim_chan
-from simbricks.orchestration.utils import base as utils_base
-from simbricks.orchestration.runtime_new import command_executor
+import simbricks.orchestration.instantiation.base as inst_base
+import simbricks.orchestration.simulation.channel as sim_chan
+import simbricks.orchestration.utils.base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.simulation import (
@@ -50,7 +48,7 @@ class Simulator(utils_base.IdObj):
         self,
         simulation: sim_base.Simulation,
         name: str = "",
-        elative_executable_path: str = "",
+        relative_executable_path: str = "",
     ) -> None:
         super().__init__()
         self.name: str = name
@@ -340,47 +338,3 @@ class Simulation(utils_base.IdObj):
     def is_checkpointing_enabled(self) -> bool:
         raise Exception("not implemented")
 
-
-class SimulationOutput:
-    """Manages an experiment's output."""
-
-    def __init__(self, sim: Simulation) -> None:
-        self._sim_name: str = sim.name
-        self._start_time: float = None
-        self._end_time: float = None
-        self._success: bool = True
-        self._interrupted: bool = False
-        self._metadata = exp.metadata
-        self._sims: dict[str, dict[str, str | list[str]]] = {}
-
-    def set_start(self) -> None:
-        self._start_time = time.time()
-
-    def set_end(self) -> None:
-        self._end_time = time.time()
-
-    def set_failed(self) -> None:
-        self._success = False
-
-    def set_interrupted(self) -> None:
-        self._success = False
-        self._interrupted = True
-
-    def add_sim(self, sim: Simulator, comp: command_executor.Component) -> None:
-        obj = {
-            "class": sim.__class__.__name__,
-            "cmd": comp.cmd_parts,
-            "stdout": comp.stdout,
-            "stderr": comp.stderr,
-        }
-        self._sims[sim.full_name()] = obj
-
-    def dump(self, outpath: str) -> None:
-        pathlib.Path(outpath).parent.mkdir(parents=True, exist_ok=True)
-        with open(outpath, "w", encoding="utf-8") as file:
-            json.dump(self.__dict__, file, indent=4)
-
-    def load(self, file: str) -> None:
-        with open(file, "r", encoding="utf-8") as fp:
-            for k, v in json.load(fp).items():
-                self.__dict__[k] = v

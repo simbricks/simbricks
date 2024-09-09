@@ -20,15 +20,12 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import typing as tp
-import simbricks.orchestration.system.base as system_base
-import simbricks.orchestration.simulation.base as sim_base
+from simbricks.orchestration.system import base as system_base
 
 
-class Channel(sim_base.Simulator):
+class Channel:
 
-    def __init__(self, e: sim_base.Simulation, chan: system_base.Channel):
-        super().__init__(e)
+    def __init__(self, chan: system_base.Channel):
         self._synchronized: bool = True
         self.sync_period: int = 500  # nano second
         self.sys_channel: system_base.Channel = chan
