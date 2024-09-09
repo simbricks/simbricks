@@ -46,14 +46,17 @@ class Simulator(utils_base.IdObj):
     """Base class for all simulators."""
 
     def __init__(
-        self, simulation: sim_base.Simulation, relative_executable_path: str = ""
+        self,
+        simulation: sim_base.Simulation,
+        name: str = "",
+        elative_executable_path: str = "",
     ) -> None:
         super().__init__()
+        self.name: str = name
+        self._relative_executable_path: str = relative_executable_path
         self.extra_deps: list[Simulator] = []
-        self.name: str = ""
         self.experiment: sim_base.Simulation = simulation
         self._components: set[sys_conf.Component] = set()
-        self._relative_executable_path: str = relative_executable_path
 
     @staticmethod
     def filter_sockets(
@@ -140,7 +143,9 @@ class Simulator(utils_base.IdObj):
         if not self._chan_needs_instance(chan):
             return None
         # create the socket to listen on or connect to
-        socket = inst.get_socket(interface=interface)
+        socket = inst.get_socket(
+            interface=interface, supported_sock_types=self.supported_socket_types()
+        )
         return socket
 
     def _get_sockets(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
@@ -151,7 +156,13 @@ class Simulator(utils_base.IdObj):
                 if socket is None:
                     continue
                 sockets.append(socket)
+        return sockets
 
+    def _get_all_sockets_by_type(
+        self, inst: inst_base.Instantiation, sock_type: inst_base.SockType
+    ) -> list[inst_base.Socket]:
+        sockets = self._get_sockets(inst=inst)
+        sockets = Simulator.filter_sockets(sockets=sockets, filter_type=sock_type)
         return sockets
 
     def _get_channel(self, chan: sys_conf.Channel) -> sim_chan.Channel | None:
@@ -180,24 +191,24 @@ class Simulator(utils_base.IdObj):
         """Other simulators to execute before this one."""
         return []
 
+    # TODO: overwrite in sub-classes to reflect that currently not all adapters support both listening and connecting
+    # In future version adapters should support both which would render this method obsolete
+    def supported_socket_types(self) -> set[inst_base.SockType]:
+        return {inst_base.SockType.LISTEN, inst_base.SockType.CONNECT}
+
     # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument
-    # TODO: FIXME
     def sockets_cleanup(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
-        sockets = []
-        for comp_spec in self._components:
-            for interface in comp_spec.interfaces():
-                socket = inst.get_socket(interface=interface)
-                if socket._type == inst_base.SockType.CONNECT:
-                    sockets.append(socket)
-
-        return sockets
+        return self._get_all_sockets_by_type(
+            inst=inst, sock_type=inst_base.SockType.LISTEN
+        )
 
     # sockets to wait for indicating the simulator is ready
     # pylint: disable=unused-argument
-    # TODO: FIXME
-    def sockets_wait(self, env: exp_env.ExpEnv) -> list[str]:
-        return []
+    def sockets_wait(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
+        return self._get_all_sockets_by_type(
+            inst=inst, sock_type=inst_base.SockType.LISTEN
+        )
 
     def start_delay(self) -> int:
         return 5

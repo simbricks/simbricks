@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import enum
 import pathlib
 import shutil
@@ -150,7 +151,11 @@ class Instantiation(util_base.IdObj):
         new_socket = Socket(path=new_path, ty=new_ty)
         return new_socket
 
-    def get_socket(self, interface: sys_base.Interface) -> Socket:
+    def get_socket(
+        self,
+        interface: sys_base.Interface,
+        supported_sock_types: set[SockType] = {SockType.LISTEN, SockType.CONNECT},
+    ) -> Socket:
         # check if already a socket is associated with this interface
         socket = self._get_socket_by_interface(interface=interface)
         if socket is not None:
@@ -165,11 +170,43 @@ class Instantiation(util_base.IdObj):
 
         # neither connecting nor listening side already created a socket, thus we
         # create a completely new 'CONNECT' socket
-        sock_type = SockType.CONNECT
+        if len(supported_sock_types) > 1 or (
+            SockType.LISTEN not in supported_sock_types
+            and SockType.CONNECT not in supported_sock_types
+        ):
+            raise Exception("cannot create a socket if no socket type is supported")
+        sock_type = (
+            SockType.CONNECT
+            if SockType.CONNECT in supported_sock_types
+            else SockType.LISTEN
+        )
         sock_path = self._interface_to_sock_path(interface=interface)
         new_socket = Socket(path=sock_path, ty=sock_type)
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
         return new_socket
+
+    async def cleanup_sockets(
+        self,
+        sockets: list[tuple[command_executor.Executor, Socket]] = [],
+    ) -> None:
+        # DISCLAIMER: that we pass the executor in here is an artifact of the
+        # sub-optimal distributed executions as we may need a remote executor to
+        # remove or create folders on other machines. In an ideal wolrd, we have
+        # some sort of runtime on each machine that executes thus making pasing
+        # an executor in here obsolete...
+        scs = []
+        for executor, sock in sockets:
+            scs.append(asyncio.create_task(executor.rmtree(path=sock._path)))
+        if len(scs) > 0:
+            await asyncio.gather(*scs)
+
+    async def wait_for_sockets(
+        self,
+        executor: command_executor.Executor = command_executor.LocalExecutor(),
+        sockets: list[Socket] = [],
+    ) -> None:
+        wait_socks = map(lambda sock: sock._path, sockets)
+        await executor.await_files(wait_socks, verbose=self.verbose)
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
 
