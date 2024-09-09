@@ -27,6 +27,7 @@ import typing as tp
 import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.system.pcie as system_pcie
 import simbricks.orchestration.system as system
+from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 
 if tp.TYPE_CHECKING:
@@ -97,19 +98,15 @@ class Gem5Sim(HostSim):
 
     def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
-        self.name = ''
-
+        self.name: str = ''
         self.cpu_type_cp = 'X86KvmCPU'
         self.cpu_type = 'TimingSimpleCPU'
-        self.extra_main_args = []
-        self.extra_config_args = []
+        self.extra_main_args: list[str] = []
+        self.extra_config_args: list[str] = []
         self.variant = 'fast'
         self.modify_checkpoint_tick = True
         self.wait = True
     
-    def full_name(self) -> str:
-        return 'host.' + self.name
-
     def resreq_cores(self) -> int:
         return 1
 
@@ -136,11 +133,12 @@ class Gem5Sim(HostSim):
         return cmds
     
 
-    def run_cmd(self, env: ExpEnv) -> str:
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cpu_type = self.cpu_type
         if env.create_cp:
             cpu_type = self.cpu_type_cp
 
+        # TODO
         cmd = f'{env.gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} '
         cmd += ' '.join(self.extra_main_args)
         cmd += (
@@ -159,8 +157,8 @@ class Gem5Sim(HostSim):
         )
 
 
-        for dev in self.hosts[0].ifs:
-            if (dev == dev.channel.a):
+        for dev in self.hosts[0].ifs: # TODO
+            if (dev == dev.channel.a): 
                 peer_if = dev.channel.b
             else:
                 peer_if = dev.channel.a 
@@ -172,7 +170,7 @@ class Gem5Sim(HostSim):
                 f':latency={dev.channel.latency}ns'
                 f':sync_interval={chn_sim.sync_period}ns'
             )
-            if cpu_type == 'TimingSimpleCPU':
+            if cpu_type == 'TimingSimpleCPU' and: #TODO
                 cmd += ':sync'
             cmd += ' '
 

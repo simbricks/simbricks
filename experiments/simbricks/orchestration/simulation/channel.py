@@ -35,8 +35,3 @@ class Channel(sim_base.Simulator):
 
     def full_name(self) -> str:
         return "channel." + self.name
-
-    # def add(self, ch: system_base.Channel):
-    #     self.sys_channel = ch
-    #     self.name = f"{ch.id}"
-    #     self.experiment.sys_sim_map[ch] = self
