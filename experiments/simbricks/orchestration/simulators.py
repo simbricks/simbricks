@@ -762,6 +762,13 @@ class I40eNIC(NICSim):
         return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
 
 
+class EnsoBMNIC(NICSim):
+
+    def run_cmd(self, env: ExpEnv) -> str:
+        cmd = self.basic_run_cmd(env, '/enso_bm/enso_bm')
+        return cmd
+
+
 class E1000NIC(NICSim):
 
     def __init__(self) -> None:

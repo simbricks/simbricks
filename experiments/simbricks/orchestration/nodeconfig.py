@@ -349,6 +349,65 @@ class TASNode(NodeConfig):
         return cmds
 
 
+class EnsoNode(NodeConfig):
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.disk_image = 'enso'
+        self.pci_dev = '0000:00:02.0'
+        self.memory = 16 * 1024
+        self.enso_parent_dir = '/root'
+        self.local_enso_dir: tp.Optional[str] = None
+        self.vm_mount_name = 'enso'
+
+    @property
+    def enso_dir(self) -> str:
+        return f'{self.enso_parent_dir}/{self.vm_mount_name}'
+
+    def prepare_pre_cp(self) -> tp.List[str]:
+        cmds = super().prepare_pre_cp()
+        cmds += [
+            'mount -t proc proc /proc',
+            'mount -t sysfs sysfs /sys',
+        ]
+        if self.local_enso_dir is not None:
+            cmds += [
+                f'mkdir -p {self.enso_parent_dir}',
+                (
+                    f'tar xf /tmp/guest/{self.vm_mount_name}'
+                    f' -C {self.enso_parent_dir}'
+                ),
+            ]
+
+        cmds += [
+            f'cd {self.enso_dir}',
+            './scripts/sw_setup.sh 16384 32768 true',
+        ]
+
+        return cmds
+
+    def prepare_post_cp(self) -> tp.List[str]:
+        cmds = super().prepare_post_cp() + [
+            f'cd {self.enso_dir}/software/kernel/linux/',
+            'export SHELLOPTS',
+            'bash -x ./install',
+        ]
+        return cmds
+
+    # pylint: disable=consider-using-with
+    def config_files(self, environment: env.ExpEnv) -> tp.Dict[str, tp.IO]:
+        files = super().config_files(environment)
+        if self.local_enso_dir is not None:
+            # Tar the directory to be copied to the VM.
+            tar_path = f'/tmp/{self.vm_mount_name}.tar'
+            with tarfile.open(tar_path, 'w') as tar:
+                tar.add(self.local_enso_dir, arcname='enso')
+
+            files[self.vm_mount_name] = open(tar_path, 'rb')
+
+        return files
+
+
 class I40eDCTCPNode(NodeConfig):
 
     def prepare_pre_cp(self) -> tp.List[str]:
@@ -784,6 +843,56 @@ class RPCClient(AppConfig):
                 f' {self.max_pend_conns} &'
             ),
             f'sleep {self.time}'
+        ]
+
+
+class EnsoEchoServer(AppConfig):
+
+    def __init__(self) -> None:
+        self.threads = 1
+        self.queues = 2
+        self.cycles = 0
+        self.time = 20
+
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        if not isinstance(node, EnsoNode):
+            raise ValueError('EnsoEchoServer is only supported on EnsoNode')
+        return [
+            f'cd {node.enso_dir}',
+            (
+                f'./build/software/examples/echo {self.threads}'
+                f' {self.queues} {self.cycles}'
+            ),
+        ]
+
+
+class EnsoGen(AppConfig):
+
+    def __init__(self) -> None:
+        self.start_delay = 5
+        self.end_delay = 5
+
+        self.pcap = '{node.enso_dir}/scripts/sample_pcaps/2_64_1_2.pcap'
+        self.count = 10
+        self.rate = 100  # Gbps
+
+    def run_cmds(self, node: NodeConfig) -> tp.List[str]:
+        if not isinstance(node, EnsoNode):
+            raise ValueError('EnsoGen is only supported on EnsoNode')
+        pcap_path = self.pcap
+        if '{node.enso_dir}' in pcap_path:
+            pcap_path = pcap_path.format(node=node)
+        cmd = (
+            f'sudo ./scripts/ensogen.sh {pcap_path} {self.rate} '
+            f'--count {self.count} '
+            f'--pcie-addr {node.pci_dev} '
+        )
+
+        return [
+            f'cd {node.enso_dir}',
+            f'sleep {self.start_delay}',
+            cmd,
+            f'sleep {self.end_delay}'
         ]
 
 
