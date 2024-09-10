@@ -29,3 +29,19 @@ class IdObj(abc.ABC):
 
     def __init__(self):
         self._id = next(self.__id_iter)
+
+def check_type(obj, expected_type) -> bool:
+    """
+    Checks if obj has type or is a subtype of expected_type
+    obj: an class object
+    expected_type: a type object
+    """
+    match obj:
+        case expected_type:
+            return True
+        case _:
+            return False
+
+def has_expected_type(obj, expected_type) -> None:
+    if not check_type(obj=obj, expected_type=expected_type):
+        raise Exception(f"obj of type {type(obj)} has not the type or is not a subtype of {type(expected_type)}")

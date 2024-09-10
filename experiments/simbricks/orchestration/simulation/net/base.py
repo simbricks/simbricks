@@ -26,6 +26,7 @@ import simbricks.orchestration.simulation.base as sim_base
 from simbricks.orchestration.system import eth
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
+from simbricks.orchestration.utils import base as base_utils
 
 
 class NetSim(sim_base.Simulator):
@@ -35,9 +36,6 @@ class NetSim(sim_base.Simulator):
         self, simulation: sim_base.Simulation, relative_executable_path: str = ""
     ) -> None:
         super().__init__(simulation, relative_executable_path=relative_executable_path)
-        # TODO: do we want them here?
-        self._switch_specs = []
-        self._host_specs = []
 
     def full_name(self) -> str:
         return "net." + self.name
@@ -50,20 +48,8 @@ class NetSim(sim_base.Simulator):
                 deps.append(n.net[0].sim)
         return deps
 
-    # TODO
-    def sockets_wait(self, env: ExpEnv) -> list[str]:
-        pass
-
-    def wait_terminate(self) -> bool:
-        # TODO
-        return self.wait
-
     def init_network(self) -> None:
         pass
-
-    def sockets_cleanup(self, env: ExpEnv) -> list[str]:
-        # TODO
-        return []
 
 
 class WireNet(NetSim):
@@ -74,13 +60,15 @@ class WireNet(NetSim):
             relative_executable_path="/sims/net/wire/net_wire",
             relative_pcap_file_path=None,
         )
-        self._wire_comp: eth.EthWire | None = None
         self._relative_pcap_file_path: str | None = "relative_pcap_file_path"
 
     def add(self, wire: eth.EthWire):
-        assert self._wire_comp is None
-        super()._add_component(wire)
-        self._wire_comp = wire
+        base_utils.has_expected_type(wire, eth.EthWire())
+        if len(self._components) > 1:
+            raise Exception(
+                "can only add a single wire component to the WireNet simulator"
+            )
+        super().add(wire)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         channels = self._get_channels(inst=inst)
@@ -113,17 +101,15 @@ class SwitchNet(NetSim):
         super().__init__(
             simulation=simulation, relative_executable_path=relative_executable_path
         )
-        self._switch_spec: eth.EthSwitch | None = None
         self._relative_pcap_file_path: str | None = relative_pcap_file_path
 
     def add(self, switch_spec: eth.EthSwitch):
-        assert self._switch_spec is None
-        super()._add_component(switch_spec)
-        self._switch_spec = switch_spec
+        base_utils.has_expected_type(wire, eth.EthSwitch())
+        if len(self._components) > 1:
+            raise Exception("can only add a single switch component to the SwitchNet")
+        super().add(switch_spec)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        assert self._switch_spec is not None
-
         channels = self._get_channels(inst=inst)
         eth_latency, sync_period, sync = (
             sim_base.Simulator.get_unique_latency_period_sync(channels=channels)

@@ -140,10 +140,16 @@ class Instantiation(util_base.IdObj):
         assert queue_type is not None
         return f"{self._env._shm_base}/{queue_type}/{queue_ident}"
 
-    def _create_opposing_socket(self, socket: Socket) -> Socket:
+    def _create_opposing_socket(
+        self, socket: Socket, supported_sock_types: set[SockType] = set()
+    ) -> Socket:
         new_ty = (
             SockType.LISTEN if socket._type == SockType.CONNECT else SockType.LISTEN
         )
+        if new_ty not in supported_sock_types:
+            raise Exception(
+                f"cannot create opposing socket, as required type is not supported: required={new_ty}, supported={','.join(supported_sock_types)}"
+            )
         new_path = socket._path
         new_socket = Socket(path=new_path, ty=new_ty)
         return new_socket
@@ -151,7 +157,7 @@ class Instantiation(util_base.IdObj):
     def get_socket(
         self,
         interface: sys_base.Interface,
-        supported_sock_types: set[SockType] = {SockType.LISTEN, SockType.CONNECT},
+        supported_sock_types: set[SockType] = set(),
     ) -> Socket:
         # check if already a socket is associated with this interface
         socket = self._get_socket_by_interface(interface=interface)
@@ -161,7 +167,9 @@ class Instantiation(util_base.IdObj):
         # Check if other side already created a socket, and create an opposing one
         socket = self._get_opposing_socket_by_interface(interface=interface)
         if socket is not None:
-            new_socket = self._create_opposing_socket(socket=socket)
+            new_socket = self._create_opposing_socket(
+                socket=socket, supported_sock_types=supported_sock_types
+            )
             self._updated_tracker_mapping(interface=interface, socket=new_socket)
             return new_socket
 
@@ -202,7 +210,7 @@ class Instantiation(util_base.IdObj):
         executor: command_executor.Executor = command_executor.LocalExecutor(),
         sockets: list[Socket] = [],
     ) -> None:
-        wait_socks = map(lambda sock: sock._path, sockets)
+        wait_socks = list(map(lambda sock: sock._path, sockets))
         await executor.await_files(wait_socks, verbose=self.verbose)
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
