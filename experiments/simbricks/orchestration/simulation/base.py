@@ -27,6 +27,7 @@ import itertools
 import time
 import typing as tp
 import simbricks.orchestration.system as sys_conf
+import simbricks.orchestration.system.host as sys_host_conf
 import simbricks.orchestration.instantiation.base as inst_base
 import simbricks.orchestration.simulation.channel as sim_chan
 import simbricks.orchestration.utils.base as utils_base
@@ -120,7 +121,7 @@ class Simulator(utils_base.IdObj):
         """Commands to prepare execution of this simulator."""
         return []
 
-    def _add_component(self, comp: sys_base.Component) -> None:
+    def add(self, comp: sys_base.Component) -> None:
         if comp in self._components:
             raise Exception("cannot add the same specification twice to a simulator")
         self._components.add(comp)
@@ -210,6 +211,8 @@ class Simulator(utils_base.IdObj):
 
     # TODO: overwrite in sub-classes to reflect that currently not all adapters support both listening and connecting
     # In future version adapters should support both which would render this method obsolete
+    # TODO: FIXME, this is still a little bit broken, as it might be important to create
+    # sockets in the correct order to not try creating a connect socket for a simulator that doesnt support it
     def supported_socket_types(self) -> set[inst_base.SockType]:
         return {inst_base.SockType.LISTEN, inst_base.SockType.CONNECT}
 
@@ -262,22 +265,12 @@ class Simulation(utils_base.IdObj):
         by first running in a less accurate mode, then checkpointing the system
         state after boot and running simulations from there.
         """
-        # self.hosts: list[HostSim] = []
-        # """The host simulators to run."""
-        # self.pcidevs: list[PCIDevSim] = []
-        # """The PCIe device simulators to run."""
-        # self.memdevs: list[MemDevSim] = []
-        # """The memory device simulators to run."""
-        # self.netmems: list[NetMemSim] = []
-        # """The network memory simulators to run."""
-        # self.networks: list[NetSim] = []
-        # """The network simulators to run."""
         self.metadata: dict[str, tp.Any] = {}
 
         self._sys_sim_map: dict[sys_conf.Component, Simulator] = {}
         """System component and its simulator pairs"""
 
-        self._chan_map: dict[sys_conf.Channel, Channel] = {}
+        self._chan_map: dict[sys_conf.Channel, sim_chan.Channel] = {}
         """Channel spec and its instanciation"""
 
     def add_spec_sim_map(self, sys: sys_conf.Component, sim: Simulator):
@@ -301,14 +294,6 @@ class Simulation(utils_base.IdObj):
         """Returns all simulators defined to run in this experiment."""
         simulators = set(map(lambda kv: kv[1], self._sys_sim_map.items()))
         return simulators
-
-    # TODO: FIXME, either by filtering using specification type or simulator type
-    def nics() -> list[Simulator]:
-        pass
-
-    # TODO FIXME, either by filtering using specification type or simulator type
-    def hosts() -> list[Simulator]:
-        pass
 
     def resreq_mem(self) -> int:
         """Memory required to run all simulators in this experiment."""
@@ -337,4 +322,3 @@ class Simulation(utils_base.IdObj):
     # TODO: FIXME
     def is_checkpointing_enabled(self) -> bool:
         raise Exception("not implemented")
-
