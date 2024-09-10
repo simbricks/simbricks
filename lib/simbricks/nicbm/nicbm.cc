@@ -99,6 +99,7 @@ static void sigusr2_handler(int dummy) {
 volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   if (SimbricksBaseIfInTerminated(&nicif_.pcie.base)) {
     sim_log::LogError("Runner::D2HAlloc: peer already terminated\n");
+    sim_log::FlushLog();
     abort();
   }
 
@@ -143,7 +144,7 @@ void Runner::IssueDma(DMAOp &op) {
 #ifdef DEBUG_NICBM
     sim_log::LogInfo(
         log_,
-        "main_time = %lu: nicbm: issuing dma op %p addr %lx len %zu pending "
+        "main_time = %lu: nicbm: issuing dma op %p addr 0x%lx len %zu pending "
         "%zu\n",
         main_time_, &op, op.dma_addr_, op.len_, dma_pending_);
 #endif
@@ -152,8 +153,8 @@ void Runner::IssueDma(DMAOp &op) {
 #ifdef DEBUG_NICBM
     sim_log::LogInfo(
         log_,
-        "main_time = %lu: nicbm: enqueuing dma op %p addr %lx len %zu pending "
-        "%zu\n",
+        "main_time = %lu: nicbm: enqueuing dma op %p addr 0x%lx len %zu pending"
+        " %zu\n",
         main_time_, &op, op.dma_addr_, op.len_, dma_pending_);
 #endif
     dma_queue_.push_back(&op);
@@ -179,7 +180,7 @@ void Runner::DmaDo(DMAOp &op) {
 #ifdef DEBUG_NICBM
   sim_log::LogInfo(
       log_,
-      "main_time = %lu: nicbm: executing dma op %p addr %lx len %zu pending "
+      "main_time = %lu: nicbm: executing dma op %p addr 0x%lx len %zu pending "
       "%zu\n",
       main_time_, &op, op.dma_addr_, op.len_, dma_pending_);
 #endif
@@ -192,6 +193,7 @@ void Runner::DmaDo(DMAOp &op) {
           "issue_dma: write too big (%zu), can only fit up "
           "to (%zu)\n",
           op.len_, maxlen - sizeof(*write));
+      sim_log::FlushLog();
       abort();
     }
 
@@ -215,8 +217,9 @@ void Runner::DmaDo(DMAOp &op) {
     volatile struct SimbricksProtoPcieD2HRead *read = &msg->read;
     if (maxlen < sizeof(struct SimbricksProtoPcieH2DReadcomp) + op.len_) {
       sim_log::LogError(
-          "issue_dma: write too big (%zu), can only fit up to (%zu)\n", op.len_,
+          "issue_dma: read too big (%zu), can only fit up to (%zu)\n", op.len_,
           maxlen - sizeof(struct SimbricksProtoPcieH2DReadcomp));
+      sim_log::FlushLog();
       abort();
     }
 
@@ -347,7 +350,7 @@ void Runner::H2DReadcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc) {
 #ifdef DEBUG_NICBM
   sim_log::LogInfo(
       log_,
-      "main_time = %lu: nicbm: completed dma read op %p addr %lx len %zu\n",
+      "main_time = %lu: nicbm: completed dma read op %p addr 0x%lx len %zu\n",
       main_time_, op, op->dma_addr_, op->len_);
 #endif
 
@@ -364,7 +367,7 @@ void Runner::H2DWritecomp(volatile struct SimbricksProtoPcieH2DWritecomp *wc) {
 #ifdef DEBUG_NICBM
   sim_log::LogInfo(
       log_,
-      "main_time = %lu: nicbm: completed dma write op %p addr %lx len %zu\n",
+      "main_time = %lu: nicbm: completed dma write op %p addr 0x%lx len %zu\n",
       main_time_, op, op->dma_addr_, op->len_);
 #endif
 
