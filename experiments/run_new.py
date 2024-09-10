@@ -34,8 +34,6 @@ import signal
 import sys
 
 from simbricks.orchestration import exectools
-from simbricks.orchestration import experiments as exps
-from simbricks.orchestration import runtime
 from simbricks.orchestration.experiment import experiment_environment
 
 from simbricks.orchestration.simulation import base as sim_base
