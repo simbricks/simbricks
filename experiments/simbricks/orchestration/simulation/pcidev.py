@@ -58,14 +58,11 @@ class NICSim(PCIDevSim):
 
     def __init__(self, e: base.Simulation) -> None:
         super().__init__(e)
-        self.experiment = e
-        self.nics: tp.List[sys_conf.SimplePCIeNIC] = []
         self.start_tick = 0
+        self.name = f'{self._id}'
 
     def add(self, nic: sys_conf.SimplePCIeNIC):
-        self.nics.append(nic)
-        self.experiment.add_spec_sim_map(nic, self)
-        self.name = f'{nic._id}'
+        super().add(nic)
 
     def basic_args(self, env: ExpEnv, extra: tp.Optional[str] = None) -> str:
         cmd = (
