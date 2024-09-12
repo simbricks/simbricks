@@ -21,6 +21,8 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from simbricks.orchestration.system import base
+from simbricks.orchestration.system import pcie
+from simbricks.orchestration.utils import base as utils_base
 
 
 class EthInterface(base.Interface):
@@ -29,8 +31,7 @@ class EthInterface(base.Interface):
 
     def connect(self, c: base.Channel) -> None:
         # Note AK: a bit ugly, but I think we can't get around a rt check here
-        if not c is isinstance(c, EthChannel):
-            raise TypeError("EthInterface only connects to EthChannel")
+        utils_base.has_expected_type(c, EthChannel)
         super().connect(c)
 
 
@@ -42,18 +43,24 @@ class EthChannel(base.Channel):
 class EthSimpleNIC(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.ip = None
-        self.eth_if = EthInterface(self)
+        self._ip = None
+        self._eth_if: EthInterface | None = None
 
     def add_ipv4(self, ip: str) -> None:
+        assert self._ip is None
         self.ip = ip
+
+    def add_if(self, interface: EthInterface) -> None:
+        utils_base.has_expected_type(obj=interface, expected_type=EthInterface)
+        assert self._eth_if is not None
+        self._eth_if = interface
 
 class BaseEthNetComponent(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
         self.eth_ifs: EthInterface = []
 
-    def if_add(self, i: EthInterface) -> None:
+    def add_if(self, i: EthInterface) -> None:
         self.eth_ifs.append(i)
 
     def interfaces(self) -> list[EthInterface]:
@@ -64,7 +71,7 @@ class EthWire(BaseEthNetComponent):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
 
-    def if_add(self, i: EthInterface) -> None:
+    def add_if(self, i: EthInterface) -> None:
         if len(self.eth_ifs) > 2:
             raise Exception("one can only add 2 interfaces to a EthWire")
         self.eth_ifs.append(i)

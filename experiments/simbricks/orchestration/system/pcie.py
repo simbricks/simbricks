@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from simbricks.orchestration.system import base
+from simbricks.orchestration.utils import base as utils_base
 
 
 class PCIeHostInterface(base.Interface):
@@ -36,8 +37,7 @@ class PCIeDeviceInterface(base.Interface):
 
     def connect(self, c: base.Channel) -> None:
         # Note AK: a bit ugly, but I think we can't get around a rt check here
-        if not c is isinstance(c, PCIeChannel):
-            raise TypeError('PCIeDeviceInterface only connects to PCIeChannel')
+        utils_base.has_expected_type(c, PCIeChannel)
         super().connect(c)
 
 
@@ -47,7 +47,7 @@ class PCIeChannel(base.Channel):
 
     def host_if(self) -> PCIeHostInterface:
         return self.a
-    
+
     def dev_if(self) -> PCIeDeviceInterface:
         return self.b
 
@@ -56,7 +56,12 @@ class PCIeChannel(base.Channel):
 class PCIeSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
-        self.pci_if = PCIeDeviceInterface(self)
+        self._pci_if = PCIeDeviceInterface(self)
 
     def interfaces(self) -> list[base.Interface]:
         return [self.pci_if]
+
+    def add_if(interface: PCIeDeviceInterface) -> None:
+        utils_base.has_expected_type(obj=interface, expected_type=PCIeDeviceInterface)
+        assert self._pci_if is None
+        self._pci_if = interface

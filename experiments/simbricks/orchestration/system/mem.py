@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from simbricks.orchestration.system import base
+from simbricks.orchestration.utils import base as utils_base
 
 
 class MemHostInterface(base.Interface):
@@ -55,7 +56,12 @@ class MemChannel(base.Channel):
 class MemSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
-        self.mem_if = MemDeviceInterface()
+        self._mem_if: MemDeviceInterface | None = None
 
     def interfaces(self) -> list[base.Interface]:
         return [self.mem_if]
+
+    def add_if(interface: MemDeviceInterface) -> None:
+        utils_base.has_expected_type(obj=interface, expected_type=MemDeviceInterface)
+        assert self._mem_if is None
+        self._mem_if = interface
