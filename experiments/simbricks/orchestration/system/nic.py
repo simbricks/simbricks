@@ -32,6 +32,17 @@ class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):
     def interfaces(self) -> list[base.Interface]:
         return [self.pci_if, self.eth_if]
 
+    def add_if(self, interface: eth.EthInterface | pcie.PCIeDeviceInterface) -> None:
+        match interface:
+            case eth.EthInterface():
+                eth.EthSimpleNIC.add_if(self, interface=interface)
+            case pcie.PCIeDeviceInterface():
+                pcie.PCIeSimpleDevice.add_if(self, interface=interface)
+            case _:
+                raise Exception(
+                    f"interface must have type EthInterface or PCIeDeviceInterface but has type {type(interface)}"
+                )
+
 
 class IntelI40eNIC(SimplePCIeNIC):
     def __init__(self, s: base.System) -> None:

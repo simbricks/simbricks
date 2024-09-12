@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 import abc
+import typing as tp
 from simbricks.orchestration.utils import base as util_base
 
 
@@ -49,6 +50,10 @@ class Component(util_base.IdObj):
     def interfaces(self) -> list[Interface]:
         return []
 
+    @abc.abstractmethod
+    def add_if(self, interface: tp.Any) -> None:
+        raise Exception("must be overwritten by subclass")
+
     def channels(self) -> list[Channel]:
         return [i.channel for i in self.interfaces() if i.is_connected()]
 
@@ -75,7 +80,9 @@ class Channel(util_base.IdObj):
         super().__init__()
         self.latency = 500
         self.a: Interface = a
+        self.a.connect(self)
         self.b: Interface = b
+        self.b.connect(self)
 
     def interfaces(self) -> list[Interface]:
         return [self.a, self.b]

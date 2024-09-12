@@ -40,7 +40,7 @@ class Host(base.Component):
     def interfaces(self) -> list[base.Interface]:
         return self.pcie_ifs + self.eth_ifs + self.mem_ifs
 
-    def add_if(self, i: base.Interface) -> None:
+    def add_if(self, interface: base.Interface) -> None:
         self.ifs.append(i)
 
     def add_app(self, a: 'Application') -> None:
