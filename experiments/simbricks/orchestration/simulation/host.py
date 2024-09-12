@@ -56,9 +56,7 @@ class HostSim(sim_base.Simulator):
     def add(self, host: 'Host'):
         self.hosts.append(host)
         self.name = f'{self._id}'
-        # TODO: FIXME, call super method...
-        # self.experiment.add_host(self)
-        # self.experiment.sys_sim_map[host] = self
+        self._simulation.add_spec_sim_map(host, self)
 
     def config_str(self) -> str:
         return []

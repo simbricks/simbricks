@@ -57,6 +57,7 @@ class Simulator(utils_base.IdObj):
         self.extra_deps: list[Simulator] = []
         self._simulation: sim_base.Simulation = simulation
         self._components: set[sys_conf.Component] = set()
+        simulation.add_sim(self)
 
     @staticmethod
     def filter_sockets(
@@ -121,7 +122,7 @@ class Simulator(utils_base.IdObj):
         """Commands to prepare execution of this simulator."""
         return []
 
-    def add(self, comp: sys_base.Component) -> None:
+    def add(self, comp: sys_conf.Component) -> None:
         if comp in self._components:
             raise Exception("cannot add the same specification twice to a simulator")
         self._components.add(comp)
@@ -273,6 +274,14 @@ class Simulation(utils_base.IdObj):
         self._chan_map: dict[sys_conf.Channel, sim_chan.Channel] = {}
         """Channel spec and its instanciation"""
 
+        self._sim_list: list[Simulator] = []
+        """Channel spec and its instanciation"""
+
+    def add_sim (self, sim: Simulator):
+        if sim in self._sim_list:
+            raise Exception("Simulaotr is already added")
+        self._sim_list.append(sim)
+
     def add_spec_sim_map(self, sys: sys_conf.Component, sim: Simulator):
         """Add a mapping from specification to simulation instance"""
         if sys in self._sys_sim_map:
@@ -290,10 +299,8 @@ class Simulation(utils_base.IdObj):
         self._chan_map[chan] = channel
         return channel
 
-    def all_simulators(self) -> set[Simulator]:
-        """Returns all simulators defined to run in this experiment."""
-        simulators = set(map(lambda kv: kv[1], self._sys_sim_map.items()))
-        return simulators
+    def all_simulators(self) -> list[Simulator]:
+        return self._sim_list
 
     def resreq_mem(self) -> int:
         """Memory required to run all simulators in this experiment."""
