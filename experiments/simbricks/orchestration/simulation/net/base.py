@@ -63,7 +63,7 @@ class WireNet(NetSim):
         self._relative_pcap_file_path: str | None = "relative_pcap_file_path"
 
     def add(self, wire: eth.EthWire):
-        base_utils.has_expected_type(wire, eth.EthWire())
+        base_utils.has_expected_type(wire, eth.EthWire)
         if len(self._components) > 1:
             raise Exception(
                 "can only add a single wire component to the WireNet simulator"
@@ -104,7 +104,7 @@ class SwitchNet(NetSim):
         self._relative_pcap_file_path: str | None = relative_pcap_file_path
 
     def add(self, switch_spec: eth.EthSwitch):
-        base_utils.has_expected_type(wire, eth.EthSwitch())
+        base_utils.has_expected_type(switch_spec, eth.EthSwitch)
         if len(self._components) > 1:
             raise Exception("can only add a single switch component to the SwitchNet")
         super().add(switch_spec)

@@ -64,10 +64,7 @@ class NICSim(PCIDevSim):
 
     def add(self, nic: sys_conf.SimplePCIeNIC):
         self.nics.append(nic)
-        # nic.sim = self
-        # TODO: FIXME, call super method...
-        #self.experiment.add_nic(self)
-        #self.experiment.sys_sim_map[nic] = self
+        self.experiment.add_spec_sim_map(nic, self)
         self.name = f'{nic._id}'
 
     def basic_args(self, env: ExpEnv, extra: tp.Optional[str] = None) -> str:
