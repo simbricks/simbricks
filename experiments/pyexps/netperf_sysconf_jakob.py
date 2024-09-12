@@ -16,17 +16,18 @@ def boilerplate():
     # create client host
     host0 = sys_host_base.CorundumLinuxHost()
     host0_app = sys_app_base.PingClient(host0)
+    host0_app.server_ip = '10.0.0.2'
     host0.add_app(host0_app)
 
     # create client nic
     nic0 = sys_nic.CorundumNIC()
-    nic0.set_ipv4("10.0.0.1")
+    nic0.add_ipv4("10.0.0.1")
 
     # connect client host and nic
     host_pci0 = sys_pcie.PCIeHostInterface(host0)
     host0.add_if(host_pci0)
     nic_pci0 = sys_pcie.PCIeDeviceInterface(nic0)
-    nic0.set_pcie_if(nic_pci0)
+    nic0.add_if(nic_pci0)
     host0_nic0_chan = sys_pcie.PCIeChannel(host_pci0, nic_pci0)
 
     # create host server
@@ -36,13 +37,13 @@ def boilerplate():
 
     # create host nic
     nic1 = sys_nic.IntelI40eNIC()
-    nic1.set_ipv4("10.0.0.2")
+    nic1.add_ipv4("10.0.0.2")
 
     # connect host server to host client
     host_pci1 = sys_pcie.PCIeHostInterface(host0)
     host1.add_if(host_pci1)
     nic_pci1 = sys_pcie.PCIeDeviceInterface(nic1)
-    nic1.set_pcie_if(nic_pci1)
+    nic1.add_if(nic_pci1)
     host1_nic1_chan = sys_pcie.PCIeChannel(host_pci1, nic_pci1)
 
     # create first switch
@@ -85,7 +86,7 @@ def syntactic_sugar():
 
     # create client host
     host0 = sys_host_base.CorundumLinuxHost()
-    install_application(host0, sys_app_base.PingClient(host0))
+    helpers_sys.install_app(host=host0, app_ty=sys_app_base.PingClient, server_ip='10.0.0.2')
 
     # create client nic
     nic0 = sys_nic.CorundumNIC()
@@ -96,11 +97,11 @@ def syntactic_sugar():
 
     # create host server
     host1 = sys_host_base.I40ELinuxHost()
-    install_application(host1, system.Sleep(host1))
+    helpers_sys.install_app(host=host1, app_ty=sys_app_base.Sleep, delay=10)
 
     # create host nic
     nic1 = sys_nic.IntelI40eNIC()
-    nic1.set_ipv4("10.0.0.2")
+    nic1.add_ipv4("10.0.0.2")
 
     # connect host server to host client
     helpers_sys.connect_host_and_device(host=host1, device=nic1)
