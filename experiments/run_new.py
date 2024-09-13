@@ -267,7 +267,7 @@ def add_exp(
     create_cp: bool,
     restore_cp: bool,
     args: argparse.Namespace,
-) -> inst_base.InstantiationEnvironment:
+):
 
     outpath = f"{args.outdir}/{simulation.name}-{run_number}.json"
     if os.path.exists(outpath) and not args.force:
@@ -299,9 +299,10 @@ def add_exp(
         tmp_simulation_files=tmp_sim_files,
     )
 
+    inst_ = inst_base.Instantiation(inst_env)    
     run = runs.base.Run(
         simulation=simulation,
-        instantiation=inst_env,
+        instantiation=inst_,
         prereq=prereq,
     )
 

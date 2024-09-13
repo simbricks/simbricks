@@ -32,7 +32,7 @@ class SimulationOutput:
         self._end_time: float = None
         self._success: bool = True
         self._interrupted: bool = False
-        self._metadata = exp.metadata
+        self._metadata = sim.metadata
         self._sims: dict[str, dict[str, str | list[str]]] = {}
 
     def set_start(self) -> None:
