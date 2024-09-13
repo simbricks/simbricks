@@ -301,7 +301,7 @@ def add_exp(
 
     run = runs.base.Run(
         simulation=simulation,
-        inst_env=inst_env,
+        instantiation=inst_env,
         prereq=prereq,
     )
 
@@ -360,8 +360,8 @@ def main():
 
         for sim in simulations:
             # TODO: do we want a sitributed SImulation class? --> probably not, choose slightly different abstraction
-            if args.auto_dist and not isinstance(sim, exps.DistributedExperiment):
-                sim = runtime.auto_dist(sim, executors, args.proxy_type)
+            if args.auto_dist and not isinstance(sim, sim_base.DistributedExperiment):
+                sim = runs.auto_dist(sim, executors, args.proxy_type)
 
             # apply filter if any specified
             if (args.filter) and (len(args.filter) > 0):
@@ -378,12 +378,12 @@ def main():
             # it
             # TODO: what to do / how to handel checkpointing
             if sim.checkpoint:
-                prereq = add_exp(e, rt, 0, None, True, False, args)
+                prereq = add_exp(sim, rt, 0, None, True, False, args)
             else:
                 prereq = None
 
             for run in range(args.firstrun, args.firstrun + args.runs):
-                add_exp(e, rt, run, prereq, False, sim.checkpoint, args)
+                add_exp(sim, rt, run, prereq, False, sim.checkpoint, args)
     else:
         # otherwise load pickled run object
         for path in args.experiments:
