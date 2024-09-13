@@ -24,7 +24,7 @@ pcie0 = system.PCIeHostInterface(host0)
 host0.add_if(pcie0)
 nic0 = system.IntelI40eNIC(sys)
 nic0.add_ipv4('10.0.0.1')
-pcichannel0 = system.PCIeChannel(pcie0, nic0.pci_if)
+pcichannel0 = system.PCIeChannel(pcie0, nic0._pci_if)
 
 # create a host instance and a NIC instance then install the NIC on the host
 host1 = system.I40ELinuxHost(sys)
@@ -32,18 +32,18 @@ pcie1 = system.PCIeHostInterface(host1)
 host1.add_if(pcie0)
 nic1 = system.IntelI40eNIC(sys)
 nic1.add_ipv4('10.0.0.2')
-pcichannel1 = system.PCIeChannel(pcie1, nic1.pci_if)
+pcichannel1 = system.PCIeChannel(pcie1, nic1._pci_if)
 
 # create switch and its ports
 switch = system.EthSwitch(sys)
 netif0 = system.EthInterface(switch)
-switch.if_add(netif0)
+switch.add_if(netif0)
 netif1 = system.EthInterface(switch)
-switch.if_add(netif1)
+switch.add_if(netif1)
 
 # create channels and connect the switch to the host nics
-ethchannel0 = system.EthChannel(switch.eth_ifs[0], nic0.eth_if)
-ethchannel1 = system.EthChannel(switch.eth_ifs[1], nic1.eth_if)
+ethchannel0 = system.EthChannel(switch.eth_ifs[0], nic0._eth_if)
+ethchannel1 = system.EthChannel(switch.eth_ifs[1], nic1._eth_if)
 
 # configure the software to run on the host
 host0.add_app(system.NetperfClient(host0, nic1.ip))

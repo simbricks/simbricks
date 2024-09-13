@@ -76,7 +76,7 @@ class LocalSimpleRuntime(run_base.Runtime):
 
     async def start(self) -> None:
         """Execute the runs defined in `self.runnable`."""
-        for run in self.runnable:
+        for run in self._runnable:
             if self._interrupted:
                 return
 

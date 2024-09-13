@@ -260,7 +260,7 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
 
     # TODO: FIXME
     def __init__(
-        self, execs: dict[sim -> command_executor.Executor], exp: DistributedExperiment, *args, **kwargs
+        self, execs, exp: DistributedExperiment, *args, **kwargs
     ) -> None:
         self.execs = execs
         super().__init__(exp, *args, **kwargs)
