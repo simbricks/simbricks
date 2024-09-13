@@ -32,7 +32,7 @@ from simbricks.orchestration.runtime_new.runs import base as run_base
 from simbricks.orchestration.simulation import base as sim_base
 
 
-class DistributedSimpleRuntime(base.Runtime):
+class DistributedSimpleRuntime(run_base.Runtime):
 
     def __init__(
         self,
