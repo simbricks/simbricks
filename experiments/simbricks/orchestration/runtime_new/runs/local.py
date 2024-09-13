@@ -51,11 +51,11 @@ class LocalSimpleRuntime(run_base.Runtime):
         """Actually executes `run`."""
         try:
             runner = simulation_executor.ExperimentSimpleRunner(
-                self._executor, run._simulation, run._inst_env, self.verbose
+                self._executor, run._simulation, run._instantiation, self._verbose
             )
             if self._profile_int:
                 runner.profile_int = self.profile_int
-            await run.prep_dirs(self.executor)
+            await run.prep_dirs(self._executor)
             await runner.prepare()
         except asyncio.CancelledError:
             # it is safe to just exit here because we are not running any

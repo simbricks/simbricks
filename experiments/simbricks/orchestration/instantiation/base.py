@@ -240,7 +240,7 @@ class Instantiation(util_base.IdObj):
         # some sort of runtime on each machine that executes thus making pasing
         # an executor in here obsolete...
 
-        wrkdir = self._instantiation.wrkdir()
+        wrkdir = self.wrkdir()
         shutil.rmtree(wrkdir, ignore_errors=True)
         await executor.rmtree(wrkdir)
 
