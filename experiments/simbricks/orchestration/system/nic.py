@@ -30,7 +30,7 @@ class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):
         super().__init__(s)
 
     def interfaces(self) -> list[base.Interface]:
-        return [self.pci_if, self.eth_if]
+        return [self._pci_if, self._eth_if]
 
     def add_if(self, interface: eth.EthInterface | pcie.PCIeDeviceInterface) -> None:
         match interface:

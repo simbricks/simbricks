@@ -44,7 +44,7 @@ class EthSimpleNIC(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
         self._ip = None
-        self._eth_if: EthInterface | None = None
+        self._eth_if = EthInterface(self)
 
     def add_ipv4(self, ip: str) -> None:
         assert self._ip is None
