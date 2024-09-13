@@ -20,7 +20,18 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import enum
+
 from simbricks.orchestration.system import base as system_base
+from simbricks.orchestration.utils import base as utils_base
+
+
+class Time(enum.IntEnum):
+    Picoseconds = 10 ** (-3)
+    Nanoseconds = 1
+    Microseconds = 10 ** (3)
+    Milliseconds = 10 ** (6)
+    Seconds = 10 ** (9)
 
 
 class Channel:
@@ -32,3 +43,7 @@ class Channel:
 
     def full_name(self) -> str:
         return "channel." + self.name
+
+    def set_sync_period(self, amount: int, ratio: Time = Time.Nanoseconds) -> None:
+        utils_base.has_expected_type(obj=ratio, expected_type=Time)
+        self.sync_period = amount * ratio

@@ -186,13 +186,14 @@ class Simulator(utils_base.IdObj):
 
     def _get_channel(self, chan: sys_conf.Channel) -> sim_chan.Channel | None:
         if self._chan_needs_instance(chan):
-            return self.experiment.retrieve_or_create_channel(chan=chan)
+            return self._simulation.retrieve_or_create_channel(chan=chan)
         return None
 
-    def _get_channels(self, inst: inst_base.Instantiation) -> list[sim_chan.Channel]:
+    def get_channels(self) -> list[sim_chan.Channel]:
         channels = []
         for comp_spec in self._components:
-            for chan in self.experiment.retrieve_or_create_channel(chan=chan):
+            comp_sys_channels = comp_spec.channels()
+            for chan in comp_sys_channels:
                 channel = self._get_channel(chan=chan)
                 if channel is None:
                     continue
@@ -277,7 +278,7 @@ class Simulation(utils_base.IdObj):
         self._sim_list: list[Simulator] = []
         """Channel spec and its instanciation"""
 
-    def add_sim (self, sim: Simulator):
+    def add_sim(self, sim: Simulator):
         if sim in self._sim_list:
             raise Exception("Simulaotr is already added")
         self._sim_list.append(sim)
@@ -288,7 +289,7 @@ class Simulation(utils_base.IdObj):
             raise Exception("system component is already mapped by simulator")
         self._sys_sim_map[sys] = sim
 
-    def is_channel_instantiated(self, chan: Channel) -> bool:
+    def is_channel_instantiated(self, chan: sys_conf.Channel) -> bool:
         return chan in self._chan_map
 
     def retrieve_or_create_channel(self, chan: sys_conf.Channel) -> Channel:
@@ -301,6 +302,16 @@ class Simulation(utils_base.IdObj):
 
     def all_simulators(self) -> list[Simulator]:
         return self._sim_list
+
+    def get_all_channels(self, lazy: bool = False) -> list[Channel]:
+        if lazy:
+            return list(self._chan_map.values())
+
+        all_channels = []
+        for sim in self.all_simulators():
+            channels = sim.get_channels()
+            all_channels.extend(channels)
+        return all_channels
 
     def resreq_mem(self) -> int:
         """Memory required to run all simulators in this experiment."""
