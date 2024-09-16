@@ -59,9 +59,9 @@ class MemSimpleDevice(base.Component):
         self._mem_if: MemDeviceInterface | None = None
 
     def interfaces(self) -> list[base.Interface]:
-        return [self.mem_if]
+        return [self._mem_if]
 
-    def add_if(interface: MemDeviceInterface) -> None:
+    def add_if(self, interface: MemDeviceInterface) -> None:
         utils_base.has_expected_type(obj=interface, expected_type=MemDeviceInterface)
         assert self._mem_if is None
         self._mem_if = interface
