@@ -28,6 +28,10 @@ import pathlib
 import shutil
 from simbricks.orchestration.utils import base as util_base
 from simbricks.orchestration.system import base as sys_base
+from simbricks.orchestration.system import pcie as sys_pcie
+from simbricks.orchestration.system import mem as sys_mem
+from simbricks.orchestration.system import eth as sys_eth
+from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.runtime_new import command_executor
 
 
@@ -121,24 +125,26 @@ class Instantiation(util_base.IdObj):
         return socket
 
     def _interface_to_sock_path(self, interface: sys_base.Interface) -> str:
-        basepath = pathlib.Path(self._env._workdir)
-
         channel = self._get_chan_by_interface(interface=interface)
         queue_ident = f"{channel.a._id}.{channel._id}.{channel.b._id}"
 
         queue_type = None
         match interface:
-            case PCIeHostInterface() | PCIeDeviceInterface():
+            case sys_pcie.PCIeHostInterface() | sys_pcie.PCIeDeviceInterface():
                 queue_type = "shm.pci"
-            case MemDeviceInterface() | MemHostInterface():
+            case sys_mem.MemDeviceInterface() | sys_mem.MemHostInterface():
                 queue_type = "shm.mem"
-            case EthInterface():
+            case sys_eth.EthInterface():
                 queue_type = "shm.eth"
             case _:
                 raise Exception("cannot create socket path for given interface type")
 
         assert queue_type is not None
-        return f"{self._env._shm_base}/{queue_type}/{queue_ident}"
+        return self._join_paths(
+            base=self._env._shm_base,
+            relative_path=f"/{queue_type}/{queue_ident}",
+            enforce_existence=False,
+        )
 
     def _create_opposing_socket(
         self, socket: Socket, supported_sock_types: set[SockType] = set()
@@ -294,13 +300,13 @@ class Instantiation(util_base.IdObj):
         return path
 
     # TODO: fixme
-    def cfgtar_path(self, sim: Simulator) -> str:
-        return f"{self.workdir}/cfg.{sim.name}.tar"
+    def cfgtar_path(self, sim: sim_base.Simulator) -> str:
+        return f"{self._env._workdir}/cfg.{sim.name}.tar"
 
     def join_tmp_base(self, relative_path: str) -> str:
         return self._join_paths(
             base=self._env._tmp_simulation_files,
-            relative_path=filename,
+            relative_path=relative_path,
             enforce_existence=False,
         )
 
@@ -312,6 +318,6 @@ class Instantiation(util_base.IdObj):
     def get_simulation_output_path(self, run_number: int) -> str:
         return self._join_paths(
             base=self._env._output_base,
-            relative_path=f"/{self._simulation.name}-{run_number}.json",
+            relative_path=f"/{self._env._output_base}-{run_number}.json",
             enforce_existence=False,
         )
