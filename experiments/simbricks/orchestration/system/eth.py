@@ -43,16 +43,16 @@ class EthChannel(base.Channel):
 class EthSimpleNIC(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self._ip = None
-        self._eth_if = EthInterface(self)
+        self._ip: str | None = None
+        self._eth_if: EthInterface | None = None
 
     def add_ipv4(self, ip: str) -> None:
         assert self._ip is None
-        self.ip = ip
+        self._ip = ip
 
     def add_if(self, interface: EthInterface) -> None:
         utils_base.has_expected_type(obj=interface, expected_type=EthInterface)
-        assert self._eth_if is not None
+        assert self._eth_if is None
         self._eth_if = interface
 
 class BaseEthNetComponent(base.Component):
