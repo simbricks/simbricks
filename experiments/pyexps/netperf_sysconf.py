@@ -1,7 +1,8 @@
 
-import simbricks.orchestration.system as system
-import simbricks.orchestration.simulation as sim
-import simbricks.orchestration.instantiation as inst
+from simbricks.orchestration import system
+from simbricks.orchestration import simulation as sim
+from simbricks.orchestration import instantiation as inst
+
 """
 Netperf Example:
 One Client: Host_0, One Server: Host1 connected through a switch
@@ -23,6 +24,8 @@ host0 = system.I40ELinuxHost(sys)
 pcie0 = system.PCIeHostInterface(host0)
 host0.add_if(pcie0)
 nic0 = system.IntelI40eNIC(sys)
+nic0_pci = system.PCIeDeviceInterface(nic0)
+nic0.add_if(nic0_pci)
 nic0.add_ipv4('10.0.0.1')
 pcichannel0 = system.PCIeChannel(pcie0, nic0._pci_if)
 
@@ -31,6 +34,8 @@ host1 = system.I40ELinuxHost(sys)
 pcie1 = system.PCIeHostInterface(host1)
 host1.add_if(pcie0)
 nic1 = system.IntelI40eNIC(sys)
+nic1_pci = system.PCIeDeviceInterface(nic1)
+nic1.add_if(nic1_pci)
 nic1.add_ipv4('10.0.0.2')
 pcichannel1 = system.PCIeChannel(pcie1, nic1._pci_if)
 
@@ -40,6 +45,11 @@ netif0 = system.EthInterface(switch)
 switch.add_if(netif0)
 netif1 = system.EthInterface(switch)
 switch.add_if(netif1)
+
+nic0_eth = system.EthInterface(nic0)
+nic0.add_if(nic0_eth)
+nic1_eth = system.EthInterface(nic1)
+nic1.add_if(nic1_eth)
 
 # create channels and connect the switch to the host nics
 ethchannel0 = system.EthChannel(switch.eth_ifs[0], nic0._eth_if)
