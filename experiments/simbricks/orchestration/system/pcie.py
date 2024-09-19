@@ -56,12 +56,10 @@ class PCIeChannel(base.Channel):
 class PCIeSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
-        self._pci_if: PCIeDeviceInterface | None = None
+        self._pci_if: PCIeDeviceInterface = PCIeDeviceInterface(self)
 
     def interfaces(self) -> list[base.Interface]:
         return [self._pci_if]
 
     def add_if(self, interface: PCIeDeviceInterface) -> None:
-        utils_base.has_expected_type(obj=interface, expected_type=PCIeDeviceInterface)
-        assert self._pci_if is None
-        self._pci_if = interface
+        raise Exception("PCIeSimpleDevice already has PCI device interface")

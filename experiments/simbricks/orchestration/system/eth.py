@@ -44,16 +44,14 @@ class EthSimpleNIC(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
         self._ip: str | None = None
-        self._eth_if: EthInterface | None = None
+        self._eth_if: EthInterface = EthInterface(self)
 
     def add_ipv4(self, ip: str) -> None:
         assert self._ip is None
         self._ip = ip
 
     def add_if(self, interface: EthInterface) -> None:
-        utils_base.has_expected_type(obj=interface, expected_type=EthInterface)
-        assert self._eth_if is None
-        self._eth_if = interface
+        raise Exception("EthSimpleNIC already has ethernet interface")
 
 class BaseEthNetComponent(base.Component):
     def __init__(self, s: base.System) -> None:
