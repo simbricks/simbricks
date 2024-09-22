@@ -66,13 +66,7 @@ class BaseLinuxApplication(abc.ABC):
 
     def prepare_pre_cp(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
-        return [
-            "set -x",
-            "export HOME=/root",
-            "export LANG=en_US",
-            'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:'
-            + '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"',
-        ]
+        return []
 
     def prepare_post_cp(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run to prepare node after checkpoint restore."""
