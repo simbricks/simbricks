@@ -22,6 +22,9 @@ sys = system.System()
 # create a host instance and a NIC instance then install the NIC on the host
 host0 = system.I40ELinuxHost(sys)
 pcie0 = system.PCIeHostInterface(host0)
+cfg_disk0 = system.LinuxConfigDiskImage(host0)
+host0.add_disk(cfg_disk0)
+
 host0.add_if(pcie0)
 nic0 = system.IntelI40eNIC(sys)
 nic0.add_ipv4('10.0.0.1')
@@ -30,6 +33,9 @@ pcichannel0 = system.PCIeChannel(pcie0, nic0._pci_if)
 # create a host instance and a NIC instance then install the NIC on the host
 host1 = system.I40ELinuxHost(sys)
 pcie1 = system.PCIeHostInterface(host1)
+cfg_disk1 = system.LinuxConfigDiskImage(host1)
+host1.add_disk(cfg_disk1)
+
 host1.add_if(pcie0)
 nic1 = system.IntelI40eNIC(sys)
 nic1.add_ipv4('10.0.0.2')
@@ -48,7 +54,7 @@ ethchannel0 = system.EthChannel(switch.eth_ifs[0], nic0._eth_if)
 ethchannel1 = system.EthChannel(switch.eth_ifs[1], nic1._eth_if)
 
 # configure the software to run on the host
-host0.add_app(system.NetperfClient(host0, nic1.ip))
+host0.add_app(system.NetperfClient(host0, nic1._ip))
 host1.add_app(system.NetperfServer(host1))
 
 """
