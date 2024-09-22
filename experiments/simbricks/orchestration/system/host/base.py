@@ -23,19 +23,19 @@
 import typing as tp
 import io
 from os import path
-from simbricks.orchestration.experiment import experiment_environment as expenv
+import simbricks.orchestration.instantiation.base as instantiation
 from simbricks.orchestration.system import base as base
+from simbricks.orchestration.system.host import app
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import (eth, mem, pcie)
     from simbricks.orchestration.system.host import disk_images
-    from simbricks.orchestration.system.host import app
 
 
 class Host(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
         self.ifs: list[base.Interface] = []
-        self.applications: list['Application']
+        self.applications: list[app.Application]
 
     def interfaces(self) -> list[base.Interface]:
         return self.pcie_ifs + self.eth_ifs + self.mem_ifs
@@ -43,7 +43,7 @@ class Host(base.Component):
     def add_if(self, interface: base.Interface) -> None:
         self.ifs.append(interface)
 
-    def add_app(self, a: 'Application') -> None:
+    def add_app(self, a: app.Application) -> None:
         self.applications.append(a)
 
 
@@ -62,17 +62,17 @@ class FullSystemHost(Host):
 class BaseLinuxHost(FullSystemHost):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.applications: list['BaseLinuxApplication'] = []
+        self.applications: list[app.BaseLinuxApplication] = []
         self.load_modules = []
         self.kcmd_append = ''
 
-    def add_app(self, a: 'BaseLinuxApplication') -> None:
+    def add_app(self, a: app.BaseLinuxApplication) -> None:
         self.applications.append(a)
 
     def _concat_app_cmds(
             self,
-            env: expenv.ExpEnv,
-            mapper: tp.Callable[['BaseLinuxApplication', expenv.ExpEnv],
+            inst: instantiation.Instantiation,
+            mapper: tp.Callable[['BaseLinuxApplication', instantiation.Instantiation],
                                 list[str]]
             ) -> list[str]:
         """
@@ -81,18 +81,19 @@ class BaseLinuxHost(FullSystemHost):
         """
         cmds = []
         for app in self.applications:
-            cmds += mapper(app, env)
+            cmds += mapper(app, inst)
+        
         return cmds
 
-    def run_cmds(self, env: expenv.ExpEnv) -> list[str]:
+    def run_cmds(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run on node."""
-        return self._concat_app_cmds(env, app.LinuxApplication.run_cmds)
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.run_cmds)
 
-    def cleanup_cmds(self, env: expenv.ExpEnv) -> list[str]:
+    def cleanup_cmds(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to cleanup node."""
-        return self._concat_app_cmds(env, app.LinuxApplication.cleanup_cmds)
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.cleanup_cmds)
 
-    def config_files(self, env: expenv.ExpEnv) -> dict[str, tp.IO]:
+    def config_files(self, inst: instantiation.Instantiation) -> dict[str, tp.IO]:
         """
         Additional files to put inside the node, which are mounted under
         `/tmp/guest/`.
@@ -102,27 +103,27 @@ class BaseLinuxHost(FullSystemHost):
         """
         cfg_files = {}
         for app in self.applications:
-            cfg_files |= self.app.config_files(env)
+            cfg_files |= self.applications[0].config_files(inst)
         return cfg_files
 
-    def prepare_pre_cp(self, env: expenv.ExpEnv) -> list[str]:
+    def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
-        self._concat_app_cmds(env, app.LinuxApplication.prepare_pre_cp)
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_pre_cp)
 
-    def prepare_post_cp(self, env: expenv.ExpEnv) -> list[str]:
+
+    def prepare_post_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node after checkpoint restore."""
-        return self._concat_app_cmds(env, app.LinuxApplication.prepare_post_cp)
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_post_cp)
 
-    def _config_str(self, env: expenv.ExpEnv) -> str:
-        if env.create_cp:
-            sim = env.exp.get_simulator(self)
+    def _config_str(self, inst: instantiation.Instantiation) -> str:
+        if inst.create_cp:
             cp_cmd = self.checkpoint_commands()
         else:
             cp_cmd = []
-
-        es = self.prepare_pre_cp(env) + self.app.prepare_pre_cp(env) + \
+        
+        es = self.prepare_pre_cp(inst) + self.applications[0].prepare_pre_cp(inst) + \
             cp_cmd + \
-            self.prepare_post_cp(env) + self.app.prepare_post_cp(env) + \
+            self.prepare_post_cp(inst) + self.applications[0].prepare_post_cp(inst) + \
             self.run_cmds() + self.cleanup_cmds()
         return '\n'.join(es)
 
@@ -142,10 +143,10 @@ class LinuxHost(BaseLinuxHost):
         super().__init__(sys)
         self.drivers: list[str] = []
     
-    def cleanup_cmds(self, env: expenv.ExpEnv) -> list[str]:
-        return super().cleanup_cmds(env) + ['poweroff -f']
+    def cleanup_cmds(self, inst: instantiation.Instantiation) -> list[str]:
+        return super().cleanup_cmds(inst) + ['poweroff -f']
 
-    def prepare_pre_cp(self, env: expenv.ExpEnv) -> list[str]:
+    def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
         return [
             'set -x',
@@ -153,9 +154,9 @@ class LinuxHost(BaseLinuxHost):
             'export LANG=en_US',
             'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:' + \
                 '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"'
-        ] + super().prepare_pre_cp(env)
+        ] + super().prepare_pre_cp(inst)
 
-    def prepare_post_cp(self) -> tp.List[str]:
+    def prepare_post_cp(self, inst) -> tp.List[str]:
         l = []
         for d in self.drivers:
             if d[0] == '/':
@@ -194,12 +195,15 @@ class I40ELinuxHost(LinuxHost):
         super().__init__(sys)
         self.drivers.append('i40e')
 
+    def checkpoint_commands(self) -> list[str]:
+        return ['m5 checkpoint']
+
 
 class CorundumLinuxHost(LinuxHost):
     def __init__(self, sys) -> None:
         super().__init__(sys)
         self.drivers.append('/tmp/guest/mqnic.ko')
 
-    def config_files(self, env: expenv.ExpEnv) -> tp.Dict[str, tp.IO]:
+    def config_files(self, inst: instantiation.Instantiation) -> tp.Dict[str, tp.IO]:
         m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
         return {**m, **super().config_files()}
