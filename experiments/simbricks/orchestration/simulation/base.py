@@ -116,6 +116,9 @@ class Simulator(utils_base.IdObj):
     def full_name(self) -> str:
         """Full name of the simulator."""
         return ""
+    
+    def prep_tar(self, inst) -> None:
+        pass
 
     # pylint: disable=unused-argument
     def prep_cmds(self, inst: inst_base.Instantiation) -> list[str]:

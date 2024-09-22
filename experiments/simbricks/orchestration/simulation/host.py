@@ -95,7 +95,7 @@ class Gem5Sim(HostSim):
 
     def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
-        self.name: str = ''
+        self.name = super().full_name()
         self.cpu_type_cp = 'X86KvmCPU'
         self.cpu_type = 'TimingSimpleCPU'
         self.extra_main_args: list[str] = []
@@ -109,7 +109,8 @@ class Gem5Sim(HostSim):
 
     def resreq_mem(self) -> int:
         return 4096
-
+    
+    # TODO: remove it
     def config_str(self) -> str:
         cp_es = [] if self.nockp else ['m5 checkpoint']
         exit_es = ['m5 exit']
@@ -119,10 +120,19 @@ class Gem5Sim(HostSim):
             host.run_cmds() + host.cleanup_cmds() + exit_es
         return '\n'.join(es)
 
+    def prep_tar(self, inst: inst_base.Instantiation) -> None:
+        path = inst.cfgtar_path(self)
+        print(self.name, ' preparing config tar:', path)
+        
+        for c in self._components:
+            for d in c.disks:
+                d.prepare_image_path(inst, path)
 
-    def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
+
+    def prep_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
+
         cmds = [f'mkdir -p {env.gem5_cpdir(self)}']
-        if env.restore_cp and self.modify_checkpoint_tick:
+        if inst.env.restore_cp and self.modify_checkpoint_tick:
             cmds.append(
                 f'python3 {env.utilsdir}/modify_gem5_cp_tick.py --tick 0 '
                 f'--cpdir {env.gem5_cpdir(self)}'

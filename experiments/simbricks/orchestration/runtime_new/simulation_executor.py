@@ -120,22 +120,22 @@ class ExperimentBaseRunner(abc.ABC):
 
     async def prepare(self) -> None:
         # generate config tars
-        copies = []
-        # TODO: FIXME
-        for host in self.exp.hosts:
-            path = self.env.cfgtar_path(host)
-            if self._verbose:
-                print('preparing config tar:', path)
-            # TODO: FIXME
-            host.node_config.make_tar(self.env, path)
-            executor = self.sim_executor(host)
-            task = asyncio.create_task(executor.send_file(path, self._verbose))
-            copies.append(task)
-        await asyncio.gather(*copies)
+        # copies = []
+        # for host in self.exp.hosts:
+        #     path = self.env.cfgtar_path(host)
+        #     if self._verbose:
+        #         print('preparing config tar:', path)
+        #     # TODO: FIXME
+        #     host.node_config.make_tar(self.env, path)
+        #     executor = self.sim_executor(host)
+        #     task = asyncio.create_task(executor.send_file(path, self._verbose))
+        #     copies.append(task)
+        # await asyncio.gather(*copies)
 
         # prepare all simulators in parallel
         sims = []
         for sim in self._simulation.all_simulators():
+            sim.prep_tar(self._instantiation)
             prep_cmds = list(sim.prep_cmds(inst=self._instantiation))
             executor = self.sim_executor(sim)
             task = asyncio.create_task(
