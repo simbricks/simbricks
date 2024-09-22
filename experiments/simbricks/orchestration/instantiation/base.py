@@ -64,7 +64,7 @@ class InstantiationEnvironment(util_base.IdObj):
         # TODO: add more parameters that wont change during instantiation
         self._repodir: str = pathlib.Path(repo_path).absolute()
         self._workdir: str = pathlib.Path(workdir).absolute()
-        self._cpdir: str = pathlib.Path(self._workdir).joinpath(cpdir).absolute()
+        self._cpdir: str = pathlib.Path(cpdir).absolute()
         self._shm_base: str = pathlib.Path(self._workdir).joinpath(shm_base).absolute()
         self._output_base: str = (
             pathlib.Path(self._workdir).joinpath(output_base).absolute()
@@ -299,7 +299,6 @@ class Instantiation(util_base.IdObj):
         )
         return path
 
-    # TODO: fixme
     def cfgtar_path(self, sim: sim_base.Simulator) -> str:
         return f"{self._env._workdir}/cfg.{sim.name}.tar"
 

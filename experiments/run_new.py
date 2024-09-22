@@ -275,7 +275,7 @@ def add_exp(
         return None
 
     workdir = f"{args.workdir}/{simulation.name}/{run_number}"
-    cpdir = f"{args.cpdir}/{simulation.name}/0"
+    cpdir = f"{args.workdir}/{simulation.name}/0"
     if args.shmdir is not None:
         shmdir = f"{args.shmdir}/{simulation.name}/{run_number}"
 
