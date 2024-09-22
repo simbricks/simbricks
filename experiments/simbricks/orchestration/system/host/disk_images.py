@@ -89,14 +89,12 @@ class LinuxConfigDiskImage(DiskImage):
     def available_formats(self) -> list[str]:
         return ["raw"]
 
-    async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
-        # TODO: build tar from host path parameters and then return path
-        path = env.dynamic_img_path(self, format)
+    def prepare_image_path(self, inst, path) -> str:
         with tarfile.open(path, 'w:') as tar:
             # add main run script
             cfg_i = tarfile.TarInfo('guest/run.sh')
             cfg_i.mode = 0o777
-            cfg_f = self.host.strfile(self.host.config_str())
+            cfg_f = self.host.strfile(self.host._config_str(inst))
             cfg_f.seek(0, io.SEEK_END)
             cfg_i.size = cfg_f.tell()
             cfg_f.seek(0, io.SEEK_SET)
@@ -104,7 +102,7 @@ class LinuxConfigDiskImage(DiskImage):
             cfg_f.close()
 
             # add additional config files
-            for (n, f) in self.host.config_files(env).items():
+            for (n, f) in self.host.config_files(inst).items():
                 f_i = tarfile.TarInfo('guest/' + n)
                 f_i.mode = 0o777
                 f.seek(0, io.SEEK_END)
