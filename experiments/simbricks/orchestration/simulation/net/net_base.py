@@ -43,9 +43,11 @@ class NetSim(sim_base.Simulator):
     def dependencies(self) -> list[sim_base.Simulator]:
         # TODO
         deps = []
-        for s in self.switches:
-            for n in s.netdevs:
-                deps.append(n.net[0].sim)
+        for s in self._components:
+            for n in s.eth_ifs:
+                peer_comp = n.find_peer().component
+                peer_sim = self._simulation.find_sim(peer_comp)
+                deps.append(peer_sim)
         return deps
 
     def init_network(self) -> None:
