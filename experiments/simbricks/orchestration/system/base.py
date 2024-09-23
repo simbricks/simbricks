@@ -74,6 +74,15 @@ class Interface(util_base.IdObj):
         assert self.channel is None
         self.channel = c
 
+    def find_peer(self) -> Interface:
+        assert self.channel is not None
+        if self.channel.a == self:
+            peer_if = self.channel.b
+        else:
+            peer_if = self.channel.a
+        return peer_if
+
+
 
 class Channel(util_base.IdObj):
     def __init__(self, a: Interface, b: Interface) -> None:
