@@ -45,7 +45,7 @@ class BaseLinuxApplication(abc.ABC):
     @abc.abstractmethod
     def run_cmds(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run on node."""
-        pass
+        return []
 
     def cleanup_cmds(self, env: expenv.ExpEnv) -> list[str]:
         """Commands to run to cleanup node."""
