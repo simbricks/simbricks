@@ -25,6 +25,7 @@ import io
 from os import path
 import simbricks.orchestration.instantiation.base as instantiation
 from simbricks.orchestration.system import base as base
+from simbricks.orchestration.system import eth as eth
 from simbricks.orchestration.system.host import app
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import (eth, mem, pcie)
@@ -38,7 +39,7 @@ class Host(base.Component):
         self.applications: list[app.Application]
 
     def interfaces(self) -> list[base.Interface]:
-        return self.pcie_ifs + self.eth_ifs + self.mem_ifs
+        return self.ifs
 
     def add_if(self, interface: base.Interface) -> None:
         self.ifs.append(interface)
@@ -124,7 +125,7 @@ class BaseLinuxHost(FullSystemHost):
         es = self.prepare_pre_cp(inst) + self.applications[0].prepare_pre_cp(inst) + \
             cp_cmd + \
             self.prepare_post_cp(inst) + self.applications[0].prepare_post_cp(inst) + \
-            self.run_cmds() + self.cleanup_cmds()
+            self.run_cmds(inst) + self.cleanup_cmds(inst)
         return '\n'.join(es)
 
     def strfile(self, s: str) -> io.BytesIO:
@@ -166,9 +167,7 @@ class LinuxHost(BaseLinuxHost):
         eth_i = 0
         for i in self.interfaces():
             # Get ifname parameter if set, otherwise default to ethX
-            if 'ifname' in i.parameters:
-                ifn = i.parameters['ifname']
-            elif isinstance(i, eth.EthSimpleNIC):
+            if isinstance(i, eth.EthSimpleNIC):
                 ifn = f'eth{eth_i}'
                 eth_i += 1
             else:
@@ -187,7 +186,7 @@ class LinuxHost(BaseLinuxHost):
             if 'ipv4_addrs' in i.parameters:
                 for a in i.parameters['ipv4_addrs']:
                     l.append(f'ip addr add {a} dev {ifn}')
-        return super().prepare_post_cp() + l
+        return super().prepare_post_cp(inst) + l
 
 
 class I40ELinuxHost(LinuxHost):
