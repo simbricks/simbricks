@@ -42,10 +42,10 @@ class Run:
 
     def __init__(
         self,
-        simulation: sim_base,
+        simulation: sim_base.Simulation,
         instantiation: inst_base.Instantiation,
         prereq: Run | None = None,
-        output: ExpOutput | None = None,
+        output: output.SimulationOutput | None = None,
         job_id: int | None = None,
     ):
         self._simulation: sim_base.Simulation = simulation
