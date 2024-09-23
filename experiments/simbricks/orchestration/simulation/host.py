@@ -46,11 +46,17 @@ class HostSim(sim_base.Simulator):
 
     def dependencies(self) -> tp.List[sim_base.Simulator]:
         deps = []
-        for h in self.hosts:
+        for h in self._components:
             for dev in h.ifs:
-                # todo: find_sim looks up all the component-simulator mappings
-                #  from experimetn object and returns the simulator used for this component
-                deps.append(self.experiment.find_sim(dev.component)) 
+                if not dev.is_connected():
+                    raise Exception("host interface is not connected")
+                else:
+                    if dev.channel.a == dev:
+                        peer_if = dev.channel.b
+                    else:
+                        peer_if = dev.channel.a
+
+                deps.append(self._simulation.find_sim(peer_if.component)) 
         return deps
     
     def add(self, host: 'Host'):
@@ -131,11 +137,11 @@ class Gem5Sim(HostSim):
 
     def prep_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
 
-        cmds = [f'mkdir -p {env.gem5_cpdir(self)}']
-        if inst.env.restore_cp and self.modify_checkpoint_tick:
+        cmds = [f'mkdir -p {inst._env._cpdir}']
+        if inst._env._restore_cp and self.modify_checkpoint_tick:
             cmds.append(
-                f'python3 {env.utilsdir}/modify_gem5_cp_tick.py --tick 0 '
-                f'--cpdir {env.gem5_cpdir(self)}'
+                f'python3 {inst.utilsdir}/modify_gem5_cp_tick.py --tick 0 '
+                f'--cpdir {inst.gem5_cpdir(self)}'
             )
         return cmds
     
