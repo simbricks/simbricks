@@ -272,10 +272,10 @@ class Instantiation(util_base.IdObj):
         self, base: str = "", relative_path: str = "", enforce_existence=True
     ) -> str:
         path = pathlib.Path(base)
-        path.joinpath(relative_path)
-        if not path.exists() and enforce_existence:
+        joined = path.joinpath(relative_path)
+        if not joined.exists() and enforce_existence:
             raise Exception(f"couldn't join {base} and {relative_path}")
-        return path.absolute()
+        return joined.absolute()
 
     def join_repo_base(self, relative_path: str) -> str:
         return self._join_paths(
@@ -317,6 +317,6 @@ class Instantiation(util_base.IdObj):
     def get_simulation_output_path(self, run_number: int) -> str:
         return self._join_paths(
             base=self._env._output_base,
-            relative_path=f"/{self._env._output_base}-{run_number}.json",
+            relative_path=f"out-{run_number}.json",
             enforce_existence=False,
         )
