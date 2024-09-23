@@ -37,6 +37,7 @@ from simbricks.orchestration import exectools
 from simbricks.orchestration.experiment import experiment_environment
 
 from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.simulation import output
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.runtime_new import runs
 from simbricks.orchestration.runtime_new import command_executor
@@ -300,10 +301,12 @@ def add_exp(
     )
 
     inst_ = inst_base.Instantiation(inst_env)    
+    output_ = output.SimulationOutput(simulation) 
     run = runs.base.Run(
         simulation=simulation,
         instantiation=inst_,
         prereq=prereq,
+        output = output_
     )
 
     rt.add_run(run)
