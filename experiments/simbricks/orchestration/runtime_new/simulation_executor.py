@@ -80,7 +80,7 @@ class ExperimentBaseRunner(abc.ABC):
         # run simulator
         executor = self.sim_executor(sim)
         sc = executor.create_component(
-            name, shlex.split(run_cmd), verbose=self.verbose, canfail=True
+            name, shlex.split(run_cmd), verbose=self._verbose, canfail=True
         )
         await sc.start()
         self._running.append((sim, sc))
