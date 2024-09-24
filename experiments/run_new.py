@@ -290,7 +290,7 @@ def add_exp(
     tmp_sim_files = ""  # TODO
 
     inst_env = inst_base.InstantiationEnvironment(
-        repo_path="",
+        repo_path=args.repo,
         workdir=workdir,
         cpdir=cpdir,
         create_cp=create_cp,
