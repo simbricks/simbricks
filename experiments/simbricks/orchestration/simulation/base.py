@@ -295,11 +295,11 @@ class Simulation(utils_base.IdObj):
     def is_channel_instantiated(self, chan: sys_conf.Channel) -> bool:
         return chan in self._chan_map
 
-    def retrieve_or_create_channel(self, chan: sys_conf.Channel) -> Channel:
+    def retrieve_or_create_channel(self, chan: sys_conf.Channel) -> sim_chan.Channel:
         if self.is_channel_instantiated(chan):
             return self._chan_map[chan]
 
-        channel = Channel(self, chan)
+        channel = sim_chan.Channel(chan)
         self._chan_map[chan] = channel
         return channel
 
