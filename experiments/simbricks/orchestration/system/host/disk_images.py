@@ -25,6 +25,7 @@ import io
 import os.path
 import tarfile
 import typing as tp
+from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.experiment import experiment_environment as expenv
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system.host import base
@@ -32,15 +33,33 @@ if tp.TYPE_CHECKING:
 
 class DiskImage(abc.ABC):
     def __init__(self, h: 'Host') -> None:
-        self.host = h
+        self.host = None | str
 
     @abc.abstractmethod
     def available_formats(self) -> list[str]:
         return []
 
     @abc.abstractmethod
-    async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
+    def path(self, inst: inst_base.Instantiation, format: str) -> str:
+        return
+
+    async def prepare_format(self, inst: inst_base.Instantiation, format: str) -> str:
         pass
+
+    async def prepare(self, inst: inst_base.Instantiation) -> None:
+        # Find first supported disk image format in order of simulator pref.
+        sim = inst.simulation.find_sim(self.host)
+        format = None
+        av_fmt = self.available_formats()
+        for f in sim.supported_image_formats():
+            if f in av_fmt:
+                format = f
+                break
+
+        if format is None:
+            raise Exception('No supported image format found')
+
+        await self.prepare_format(inst, format)
 
 
 # Disk image where user just provides a path
@@ -53,7 +72,7 @@ class ExternalDiskImage(DiskImage):
     def available_formats(self) -> list[str]:
         return self.formats
 
-    async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
+    def path(self, inst: inst_base.Instantiation, format: str)  -> str:
         assert os.path.isfile(self.path)
         return self.path
 
@@ -68,8 +87,8 @@ class DistroDiskImage(DiskImage):
     def available_formats(self) -> list[str]:
         return self.formats
 
-    async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
-        path = env.hd_path(self.name)
+    def path(self, inst: inst_base.Instantiation, format: str) -> str:
+        path = inst.hd_path(self.name)
         if format == "raw":
             path += ".raw"
         elif format == "qcow":
@@ -79,9 +98,20 @@ class DistroDiskImage(DiskImage):
         assert os.path.isfile(self.path)
         return self.path
 
+# Abstract base class for dynamically generated images
+class DynamicDiskImage(DiskImage):
+    def __init__(self, h: 'FullSystemHost', path: str) -> None:
+        super().__init__(h)
+
+    def path(self, inst: inst_base.Instantiation, format: str) -> str:
+        return inst.dynamic_img_path(self, format)
+
+    @abc.abstractmethod
+    async def prepare_format(self, inst: inst_base.Instantiation, format: str) -> str:
+        pass
 
 # Builds the Tar with the commands to run etc.
-class LinuxConfigDiskImage(DiskImage):
+class LinuxConfigDiskImage(DynamicDiskImage):
     def __init__(self, h: 'LinuxHost') -> None:
         super().__init__(h)
         self.host: base.LinuxHost
@@ -89,7 +119,8 @@ class LinuxConfigDiskImage(DiskImage):
     def available_formats(self) -> list[str]:
         return ["raw"]
 
-    def prepare_image_path(self, inst, path) -> str:
+    async def prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
+        path = self.path(inst, format)
         with tarfile.open(path, 'w:') as tar:
             # add main run script
             cfg_i = tarfile.TarInfo('guest/run.sh')
@@ -116,7 +147,7 @@ class LinuxConfigDiskImage(DiskImage):
 # This is an additional example: building disk images directly from python
 # Could of course also have a version that generates the packer config from
 # python
-class PackerDiskImage(DiskImage):
+class PackerDiskImage(DynamicDiskImage):
     def __init__(self, h: 'FullSystemHost', packer_config_path: str) -> None:
         super().__init__(h)
         self.config_path = packer_config_path
@@ -124,6 +155,6 @@ class PackerDiskImage(DiskImage):
     def available_formats(self) -> list[str]:
         return ["raw", "qcow"]
 
-    async def prepare_image_path(self, env: expenv.ExpEnv, format: str) -> str:
+    async def prepare_image_path(self, inst: inst_base.Instantiation, format: str) -> str:
         # TODO: invoke packer to build the image if necessary
         pass
