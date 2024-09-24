@@ -22,7 +22,7 @@
 
 import simbricks.orchestration.system as sys_conf
 import typing as tp
-from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
+from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base
 
 
@@ -45,11 +45,11 @@ class PCIDevSim(base.Simulator):
     def is_nic(self) -> bool:
         return False
 
-    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
-        return [env.dev_pci_path(self), env.dev_shm_path(self)]
+    def sockets_cleanup(self, inst: inst_base.Instantiation) -> tp.List[str]:
+        return [inst.dev_pci_path(self), inst.dev_shm_path(self)]
 
-    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
-        return [env.dev_pci_path(self)]
+    def sockets_wait(self, inst: inst_base.Instantiation) -> tp.List[str]:
+        return [inst.dev_pci_path(self)]
 
 
 
@@ -64,23 +64,31 @@ class NICSim(PCIDevSim):
     def add(self, nic: sys_conf.SimplePCIeNIC):
         super().add(nic)
 
-    def basic_args(self, env: ExpEnv, extra: tp.Optional[str] = None) -> str:
+    def basic_args(self, inst: inst_base.Instantiation, extra: tp.Optional[str] = None) -> str:
+        # TODO: need some fix. how to handle multiple nics in one simulator?
+        nic_comp = self._components.pop()
+        nic_pci_chan_comp = nic_comp._pci_if.channel
+        nic_eth_chan_comp = nic_comp._eth_if.channel
+        nic_pci_chan_sim = self._simulation.retrieve_or_create_channel(nic_pci_chan_comp)
+        nic_eth_chan_sim = self._simulation.retrieve_or_create_channel(nic_eth_chan_comp)
+
+
         cmd = (
-            f'{env.dev_pci_path(self)} {env.nic_eth_path(self)}'
-            f' {env.dev_shm_path(self)} {self.nics[0].sync} {self.start_tick}'
-            f' {self.nics[0].sync_period} {self.nics[0].pci_channel.latency} {self.nics[0].eth_channel.latency}'
+            f'{inst.get_socket(nic_comp._pci_if, set([inst_base.SockType.LISTEN]))} {inst.get_socket(nic_comp._eth_if, set([inst_base.SockType.LISTEN]))}'
+            f' {inst._env._shm_base}/dev.shm.{self.name} {nic_pci_chan_sim._synchronized} {self.start_tick}'
+            f' {nic_pci_chan_sim.sync_period} {nic_pci_chan_comp.latency} {nic_eth_chan_comp.latency}'
         )
-        if self.nics[0].mac is not None:
-            cmd += ' ' + (''.join(reversed(self.nics[0].mac.split(':'))))
+        # if nic_comp.mac is not None:
+        #     cmd += ' ' + (''.join(reversed(nic_comp.mac.split(':'))))
 
         if extra is not None:
             cmd += ' ' + extra
         return cmd
 
     def basic_run_cmd(
-        self, env: ExpEnv, name: str, extra: tp.Optional[str] = None
+        self, inst: inst_base.Instantiation, name: str, extra: tp.Optional[str] = None
     ) -> str:
-        cmd = f'{env.repodir}/sims/nic/{name} {self.basic_args(env, extra)}'
+        cmd = f'{inst._env._repodir}/sims/nic/{name} {self.basic_args(inst, extra)}'
         return cmd
 
     def full_name(self) -> str:
@@ -89,11 +97,11 @@ class NICSim(PCIDevSim):
     def is_nic(self) -> bool:
         return True
 
-    def sockets_cleanup(self, env: ExpEnv) -> tp.List[str]:
-        return super().sockets_cleanup(env) + [env.nic_eth_path(self)]
+    def sockets_cleanup(self, inst: inst_base.Instantiation) -> tp.List[str]:
+        return super().sockets_cleanup(inst) + [inst.nic_eth_path(self)]
 
-    def sockets_wait(self, env: ExpEnv) -> tp.List[str]:
-        return super().sockets_wait(env) + [env.nic_eth_path(self)]
+    def sockets_wait(self, inst: inst_base.Instantiation) -> tp.List[str]:
+        return super().sockets_wait(inst) + [inst.nic_eth_path(self)]
 
 
 class I40eNicSim(NICSim):
@@ -101,16 +109,16 @@ class I40eNicSim(NICSim):
     def __init__(self, e: 'Simulation'):
         super().__init__(e)
 
-    def run_cmd(self, env: ExpEnv) -> str:
-        return self.basic_run_cmd(env, '/i40e_bm/i40e_bm')
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        return self.basic_run_cmd(inst, '/i40e_bm/i40e_bm')
 
 
 class CorundumBMNICSim(NICSim):
     def __init__(self, e: 'Simulation'):
         super().__init__(e)
 
-    def run_cmd(self, env: ExpEnv) -> str:
-        return self.basic_run_cmd(env, '/corundum_bm/corundum_bm')
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        return self.basic_run_cmd(inst, '/corundum_bm/corundum_bm')
 
 
 
@@ -125,7 +133,7 @@ class CorundumVerilatorNICSim(NICSim):
         # this is a guess
         return 512
 
-    def run_cmd(self, env: ExpEnv) -> str:
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return self.basic_run_cmd(
-            env, '/corundum/corundum_verilator', str(self.clock_freq)
+            inst, '/corundum/corundum_verilator', str(self.clock_freq)
         )
