@@ -217,7 +217,7 @@ class Instantiation(util_base.IdObj):
         sockets: list[Socket] = [],
     ) -> None:
         wait_socks = list(map(lambda sock: sock._path, sockets))
-        await executor.await_files(wait_socks, verbose=self.verbose)
+        await executor.await_files(wait_socks, verbose=True)
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
 
