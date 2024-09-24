@@ -46,10 +46,11 @@ class PCIDevSim(base.Simulator):
         return False
 
     def sockets_cleanup(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        return [inst.dev_pci_path(self), inst.dev_shm_path(self)]
+        return [inst_base.Socket(f'{inst._env._workdir}/dev.pci.{self.name}'),  inst_base.Socket(f' {inst._env._shm_base}/dev.shm.{self.name}')]
 
     def sockets_wait(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        return [inst.dev_pci_path(self)]
+
+        return [inst_base.Socket(f'{inst._env._workdir}/dev.pci.{self.name}')]
 
 
 
@@ -66,7 +67,8 @@ class NICSim(PCIDevSim):
 
     def basic_args(self, inst: inst_base.Instantiation, extra: tp.Optional[str] = None) -> str:
         # TODO: need some fix. how to handle multiple nics in one simulator?
-        nic_comp = self._components.pop()
+        for c in self._components:
+            nic_comp = c
         nic_pci_chan_comp = nic_comp._pci_if.channel
         nic_eth_chan_comp = nic_comp._eth_if.channel
         nic_pci_chan_sim = self._simulation.retrieve_or_create_channel(nic_pci_chan_comp)
@@ -74,7 +76,7 @@ class NICSim(PCIDevSim):
 
 
         cmd = (
-            f'{inst.get_socket(nic_comp._pci_if, set([inst_base.SockType.LISTEN]))} {inst.get_socket(nic_comp._eth_if, set([inst_base.SockType.LISTEN]))}'
+            f'{inst._env._workdir}/dev.pci.{self.name} {inst._env._workdir}/nic.eth.{self.name}'
             f' {inst._env._shm_base}/dev.shm.{self.name} {nic_pci_chan_sim._synchronized} {self.start_tick}'
             f' {nic_pci_chan_sim.sync_period} {nic_pci_chan_comp.latency} {nic_eth_chan_comp.latency}'
         )
@@ -98,10 +100,14 @@ class NICSim(PCIDevSim):
         return True
 
     def sockets_cleanup(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        return super().sockets_cleanup(inst) + [inst.nic_eth_path(self)]
+        for c in self._components:
+            nic_comp = c
+        return super().sockets_cleanup(inst) + [inst_base.Socket(f'{inst._env._workdir}/nic.eth.{self.name}')]
 
     def sockets_wait(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        return super().sockets_wait(inst) + [inst.nic_eth_path(self)]
+        for c in self._components:
+            nic_comp = c
+        return super().sockets_wait(inst) + [inst_base.Socket(f'{inst._env._workdir}/nic.eth.{self.name}')]
 
 
 class I40eNicSim(NICSim):
@@ -134,6 +140,9 @@ class CorundumVerilatorNICSim(NICSim):
         return 512
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        print("run cmd")
+        print(self.basic_run_cmd(inst, '/corundum/corundum_verilator'))
+
         return self.basic_run_cmd(
             inst, '/corundum/corundum_verilator', str(self.clock_freq)
         )
