@@ -106,7 +106,7 @@ class ExperimentBaseRunner(abc.ABC):
         if sim.wait_terminate():
             self._wait_sims.append(sc)
 
-        if self.verbose:
+        if self._verbose:
             print(f'{self._simulation.name}: started {name}')
 
     async def before_wait(self) -> None:
