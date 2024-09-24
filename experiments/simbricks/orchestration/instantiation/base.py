@@ -32,6 +32,7 @@ from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.simulation.host import disk_images
 from simbricks.orchestration.runtime_new import command_executor
 
 
@@ -80,9 +81,11 @@ class Instantiation(util_base.IdObj):
 
     def __init__(
         self,
+        sim: sim_base.Simulation,
         env: InstantiationEnvironment = InstantiationEnvironment(),
     ):
         super().__init__()
+        self.simulation: sim_base.Simulation = sim
         self._env: InstantiationEnvironment = env
         self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
 
@@ -309,7 +312,8 @@ class Instantiation(util_base.IdObj):
             enforce_existence=False,
         )
 
-    def dynamic_img_path(self, filename: str) -> str:
+    def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
+        filename = id(img) + '.' + format
         return self._join_paths(
             base=self._env._tmp_simulation_files, relative_path=filename
         )
