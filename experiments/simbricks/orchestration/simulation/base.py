@@ -331,8 +331,9 @@ class Simulation(utils_base.IdObj):
 
     def find_sim(self, comp: sys_conf.Component) -> sim_base.Simulator:
         """Returns the used simulator object for the system component."""
+        utils_base.has_expected_type(comp, sys_conf.Component)
         if comp not in self._sys_sim_map:
-            raise Exception("Simulator Not Found")
+            raise Exception(f"Simulator not found for component: {comp}")
         return self._sys_sim_map[comp]
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:

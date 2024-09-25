@@ -123,6 +123,7 @@ class Instantiation(util_base.IdObj):
         self._env: InstantiationEnvironment = env
         self._executor: command_executor.Executor | None = None
         self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
+        self._simulation_topo: dict[]
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
@@ -252,6 +253,19 @@ class Instantiation(util_base.IdObj):
         new_socket = Socket(path=sock_path, ty=sock_type)
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
         return new_socket
+    
+    def _build_simulation_topology(self) -> None:
+        # TODO: FIXME
+        def sim_graph(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
+        sims = self._simulation.all_simulators()
+        graph = {}
+        for sim in sims:
+            deps = sim.dependencies() + sim.extra_deps
+            print(f'deps of {sim}: {sim.dependencies()}')
+            graph[sim] = set()
+            for d in deps:
+                graph[sim].add(d)
+        return graph
 
     async def cleanup_sockets(
         self,
@@ -318,9 +332,14 @@ class Instantiation(util_base.IdObj):
     def _join_paths(
         self, base: str = "", relative_path: str = "", enforce_existence=False
     ) -> str:
-        path = pathlib.Path(base)
-        joined = path.joinpath(relative_path)
-        if not joined.exists() and enforce_existence:
+        if relative_path.startswith("/"):
+            raise Exception(
+                f"cannot join with base={base} because relative_path={relative_path} starts with '/'"
+            )
+
+        joined = pathlib.Path(base).joinpath(relative_path)
+        print(f"joined={joined}")
+        if enforce_existence and not joined.exists():
             raise Exception(f"couldn't join {base} and {relative_path}")
         return joined.absolute()
 
@@ -341,7 +360,7 @@ class Instantiation(util_base.IdObj):
             return hd_name_or_path
         path = self._join_paths(
             base=self._env._repodir,
-            relative_path=f"/images/output-{hd_name_or_path}/{hd_name_or_path}",
+            relative_path=f"images/output-{hd_name_or_path}/{hd_name_or_path}",
             enforce_existence=True,
         )
         return path
@@ -356,21 +375,21 @@ class Instantiation(util_base.IdObj):
         )
 
     def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
-        filename = img._id + "." + format
+        filename = f"{img._id}.{format}"
         return self._join_paths(
             base=self._env._tmp_simulation_files,
             relative_path=filename,
         )
 
     def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
-        filename = img._id + "_hdcopy" "." + format
+        filename = f"{img._id}_hdcopy.{format}"
         return self._join_paths(
             base=self._env._tmp_simulation_files,
             relative_path=filename,
         )
 
     def cpdir_subdir(self, sim: sim_base.Simulator) -> str:
-        dir_path = f"/checkpoint.{sim.name}-{sim._id}"
+        dir_path = f"checkpoint.{sim.name}-{sim._id}"
         return self._join_paths(
             base=self.cpdir(), relative_path=dir_path, enforce_existence=False
         )
@@ -382,4 +401,5 @@ class Instantiation(util_base.IdObj):
         )
 
     def find_sim_by_spec(self, spec: sys_host.FullSystemHost) -> sim_base.Simulator:
+        util_base.has_expected_type(spec, sys_host.FullSystemHost)
         return self._simulation.find_sim(spec)

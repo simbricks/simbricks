@@ -300,7 +300,7 @@ def add_exp(
         tmp_simulation_files=tmp_sim_files,
     )
 
-    inst_ = inst_base.Instantiation(inst_env)    
+    inst_ = inst_base.Instantiation(sim=simulation, env=inst_env)    
     output_ = output.SimulationOutput(simulation) 
     run = runs.base.Run(
         simulation=simulation,
