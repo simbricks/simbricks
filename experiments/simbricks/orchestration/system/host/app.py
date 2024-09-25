@@ -20,41 +20,43 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import typing as tp
 import abc
 import io
-from simbricks.orchestration.experiment import experiment_environment as expenv
+from simbricks.orchestration.instantiation import base as inst_base
 
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system.host import base
+    from simbricks.orchestration.system import host as sys_host
 
 class Application(abc.ABC):
-    def __init__(self, h: 'Host') -> None:
+    def __init__(self, h: sys_host.Host) -> None:
         self.host = h
 
 
 # Note AK: Maybe we can factor most of the duplicate calls with the host out
 # into a separate module.
-class BaseLinuxApplication(abc.ABC): # TODO: FIXME!!!
-    def __init__(self, h: 'LinuxHost') -> None:
+class BaseLinuxApplication(abc.ABC):
+    def __init__(self, h: sys_host.LinuxHost) -> None:
         self.host = h
         self.start_delay: float | None = None
         self.end_delay: float | None = None
         self.wait = True
 
     @abc.abstractmethod
-    def run_cmds(self, env: expenv.ExpEnv) -> list[str]:
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         """Commands to run on node."""
         return []
 
-    def cleanup_cmds(self, env: expenv.ExpEnv) -> list[str]:
+    def cleanup_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         """Commands to run to cleanup node."""
         if self.end_delay is None:
             return []
         else:
             return [f'sleep {self.start_delay}']
 
-    def config_files(self, env: expenv.ExpEnv) -> dict[str, tp.IO]:
+    def config_files(self, inst: inst_base.Instantiation) -> dict[str, tp.IO]:
         """
         Additional files to put inside the node, which are mounted under
         `/tmp/guest/`.
@@ -64,11 +66,11 @@ class BaseLinuxApplication(abc.ABC): # TODO: FIXME!!!
         """
         return {}
 
-    def prepare_pre_cp(self, env: expenv.ExpEnv) -> list[str]:
+    def prepare_pre_cp(self, inst: inst_base.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
         return []
 
-    def prepare_post_cp(self, env: expenv.ExpEnv) -> list[str]:
+    def prepare_post_cp(self, inst: inst_base.Instantiation) -> list[str]:
         """Commands to run to prepare node after checkpoint restore."""
         if self.end_delay is None:
             return []
@@ -87,39 +89,39 @@ class BaseLinuxApplication(abc.ABC): # TODO: FIXME!!!
 
 
 class PingClient(BaseLinuxApplication):
-    def __init__(self, h: 'LinuxHost', server_ip: str = '192.168.64.1') -> None:
+    def __init__(self, h: sys_host.LinuxHost, server_ip: str = '192.168.64.1') -> None:
         super().__init__(h)
         self.server_ip = server_ip
 
-    def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
+    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
         return [f'ping {self.server_ip} -c 10']
 
 
 class Sleep(BaseLinuxApplication):
-    def __init__(self, h: 'LinuxHost', delay: float = 10) -> None:
+    def __init__(self, h: sys_host.LinuxHost, delay: float = 10) -> None:
         super().__init__(h)
         self.delay = delay
 
-    def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
+    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
         return [f'sleep {self.delay}']
 
 
 class NetperfServer(BaseLinuxApplication):
-    def __init__(self, h: 'LinuxHost') -> None:
+    def __init__(self, h: sys_host.LinuxHost) -> None:
         super().__init__(h)
 
-    def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
+    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
         return ['netserver', 'sleep infinity']
 
 
 class NetperfClient(BaseLinuxApplication):
-    def __init__(self, h: 'LinuxHost', server_ip: str = '192.168.64.1') -> None:
+    def __init__(self, h: sys_host.LinuxHost, server_ip: str = '192.168.64.1') -> None:
         super().__init__(h)
         self.server_ip = server_ip
         self.duration_tp = 10
         self.duration_lat = 10
 
-    def run_cmds(self, env: expenv.ExpEnv) -> tp.List[str]:
+    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
         return [
             'netserver',
             'sleep 0.5',

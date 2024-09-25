@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import typing as tp
 import io
 import asyncio
@@ -30,7 +32,6 @@ from simbricks.orchestration.system import eth as eth
 from simbricks.orchestration.system.host import app
 
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system import eth, mem, pcie
     from simbricks.orchestration.system.host import disk_images
 
 
@@ -56,9 +57,9 @@ class FullSystemHost(Host):
         self.memory = 512
         self.cores = 1
         self.cpu_freq = "3GHz"
-        self.disks: list["DiskImage"] = []
+        self.disks: list[disk_images.DiskImage] = []
 
-    def add_disk(self, disk: "DiskImage") -> None:
+    def add_disk(self, disk: disk_images.DiskImage) -> None:
         self.disks.append(disk)
 
     async def prepare(self, inst: instantiation.Instantiation) -> None:
@@ -80,7 +81,7 @@ class BaseLinuxHost(FullSystemHost):
         self,
         inst: instantiation.Instantiation,
         mapper: tp.Callable[
-            ["BaseLinuxApplication", instantiation.Instantiation], list[str]
+            [app.BaseLinuxApplication, instantiation.Instantiation], list[str]
         ],
     ) -> list[str]:
         """
@@ -111,7 +112,7 @@ class BaseLinuxHost(FullSystemHost):
         """
         cfg_files = {}
         for app in self.applications:
-            cfg_files |= self.applications[0].config_files(inst)
+            cfg_files |= app.config_files(inst)
         return cfg_files
 
     def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
@@ -122,13 +123,13 @@ class BaseLinuxHost(FullSystemHost):
         """Commands to run to prepare node after checkpoint restore."""
         return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_post_cp)
 
-    def _config_str(self, inst: instantiation.Instantiation) -> str:
-        if inst.create_cp:
-            cp_cmd = self.checkpoint_commands()
+    def config_str(self, inst: instantiation.Instantiation) -> str:
+        if inst.create_cp():
+            sim = inst.find_sim_by_spec(spec=self)
+            cp_cmd = sim.checkpoint_commands()
         else:
             cp_cmd = []
 
-        # TODO: FIXME
         es = (
             self.prepare_pre_cp(inst)
             + self.applications[0].prepare_pre_cp(inst)
@@ -204,9 +205,6 @@ class I40ELinuxHost(LinuxHost):
     def __init__(self, sys) -> None:
         super().__init__(sys)
         self.drivers.append("i40e")
-
-    def checkpoint_commands(self) -> list[str]:
-        return ["m5 checkpoint"]
 
 
 class CorundumLinuxHost(LinuxHost):

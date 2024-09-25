@@ -55,10 +55,9 @@ class Simulator(utils_base.IdObj):
         super().__init__()
         self.name: str = name
         self._relative_executable_path: str = relative_executable_path
-        # self.extra_deps: list[Simulator] = []
         self._simulation: sim_base.Simulation = simulation
         self._components: set[sys_conf.Component] = set()
-        self._wait: bool = False
+        self._wait: bool = False # TODO: FIXME
         simulation.add_sim(self)
 
     @staticmethod
@@ -121,12 +120,6 @@ class Simulator(utils_base.IdObj):
     def full_name(self) -> str:
         """Full name of the simulator."""
         return ""
-
-    # TODO: move into prepare method
-    # pylint: disable=unused-argument
-    # def prep_cmds(self, inst: inst_base.Instantiation) -> list[str]:
-    # """Commands to prepare execution of this simulator."""
-    # return []
 
     def add(self, comp: sys_conf.Component) -> None:
         if comp in self._components:
@@ -211,6 +204,9 @@ class Simulator(utils_base.IdObj):
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         """Command to execute this simulator."""
         return ""
+    
+    def checkpoint_commands(self) -> list[str]:
+        return []
 
     # TODO: overwrite in sub-classes to reflect that currently not all adapters support both listening and connecting
     # In future version adapters should support both which would render this method obsolete
@@ -236,6 +232,7 @@ class Simulator(utils_base.IdObj):
     def start_delay(self) -> int:
         return 5
 
+    # TODO: FIXME
     def wait_terminate(self) -> bool:
         return self._wait
 

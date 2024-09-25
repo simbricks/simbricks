@@ -21,10 +21,13 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
+
 import abc
 import typing as tp
 from simbricks.orchestration.utils import base as util_base
-from simbricks.orchestration.instantiation import base as inst_base
+
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import base as inst_base
 
 
 class System:
