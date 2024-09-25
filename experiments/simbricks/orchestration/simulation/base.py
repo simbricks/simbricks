@@ -98,8 +98,13 @@ class Simulator(utils_base.IdObj):
             raise Exception("could not determine eth_latency and sync_period")
         return latency, sync_period, run_sync
 
+    def filter_components_by_pred(
+        self, pred: tp.Callable[[sys_conf.Component], bool]
+    ) -> list[sys_conf.Component]:
+        return list(filter(pred, self._components))
+
     def filter_components_by_type(self, ty) -> list[sys_conf.Component]:
-        return list(filter(lambda comp: isinstance(comp, ty), self._components))
+        return self.filter_components_by_pred(lambda comp: isinstance(comp, ty))
 
     def components(self) -> set[sys_conf.Component]:
         return self._components

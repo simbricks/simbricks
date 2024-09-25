@@ -56,7 +56,7 @@ class MemChannel(base.Channel):
 class MemSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
-        self._mem_if: MemDeviceInterface | None = None
+        self._mem_if: MemDeviceInterface = MemDeviceInterface(c=self)
 
     def interfaces(self) -> list[base.Interface]:
         return [self._mem_if]
