@@ -36,7 +36,8 @@ if tp.TYPE_CHECKING:
 
 class DiskImage(utils_base.IdObj):
     def __init__(self, h: sys_host.Host) -> None:
-        self.host = None | str
+        super().__init__()
+        self.host: sys_host.Host = h
 
     @abc.abstractmethod
     def available_formats(self) -> list[str]:

@@ -43,5 +43,5 @@ def check_type(obj, expected_type) -> bool:
 def has_expected_type(obj, expected_type) -> None:
     if not check_type(obj=obj, expected_type=expected_type):
         raise Exception(
-            f"obj of type {type(obj)} has not the type or is not a subtype of {type(expected_type)}"
+            f"obj of type {type(obj)} has not the type or is not a subtype of {expected_type}"
         )

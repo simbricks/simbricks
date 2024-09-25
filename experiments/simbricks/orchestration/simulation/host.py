@@ -48,7 +48,7 @@ class HostSim(sim_base.Simulator):
     def config_str(self) -> str:
         return []
 
-    def supported_image_formats() -> list[str]:
+    def supported_image_formats(self) -> list[str]:
         raise Exception("implement me")
 
 
@@ -70,6 +70,9 @@ class Gem5Sim(HostSim):
 
     def resreq_mem(self) -> int:
         return 4096
+    
+    def supported_image_formats(self) -> list[str]:
+        return ["raw"]
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
@@ -142,6 +145,8 @@ class QemuSim(HostSim):
     def resreq_mem(self) -> int:
         return 8192
 
+    def supported_image_formats(self) -> list[str]:
+        return ["raw", "qcow2"]
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
