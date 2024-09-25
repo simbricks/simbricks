@@ -311,6 +311,7 @@ class Instantiation(util_base.IdObj):
                 # both support both we just pick an order
                 insert_dependency(sim_a, depends_on=sim_b)
 
+        # TODO: pre-calculate the socket paths and whether they are listening or connecting sockets in here!
         for sim in self._simulation.all_simulators():
             for comp in sim._components:
                 for sim_inf in comp.interfaces():

@@ -32,6 +32,8 @@ from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import host as sys_host
+    from simbricks.orchestration.system import mem as sys_mem
+    from simbricks.orchestration.system import pcie as sys_pcie
 
 
 class HostSim(sim_base.Simulator):
@@ -122,33 +124,42 @@ class Gem5Sim(HostSim):
         if inst.restore_cp():
             cmd += '-r 1 '
 
-        sockets = self._get_sockets(inst=inst) # TODO: FIXME lost info whether this was from a pci device, a mem device or whatever
         latency, sync_period, run_sync = sim_base.Simulator.get_unique_latency_period_sync(channels=self.get_channels())
 
-        pci_devices = self.filter_components_by_type(ty=)
-        # TODO: FIXME get socket by interface!
-        for dev in self.pcidevs:
-            cmd += (
-                f'--simbricks-pci=connect:{env.dev_pci_path(dev)}'
-                f':latency={self.pci_latency}ns'
-                f':sync_interval={self.sync_period}ns'
-            )
-            if  cpu_type == 'TimingSimpleCPU':
-                cmd += ':sync'
-            cmd += ' '
+        pci_devices = self.filter_components_by_type(ty=sys_pcie.PCIeSimpleDevice)
+        for dev in pci_devices:
+            for inf in dev.interfaces():
+                socket = self._get_socket(inst=inst, interface=inf)
+                if socket is None:
+                    continue
+                assert socket._type == inst_base.SockType.CONNECT
+                cmd += (
+                    f'--simbricks-pci=connect:{socket._path}'
+                    f':latency={latency}ns'
+                    f':sync_interval={sync_period}ns'
+                )
+                if run_sync:
+                    cmd += ':sync'
+                cmd += ' '
 
-        # TODO: FIXME get socket by interface!
-        for dev in self.memdevs:
-            cmd += (
-                f'--simbricks-mem={dev.size}@{dev.addr}@{dev.as_id}@'
-                f'connect:{env.dev_mem_path(dev)}'
-                f':latency={self.mem_latency}ns'
-                f':sync_interval={self.sync_period}ns'
-            )
-            if cpu_type == 'TimingSimpleCPU':
-                cmd += ':sync'
-            cmd += ' '
+        mem_devices = self.filter_components_by_type(ty=sys_mem.MemSimpleDevice)
+        for dev in mem_devices:
+            for inf in dev.interfaces():
+                socket = self._get_socket(inst=inst, interface=inf)
+                if socket is None:
+                    continue
+                assert socket._type == inst_base.SockType.CONNECT
+                cmd += (
+                    f'--simbricks-mem={dev.size}@{dev.addr}@{dev.as_id}@' # TODO: FIXME
+                    f'connect:{socket._path}'
+                    f':latency={latency}ns'
+                    f':sync_interval={sync_period}ns'
+                )
+                if run_sync:
+                    cmd += ':sync'
+                cmd += ' '
 
+        # TODO: FIXME
         # for net in self.net_directs:
         #     cmd += (
         #         '--simbricks-eth-e1000=listen'
