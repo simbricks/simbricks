@@ -33,11 +33,11 @@ from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import host as sys_host
 
+
 class HostSim(sim_base.Simulator):
 
-    def __init__(self, e: sim_base.Simulation):
-        super().__init__(e)
-        self.name = f"{self._id}"
+    def __init__(self, simulation: sim_base.Simulation, name=""):
+        super().__init__(simulation=simulation, name=name)
 
     def full_name(self) -> str:
         return "host." + self.name
@@ -50,22 +50,20 @@ class HostSim(sim_base.Simulator):
 
     def supported_image_formats(self) -> list[str]:
         raise Exception("implement me")
-    
+
     def supported_socket_types(self) -> set[inst_base.SockType]:
         return [inst_base.SockType.CONNECT]
 
 
 class Gem5Sim(HostSim):
 
-    def __init__(self, e: sim_base.Simulation):
-        super().__init__(e)
-        self.name = super().full_name()
+    def __init__(self, simulation: sim_base.Simulation):
+        super().__init__(simulation=simulation, name=f"Gem5Sim-{self._id}")
         self.cpu_type_cp = "X86KvmCPU"
         self.cpu_type = "TimingSimpleCPU"
         self.extra_main_args: list[str] = []
         self.extra_config_args: list[str] = []
         self.variant = "fast"
-        self.modify_checkpoint_tick = True
         self.wait = True
 
     def resreq_cores(self) -> int:
@@ -73,43 +71,100 @@ class Gem5Sim(HostSim):
 
     def resreq_mem(self) -> int:
         return 4096
-    
+
     def supported_image_formats(self) -> list[str]:
         return ["raw"]
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
-        
-        prep_cmds = [f'mkdir -p {inst.cpdir_subdir(sim=self)}']
+
+        prep_cmds = [f"mkdir -p {inst.cpdir_subdir(sim=self)}"]
         task = asyncio.create_task(
-                inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
-            )
+            inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
+        )
         await task
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cpu_type = self.cpu_type
-        if env.create_cp:
+        if inst.create_cp():
             cpu_type = self.cpu_type_cp
 
-        # TODO
-        cmd = f"{env.gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} "
+        full_sys_hosts = tp.cast(list[sys_host.FullSystemHost], self.filter_components_by_type(ty=sys_host.FullSystemHost))        
+        if len(full_sys_hosts) != 1:
+            raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
+
+        cmd = f"{inst.join_repo_base(f"sims/external/gem5/build/X86/gem5.{self.variant}")} --outdir={inst.get_simmulator_output_dir(sim=self)} "
         cmd += " ".join(self.extra_main_args)
         cmd += (
-            f" {env.gem5_py_path} --caches --l2cache "
+            f" {inst.join_repo_base("sims/external/gem5/configs/simbricks/simbricks.py")} --caches --l2cache "
             "--l1d_size=32kB --l1i_size=32kB --l2_size=32MB "
             "--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=16 "
-            f"--cacheline_size=64 --cpu-clock={self.hosts[0].cpu_freq}"
-            f" --sys-clock={self.hosts[0].sys_clock} "
-            f"--checkpoint-dir={env.gem5_cpdir(self)} "
-            f"--kernel={env.gem5_kernel_path} "
-            f"--disk-image={env.hd_raw_path(self.hosts[0].disk_image)} "
-            f"--disk-image={env.cfgtar_path(self)} "
-            f"--cpu-type={cpu_type} --mem-size={self.hosts[0].memory}MB "
-            f"--num-cpus={self.hosts[0].cores} "
+            f"--cacheline_size=64 --cpu-clock={full_sys_hosts[0].cpu_freq}"
+            f" --sys-clock={full_sys_hosts[0].sys_clock} " # TODO:FIXME
+            f"--checkpoint-dir={inst.cpdir_subdir(sim=self)} "
+            f"--kernel={inst.join_repo_base("images/vmlinux")} "
+        )
+        for disk in full_sys_hosts[0].disks:
+            cmd += f"--disk-image={disk.path(inst=inst, format="raw")} "
+        cmd += (
+            f"--cpu-type={cpu_type} --mem-size={full_sys_hosts[0].memory}MB "
+            f"--num-cpus={full_sys_hosts[0].cores} "
             "--mem-type=DDR4_2400_16x4 "
         )
 
-        for dev in self.hosts[0].ifs:  # TODO
+        # TODO
+        # if self.node_config.kcmd_append:
+        #     cmd += f'--command-line-append="{self.node_config.kcmd_append}" '
+
+        if inst.create_cp():
+            cmd += '--max-checkpoints=1 '
+
+        if inst.restore_cp():
+            cmd += '-r 1 '
+
+        sockets = self._get_sockets(inst=inst) # TODO: FIXME lost info whether this was from a pci device, a mem device or whatever
+        latency, sync_period, run_sync = sim_base.Simulator.get_unique_latency_period_sync(channels=self.get_channels())
+
+        pci_devices = self.filter_components_by_type(ty=)
+        # TODO: FIXME get socket by interface!
+        for dev in self.pcidevs:
+            cmd += (
+                f'--simbricks-pci=connect:{env.dev_pci_path(dev)}'
+                f':latency={self.pci_latency}ns'
+                f':sync_interval={self.sync_period}ns'
+            )
+            if  cpu_type == 'TimingSimpleCPU':
+                cmd += ':sync'
+            cmd += ' '
+
+        # TODO: FIXME get socket by interface!
+        for dev in self.memdevs:
+            cmd += (
+                f'--simbricks-mem={dev.size}@{dev.addr}@{dev.as_id}@'
+                f'connect:{env.dev_mem_path(dev)}'
+                f':latency={self.mem_latency}ns'
+                f':sync_interval={self.sync_period}ns'
+            )
+            if cpu_type == 'TimingSimpleCPU':
+                cmd += ':sync'
+            cmd += ' '
+
+        # for net in self.net_directs:
+        #     cmd += (
+        #         '--simbricks-eth-e1000=listen'
+        #         f':{env.net2host_eth_path(net, self)}'
+        #         f':{env.net2host_shm_path(net, self)}'
+        #         f':latency={net.eth_latency}ns'
+        #         f':sync_interval={net.sync_period}ns'
+        #     )
+        #     if cpu_type == 'TimingSimpleCPU':
+        #         cmd += ':sync'
+        #     cmd += ' '
+
+        cmd += ' '.join(self.extra_config_args)
+        return cmd
+
+        for dev in full_sys_hosts[0].ifs:  # TODO
             if dev == dev.channel.a:
                 peer_if = dev.channel.b
             else:
@@ -127,7 +182,6 @@ class Gem5Sim(HostSim):
             cmd += " "
 
         return cmd
-
 
     def checkpoint_commands(self) -> list[str]:
         return ["m5 checkpoint"]
@@ -165,14 +219,14 @@ class QemuSim(HostSim):
             disks = tp.cast(list[system.DiskImage], fsh.disks)
             for disk in disks:
                 prep_cmds.append(
-                    f'{inst.qemu_img_path()} create -f qcow2 -o '
+                    f"{inst.qemu_img_path()} create -f qcow2 -o "
                     f'backing_file="{disk.path(inst=inst, format="qcow2")}" '
                     f'{inst.hdcopy_path(img=disk, format="qcow2")}'
                 )
 
         task = asyncio.create_task(
-                inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
-            )
+            inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
+        )
         await task
 
     def run_cmd(self, env: ExpEnv) -> str:

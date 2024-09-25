@@ -145,9 +145,6 @@ class Instantiation(util_base.IdObj):
     def executor(self, executor: command_executor.Executor):
         self._executor = executor
 
-    def restore_cp(self) -> bool:
-        return self._env._restore_cp
-
     def qemu_img_path(self) -> str:
         return self._env._qemu_img_path
 
@@ -238,6 +235,10 @@ class Instantiation(util_base.IdObj):
         interface: sys_base.Interface,
         supported_sock_types: set[SockType] = set(),
     ) -> Socket:
+
+        if self._opposing_interface_within_same_sim(interface=interface):
+            raise Exception("interface does not need a socket")
+
         # check if already a socket is associated with this interface
         socket = self._get_socket_by_interface(interface=interface)
         if socket is not None:
@@ -254,7 +255,7 @@ class Instantiation(util_base.IdObj):
 
         # neither connecting nor listening side already created a socket, thus we
         # create a completely new 'CONNECT' socket
-        if len(supported_sock_types) > 1 or (
+        if len(supported_sock_types) < 1 or (
             SockType.LISTEN not in supported_sock_types
             and SockType.CONNECT not in supported_sock_types
         ):
@@ -359,6 +360,9 @@ class Instantiation(util_base.IdObj):
     def create_cp(self) -> bool:
         return self._env._create_cp
 
+    def restore_cp(self) -> bool:
+        return self._env._restore_cp
+
     def cpdir(self) -> str:
         return pathlib.Path(self._env._cpdir).absolute()
 
@@ -453,10 +457,14 @@ class Instantiation(util_base.IdObj):
         )
 
     def cpdir_subdir(self, sim: sim_base.Simulator) -> str:
-        dir_path = f"checkpoint.{sim.name}-{sim._id}"
+        dir_path = f"checkpoint.{sim.full_name()}-{sim._id}"
         return self._join_paths(
             base=self.cpdir(), relative_path=dir_path, enforce_existence=False
         )
+
+    def get_simmulator_output_dir(self, sim: sim_base.Simulator) -> str:
+        dir_path = f"output.{sim.full_name()}-{sim._id}"
+        return self._join_paths(base=self._env._output_base, relative_path=dir_path)
 
     def get_simulation_output_path(self, run_number: int) -> str:
         return self._join_paths(

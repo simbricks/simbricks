@@ -87,16 +87,16 @@ class Simulator(utils_base.IdObj):
     def get_unique_latency_period_sync(
         channels: list[sim_chan.Channel],
     ) -> tuple[int, int, bool]:
-        eth_latency = None
+        latency = None
         sync_period = None
         run_sync = False
         for channel in channels:
             sync_period = min(sync_period, channel.sync_period)
             run_sync = run_sync or channel._synchronized
-            eth_latency = max(eth_latency, channel.sys_channel.eth_latency)
-        if eth_latency is None or sync_period is None:
+            latency = max(latency, channel.sys_channel.latency)
+        if latency is None or sync_period is None:
             raise Exception("could not determine eth_latency and sync_period")
-        return eth_latency, sync_period, run_sync
+        return latency, sync_period, run_sync
 
     def filter_components_by_type(self, ty) -> list[sys_conf.Component]:
         return list(filter(lambda comp: isinstance(comp, ty), self._components))
