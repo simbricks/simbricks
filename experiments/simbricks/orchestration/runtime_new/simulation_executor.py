@@ -53,16 +53,16 @@ class ExperimentBaseRunner(abc.ABC):
     def sim_executor(self, simulator: sim_base.Simulator) -> command_executor.Executor:
         pass
 
-    def sim_graph(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
-        sims = self._simulation.all_simulators()
-        graph = {}
-        for sim in sims:
-            deps = sim.dependencies() + sim.extra_deps
-            print(f'deps of {sim}: {sim.dependencies()}')
-            graph[sim] = set()
-            for d in deps:
-                graph[sim].add(d)
-        return graph
+    # def sim_graph(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
+    #     sims = self._simulation.all_simulators()
+    #     graph = {}
+    #     for sim in sims:
+    #         deps = sim.dependencies() + sim.extra_deps
+    #         print(f'deps of {sim}: {sim.dependencies()}')
+    #         graph[sim] = set()
+    #         for d in deps:
+    #             graph[sim].add(d)
+    #     return graph
 
     async def start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
@@ -198,7 +198,7 @@ class ExperimentBaseRunner(abc.ABC):
 
         try:
             self._out.set_start()
-            graph = self.sim_graph()
+            graph = self._instantiation.sim_dependencies()
             print(graph)
             ts = graphlib.TopologicalSorter(graph)
             ts.prepare()

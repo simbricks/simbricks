@@ -49,8 +49,10 @@ class PCIDevSim(base.Simulator):
         return [inst_base.Socket(f'{inst._env._workdir}/dev.pci.{self.name}'),  inst_base.Socket(f' {inst._env._shm_base}/dev.shm.{self.name}')]
 
     def sockets_wait(self, inst: inst_base.Instantiation) -> tp.List[str]:
-
         return [inst_base.Socket(f'{inst._env._workdir}/dev.pci.{self.name}')]
+    
+    def supported_socket_types(self) -> set[inst_base.SockType]:
+        return [inst_base.SockType.LISTEN]
 
 
 

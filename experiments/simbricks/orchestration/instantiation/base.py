@@ -123,7 +123,12 @@ class Instantiation(util_base.IdObj):
         self._env: InstantiationEnvironment = env
         self._executor: command_executor.Executor | None = None
         self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
-        self._simulation_topo: dict[]
+        self._simulation_topo: (
+            dict[sys_base.Interface, set[sys_base.Interface]] | None
+        ) = None
+        self._sim_dependency: (
+            dict[sim_base.Simulator, set[sim_base.Simulator]] | None
+        ) = None
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
@@ -161,6 +166,16 @@ class Instantiation(util_base.IdObj):
     ) -> sys_base.Interface:
         channel = self._get_chan_by_interface(interface=interface)
         return channel.a if channel.a is not interface else channel.b
+
+    def _opposing_interface_within_same_sim(
+        self, interface: sys_base.Interface
+    ) -> bool:
+        opposing_interface = self._get_opposing_interface(interface=interface)
+        component = interface.component
+        opposing_component = opposing_interface.component
+        return self.find_sim_by_spec(spec=component) == self.find_sim_by_spec(
+            spec=opposing_component
+        )
 
     def _updated_tracker_mapping(
         self, interface: sys_base.Interface, socket: Socket
@@ -253,19 +268,68 @@ class Instantiation(util_base.IdObj):
         new_socket = Socket(path=sock_path, ty=sock_type)
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
         return new_socket
-    
+
     def _build_simulation_topology(self) -> None:
-        # TODO: FIXME
-        def sim_graph(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
-        sims = self._simulation.all_simulators()
-        graph = {}
-        for sim in sims:
-            deps = sim.dependencies() + sim.extra_deps
-            print(f'deps of {sim}: {sim.dependencies()}')
-            graph[sim] = set()
-            for d in deps:
-                graph[sim].add(d)
-        return graph
+
+        sim_dependency: dict[sim_base.Simulator, set[sim_base.Simulator]] = {}
+
+        def insert_dependency(
+            sim_a: sim_base.Simulator, depends_on: sim_base.Simulator
+        ):
+            if depends_on in sim_dependency:
+                assert sim_a not in sim_dependency[depends_on]
+
+            a_dependencies = set()
+            if sim_a in sim_dependency:
+                a_dependencies = sim_dependency[sim_a]
+
+            a_dependencies.add(depends_on)
+            sim_dependency[sim_a] = a_dependencies
+
+        def update_a_depends_on_b(sim_a: sim_base.Simulator, sim_b: sim_base.Simulator):
+            a_sock: set[SockType] = sim_a.supported_socket_types()
+            b_sock: set[SockType] = sim_b.supported_socket_types()
+
+            if a_sock != b_sock:
+                if len(a_sock) == 0 or len(b_sock) == 0:
+                    raise Exception(
+                        "cannot solve if one simulator doesnt support any socket type"
+                    )
+
+                if SockType.CONNECT in a_sock:
+                    assert SockType.LISTEN in b_sock
+                    insert_dependency(sim_a, depends_on=sim_b)
+                else:
+                    assert SockType.CONNECT in b_sock
+                    insert_dependency(sim_b, depends_on=sim_a)
+            else:
+                # deadlock?
+                if len(a_sock) != 2 or len(b_sock) != 2:
+                    raise Exception("cannot solve deadlock")
+
+                # both support both we just pick an order
+                insert_dependency(sim_a, depends_on=sim_b)
+
+        for sim in self._simulation.all_simulators():
+            for comp in sim._components:
+                for sim_inf in comp.interfaces():
+                    # no dependency here? a.k.a both interfaces within the same simulator?
+                    if self._opposing_interface_within_same_sim(interface=sim_inf):
+                        continue
+                    opposing_inf = self._get_opposing_interface(interface=sim_inf)
+                    opposing_sim = self.find_sim_by_spec(spec=opposing_inf.component)
+                    assert sim != opposing_sim
+                    update_a_depends_on_b(sim, opposing_sim)
+
+        self._sim_dependency = sim_dependency
+
+    def sim_dependencies(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
+        if self._sim_dependency is not None:
+            return self._sim_dependency
+
+        self._build_simulation_topology()
+        assert self._sim_dependency is not None
+        return self._sim_dependency
 
     async def cleanup_sockets(
         self,
@@ -400,6 +464,6 @@ class Instantiation(util_base.IdObj):
             relative_path=f"out-{run_number}.json",
         )
 
-    def find_sim_by_spec(self, spec: sys_host.FullSystemHost) -> sim_base.Simulator:
-        util_base.has_expected_type(spec, sys_host.FullSystemHost)
+    def find_sim_by_spec(self, spec: sys_base.Component) -> sim_base.Simulator:
+        util_base.has_expected_type(spec, sys_base.Component)
         return self._simulation.find_sim(spec)

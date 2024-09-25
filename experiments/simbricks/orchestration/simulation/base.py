@@ -57,7 +57,7 @@ class Simulator(utils_base.IdObj):
         self._relative_executable_path: str = relative_executable_path
         self._simulation: sim_base.Simulation = simulation
         self._components: set[sys_conf.Component] = set()
-        self._wait: bool = False # TODO: FIXME
+        self._wait: bool = False  # TODO: FIXME
         simulation.add_sim(self)
 
     @staticmethod
@@ -100,6 +100,9 @@ class Simulator(utils_base.IdObj):
 
     def filter_components_by_type(self, ty) -> list[sys_conf.Component]:
         return list(filter(lambda comp: isinstance(comp, ty), self._components))
+
+    def components(self) -> set[sys_conf.Component]:
+        return self._components
 
     def resreq_cores(self) -> int:
         """
@@ -204,16 +207,13 @@ class Simulator(utils_base.IdObj):
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         """Command to execute this simulator."""
         return ""
-    
+
     def checkpoint_commands(self) -> list[str]:
         return []
 
-    # TODO: overwrite in sub-classes to reflect that currently not all adapters support both listening and connecting
-    # In future version adapters should support both which would render this method obsolete
-    # TODO: FIXME, this is still a little bit broken, as it might be important to create
-    # sockets in the correct order to not try creating a connect socket for a simulator that doesnt support it
+    @abc.abstractmethod
     def supported_socket_types(self) -> set[inst_base.SockType]:
-        return {inst_base.SockType.LISTEN, inst_base.SockType.CONNECT}
+        return []
 
     # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument

@@ -22,7 +22,7 @@ sys = system.System()
 # create a host instance and a NIC instance then install the NIC on the host
 host0 = system.I40ELinuxHost(sys)
 pcie0 = system.PCIeHostInterface(host0)
-cfg_disk0 = system.LinuxConfigDiskImage(host0)
+cfg_disk0 = system.DistroDiskImage(h=host0, name="base")
 host0.add_disk(cfg_disk0)
 
 host0.add_if(pcie0)
@@ -33,7 +33,7 @@ pcichannel0 = system.PCIeChannel(pcie0, nic0._pci_if)
 # create a host instance and a NIC instance then install the NIC on the host
 host1 = system.I40ELinuxHost(sys)
 pcie1 = system.PCIeHostInterface(host1)
-cfg_disk1 = system.LinuxConfigDiskImage(host1)
+cfg_disk1 = system.DistroDiskImage(h=host1, name="base")
 host1.add_disk(cfg_disk1)
 
 host1.add_if(pcie0)
