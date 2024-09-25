@@ -22,13 +22,15 @@
 
 import typing as tp
 import io
+import asyncio
 from os import path
 import simbricks.orchestration.instantiation.base as instantiation
 from simbricks.orchestration.system import base as base
 from simbricks.orchestration.system import eth as eth
 from simbricks.orchestration.system.host import app
+
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system import (eth, mem, pcie)
+    from simbricks.orchestration.system import eth, mem, pcie
     from simbricks.orchestration.system.host import disk_images
 
 
@@ -53,11 +55,15 @@ class FullSystemHost(Host):
         super().__init__(s)
         self.memory = 512
         self.cores = 1
-        self.cpu_freq = '3GHz'
-        self.disks: list['DiskImage'] = []
+        self.cpu_freq = "3GHz"
+        self.disks: list["DiskImage"] = []
 
-    def add_disk(self, disk: 'DiskImage') -> None:
+    def add_disk(self, disk: "DiskImage") -> None:
         self.disks.append(disk)
+
+    async def prepare(self, inst: instantiation.Instantiation) -> None:
+        promises = [disk.prepare(inst) for disk in self.disks]
+        await asyncio.gather(*promises)
 
 
 class BaseLinuxHost(FullSystemHost):
@@ -65,17 +71,18 @@ class BaseLinuxHost(FullSystemHost):
         super().__init__(s)
         self.applications: list[app.BaseLinuxApplication] = []
         self.load_modules = []
-        self.kcmd_append = ''
+        self.kcmd_append = ""
 
     def add_app(self, a: app.BaseLinuxApplication) -> None:
         self.applications.append(a)
 
     def _concat_app_cmds(
-            self,
-            inst: instantiation.Instantiation,
-            mapper: tp.Callable[['BaseLinuxApplication', instantiation.Instantiation],
-                                list[str]]
-            ) -> list[str]:
+        self,
+        inst: instantiation.Instantiation,
+        mapper: tp.Callable[
+            ["BaseLinuxApplication", instantiation.Instantiation], list[str]
+        ],
+    ) -> list[str]:
         """
         Generate command list from applications by applying `mapper` to each
         application on this host and concatenating the commands.
@@ -83,7 +90,7 @@ class BaseLinuxHost(FullSystemHost):
         cmds = []
         for app in self.applications:
             cmds += mapper(app, inst)
-        
+
         return cmds
 
     def run_cmds(self, inst: instantiation.Instantiation) -> list[str]:
@@ -111,7 +118,6 @@ class BaseLinuxHost(FullSystemHost):
         """Commands to run to prepare node before checkpointing."""
         return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_pre_cp)
 
-
     def prepare_post_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node after checkpoint restore."""
         return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_post_cp)
@@ -121,12 +127,18 @@ class BaseLinuxHost(FullSystemHost):
             cp_cmd = self.checkpoint_commands()
         else:
             cp_cmd = []
-        
-        es = self.prepare_pre_cp(inst) + self.applications[0].prepare_pre_cp(inst) + \
-            cp_cmd + \
-            self.prepare_post_cp(inst) + self.applications[0].prepare_post_cp(inst) + \
-            self.run_cmds(inst) + self.cleanup_cmds(inst)
-        return '\n'.join(es)
+
+        # TODO: FIXME
+        es = (
+            self.prepare_pre_cp(inst)
+            + self.applications[0].prepare_pre_cp(inst)
+            + cp_cmd
+            + self.prepare_post_cp(inst)
+            + self.applications[0].prepare_post_cp(inst)
+            + self.run_cmds(inst)
+            + self.cleanup_cmds(inst)
+        )
+        return "\n".join(es)
 
     def strfile(self, s: str) -> io.BytesIO:
         """
@@ -136,73 +148,72 @@ class BaseLinuxHost(FullSystemHost):
         Using this, you can create a file with the string as its content on the
         simulated node.
         """
-        return io.BytesIO(bytes(s, encoding='UTF-8'))
+        return io.BytesIO(bytes(s, encoding="UTF-8"))
 
 
 class LinuxHost(BaseLinuxHost):
     def __init__(self, sys) -> None:
         super().__init__(sys)
         self.drivers: list[str] = []
-    
+
     def cleanup_cmds(self, inst: instantiation.Instantiation) -> list[str]:
-        return super().cleanup_cmds(inst) + ['poweroff -f']
+        return super().cleanup_cmds(inst) + ["poweroff -f"]
 
     def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
         return [
-            'set -x',
-            'export HOME=/root',
-            'export LANG=en_US',
-            'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:' + \
-                '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"'
+            "set -x",
+            "export HOME=/root",
+            "export LANG=en_US",
+            'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:'
+            + '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"',
         ] + super().prepare_pre_cp(inst)
 
     def prepare_post_cp(self, inst) -> tp.List[str]:
         l = []
         for d in self.drivers:
-            if d[0] == '/':
-                l.append(f'insmod {d}')
+            if d[0] == "/":
+                l.append(f"insmod {d}")
             else:
-                l.append(f'modprobe {d}')
+                l.append(f"modprobe {d}")
         eth_i = 0
         for i in self.interfaces():
             # Get ifname parameter if set, otherwise default to ethX
             if isinstance(i, eth.EthSimpleNIC):
-                ifn = f'eth{eth_i}'
+                ifn = f"eth{eth_i}"
                 eth_i += 1
             else:
                 continue
 
             # Force MAC if requested
-            if 'force_mac_addr' in i.parameters:
-                mac = i.parameters['force_mac_addr']
-                l.append(f'ip link set dev {ifn} address '
-                         f'{mac}')
+            if "force_mac_addr" in i.parameters:
+                mac = i.parameters["force_mac_addr"]
+                l.append(f"ip link set dev {ifn} address " f"{mac}")
 
             # Bring interface up
-            l.append(f'ip link set dev {ifn} up')
+            l.append(f"ip link set dev {ifn} up")
 
             # Add IP addresses if included
-            if 'ipv4_addrs' in i.parameters:
-                for a in i.parameters['ipv4_addrs']:
-                    l.append(f'ip addr add {a} dev {ifn}')
+            if "ipv4_addrs" in i.parameters:
+                for a in i.parameters["ipv4_addrs"]:
+                    l.append(f"ip addr add {a} dev {ifn}")
         return super().prepare_post_cp(inst) + l
 
 
 class I40ELinuxHost(LinuxHost):
     def __init__(self, sys) -> None:
         super().__init__(sys)
-        self.drivers.append('i40e')
+        self.drivers.append("i40e")
 
     def checkpoint_commands(self) -> list[str]:
-        return ['m5 checkpoint']
+        return ["m5 checkpoint"]
 
 
 class CorundumLinuxHost(LinuxHost):
     def __init__(self, sys) -> None:
         super().__init__(sys)
-        self.drivers.append('/tmp/guest/mqnic.ko')
+        self.drivers.append("/tmp/guest/mqnic.ko")
 
     def config_files(self, inst: instantiation.Instantiation) -> tp.Dict[str, tp.IO]:
-        m = {'mqnic.ko': open('../images/mqnic/mqnic.ko', 'rb')}
+        m = {"mqnic.ko": open("../images/mqnic/mqnic.ko", "rb")}
         return {**m, **super().config_files()}

@@ -25,13 +25,14 @@ import io
 import os.path
 import tarfile
 import typing as tp
+from simbricks.orchestration.utils import base as utils_base
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.experiment import experiment_environment as expenv
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system.host import base
 
 
-class DiskImage(abc.ABC):
+class DiskImage(utils_base.IdObj):
     def __init__(self, h: 'Host') -> None:
         self.host = None | str
 
@@ -43,12 +44,12 @@ class DiskImage(abc.ABC):
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         return
 
-    async def prepare_format(self, inst: inst_base.Instantiation, format: str) -> str:
+    async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         # Find first supported disk image format in order of simulator pref.
-        sim = inst.simulation.find_sim(self.host)
+        sim = inst.find_sim_by_spec(self.host)
         format = None
         av_fmt = self.available_formats()
         for f in sim.supported_image_formats():
@@ -59,7 +60,7 @@ class DiskImage(abc.ABC):
         if format is None:
             raise Exception('No supported image format found')
 
-        await self.prepare_format(inst, format)
+        await self._prepare_format(inst, format)
 
 
 # Disk image where user just provides a path
@@ -100,14 +101,14 @@ class DistroDiskImage(DiskImage):
 
 # Abstract base class for dynamically generated images
 class DynamicDiskImage(DiskImage):
-    def __init__(self, h: 'FullSystemHost', path: str) -> None:
+    def __init__(self, h: 'FullSystemHost') -> None:
         super().__init__(h)
 
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         return inst.dynamic_img_path(self, format)
 
     @abc.abstractmethod
-    async def prepare_format(self, inst: inst_base.Instantiation, format: str) -> str:
+    async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
 
 # Builds the Tar with the commands to run etc.
@@ -119,7 +120,7 @@ class LinuxConfigDiskImage(DynamicDiskImage):
     def available_formats(self) -> list[str]:
         return ["raw"]
 
-    async def prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
+    async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         path = self.path(inst, format)
         with tarfile.open(path, 'w:') as tar:
             # add main run script
@@ -155,6 +156,6 @@ class PackerDiskImage(DynamicDiskImage):
     def available_formats(self) -> list[str]:
         return ["raw", "qcow"]
 
-    async def prepare_image_path(self, inst: inst_base.Instantiation, format: str) -> str:
+    async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         # TODO: invoke packer to build the image if necessary
         pass

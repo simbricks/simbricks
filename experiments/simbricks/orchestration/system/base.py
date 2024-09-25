@@ -24,6 +24,7 @@ from __future__ import annotations
 import abc
 import typing as tp
 from simbricks.orchestration.utils import base as util_base
+from simbricks.orchestration.instantiation import base as inst_base
 
 
 class System:
@@ -56,6 +57,9 @@ class Component(util_base.IdObj):
 
     def channels(self) -> list[Channel]:
         return [i.channel for i in self.interfaces() if i.is_connected()]
+    
+    async def prepare(self, inst: inst_base.Instantiation) -> None:
+        pass
 
 
 class Interface(util_base.IdObj):

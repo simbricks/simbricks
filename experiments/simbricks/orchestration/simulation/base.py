@@ -25,6 +25,7 @@ from __future__ import annotations
 import abc
 import itertools
 import time
+import asyncio
 import typing as tp
 import simbricks.orchestration.system as sys_conf
 import simbricks.orchestration.system.host as sys_host_conf
@@ -54,9 +55,10 @@ class Simulator(utils_base.IdObj):
         super().__init__()
         self.name: str = name
         self._relative_executable_path: str = relative_executable_path
-        self.extra_deps: list[Simulator] = []
+        # self.extra_deps: list[Simulator] = []
         self._simulation: sim_base.Simulation = simulation
         self._components: set[sys_conf.Component] = set()
+        self._wait: bool = False
         simulation.add_sim(self)
 
     @staticmethod
@@ -70,7 +72,7 @@ class Simulator(utils_base.IdObj):
     @staticmethod
     def split_sockets_by_type(
         sockets: list[inst_base.Socket],
-    ) -> tuple[sockets : list[inst_base.Socket], sockets : list[inst_base.Socket]]:
+    ) -> tuple[list[inst_base.Socket], list[inst_base.Socket]]:
         listen = Simulator.filter_sockets(
             sockets=sockets, filter_type=inst_base.SockType.LISTEN
         )
@@ -95,7 +97,10 @@ class Simulator(utils_base.IdObj):
             eth_latency = max(eth_latency, channel.sys_channel.eth_latency)
         if eth_latency is None or sync_period is None:
             raise Exception("could not determine eth_latency and sync_period")
-        return eth_latency, sync_period, sync
+        return eth_latency, sync_period, run_sync
+
+    def filter_components_by_type(self, ty) -> list[sys_conf.Component]:
+        return list(filter(lambda comp: isinstance(comp, ty), self._components))
 
     def resreq_cores(self) -> int:
         """
@@ -116,14 +121,12 @@ class Simulator(utils_base.IdObj):
     def full_name(self) -> str:
         """Full name of the simulator."""
         return ""
-    
-    def prep_tar(self, inst) -> None:
-        pass
 
+    # TODO: move into prepare method
     # pylint: disable=unused-argument
-    def prep_cmds(self, inst: inst_base.Instantiation) -> list[str]:
-        """Commands to prepare execution of this simulator."""
-        return []
+    # def prep_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+    # """Commands to prepare execution of this simulator."""
+    # return []
 
     def add(self, comp: sys_conf.Component) -> None:
         if comp in self._components:
@@ -209,11 +212,6 @@ class Simulator(utils_base.IdObj):
         """Command to execute this simulator."""
         return ""
 
-    # TODO: FIXME
-    def dependencies(self) -> list[Simulator]:
-        """Other simulators to execute before this one."""
-        return []
-
     # TODO: overwrite in sub-classes to reflect that currently not all adapters support both listening and connecting
     # In future version adapters should support both which would render this method obsolete
     # TODO: FIXME, this is still a little bit broken, as it might be important to create
@@ -239,10 +237,14 @@ class Simulator(utils_base.IdObj):
         return 5
 
     def wait_terminate(self) -> bool:
-        return False
+        return self._wait
 
     def supports_checkpointing(self) -> bool:
         return False
+
+    async def prepare(self, inst: inst_base.Instantiation) -> None:
+        promises = [comp.prepare(inst=inst) for comp in self._components]
+        await asyncio.gather(*promises)
 
 
 class Simulation(utils_base.IdObj):
@@ -335,6 +337,12 @@ class Simulation(utils_base.IdObj):
         if comp not in self._sys_sim_map:
             raise Exception("Simulator Not Found")
         return self._sys_sim_map[comp]
+
+    async def prepare(self, inst: inst_base.Instantiation) -> None:
+        promises = []
+        for sim in self._sim_list:
+            promises.append(sim.prepare(inst=inst))
+        await asyncio.gather(*promises)
 
     # TODO: FIXME
     def enable_checkpointing_if_supported() -> None:

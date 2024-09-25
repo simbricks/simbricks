@@ -31,8 +31,9 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
+from simbricks.orchestration.system.host import base as sys_host
+from simbricks.orchestration.system.host import disk_images
 from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.simulation.host import disk_images
 from simbricks.orchestration.runtime_new import command_executor
 
 
@@ -60,6 +61,8 @@ class InstantiationEnvironment(util_base.IdObj):
         shm_base: str = pathlib.Path().resolve(),
         output_base: str = pathlib.Path().resolve(),
         tmp_simulation_files: str = pathlib.Path().resolve(),
+        qemu_img_path: str | None = None,
+        qemu_path: str | None = None,
     ):
         super().__init__()
         # TODO: add more parameters that wont change during instantiation
@@ -73,8 +76,23 @@ class InstantiationEnvironment(util_base.IdObj):
         self._tmp_simulation_files: str = (
             pathlib.Path(self._workdir).joinpath(tmp_simulation_files).absolute()
         )
-        self._create_cp = create_cp
-        self._restore_cp = restore_cp
+        self._create_cp: bool = create_cp
+        self._restore_cp: bool = restore_cp
+
+        self._qemu_img_path: str = (
+            qemu_img_path
+            if qemu_img_path
+            else pathlib.Path(
+                f"{self._repodir}/sims/external/qemu/build/qemu-img"
+            ).resolve()
+        )
+        self._qemu_path: str = (
+            qemu_path
+            if qemu_path
+            else pathlib.Path(
+                f"{self._repodir}/sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64"
+            ).resolve()
+        )
 
 
 class Instantiation(util_base.IdObj):
@@ -85,14 +103,34 @@ class Instantiation(util_base.IdObj):
         env: InstantiationEnvironment = InstantiationEnvironment(),
     ):
         super().__init__()
-        self.simulation: sim_base.Simulation = sim
+        self._simulation: sim_base.Simulation = sim
         self._env: InstantiationEnvironment = env
+        self._executor: command_executor.Executor | None = None
         self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
         path = pathlib.Path(path)
         return path.is_absolute() and path.is_file()
+
+    @property
+    def executor(self):
+        if self._executor is None:
+            raise Exception("you must set an executor")
+        return self._executor
+
+    @executor.setter
+    def executor(self, executor: command_executor.Executor):
+        self._executor = executor
+
+    def restore_cp(self) -> bool:
+        return self._env._restore_cp
+
+    def qemu_img_path(self) -> str:
+        return self._env._qemu_img_path
+
+    def qemu_path(self) -> str:
+        return self._env._qemu_path
 
     def _get_chan_by_interface(self, interface: sys_base.Interface) -> sys_base.Channel:
         if not interface.is_connected():
@@ -201,26 +239,20 @@ class Instantiation(util_base.IdObj):
 
     async def cleanup_sockets(
         self,
-        sockets: list[tuple[command_executor.Executor, Socket]] = [],
+        sockets: list[Socket] = [],
     ) -> None:
-        # DISCLAIMER: that we pass the executor in here is an artifact of the
-        # sub-optimal distributed executions as we may need a remote executor to
-        # remove or create folders on other machines. In an ideal wolrd, we have
-        # some sort of runtime on each machine that executes thus making pasing
-        # an executor in here obsolete...
         scs = []
-        for executor, sock in sockets:
-            scs.append(asyncio.create_task(executor.rmtree(path=sock._path)))
+        for sock in sockets:
+            scs.append(asyncio.create_task(self.executor.rmtree(path=sock._path)))
         if len(scs) > 0:
             await asyncio.gather(*scs)
 
     async def wait_for_sockets(
         self,
-        executor: command_executor.Executor = command_executor.LocalExecutor(),
         sockets: list[Socket] = [],
     ) -> None:
         wait_socks = list(map(lambda sock: sock._path, sockets))
-        await executor.await_files(wait_socks, verbose=True)
+        await self.executor.await_files(wait_socks, verbose=True)
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
 
@@ -239,40 +271,33 @@ class Instantiation(util_base.IdObj):
     def wrkdir(self) -> str:
         return pathlib.Path(self._env._workdir).absolute()
 
-    async def prepare_directories(
-        self, executor: command_executor.Executor = command_executor.LocalExecutor()
-    ) -> None:
-
-        # DISCLAIMER: that we poass the executor in here is an artifact of the
-        # sub-optimal distributed executions as we may need a remote executor to
-        # remove or create folders on other machines. In an ideal wolrd, we have
-        # some sort of runtime on each machine that executes thus making pasing
-        # an executor in here obsolete...
-
+    async def prepare(self) -> None:
         wrkdir = self.wrkdir()
         shutil.rmtree(wrkdir, ignore_errors=True)
-        await executor.rmtree(wrkdir)
+        await self.executor.rmtree(wrkdir)
 
         shm_base = self.shm_base_dir()
         shutil.rmtree(shm_base, ignore_errors=True)
-        await executor.rmtree(shm_base)
+        await self.executor.rmtree(shm_base)
 
         cpdir = self.cpdir()
         if self.create_cp():
             shutil.rmtree(cpdir, ignore_errors=True)
-            await executor.rmtree(cpdir)
+            await self.executor.rmtree(cpdir)
 
         pathlib.Path(wrkdir).mkdir(parents=True, exist_ok=True)
-        await executor.mkdir(wrkdir)
+        await self.executor.mkdir(wrkdir)
 
         pathlib.Path(cpdir).mkdir(parents=True, exist_ok=True)
-        await executor.mkdir(cpdir)
+        await self.executor.mkdir(cpdir)
 
         pathlib.Path(shm_base).mkdir(parents=True, exist_ok=True)
-        await executor.mkdir(shm_base)
+        await self.executor.mkdir(shm_base)
+
+        await self._simulation.prepare(inst=self)
 
     def _join_paths(
-        self, base: str = "", relative_path: str = "", enforce_existence=True
+        self, base: str = "", relative_path: str = "", enforce_existence=False
     ) -> str:
         path = pathlib.Path(base)
         joined = path.joinpath(relative_path)
@@ -309,18 +334,33 @@ class Instantiation(util_base.IdObj):
         return self._join_paths(
             base=self._env._tmp_simulation_files,
             relative_path=relative_path,
-            enforce_existence=False,
         )
 
     def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
-        filename = id(img) + '.' + format
+        filename = img._id + "." + format
         return self._join_paths(
-            base=self._env._tmp_simulation_files, relative_path=filename
+            base=self._env._tmp_simulation_files,
+            relative_path=filename,
+        )
+
+    def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
+        filename = img._id + "_hdcopy" "." + format
+        return self._join_paths(
+            base=self._env._tmp_simulation_files,
+            relative_path=filename,
+        )
+
+    def cpdir_subdir(self, sim: sim_base.Simulator) -> str:
+        dir_path = f"/checkpoint.{sim.name}-{sim._id}"
+        return self._join_paths(
+            base=self.cpdir(), relative_path=dir_path, enforce_existence=False
         )
 
     def get_simulation_output_path(self, run_number: int) -> str:
         return self._join_paths(
             base=self._env._output_base,
             relative_path=f"out-{run_number}.json",
-            enforce_existence=False,
         )
+
+    def find_sim_by_spec(self, spec: sys_host.FullSystemHost) -> sim_base.Simulator:
+        return self._simulation.find_sim(spec)
