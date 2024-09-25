@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import abc
 import io
 import os.path
@@ -27,13 +29,13 @@ import tarfile
 import typing as tp
 from simbricks.orchestration.utils import base as utils_base
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.experiment import experiment_environment as expenv
+
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system.host import base
+    from simbricks.orchestration.system import host as sys_host
 
 
 class DiskImage(utils_base.IdObj):
-    def __init__(self, h: 'Host') -> None:
+    def __init__(self, h: sys_host.Host) -> None:
         self.host = None | str
 
     @abc.abstractmethod
@@ -65,7 +67,7 @@ class DiskImage(utils_base.IdObj):
 
 # Disk image where user just provides a path
 class ExternalDiskImage(DiskImage):
-    def __init__(self, h: 'FullSystemHost', path: str) -> None:
+    def __init__(self, h: sys_host.FullSystemHost, path: str) -> None:
         super().__init__(h)
         self.path = path
         self.formats = ["raw", "qcow2"]
@@ -80,7 +82,7 @@ class ExternalDiskImage(DiskImage):
 
 # Disk images shipped with simbricks
 class DistroDiskImage(DiskImage):
-    def __init__(self, h: 'FullSystemHost', name: str) -> None:
+    def __init__(self, h: sys_host.FullSystemHost, name: str) -> None:
         super().__init__(h)
         self.name = name
         self.formats = ["raw", "qcow2"]
@@ -101,7 +103,7 @@ class DistroDiskImage(DiskImage):
 
 # Abstract base class for dynamically generated images
 class DynamicDiskImage(DiskImage):
-    def __init__(self, h: 'FullSystemHost') -> None:
+    def __init__(self, h: sys_host.FullSystemHost) -> None:
         super().__init__(h)
 
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
@@ -113,9 +115,9 @@ class DynamicDiskImage(DiskImage):
 
 # Builds the Tar with the commands to run etc.
 class LinuxConfigDiskImage(DynamicDiskImage):
-    def __init__(self, h: 'LinuxHost') -> None:
+    def __init__(self, h: sys_host.LinuxHost) -> None:
         super().__init__(h)
-        self.host: base.LinuxHost
+        self.host: sys_host.LinuxHost
 
     def available_formats(self) -> list[str]:
         return ["raw"]
@@ -126,7 +128,7 @@ class LinuxConfigDiskImage(DynamicDiskImage):
             # add main run script
             cfg_i = tarfile.TarInfo('guest/run.sh')
             cfg_i.mode = 0o777
-            cfg_f = self.host.strfile(self.host._config_str(inst))
+            cfg_f = self.host.strfile(self.host.config_str(inst))
             cfg_f.seek(0, io.SEEK_END)
             cfg_i.size = cfg_f.tell()
             cfg_f.seek(0, io.SEEK_SET)
@@ -149,7 +151,7 @@ class LinuxConfigDiskImage(DynamicDiskImage):
 # Could of course also have a version that generates the packer config from
 # python
 class PackerDiskImage(DynamicDiskImage):
-    def __init__(self, h: 'FullSystemHost', packer_config_path: str) -> None:
+    def __init__(self, h: sys_host.FullSystemHost, packer_config_path: str) -> None:
         super().__init__(h)
         self.config_path = packer_config_path
 

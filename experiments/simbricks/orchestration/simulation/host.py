@@ -20,20 +20,18 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import io
-import tarfile
+from __future__ import annotations
+
 import math
 import asyncio
 import typing as tp
 import simbricks.orchestration.simulation.base as sim_base
-import simbricks.orchestration.system.pcie as system_pcie
 import simbricks.orchestration.system as system
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system.host.base import Host
-
+    from simbricks.orchestration.system import host as sys_host
 
 class HostSim(sim_base.Simulator):
 
@@ -44,22 +42,7 @@ class HostSim(sim_base.Simulator):
     def full_name(self) -> str:
         return "host." + self.name
 
-    def dependencies(self) -> tp.List[sim_base.Simulator]:
-        deps = []
-        for h in self._components:
-            for dev in h.ifs:
-                if not dev.is_connected():
-                    raise Exception("host interface is not connected")
-                else:
-                    if dev.channel.a == dev:
-                        peer_if = dev.channel.b
-                    else:
-                        peer_if = dev.channel.a
-
-                deps.append(self._simulation.find_sim(peer_if.component))
-        return deps
-
-    def add(self, host: "Host"):
+    def add(self, host: sys_host.Host):
         super().add(host)
 
     def config_str(self) -> str:
@@ -139,8 +122,9 @@ class Gem5Sim(HostSim):
 
         return cmd
 
-    def wait_terminate(self) -> bool:
-        return self.wait
+
+    def checkpoint_commands(self) -> list[str]:
+        return ["m5 checkpoint"]
 
 
 class QemuSim(HostSim):
@@ -173,9 +157,9 @@ class QemuSim(HostSim):
             disks = tp.cast(list[system.DiskImage], fsh.disks)
             for disk in disks:
                 prep_cmds.append(
-                    f"{inst.qemu_img_path()} create -f qcow2 -o "
+                    f'{inst.qemu_img_path()} create -f qcow2 -o '
                     f'backing_file="{disk.path(inst=inst, format="qcow2")}" '
-                    f"{inst.hdcopy_path(img=disk, format="qcow2")}"
+                    f'{inst.hdcopy_path(img=disk, format="qcow2")}'
                 )
 
         task = asyncio.create_task(

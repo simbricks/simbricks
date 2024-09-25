@@ -24,9 +24,6 @@
 from __future__ import annotations
 
 import itertools
-import pathlib
-import shutil
-import typing as tp
 import abc
 
 from simbricks.orchestration.simulation import output

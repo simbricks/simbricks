@@ -26,6 +26,7 @@ import asyncio
 import enum
 import pathlib
 import shutil
+import typing
 from simbricks.orchestration.utils import base as util_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import pcie as sys_pcie
@@ -33,8 +34,10 @@ from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system.host import base as sys_host
 from simbricks.orchestration.system.host import disk_images
-from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.runtime_new import command_executor
+
+if typing.TYPE_CHECKING:
+    from simbricks.orchestration.simulation import base as sim_base
 
 
 class SockType(enum.Enum):
