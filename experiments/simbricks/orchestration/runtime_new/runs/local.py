@@ -55,7 +55,6 @@ class LocalSimpleRuntime(run_base.Runtime):
             )
             if self._profile_int:
                 runner.profile_int = self.profile_int
-            await run.prep_dirs(self._executor)
             await runner.prepare()
         except asyncio.CancelledError:
             # it is safe to just exit here because we are not running any
@@ -132,7 +131,6 @@ class LocalParallelRuntime(run_base.Runtime):
             )
             if self._profile_int is not None:
                 runner._profile_int = self._profile_int
-            await run.prep_dirs(executor=self._executor)
             await runner.prepare()
         except asyncio.CancelledError:
             # it is safe to just exit here because we are not running any
