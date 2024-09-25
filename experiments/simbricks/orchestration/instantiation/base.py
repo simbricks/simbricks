@@ -57,27 +57,40 @@ class InstantiationEnvironment(util_base.IdObj):
     def __init__(
         self,
         repo_path: str = pathlib.Path(__file__).parents[3].resolve(),
-        workdir: str = pathlib.Path().resolve(),
-        cpdir: str = pathlib.Path().resolve(),
+        workdir: str | None = None,
+        output_base: str | None = None,
+        cpdir: str | None = None,
         create_cp: bool = False,
         restore_cp: bool = False,
-        shm_base: str = pathlib.Path().resolve(),
-        output_base: str = pathlib.Path().resolve(),
-        tmp_simulation_files: str = pathlib.Path().resolve(),
+        shm_base: str | None = None,
+        tmp_simulation_files: str | None = None,
         qemu_img_path: str | None = None,
         qemu_path: str | None = None,
     ):
         super().__init__()
-        # TODO: add more parameters that wont change during instantiation
         self._repodir: str = pathlib.Path(repo_path).absolute()
-        self._workdir: str = pathlib.Path(workdir).absolute()
-        self._cpdir: str = pathlib.Path(cpdir).absolute()
-        self._shm_base: str = pathlib.Path(self._workdir).joinpath(shm_base).absolute()
+        self._workdir: str = (
+            workdir
+            if workdir
+            else pathlib.Path(f"{self._repodir}/experiment-wrkdir").absolute()
+        )
         self._output_base: str = (
-            pathlib.Path(self._workdir).joinpath(output_base).absolute()
+            output_base
+            if output_base
+            else pathlib.Path(f"{self._workdir}/output").absolute()
+        )
+        self._cpdir: str = (
+            cpdir
+            if cpdir
+            else pathlib.Path(f"{self._output_base}/checkpoints").absolute()
+        )
+        self._shm_base: str = (
+            shm_base if shm_base else pathlib.Path(f"{self._workdir}/shm").absolute()
         )
         self._tmp_simulation_files: str = (
-            pathlib.Path(self._workdir).joinpath(tmp_simulation_files).absolute()
+            tmp_simulation_files
+            if tmp_simulation_files
+            else (pathlib.Path(f"{self._workdir}/tmp").absolute())
         )
         self._create_cp: bool = create_cp
         self._restore_cp: bool = restore_cp
@@ -276,14 +289,17 @@ class Instantiation(util_base.IdObj):
 
     async def prepare(self) -> None:
         wrkdir = self.wrkdir()
+        print(f"wrkdir={wrkdir}")
         shutil.rmtree(wrkdir, ignore_errors=True)
         await self.executor.rmtree(wrkdir)
 
         shm_base = self.shm_base_dir()
+        print(f"shm_base={shm_base}")
         shutil.rmtree(shm_base, ignore_errors=True)
         await self.executor.rmtree(shm_base)
 
         cpdir = self.cpdir()
+        print(f"cpdir={cpdir}")
         if self.create_cp():
             shutil.rmtree(cpdir, ignore_errors=True)
             await self.executor.rmtree(cpdir)
