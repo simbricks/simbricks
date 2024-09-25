@@ -50,6 +50,9 @@ class HostSim(sim_base.Simulator):
 
     def supported_image_formats(self) -> list[str]:
         raise Exception("implement me")
+    
+    def supported_socket_types(self) -> set[inst_base.SockType]:
+        return [inst_base.SockType.CONNECT]
 
 
 class Gem5Sim(HostSim):

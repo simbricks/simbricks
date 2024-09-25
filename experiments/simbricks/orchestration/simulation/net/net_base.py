@@ -40,18 +40,11 @@ class NetSim(sim_base.Simulator):
     def full_name(self) -> str:
         return "net." + self.name
 
-    def dependencies(self) -> list[sim_base.Simulator]:
-        # TODO
-        deps = []
-        for s in self._components:
-            for n in s.eth_ifs:
-                peer_comp = n.find_peer().component
-                peer_sim = self._simulation.find_sim(peer_comp)
-                deps.append(peer_sim)
-        return deps
-
     def init_network(self) -> None:
         pass
+    
+    def supported_socket_types(self) -> set[inst_base.SockType]:
+        return [inst_base.SockType.CONNECT]
 
 
 class WireNet(NetSim):
