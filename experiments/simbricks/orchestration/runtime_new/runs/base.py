@@ -56,9 +56,6 @@ class Run:
     def name(self) -> str:
         return self._simulation.name + "." + str(self._run_nr)
 
-    async def prep_dirs(self, executor=command_executor.LocalExecutor()) -> None:
-        await self._instantiation.prepare_directories(executor=executor)
-
 
 class Runtime(metaclass=abc.ABCMeta):
     """Base class for managing the execution of multiple runs."""

@@ -132,19 +132,24 @@ class ExperimentBaseRunner(abc.ABC):
         #     copies.append(task)
         # await asyncio.gather(*copies)
 
+        # TODO: FIXME
+        executor = command_executor.LocalExecutor()
+        self._instantiation.executor = executor
+        await self._instantiation.prepare()
+
         # prepare all simulators in parallel
-        sims = []
-        for sim in self._simulation.all_simulators():
-            sim.prep_tar(self._instantiation)
-            prep_cmds = list(sim.prep_cmds(inst=self._instantiation))
-            executor = self.sim_executor(sim)
-            task = asyncio.create_task(
-                executor.run_cmdlist(
-                    'prepare_' + self._simulation.name, prep_cmds, verbose=self._verbose
-                )
-            )
-            sims.append(task)
-        await asyncio.gather(*sims)
+        # sims = []
+        # for sim in self._simulation.all_simulators():
+        #     sim.prep_tar(self._instantiation)
+        #     prep_cmds = list(sim.prep_cmds(inst=self._instantiation))
+        #     executor = self.sim_executor(sim)
+        #     task = asyncio.create_task(
+        #         executor.run_cmdlist(
+        #             'prepare_' + self._simulation.name, prep_cmds, verbose=self._verbose
+        #         )
+        #     )
+        #     sims.append(task)
+        # await asyncio.gather(*sims)
 
     async def wait_for_sims(self) -> None:
         """Wait for simulators to terminate (the ones marked to wait on)."""
@@ -254,7 +259,6 @@ class ExperimentSimpleRunner(ExperimentBaseRunner):
         return self._executor
 
 
-# TODO: FIXME
 class ExperimentDistributedRunner(ExperimentBaseRunner):
     """Simple experiment runner with just one executor."""
 
