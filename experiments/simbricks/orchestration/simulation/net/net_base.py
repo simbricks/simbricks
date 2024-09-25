@@ -66,7 +66,7 @@ class WireNet(NetSim):
         super().add(wire)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        channels = self._get_channels(inst=inst)
+        channels = self.get_channels()
         eth_latency, sync_period, sync = (
             sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
         )
@@ -105,7 +105,7 @@ class SwitchNet(NetSim):
         super().add(switch_spec)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        channels = self._get_channels(inst=inst)
+        channels = self.get_channels()
         eth_latency, sync_period, run_sync = (
             sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
         )
