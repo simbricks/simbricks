@@ -113,7 +113,7 @@ class SwitchNet(NetSim):
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         channels = self._get_channels(inst=inst)
-        eth_latency, sync_period, sync = (
+        eth_latency, sync_period, run_sync = (
             sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
         )
 

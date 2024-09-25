@@ -23,6 +23,7 @@
 import io
 import tarfile
 import math
+import asyncio
 import typing as tp
 import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.system.pcie as system_pcie
@@ -31,18 +32,17 @@ from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system.host.base import (Host)
+    from simbricks.orchestration.system.host.base import Host
 
 
 class HostSim(sim_base.Simulator):
 
     def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
-        self.wait = True
-        self.name = f'{self._id}'
-    
+        self.name = f"{self._id}"
+
     def full_name(self) -> str:
-        return 'host.' + self.name
+        return "host." + self.name
 
     def dependencies(self) -> tp.List[sim_base.Simulator]:
         deps = []
@@ -56,95 +56,46 @@ class HostSim(sim_base.Simulator):
                     else:
                         peer_if = dev.channel.a
 
-                deps.append(self._simulation.find_sim(peer_if.component)) 
+                deps.append(self._simulation.find_sim(peer_if.component))
         return deps
-    
-    def add(self, host: 'Host'):
+
+    def add(self, host: "Host"):
         super().add(host)
 
     def config_str(self) -> str:
         return []
 
-    def make_tar(self, path: str) -> None:
+    def supported_image_formats() -> list[str]:
+        raise Exception("implement me")
 
-        # TODO: update it to make multiple tar files for each host component
-        # Make tar file for the first host component
-        # One tar file for all the hosts in the simulator.
-
-        with tarfile.open(path, 'w:') as tar:
-            # add main run script
-            cfg_i = tarfile.TarInfo('guest/run.sh')
-            cfg_i.mode = 0o777
-            cfg_f = self.strfile(self.config_str())
-            cfg_f.seek(0, io.SEEK_END)
-            cfg_i.size = cfg_f.tell()
-            cfg_f.seek(0, io.SEEK_SET)
-            tar.addfile(tarinfo=cfg_i, fileobj=cfg_f)
-            cfg_f.close()
-
-            # add additional config files
-            host = self.hosts[0]
-            for (n, f) in host.config_files().items():
-                f_i = tarfile.TarInfo('guest/' + n)
-                f_i.mode = 0o777
-                f.seek(0, io.SEEK_END)
-                f_i.size = f.tell()
-                f.seek(0, io.SEEK_SET)
-                tar.addfile(tarinfo=f_i, fileobj=f)
-                f.close()    
-
-    def wait_terminate(self) -> bool:
-        return self.wait
-    
 
 class Gem5Sim(HostSim):
 
     def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
         self.name = super().full_name()
-        self.cpu_type_cp = 'X86KvmCPU'
-        self.cpu_type = 'TimingSimpleCPU'
+        self.cpu_type_cp = "X86KvmCPU"
+        self.cpu_type = "TimingSimpleCPU"
         self.extra_main_args: list[str] = []
         self.extra_config_args: list[str] = []
-        self.variant = 'fast'
+        self.variant = "fast"
         self.modify_checkpoint_tick = True
         self.wait = True
-    
+
     def resreq_cores(self) -> int:
         return 1
 
     def resreq_mem(self) -> int:
         return 4096
-    
-    # TODO: remove it
-    def config_str(self) -> str:
-        cp_es = [] if self.nockp else ['m5 checkpoint']
-        exit_es = ['m5 exit']
-        host = self.hosts[0]
-        es = host.prepare_pre_cp() + host.app.prepare_pre_cp(self) + cp_es + \
-            host.prepare_post_cp() + host.app.prepare_post_cp(self) + \
-            host.run_cmds() + host.cleanup_cmds() + exit_es
-        return '\n'.join(es)
 
-    def prep_tar(self, inst: inst_base.Instantiation) -> None:
-        path = inst.cfgtar_path(self)
-        print(self.name, ' preparing config tar:', path)
+    async def prepare(self, inst: inst_base.Instantiation) -> None:
+        await super().prepare(inst=inst)
         
-        for c in self._components:
-            for d in c.disks:
-                d.prepare_image_path(inst, path)
-
-
-    def prep_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
-
-        cmds = [f'mkdir -p {inst._env._cpdir}']
-        if inst._env._restore_cp and self.modify_checkpoint_tick:
-            cmds.append(
-                f'python3 {inst.utilsdir}/modify_gem5_cp_tick.py --tick 0 '
-                f'--cpdir {inst.gem5_cpdir(self)}'
+        prep_cmds = [f'mkdir -p {inst.cpdir_subdir(sim=self)}']
+        task = asyncio.create_task(
+                inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
             )
-        return cmds
-    
+        await task
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cpu_type = self.cpu_type
@@ -152,52 +103,50 @@ class Gem5Sim(HostSim):
             cpu_type = self.cpu_type_cp
 
         # TODO
-        cmd = f'{env.gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} '
-        cmd += ' '.join(self.extra_main_args)
+        cmd = f"{env.gem5_path(self.variant)} --outdir={env.gem5_outdir(self)} "
+        cmd += " ".join(self.extra_main_args)
         cmd += (
-            f' {env.gem5_py_path} --caches --l2cache '
-            '--l1d_size=32kB --l1i_size=32kB --l2_size=32MB '
-            '--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=16 '
-            f'--cacheline_size=64 --cpu-clock={self.hosts[0].cpu_freq}'
-            f' --sys-clock={self.hosts[0].sys_clock} '
-            f'--checkpoint-dir={env.gem5_cpdir(self)} '
-            f'--kernel={env.gem5_kernel_path} '
-            f'--disk-image={env.hd_raw_path(self.hosts[0].disk_image)} '
-            f'--disk-image={env.cfgtar_path(self)} '
-            f'--cpu-type={cpu_type} --mem-size={self.hosts[0].memory}MB '
-            f'--num-cpus={self.hosts[0].cores} '
-            '--mem-type=DDR4_2400_16x4 '
+            f" {env.gem5_py_path} --caches --l2cache "
+            "--l1d_size=32kB --l1i_size=32kB --l2_size=32MB "
+            "--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=16 "
+            f"--cacheline_size=64 --cpu-clock={self.hosts[0].cpu_freq}"
+            f" --sys-clock={self.hosts[0].sys_clock} "
+            f"--checkpoint-dir={env.gem5_cpdir(self)} "
+            f"--kernel={env.gem5_kernel_path} "
+            f"--disk-image={env.hd_raw_path(self.hosts[0].disk_image)} "
+            f"--disk-image={env.cfgtar_path(self)} "
+            f"--cpu-type={cpu_type} --mem-size={self.hosts[0].memory}MB "
+            f"--num-cpus={self.hosts[0].cores} "
+            "--mem-type=DDR4_2400_16x4 "
         )
 
-
-        for dev in self.hosts[0].ifs: # TODO
-            if (dev == dev.channel.a): 
+        for dev in self.hosts[0].ifs:  # TODO
+            if dev == dev.channel.a:
                 peer_if = dev.channel.b
             else:
-                peer_if = dev.channel.a 
+                peer_if = dev.channel.a
 
             peer_sim = self.experiment.find_sim(peer_if)
             chn_sim = self.experiment.find_sim(dev.channel)
             cmd += (
-                f'--simbricks-pci=connect:{env.dev_pci_path(peer_sim)}'
-                f':latency={dev.channel.latency}ns'
-                f':sync_interval={chn_sim.sync_period}ns'
+                f"--simbricks-pci=connect:{env.dev_pci_path(peer_sim)}"
+                f":latency={dev.channel.latency}ns"
+                f":sync_interval={chn_sim.sync_period}ns"
             )
             # if cpu_type == 'TimingSimpleCPU' and: #TODO: FIXME
             #     cmd += ':sync'
-            cmd += ' '
+            cmd += " "
 
         return cmd
-    
 
     def wait_terminate(self) -> bool:
         return self.wait
-    
+
+
 class QemuSim(HostSim):
 
     def __init__(self, e: sim_base.Simulation):
         super().__init__(e)
-
 
     def resreq_cores(self) -> int:
         if self.sync:
@@ -208,75 +157,84 @@ class QemuSim(HostSim):
 
     def resreq_mem(self) -> int:
         return 8192
-    
-    def config_str(self) -> str:
-        cp_es = ['echo ready to checkpoint']
-        exit_es = ['poweroff -f']
-        es = self.hosts[0].prepare_pre_cp() + self.hosts[0].app.prepare_pre_cp(self) + cp_es + \
-            self.hosts[0].prepare_post_cp() + self.hosts[0].app.prepare_post_cp(self) + \
-            self.hosts[0].run_cmds() + self.hosts[0].cleanup_cmds() + exit_es
-        return '\n'.join(es)
 
 
-    def prep_cmds(self, env: ExpEnv) -> tp.List[str]:
-        return [
-            f'{env.qemu_img_path} create -f qcow2 -o '
-            f'backing_file="{env.hd_path(self.hosts[0].disks[0])}" '
-            f'{env.hdcopy_path(self)}'
-        ]
+    async def prepare(self, inst: inst_base.Instantiation) -> None:
+        await super().prepare(inst=inst)
+
+        prep_cmds = []
+        full_sys_hosts = tp.cast(
+            list[system.FullSystemHost],
+            self.filter_components_by_type(ty=system.FullSystemHost),
+        )
+
+        prep_cmds = []
+        for fsh in full_sys_hosts:
+            disks = tp.cast(list[system.DiskImage], fsh.disks)
+            for disk in disks:
+                prep_cmds.append(
+                    f"{inst.qemu_img_path()} create -f qcow2 -o "
+                    f'backing_file="{disk.path(inst=inst, format="qcow2")}" '
+                    f"{inst.hdcopy_path(img=disk, format="qcow2")}"
+                )
+
+        task = asyncio.create_task(
+                inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
+            )
+        await task
 
     def run_cmd(self, env: ExpEnv) -> str:
-        accel = ',accel=kvm:tcg' if not self.sync else ''
+        accel = ",accel=kvm:tcg" if not self.sync else ""
         if self.hosts[0].disks[0].kcmd_append:
-            kcmd_append = ' ' + self.hosts[0].kcmd_append
+            kcmd_append = " " + self.hosts[0].kcmd_append
         else:
-            kcmd_append = ''
+            kcmd_append = ""
 
         cmd = (
-            f'{env.qemu_path} -machine q35{accel} -serial mon:stdio '
-            '-cpu Skylake-Server -display none -nic none '
-            f'-kernel {env.qemu_kernel_path} '
-            f'-drive file={env.hdcopy_path(self)},if=ide,index=0,media=disk '
-            f'-drive file={env.cfgtar_path(self)},if=ide,index=1,media=disk,'
-            'driver=raw '
+            f"{env.qemu_path} -machine q35{accel} -serial mon:stdio "
+            "-cpu Skylake-Server -display none -nic none "
+            f"-kernel {env.qemu_kernel_path} "
+            f"-drive file={env.hdcopy_path(self)},if=ide,index=0,media=disk "
+            f"-drive file={env.cfgtar_path(self)},if=ide,index=1,media=disk,"
+            "driver=raw "
             '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
             f'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" '
-            f'-m {self.hosts[0].memory} -smp {self.hosts[0].cores} '
+            f"-m {self.hosts[0].memory} -smp {self.hosts[0].cores} "
         )
 
         if self.sync:
             unit = self.hosts[0].cpu_freq[-3:]
-            if unit.lower() == 'ghz':
+            if unit.lower() == "ghz":
                 base = 0
-            elif unit.lower() == 'mhz':
+            elif unit.lower() == "mhz":
                 base = 3
             else:
-                raise ValueError('cpu frequency specified in unsupported unit')
+                raise ValueError("cpu frequency specified in unsupported unit")
             num = float(self.hosts[0].cpu_freq[:-3])
             shift = base - int(math.ceil(math.log(num, 2)))
 
-            cmd += f' -icount shift={shift},sleep=off '
+            cmd += f" -icount shift={shift},sleep=off "
 
         for dev in self.hosts[0].ifs:
-            if (dev == dev.channel.a):
+            if dev == dev.channel.a:
                 peer_if = dev.channel.b
             else:
-                peer_if = dev.channel.a 
-            
+                peer_if = dev.channel.a
+
             peer_sim = self.experiment.find_sim(peer_if)
             chn_sim = self.experiment.find_sim(dev.channel)
 
-            cmd += f'-device simbricks-pci,socket={env.dev_pci_path(peer_sim)}'
+            cmd += f"-device simbricks-pci,socket={env.dev_pci_path(peer_sim)}"
             if self.sync:
-                cmd += ',sync=on'
-                cmd += f',pci-latency={dev.channel.latency}'
-                cmd += f',sync-period={chn_sim.sync_period}'
+                cmd += ",sync=on"
+                cmd += f",pci-latency={dev.channel.latency}"
+                cmd += f",sync-period={chn_sim.sync_period}"
                 # if self.sync_drift is not None:
                 #     cmd += f',sync-drift={self.sync_drift}'
                 # if self.sync_offset is not None:
                 #     cmd += f',sync-offset={self.sync_offset}'
             else:
-                cmd += ',sync=off'
-            cmd += ' '
+                cmd += ",sync=off"
+            cmd += " "
 
         return cmd

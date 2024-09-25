@@ -21,7 +21,6 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from simbricks.orchestration.system import base
-from simbricks.orchestration.system import pcie
 from simbricks.orchestration.utils import base as utils_base
 
 
