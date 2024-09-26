@@ -410,7 +410,7 @@ class Instantiation(util_base.IdObj):
         print(f"joined={joined}")
         if enforce_existence and not joined.exists():
             raise Exception(f"couldn't join {base} and {relative_path}")
-        return joined.absolute()
+        return joined.absolute().as_posix()
 
     def join_repo_base(self, relative_path: str) -> str:
         return self._join_paths(

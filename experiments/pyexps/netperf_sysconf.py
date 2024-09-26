@@ -11,9 +11,8 @@ HOST0 -- NIC0 ------ SWITCH ------ NIC1 -- HOST1
 This scripts generates the experiments with all the combinations of different execution modes
 """
 
-# host_types = ['qemu', 'gem5', 'qt']
 host_types = ['gem5']
-nic_types = ['i40e', 'vr']
+nic_types = ['i40e']
 net_types = ['switch']
 experiments = []
 
