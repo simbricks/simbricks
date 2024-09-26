@@ -193,16 +193,11 @@ class Simulator(utils_base.IdObj):
             )
         return interface
 
-    def _get_sys_chan(self, interface: sys_conf.Interface) -> sys_conf.Channel:
-        if not interface.is_connected():
-            raise Exception("interface does not need a channel as it is not connected")
-        return interface.channel
-
     def _get_socket(
         self, inst: inst_base.Instantiation, interface: sys_conf.Interface
     ) -> inst_base.Socket | None:
         # get the channel associated with this interface
-        chan = self._get_sys_chan(interface=interface)
+        chan = interface.get_chan_raise()
         # check if interfaces channel is simulator internal, i.e. doesnt need an instanciation
         if not self._chan_needs_instance(chan):
             return None

@@ -71,9 +71,7 @@ class InstantiationEnvironment(util_base.IdObj):
         super().__init__()
         self._repodir: str = pathlib.Path(repo_path).resolve()
         self._workdir: str = (
-            workdir
-            if workdir
-            else pathlib.Path(f"{self._repodir}/wrkdir").resolve()
+            workdir if workdir else pathlib.Path(f"{self._repodir}/wrkdir").resolve()
         )
         self._output_base: str = (
             output_base
@@ -152,18 +150,11 @@ class Instantiation(util_base.IdObj):
     def qemu_path(self) -> str:
         return self._env._qemu_path
 
-    def _get_chan_by_interface(self, interface: sys_base.Interface) -> sys_base.Channel:
-        if not interface.is_connected():
-            raise Exception(
-                "cannot determine channel by interface, interface isn't connecteds"
-            )
-        return interface.channel
-
     def _get_opposing_interface(
         self, interface: sys_base.Interface
     ) -> sys_base.Interface:
-        channel = self._get_chan_by_interface(interface=interface)
-        return channel.a if channel.a is not interface else channel.b
+        opposing_inf = interface.get_opposing_interface()
+        return opposing_inf
 
     def _opposing_interface_within_same_sim(
         self, interface: sys_base.Interface
@@ -171,6 +162,7 @@ class Instantiation(util_base.IdObj):
         opposing_interface = self._get_opposing_interface(interface=interface)
         component = interface.component
         opposing_component = opposing_interface.component
+        assert interface is not opposing_interface
         return self.find_sim_by_spec(spec=component) == self.find_sim_by_spec(
             spec=opposing_component
         )
@@ -196,7 +188,7 @@ class Instantiation(util_base.IdObj):
         return socket
 
     def _interface_to_sock_path(self, interface: sys_base.Interface) -> str:
-        channel = self._get_chan_by_interface(interface=interface)
+        channel = interface.get_chan_raise()
         queue_ident = f"{channel.a._id}.{channel._id}.{channel.b._id}"
 
         queue_type = None
@@ -373,7 +365,7 @@ class Instantiation(util_base.IdObj):
 
     def wrkdir(self) -> str:
         return pathlib.Path(self._env._workdir).resolve()
-    
+
     def tmp_dir(self) -> str:
         return pathlib.Path(self._env._tmp_simulation_files).resolve()
 

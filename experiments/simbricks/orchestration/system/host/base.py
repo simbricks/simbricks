@@ -29,6 +29,7 @@ from os import path
 import simbricks.orchestration.instantiation.base as instantiation
 from simbricks.orchestration.system import base as base
 from simbricks.orchestration.system import eth as eth
+from simbricks.orchestration.system import pcie as pcie
 from simbricks.orchestration.system.host import app
 from simbricks.orchestration.utils import base as utils_base
 
@@ -104,7 +105,9 @@ class BaseLinuxHost(FullSystemHost):
 
     def cleanup_cmds(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to cleanup node."""
-        return self._concat_app_cmds(inst, app.BaseLinuxApplication.cleanup_cmds.__name__)
+        return self._concat_app_cmds(
+            inst, app.BaseLinuxApplication.cleanup_cmds.__name__
+        )
 
     def config_files(self, inst: instantiation.Instantiation) -> dict[str, tp.IO]:
         """
@@ -121,11 +124,15 @@ class BaseLinuxHost(FullSystemHost):
 
     def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
-        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_pre_cp.__name__)
+        return self._concat_app_cmds(
+            inst, app.BaseLinuxApplication.prepare_pre_cp.__name__
+        )
 
     def prepare_post_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node after checkpoint restore."""
-        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_post_cp.__name__)
+        return self._concat_app_cmds(
+            inst, app.BaseLinuxApplication.prepare_post_cp.__name__
+        )
 
     def config_str(self, inst: instantiation.Instantiation) -> str:
         if inst.create_cp():
@@ -184,7 +191,13 @@ class LinuxHost(BaseLinuxHost):
                 cmds.append(f"modprobe {d}")
 
         index = 0
-        for inf in base.Interface.filter_by_type(self.interfaces(), eth.EthInterface):
+        for host_inf in base.Interface.filter_by_type(
+            self.interfaces(), pcie.PCIeHostInterface
+        ):
+            if not host_inf.is_connected():
+                continue
+
+            inf = host_inf.get_opposing_interface()
             if not utils_base.check_type(inf.component, eth.EthSimpleNIC):
                 continue
             # Get ifname parameter if set, otherwise default to ethX
