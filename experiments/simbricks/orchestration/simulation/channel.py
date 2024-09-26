@@ -37,8 +37,8 @@ class Time(enum.IntEnum):
 class Channel:
 
     def __init__(self, chan: system_base.Channel):
-        self._synchronized: bool = True
-        self.sync_period: int = 500  # nano second
+        self._synchronized: bool = False
+        self.sync_period: int = 500  # nano seconds
         self.sys_channel: system_base.Channel = chan
 
     def full_name(self) -> str:

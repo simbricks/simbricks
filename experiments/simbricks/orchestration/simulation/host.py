@@ -33,8 +33,6 @@ from simbricks.orchestration.system import host as sys_host
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 
-# if tp.TYPE_CHECKING:
-
 
 class HostSim(sim_base.Simulator):
 
@@ -60,14 +58,16 @@ class HostSim(sim_base.Simulator):
 class Gem5Sim(HostSim):
 
     def __init__(self, simulation: sim_base.Simulation):
-        super().__init__(simulation=simulation, executable="sims/external/gem5/build/X86/gem5")
-        self.name=f"Gem5Sim-{self._id}"
+        super().__init__(
+            simulation=simulation, executable="sims/external/gem5/build/X86/gem5"
+        )
+        self.name = f"Gem5Sim-{self._id}"
         self.cpu_type_cp = "X86KvmCPU"
         self.cpu_type = "TimingSimpleCPU"
-        self.extra_main_args: list[str] = [] # TODO
-        self.extra_config_args: list[str] = [] # TODO
+        self.extra_main_args: list[str] = []  # TODO
+        self.extra_config_args: list[str] = []  # TODO
         self._variant: str = "fast"
-        self._sys_clock: str =  '1GHz' # TODO: move to system module
+        self._sys_clock: str = "1GHz"  # TODO: move to system module
 
     def resreq_cores(self) -> int:
         return 1
@@ -89,13 +89,13 @@ class Gem5Sim(HostSim):
 
     def checkpoint_commands(self) -> list[str]:
         return ["m5 checkpoint"]
-    
+
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cpu_type = self.cpu_type
         if inst.create_cp():
             cpu_type = self.cpu_type_cp
 
-        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)        
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)
         if len(full_sys_hosts) != 1:
             raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
 
@@ -123,45 +123,53 @@ class Gem5Sim(HostSim):
         #     cmd += f'--command-line-append="{self.node_config.kcmd_append}" '
 
         if inst.create_cp():
-            cmd += '--max-checkpoints=1 '
+            cmd += "--max-checkpoints=1 "
 
         if inst.restore_cp():
-            cmd += '-r 1 '
+            cmd += "-r 1 "
 
-        latency, sync_period, run_sync = sim_base.Simulator.get_unique_latency_period_sync(channels=self.get_channels())
+        latency, sync_period, run_sync = (
+            sim_base.Simulator.get_unique_latency_period_sync(
+                channels=self.get_channels()
+            )
+        )
 
-        pci_devices = self.filter_components_by_type(ty=sys_pcie.PCIeSimpleDevice)
-        for dev in pci_devices:
-            for inf in dev.interfaces():
-                socket = self._get_socket(inst=inst, interface=inf)
-                if socket is None:
-                    continue
-                assert socket._type == inst_base.SockType.CONNECT
-                cmd += (
-                    f'--simbricks-pci=connect:{socket._path}'
-                    f':latency={latency}ns'
-                    f':sync_interval={sync_period}ns'
-                )
-                if run_sync:
-                    cmd += ':sync'
-                cmd += ' '
+        fsh_interfaces = full_sys_hosts[0].interfaces()
 
-        mem_devices = self.filter_components_by_type(ty=sys_mem.MemSimpleDevice)
-        for dev in mem_devices:
-            for inf in dev.interfaces():
-                socket = self._get_socket(inst=inst, interface=inf)
-                if socket is None:
-                    continue
-                assert socket._type == inst_base.SockType.CONNECT
-                cmd += (
-                    f'--simbricks-mem={dev._size}@{dev._addr}@{dev._as_id}@' # TODO: FIXME
-                    f'connect:{socket._path}'
-                    f':latency={latency}ns'
-                    f':sync_interval={sync_period}ns'
-                )
-                if run_sync:
-                    cmd += ':sync'
-                cmd += ' '
+        pci_interfaces = system.Interface.filter_by_type(
+            interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
+        )
+        for inf in pci_interfaces:
+            socket = self._get_socket(inst=inst, interface=inf)
+            if socket is None:
+                continue
+            assert socket._type == inst_base.SockType.CONNECT
+            cmd += (
+                f"--simbricks-pci=connect:{socket._path}"
+                f":latency={latency}ns"
+                f":sync_interval={sync_period}ns"
+            )
+            if run_sync:
+                cmd += ":sync"
+            cmd += " "
+
+        # mem_interfaces = system.Interface.filter_by_type(
+        #     interfaces=fsh_interfaces, ty=sys_mem.MemHostInterface
+        # )
+        # for inf in mem_interfaces:
+        #     socket = self._get_socket(inst=inst, interface=inf)
+        #     if socket is None:
+        #         continue
+        #     assert socket._type == inst_base.SockType.CONNECT
+        #     cmd += (
+        #         f"--simbricks-mem={dev._size}@{dev._addr}@{dev._as_id}@"  # TODO: FIXME
+        #         f"connect:{socket._path}"
+        #         f":latency={latency}ns"
+        #         f":sync_interval={sync_period}ns"
+        #     )
+        #     if run_sync:
+        #         cmd += ":sync"
+        #     cmd += " "
 
         # TODO: FIXME
         # for net in self.net_directs:
@@ -176,7 +184,9 @@ class Gem5Sim(HostSim):
         #         cmd += ':sync'
         #     cmd += ' '
 
-        cmd += ' '.join(self.extra_config_args)
+        cmd += " ".join(self.extra_config_args)
+
+        print(f"GEM5 COMMAND!!! ===== {cmd}")
         return cmd
 
 

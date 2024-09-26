@@ -80,7 +80,7 @@ class NICSim(PCIDevSim):
         cmd += f"{socket._path} "
 
         cmd += (
-            f" {inst.get_simulator_shm_pool_path(sim=self)} {run_sync} {self._start_tick}"
+            f" {inst.get_simulator_shm_pool_path(sim=self)} {int(run_sync)} {self._start_tick}"
             f" {sync_period} {latency} {latency}"
         )
 

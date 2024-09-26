@@ -60,7 +60,7 @@ class Component(util_base.IdObj):
 
     def channels(self) -> list[Channel]:
         return [i.channel for i in self.interfaces() if i.is_connected()]
-    
+
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         pass
 
@@ -89,6 +89,11 @@ class Interface(util_base.IdObj):
             peer_if = self.channel.a
         return peer_if
 
+    T = tp.TypeVar("T")
+
+    @staticmethod
+    def filter_by_type(interfaces: list[Interface], ty: type[T]) -> list[T]:
+        return list(filter(lambda inf: isinstance(inf, ty), interfaces))
 
 
 class Channel(util_base.IdObj):
