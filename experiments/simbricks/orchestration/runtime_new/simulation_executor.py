@@ -103,7 +103,7 @@ class ExperimentBaseRunner(abc.ABC):
         if delay > 0:
             await asyncio.sleep(delay)
 
-        if sim.wait_terminate():
+        if sim.wait_terminate:
             self._wait_sims.append(sc)
 
         if self._verbose:

@@ -75,6 +75,15 @@ class Simulator(utils_base.IdObj):
     def extra_args(self, extra_args: str):
         self._extra_args = extra_args
 
+    @property
+    def wait_terminate(self) -> bool:
+        # TODO: FIXME If in the system config for e.g. an application is set that one has to wait for the app, we need to wait for the simulator as well!!!
+        return self._wait
+
+    @wait_terminate.setter
+    def wait_terminate(self, wait: bool):
+        self._wait = wait
+
     @staticmethod
     def filter_sockets(
         sockets: list[inst_base.Socket],
@@ -265,10 +274,6 @@ class Simulator(utils_base.IdObj):
 
     def start_delay(self) -> int:
         return 5
-
-    # TODO: FIXME
-    def wait_terminate(self) -> bool:
-        return self._wait
 
     def supports_checkpointing(self) -> bool:
         return False

@@ -98,6 +98,7 @@ for host_type in host_types:
 
             host_inst0 = host_sim(simulation)
             host_inst0.add(host0)
+            host_inst0.wait_terminate = True
 
             host_inst1 = host_sim(simulation)
             host_inst1.add(host1)
