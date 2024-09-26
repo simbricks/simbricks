@@ -80,7 +80,7 @@ class Simulator(utils_base.IdObj):
         sockets: list[inst_base.Socket],
         filter_type: inst_base.SockType = inst_base.SockType.LISTEN,
     ) -> list[inst_base.Socket]:
-        res = filter(lambda sock: sock._type == filter_type, sockets)
+        res = list(filter(lambda sock: sock._type == filter_type, sockets))
         return res
 
     @staticmethod

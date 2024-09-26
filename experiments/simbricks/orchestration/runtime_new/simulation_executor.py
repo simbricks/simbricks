@@ -94,7 +94,7 @@ class ExperimentBaseRunner(abc.ABC):
         if len(wait_socks) > 0:
             if self._verbose:
                 print(f'{self._simulation.name}: waiting for sockets {name}')
-            await self._instantiation.wait_for_sockets(executor=executor, sockets=wait_socks)
+            await self._instantiation.wait_for_sockets(sockets=wait_socks)
             if self._verbose:
                 print(f'{self._simulation.name}: waited successfully for sockets {name}')
 
