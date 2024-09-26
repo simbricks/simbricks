@@ -373,6 +373,9 @@ class Instantiation(util_base.IdObj):
 
     def wrkdir(self) -> str:
         return pathlib.Path(self._env._workdir).resolve()
+    
+    def tmp_dir(self) -> str:
+        return pathlib.Path(self._env._tmp_simulation_files).resolve()
 
     async def prepare(self) -> None:
         wrkdir = self.wrkdir()
@@ -391,6 +394,11 @@ class Instantiation(util_base.IdObj):
             shutil.rmtree(cpdir, ignore_errors=True)
             await self.executor.rmtree(cpdir)
 
+        tmpdir = self.tmp_dir()
+        print(f"tmpdir={tmpdir}")
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        await self.executor.rmtree(tmpdir)
+
         pathlib.Path(wrkdir).mkdir(parents=True, exist_ok=True)
         await self.executor.mkdir(wrkdir)
 
@@ -399,6 +407,9 @@ class Instantiation(util_base.IdObj):
 
         pathlib.Path(shm_base).mkdir(parents=True, exist_ok=True)
         await self.executor.mkdir(shm_base)
+
+        pathlib.Path(tmpdir).mkdir(parents=True, exist_ok=True)
+        await self.executor.mkdir(tmpdir)
 
         await self._simulation.prepare(inst=self)
 
@@ -443,21 +454,21 @@ class Instantiation(util_base.IdObj):
 
     def join_tmp_base(self, relative_path: str) -> str:
         return self._join_paths(
-            base=self._env._tmp_simulation_files,
+            base=self.tmp_dir(),
             relative_path=relative_path,
         )
 
     def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
         filename = f"{img._id}.{format}"
         return self._join_paths(
-            base=self._env._tmp_simulation_files,
+            base=self.tmp_dir(),
             relative_path=filename,
         )
 
     def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
         filename = f"{img._id}_hdcopy.{format}"
         return self._join_paths(
-            base=self._env._tmp_simulation_files,
+            base=self.tmp_dir(),
             relative_path=filename,
         )
 

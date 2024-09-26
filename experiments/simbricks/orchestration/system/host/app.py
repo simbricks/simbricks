@@ -102,7 +102,7 @@ class Sleep(BaseLinuxApplication):
         super().__init__(h)
         self.delay = delay
 
-    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         return [f'sleep {self.delay}']
 
 
@@ -110,7 +110,7 @@ class NetperfServer(BaseLinuxApplication):
     def __init__(self, h: sys_host.LinuxHost) -> None:
         super().__init__(h)
 
-    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         return ['netserver', 'sleep infinity']
 
 
@@ -121,7 +121,7 @@ class NetperfClient(BaseLinuxApplication):
         self.duration_tp = 10
         self.duration_lat = 10
 
-    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         return [
             'netserver',
             'sleep 0.5',
