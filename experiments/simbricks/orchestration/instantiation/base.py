@@ -222,11 +222,11 @@ class Instantiation(util_base.IdObj):
         self, socket: Socket, supported_sock_types: set[SockType] = set()
     ) -> Socket:
         new_ty = (
-            SockType.LISTEN if socket._type == SockType.CONNECT else SockType.LISTEN
+            SockType.LISTEN if socket._type == SockType.CONNECT else SockType.CONNECT
         )
         if new_ty not in supported_sock_types:
             raise Exception(
-                f"cannot create opposing socket, as required type is not supported: required={new_ty}, supported={','.join(supported_sock_types)}"
+                f"cannot create opposing socket, as required type is not supported: required={new_ty.name}, supported={','.join(supported_sock_types)}"
             )
         new_path = socket._path
         new_socket = Socket(path=new_path, ty=new_ty)
