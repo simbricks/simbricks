@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import abc
 import io
-import os.path
+import pathlib
 import tarfile
 import typing as tp
 from simbricks.orchestration.utils import base as utils_base
@@ -45,7 +45,12 @@ class DiskImage(utils_base.IdObj):
 
     @abc.abstractmethod
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
-        return
+        raise Exception("must be overwritten")
+    
+    @staticmethod
+    def assert_is_file(path: str) -> str:
+        if not pathlib.Path(path).is_file():
+            raise Exception(f"path={path} must be a file")
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
@@ -70,15 +75,15 @@ class DiskImage(utils_base.IdObj):
 class ExternalDiskImage(DiskImage):
     def __init__(self, h: sys_host.FullSystemHost, path: str) -> None:
         super().__init__(h)
-        self.path = path
+        self._path = path
         self.formats = ["raw", "qcow2"]
 
     def available_formats(self) -> list[str]:
         return self.formats
 
     def path(self, inst: inst_base.Instantiation, format: str)  -> str:
-        assert os.path.isfile(self.path)
-        return self.path
+        DiskImage.assert_is_file(self._path)
+        return self._path
 
 
 # Disk images shipped with simbricks
@@ -99,8 +104,8 @@ class DistroDiskImage(DiskImage):
             pass
         else:
             raise RuntimeError("Unsupported disk format")
-        assert os.path.isfile(self.path)
-        return self.path
+        DiskImage.assert_is_file(path)
+        return path
 
 # Abstract base class for dynamically generated images
 class DynamicDiskImage(DiskImage):

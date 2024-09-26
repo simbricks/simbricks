@@ -214,7 +214,7 @@ class Instantiation(util_base.IdObj):
         print(f"_interface_to_sock_path: self._env._shm_base={self.shm_base_dir()}")
         return self._join_paths(
             base=self.shm_base_dir(),
-            relative_path=f"{queue_type}/{queue_ident}",
+            relative_path=f"{queue_type}-{queue_ident}",
             enforce_existence=False,
         )
 

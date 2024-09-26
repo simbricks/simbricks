@@ -70,13 +70,13 @@ class NICSim(PCIDevSim):
         pci_devices = self.filter_components_by_type(ty=sys_eth.EthSimpleNIC)
         assert len(pci_devices) == 1
         socket = self._get_socket(inst=inst, interface=pci_devices[0]._eth_if)
-        assert socket is not None
+        assert socket is not None and socket._type == inst_base.SockType.LISTEN
         cmd += f"{socket._path} "
 
         eth_devices = self.filter_components_by_type(ty=sys_pcie.PCIeSimpleDevice)
         assert len(eth_devices) == 1
         socket = self._get_socket(inst=inst, interface=eth_devices[0]._pci_if)
-        assert socket is not None
+        assert socket is not None and socket._type == inst_base.SockType.LISTEN
         cmd += f"{socket._path} "
 
         cmd += (
