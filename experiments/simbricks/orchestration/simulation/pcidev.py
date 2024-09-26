@@ -71,13 +71,13 @@ class NICSim(PCIDevSim):
         assert len(pci_devices) == 1
         socket = self._get_socket(inst=inst, interface=pci_devices[0]._eth_if)
         assert socket is not None
-        cmd += socket._path
+        cmd += f"{socket._path} "
 
         eth_devices = self.filter_components_by_type(ty=sys_pcie.PCIeSimpleDevice)
         assert len(eth_devices) == 1
         socket = self._get_socket(inst=inst, interface=eth_devices[0]._pci_if)
         assert socket is not None
-        cmd += socket._path
+        cmd += f"{socket._path} "
 
         cmd += (
             f" {inst.get_simulator_shm_pool_path(sim=self)} {run_sync} {self._start_tick}"
@@ -90,11 +90,12 @@ class NICSim(PCIDevSim):
         if self.extra_args is not None:
             cmd += " " + self.extra_args
 
+        print(f"NIC RUN COMMAND!!! ===== {cmd}")
         return cmd
 
 
 class I40eNicSim(NICSim):
-
+ 
     def __init__(self, simulation: sim_base.Simulation):
         super().__init__(
             simulation=simulation,

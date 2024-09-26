@@ -45,9 +45,10 @@ class SockType(enum.Enum):
     CONNECT = enum.auto()
 
 
-class Socket:
+class Socket(util_base.IdObj):
 
     def __init__(self, path: str = "", ty: SockType = SockType.LISTEN):
+        super().__init__()
         self._path = path
         self._type = ty
 
@@ -68,29 +69,29 @@ class InstantiationEnvironment(util_base.IdObj):
         qemu_path: str | None = None,
     ):
         super().__init__()
-        self._repodir: str = pathlib.Path(repo_path).absolute()
+        self._repodir: str = pathlib.Path(repo_path).resolve()
         self._workdir: str = (
             workdir
             if workdir
-            else pathlib.Path(f"{self._repodir}/experiment-wrkdir").absolute()
+            else pathlib.Path(f"{self._repodir}/wrkdir").resolve()
         )
         self._output_base: str = (
             output_base
             if output_base
-            else pathlib.Path(f"{self._workdir}/output").absolute()
+            else pathlib.Path(f"{self._workdir}/output").resolve()
         )
         self._cpdir: str = (
             cpdir
             if cpdir
-            else pathlib.Path(f"{self._output_base}/checkpoints").absolute()
+            else pathlib.Path(f"{self._output_base}/checkpoints").resolve()
         )
         self._shm_base: str = (
-            shm_base if shm_base else pathlib.Path(f"{self._workdir}/shm").absolute()
+            shm_base if shm_base else pathlib.Path(f"{self._workdir}/shm").resolve()
         )
         self._tmp_simulation_files: str = (
             tmp_simulation_files
             if tmp_simulation_files
-            else (pathlib.Path(f"{self._workdir}/tmp").absolute())
+            else (pathlib.Path(f"{self._workdir}/tmp").resolve())
         )
         self._create_cp: bool = create_cp
         self._restore_cp: bool = restore_cp
@@ -201,17 +202,18 @@ class Instantiation(util_base.IdObj):
         queue_type = None
         match interface:
             case sys_pcie.PCIeHostInterface() | sys_pcie.PCIeDeviceInterface():
-                queue_type = "shm.pci"
+                queue_type = "pci"
             case sys_mem.MemDeviceInterface() | sys_mem.MemHostInterface():
-                queue_type = "shm.mem"
+                queue_type = "mem"
             case sys_eth.EthInterface():
-                queue_type = "shm.eth"
+                queue_type = "eth"
             case _:
                 raise Exception("cannot create socket path for given interface type")
 
         assert queue_type is not None
+        print(f"_interface_to_sock_path: self._env._shm_base={self.shm_base_dir()}")
         return self._join_paths(
-            base=self._env._shm_base,
+            base=self.shm_base_dir(),
             relative_path=f"{queue_type}/{queue_ident}",
             enforce_existence=False,
         )
@@ -251,6 +253,7 @@ class Instantiation(util_base.IdObj):
                 socket=socket, supported_sock_types=supported_sock_types
             )
             self._updated_tracker_mapping(interface=interface, socket=new_socket)
+            print(f"created socket: {new_socket._path}")
             return new_socket
 
         # neither connecting nor listening side already created a socket, thus we
@@ -268,6 +271,7 @@ class Instantiation(util_base.IdObj):
         sock_path = self._interface_to_sock_path(interface=interface)
         new_socket = Socket(path=sock_path, ty=sock_type)
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
+        print(f"created socket: {new_socket._path}")
         return new_socket
 
     def _build_simulation_topology(self) -> None:
@@ -353,10 +357,10 @@ class Instantiation(util_base.IdObj):
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
 
     def wrkdir(self) -> str:
-        return pathlib.Path(self._env._workdir).absolute()
+        return pathlib.Path(self._env._workdir).resolve()
 
     def shm_base_dir(self) -> str:
-        return pathlib.Path(self._env._shm_base).absolute()
+        return pathlib.Path(self._env._shm_base).resolve()
 
     def create_cp(self) -> bool:
         return self._env._create_cp
@@ -365,10 +369,10 @@ class Instantiation(util_base.IdObj):
         return self._env._restore_cp
 
     def cpdir(self) -> str:
-        return pathlib.Path(self._env._cpdir).absolute()
+        return pathlib.Path(self._env._cpdir).resolve()
 
     def wrkdir(self) -> str:
-        return pathlib.Path(self._env._workdir).absolute()
+        return pathlib.Path(self._env._workdir).resolve()
 
     async def prepare(self) -> None:
         wrkdir = self.wrkdir()
@@ -406,11 +410,11 @@ class Instantiation(util_base.IdObj):
                 f"cannot join with base={base} because relative_path={relative_path} starts with '/'"
             )
 
-        joined = pathlib.Path(base).joinpath(relative_path)
-        print(f"joined={joined}")
+        joined = pathlib.Path(base).joinpath(relative_path).resolve()
+        print(f"joined={joined} from base={base}, relative_path={relative_path}")
         if enforce_existence and not joined.exists():
             raise Exception(f"couldn't join {base} and {relative_path}")
-        return joined.absolute().as_posix()
+        return joined.as_posix()
 
     def join_repo_base(self, relative_path: str) -> str:
         return self._join_paths(
