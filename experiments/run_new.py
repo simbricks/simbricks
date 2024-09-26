@@ -272,7 +272,7 @@ def add_exp(
 
     outpath = f"{args.outdir}/{simulation.name}-{run_number}.json"
     if os.path.exists(outpath) and not args.force:
-        print(f"skip {e.name} run {run_number}")
+        print(f"skip {simulation.name} run {run_number}")
         return None
 
     workdir = f"{args.workdir}/{simulation.name}/{run_number}"
@@ -291,13 +291,13 @@ def add_exp(
 
     inst_env = inst_base.InstantiationEnvironment(
         repo_path=args.repo,
-        workdir=workdir,
-        cpdir=cpdir,
-        create_cp=create_cp,
-        restore_cp=restore_cp,
-        shm_base=shm_base,
-        output_base=output_base,
-        tmp_simulation_files=tmp_sim_files,
+        # workdir=workdir,
+        # cpdir=cpdir,
+        # create_cp=create_cp,
+        # restore_cp=restore_cp,
+        # shm_base=shm_base,
+        # output_base=output_base,
+        # tmp_simulation_files=tmp_sim_files,
     )
 
     inst_ = inst_base.Instantiation(sim=simulation, env=inst_env)    
