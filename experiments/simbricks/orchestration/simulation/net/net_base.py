@@ -33,29 +33,34 @@ class NetSim(sim_base.Simulator):
     """Base class for network simulators."""
 
     def __init__(
-        self, simulation: sim_base.Simulation, relative_executable_path: str = ""
+        self,
+        simulation: sim_base.Simulation,
+        executable: str,
+        name: str,
     ) -> None:
-        super().__init__(simulation, relative_executable_path=relative_executable_path)
+        super().__init__(simulation=simulation, executable=executable, name=name)
 
     def full_name(self) -> str:
         return "net." + self.name
 
     def init_network(self) -> None:
         pass
-    
+
     def supported_socket_types(self) -> set[inst_base.SockType]:
         return [inst_base.SockType.CONNECT]
 
 
 class WireNet(NetSim):
 
-    def __init__(self, simulation: sim_base.Simulation) -> None:
+    def __init__(
+        self, simulation: sim_base.Simulation, relative_pcap_filepath: str | None = None
+    ) -> None:
         super().__init__(
             simulation=simulation,
-            relative_executable_path="/sims/net/wire/net_wire",
-            relative_pcap_file_path=None,
+            executable="sims/net/wire/net_wire",
+            name=f"WireNet-{self._id}",
         )
-        self._relative_pcap_file_path: str | None = "relative_pcap_file_path"
+        self._relative_pcap_file_path: str | None = relative_pcap_filepath
 
     def add(self, wire: eth.EthWire):
         base_utils.has_expected_type(wire, eth.EthWire)
@@ -67,15 +72,15 @@ class WireNet(NetSim):
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         channels = self.get_channels()
-        eth_latency, sync_period, sync = (
+        eth_latency, sync_period, run_sync = (
             sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
         )
 
         sockets = self._get_sockets(inst=inst)
         assert len(sockets) == 2
 
-        cmd = inst.join_repo_base(self._relative_executable_path)
-        cmd += f"{sockets[0]} {sockets[1]} {run_sync} {sync_period} {eth_latency}"
+        cmd = inst.join_repo_base(self._executable)
+        cmd += f"{sockets[0]._path} {sockets[1]._path} {run_sync} {sync_period} {eth_latency}"
 
         if self._relative_pcap_file_path is not None:
             pcap_file = inst.join_output_base(
@@ -90,13 +95,15 @@ class SwitchNet(NetSim):
     def __init__(
         self,
         simulation: sim_base.Simulation,
-        relative_executable_path="/sims/net/switch/net_switch",
-        relative_pcap_file_path=None,
+        executable: str = "sims/net/switch/net_switch",
+        relative_pcap_filepath: str | None = None,
     ) -> None:
         super().__init__(
-            simulation=simulation, relative_executable_path=relative_executable_path
+            simulation=simulation,
+            executable=executable,
+            name=f"SwitchNet-{self._id}",
         )
-        self._relative_pcap_file_path: str | None = relative_pcap_file_path
+        self._relative_pcap_file_path: str | None = relative_pcap_filepath
 
     def add(self, switch_spec: eth.EthSwitch):
         base_utils.has_expected_type(switch_spec, eth.EthSwitch)
@@ -110,7 +117,7 @@ class SwitchNet(NetSim):
             sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
         )
 
-        cmd = inst.join_repo_base(self._relative_executable_path)
+        cmd = inst.join_repo_base(self._executable)
         cmd += f" -S {sync_period} -E {eth_latency}"
 
         if not run_sync:
@@ -141,9 +148,10 @@ class MemSwitchNet(SwitchNet):
     ) -> None:
         super().__init__(
             simulation=simulation,
-            relative_executable_path="/sims/mem/memswitch/memswitch",
+            executable="sims/mem/memswitch/memswitch",
             relative_pcap_file_path=relative_pcap_file_path,
         )
+        self._name = f"MemSwitchNet-{self._id}"
         """AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START."""
         self.mem_map = []
 

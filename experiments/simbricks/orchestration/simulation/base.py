@@ -49,16 +49,31 @@ class Simulator(utils_base.IdObj):
     def __init__(
         self,
         simulation: sim_base.Simulation,
+        executable: str,
         name: str = "",
-        relative_executable_path: str = "",
     ) -> None:
         super().__init__()
         self.name: str = name
-        self._relative_executable_path: str = relative_executable_path
+        self._executable = executable
         self._simulation: sim_base.Simulation = simulation
         self._components: set[sys_conf.Component] = set()
-        self._wait: bool = False  # TODO: FIXME
+        self._wait: bool = False
+        self._start_tick = 0
+        """The timestamp at which to start the simulation. This is useful when
+        the simulator is only attached at a later point in time and needs to
+        synchronize with connected simulators. For example, this could be used
+        when taking checkpoints to only attach certain simulators after the
+        checkpoint has been taken."""
+        self._extra_args: str | None = None
         simulation.add_sim(self)
+
+    @property
+    def extra_args(self) -> str:
+        return self._extra_args
+
+    @extra_args.setter
+    def extra_args(self, extra_args: str):
+        self._extra_args = extra_args
 
     @staticmethod
     def filter_sockets(
@@ -98,13 +113,19 @@ class Simulator(utils_base.IdObj):
             raise Exception("could not determine eth_latency and sync_period")
         return latency, sync_period, run_sync
 
+    T = tp.TypeVar("T")
+
     def filter_components_by_pred(
-        self, pred: tp.Callable[[sys_conf.Component], bool]
-    ) -> list[sys_conf.Component]:
+        self,
+        pred: tp.Callable[[sys_conf.Component], bool],
+        ty: type[T] = sys_conf.Component,
+    ) -> list[T]:
         return list(filter(pred, self._components))
 
-    def filter_components_by_type(self, ty) -> list[sys_conf.Component]:
-        return self.filter_components_by_pred(lambda comp: isinstance(comp, ty))
+    def filter_components_by_type(self, ty: type[T]) -> list[T]:
+        return self.filter_components_by_pred(
+            pred=lambda comp: isinstance(comp, ty), ty=ty
+        )
 
     def components(self) -> set[sys_conf.Component]:
         return self._components

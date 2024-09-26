@@ -20,121 +20,110 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import simbricks.orchestration.system as sys_conf
-import typing as tp
+from simbricks.orchestration.system import base as sys_base
+from simbricks.orchestration.system import pcie as sys_pcie
+from simbricks.orchestration.system import eth as sys_eth
+from simbricks.orchestration.system import nic as sys_nic
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.simulation import base
+from simbricks.orchestration.simulation import sim_base
 
 
-class PCIDevSim(base.Simulator):
+class PCIDevSim(sim_base.Simulator):
     """Base class for PCIe device simulators."""
 
-    def __init__(self, e: base.Simulation) -> None:
-        super().__init__(e)
-
-        self.start_tick = 0
-        """The timestamp at which to start the simulation. This is useful when
-        the simulator is only attached at a later point in time and needs to
-        synchronize with connected simulators. For example, this could be used
-        when taking checkpoints to only attach certain simulators after the
-        checkpoint has been taken."""
+    def __init__(
+        self, simulation: sim_base.Simulation, executable: str, name: str
+    ) -> None:
+        super().__init__(simulation=simulation, executable=executable, name=name)
 
     def full_name(self) -> str:
-        return 'dev.' + self.name
+        return "dev." + self.name
 
-    def is_nic(self) -> bool:
-        return False
-
-    def sockets_cleanup(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        return [inst_base.Socket(f'{inst._env._workdir}/dev.pci.{self.name}'),  inst_base.Socket(f' {inst._env._shm_base}/dev.shm.{self.name}')]
-
-    def sockets_wait(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        return [inst_base.Socket(f'{inst._env._workdir}/dev.pci.{self.name}')]
-    
     def supported_socket_types(self) -> set[inst_base.SockType]:
         return [inst_base.SockType.LISTEN]
-
 
 
 class NICSim(PCIDevSim):
     """Base class for NIC simulators."""
 
-    def __init__(self, e: base.Simulation) -> None:
-        super().__init__(e)
-        self.start_tick = 0
-        self.name = f'{self._id}'
+    def full_name(self) -> str:
+        return "nic." + self.name
 
-    def add(self, nic: sys_conf.SimplePCIeNIC):
+    def __init__(
+        self, simulation: sim_base.Simulation, executable: str, name: str
+    ) -> None:
+        super().__init__(simulation=simulation, executable=executable, name=name)
+
+    def add(self, nic: sys_nic.SimplePCIeNIC):
         super().add(nic)
 
-    def basic_args(self, inst: inst_base.Instantiation, extra: tp.Optional[str] = None) -> str:
-        # TODO: need some fix. how to handle multiple nics in one simulator?
-        for c in self._components:
-            nic_comp = c
-        nic_pci_chan_comp = nic_comp._pci_if.channel
-        nic_eth_chan_comp = nic_comp._eth_if.channel
-        nic_pci_chan_sim = self._simulation.retrieve_or_create_channel(nic_pci_chan_comp)
-        nic_eth_chan_sim = self._simulation.retrieve_or_create_channel(nic_eth_chan_comp)
-
-
-        cmd = (
-            f'{inst._env._workdir}/dev.pci.{self.name} {inst._env._workdir}/nic.eth.{self.name}'
-            f' {inst._env._shm_base}/dev.shm.{self.name} {nic_pci_chan_sim._synchronized} {self.start_tick}'
-            f' {nic_pci_chan_sim.sync_period} {nic_pci_chan_comp.latency} {nic_eth_chan_comp.latency}'
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        channels = self.get_channels()
+        latency, sync_period, run_sync = (
+            sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
         )
-        # if nic_comp.mac is not None:
-        #     cmd += ' ' + (''.join(reversed(nic_comp.mac.split(':'))))
 
-        if extra is not None:
-            cmd += ' ' + extra
+        cmd = f"{inst.join_repo_base(relative_path=self._executable)} "
+
+        pci_devices = self.filter_components_by_type(ty=sys_eth.EthSimpleNIC)
+        assert len(pci_devices) == 1
+        socket = self._get_socket(inst=inst, interface=pci_devices[0]._eth_if)
+        assert socket is not None
+        cmd += socket._path
+
+        eth_devices = self.filter_components_by_type(ty=sys_pcie.PCIeSimpleDevice)
+        assert len(eth_devices) == 1
+        socket = self._get_socket(inst=inst, interface=eth_devices[0]._pci_if)
+        assert socket is not None
+        cmd += socket._path
+
+        cmd += (
+            f" {inst.get_simulator_shm_pool_path(sim=self)} {run_sync} {self._start_tick}"
+            f" {sync_period} {latency} {latency}"
+        )
+
+        # if self.mac is not None:  # TODO: FIXME
+        #     cmd += " " + ("".join(reversed(self.mac.split(":"))))
+
+        if self.extra_args is not None:
+            cmd += " " + self.extra_args
+
         return cmd
-
-    def basic_run_cmd(
-        self, inst: inst_base.Instantiation, name: str, extra: tp.Optional[str] = None
-    ) -> str:
-        cmd = f'{inst._env._repodir}/sims/nic/{name} {self.basic_args(inst, extra)}'
-        return cmd
-
-    def full_name(self) -> str:
-        return 'nic.' + self.name
-
-    def is_nic(self) -> bool:
-        return True
-
-    def sockets_cleanup(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        for c in self._components:
-            nic_comp = c
-        return super().sockets_cleanup(inst) + [inst_base.Socket(f'{inst._env._workdir}/nic.eth.{self.name}')]
-
-    def sockets_wait(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        for c in self._components:
-            nic_comp = c
-        return super().sockets_wait(inst) + [inst_base.Socket(f'{inst._env._workdir}/nic.eth.{self.name}')]
 
 
 class I40eNicSim(NICSim):
 
-    def __init__(self, e: 'Simulation'):
-        super().__init__(e)
+    def __init__(self, simulation: sim_base.Simulation):
+        super().__init__(
+            simulation=simulation,
+            executable="sims/nic/i40e_bm/i40e_bm",
+            name=f"NICSim-{self._id}",
+        )
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        return self.basic_run_cmd(inst, '/i40e_bm/i40e_bm')
+        return super().run_cmd(inst=inst)
 
 
 class CorundumBMNICSim(NICSim):
-    def __init__(self, e: 'Simulation'):
-        super().__init__(e)
+    def __init__(self, simulation: sim_base.Simulation):
+        super().__init__(
+            simulation=simulation,
+            executable="sims/nic/corundum_bm/corundum_bm",
+            name=f"CorundumBMNICSim-{self._id}",
+        )
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        return self.basic_run_cmd(inst, '/corundum_bm/corundum_bm')
-
-
+        return super().run_cmd(inst=inst)
 
 
 class CorundumVerilatorNICSim(NICSim):
 
-    def __init__(self, e: 'Simulation'):
-        super().__init__(e)
+    def __init__(self, simulation: sim_base.Simulation):
+        super().__init__(
+            simulation=simulation,
+            executable="sims/nic/corundum/corundum_verilator",
+            name=f"CorundumVerilatorNICSim-{self._id}",
+        )
         self.clock_freq = 250  # MHz
 
     def resreq_mem(self) -> int:
@@ -142,9 +131,6 @@ class CorundumVerilatorNICSim(NICSim):
         return 512
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        print("run cmd")
-        print(self.basic_run_cmd(inst, '/corundum/corundum_verilator'))
-
-        return self.basic_run_cmd(
-            inst, '/corundum/corundum_verilator', str(self.clock_freq)
-        )
+        cmd = super().run_cmd(inst=inst)
+        cmd += str(self.clock_freq)
+        return cmd
