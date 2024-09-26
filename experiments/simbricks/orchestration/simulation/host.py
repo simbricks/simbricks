@@ -38,8 +38,8 @@ if tp.TYPE_CHECKING:
 
 class HostSim(sim_base.Simulator):
 
-    def __init__(self, simulation: sim_base.Simulation, name=""):
-        super().__init__(simulation=simulation, name=name)
+    def __init__(self, simulation: sim_base.Simulation, executable: str, name=""):
+        super().__init__(simulation=simulation, executable=executable, name=name)
 
     def full_name(self) -> str:
         return "host." + self.name
@@ -60,13 +60,12 @@ class HostSim(sim_base.Simulator):
 class Gem5Sim(HostSim):
 
     def __init__(self, simulation: sim_base.Simulation):
-        super().__init__(simulation=simulation, name=f"Gem5Sim-{self._id}")
+        super().__init__(simulation=simulation, executable="sims/external/gem5/build/X86/gem5", name=f"Gem5Sim-{self._id}")
         self.cpu_type_cp = "X86KvmCPU"
         self.cpu_type = "TimingSimpleCPU"
         self.extra_main_args: list[str] = []
         self.extra_config_args: list[str] = []
         self.variant = "fast"
-        self.wait = True
 
     def resreq_cores(self) -> int:
         return 1
@@ -86,16 +85,19 @@ class Gem5Sim(HostSim):
         )
         await task
 
+    def checkpoint_commands(self) -> list[str]:
+        return ["m5 checkpoint"]
+    
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cpu_type = self.cpu_type
         if inst.create_cp():
             cpu_type = self.cpu_type_cp
 
-        full_sys_hosts = tp.cast(list[sys_host.FullSystemHost], self.filter_components_by_type(ty=sys_host.FullSystemHost))        
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)        
         if len(full_sys_hosts) != 1:
             raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
 
-        cmd = f"{inst.join_repo_base(f"sims/external/gem5/build/X86/gem5.{self.variant}")} --outdir={inst.get_simmulator_output_dir(sim=self)} "
+        cmd = f"{inst.join_repo_base(f"{self._executable}.{self.variant}")} --outdir={inst.get_simmulator_output_dir(sim=self)} "
         cmd += " ".join(self.extra_main_args)
         cmd += (
             f" {inst.join_repo_base("sims/external/gem5/configs/simbricks/simbricks.py")} --caches --l2cache "
@@ -150,7 +152,7 @@ class Gem5Sim(HostSim):
                     continue
                 assert socket._type == inst_base.SockType.CONNECT
                 cmd += (
-                    f'--simbricks-mem={dev.size}@{dev.addr}@{dev.as_id}@' # TODO: FIXME
+                    f'--simbricks-mem={dev._size}@{dev._addr}@{dev._as_id}@' # TODO: FIXME
                     f'connect:{socket._path}'
                     f':latency={latency}ns'
                     f':sync_interval={sync_period}ns'
@@ -174,28 +176,6 @@ class Gem5Sim(HostSim):
 
         cmd += ' '.join(self.extra_config_args)
         return cmd
-
-        for dev in full_sys_hosts[0].ifs:  # TODO
-            if dev == dev.channel.a:
-                peer_if = dev.channel.b
-            else:
-                peer_if = dev.channel.a
-
-            peer_sim = self.experiment.find_sim(peer_if)
-            chn_sim = self.experiment.find_sim(dev.channel)
-            cmd += (
-                f"--simbricks-pci=connect:{env.dev_pci_path(peer_sim)}"
-                f":latency={dev.channel.latency}ns"
-                f":sync_interval={chn_sim.sync_period}ns"
-            )
-            # if cpu_type == 'TimingSimpleCPU' and: #TODO: FIXME
-            #     cmd += ':sync'
-            cmd += " "
-
-        return cmd
-
-    def checkpoint_commands(self) -> list[str]:
-        return ["m5 checkpoint"]
 
 
 class QemuSim(HostSim):

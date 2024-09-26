@@ -467,6 +467,12 @@ class Instantiation(util_base.IdObj):
         dir_path = f"output.{sim.full_name()}-{sim._id}"
         return self._join_paths(base=self._env._output_base, relative_path=dir_path)
 
+    def get_simulator_shm_pool_path(self, sim: sim_base.Simulator) -> str:
+        return self._join_paths(
+            base=self.shm_base_dir(),
+            relative_path=f"{sim.full_name()}-shm-pool-{sim._id}",
+        )
+
     def get_simulation_output_path(self, run_number: int) -> str:
         return self._join_paths(
             base=self._env._output_base,

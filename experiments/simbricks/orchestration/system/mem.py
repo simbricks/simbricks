@@ -57,6 +57,9 @@ class MemSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
         self._mem_if: MemDeviceInterface = MemDeviceInterface(c=self)
+        self._addr = 0xe000000000000000
+        self._size = 1024 * 1024 * 1024  # 1GB
+        self._as_id = 0
 
     def interfaces(self) -> list[base.Interface]:
         return [self._mem_if]
