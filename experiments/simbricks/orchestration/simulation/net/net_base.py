@@ -138,6 +138,7 @@ class SwitchNet(NetSim):
         for sock in listen:
             cmd += " -h " + sock._path
 
+        print(f"SWITCH NET CMD!!! ===== {cmd}")
         return cmd
 
 

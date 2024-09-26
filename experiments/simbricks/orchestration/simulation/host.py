@@ -29,11 +29,11 @@ import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.system as system
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
+from simbricks.orchestration.system import host as sys_host
+from simbricks.orchestration.system import pcie as sys_pcie
+from simbricks.orchestration.system import mem as sys_mem
 
-if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system import host as sys_host
-    from simbricks.orchestration.system import mem as sys_mem
-    from simbricks.orchestration.system import pcie as sys_pcie
+# if tp.TYPE_CHECKING:
 
 
 class HostSim(sim_base.Simulator):
