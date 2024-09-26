@@ -20,12 +20,14 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration.system import base as sys_base
+from __future__ import annotations
+
+import typing as tp
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system import nic as sys_nic
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.simulation import sim_base
+from simbricks.orchestration.simulation import base as sim_base
 
 
 class PCIDevSim(sim_base.Simulator):
@@ -50,7 +52,7 @@ class NICSim(PCIDevSim):
         return "nic." + self.name
 
     def __init__(
-        self, simulation: sim_base.Simulation, executable: str, name: str
+        self, simulation: sim_base.Simulation, executable: str, name: str = ""
     ) -> None:
         super().__init__(simulation=simulation, executable=executable, name=name)
 
@@ -97,8 +99,8 @@ class I40eNicSim(NICSim):
         super().__init__(
             simulation=simulation,
             executable="sims/nic/i40e_bm/i40e_bm",
-            name=f"NICSim-{self._id}",
         )
+        self.name=f"NICSim-{self._id}"
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return super().run_cmd(inst=inst)
@@ -109,8 +111,8 @@ class CorundumBMNICSim(NICSim):
         super().__init__(
             simulation=simulation,
             executable="sims/nic/corundum_bm/corundum_bm",
-            name=f"CorundumBMNICSim-{self._id}",
         )
+        self.name=f"CorundumBMNICSim-{self._id}"
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return super().run_cmd(inst=inst)
@@ -122,8 +124,8 @@ class CorundumVerilatorNICSim(NICSim):
         super().__init__(
             simulation=simulation,
             executable="sims/nic/corundum/corundum_verilator",
-            name=f"CorundumVerilatorNICSim-{self._id}",
         )
+        self.name=f"CorundumVerilatorNICSim-{self._id}"
         self.clock_freq = 250  # MHz
 
     def resreq_mem(self) -> int:

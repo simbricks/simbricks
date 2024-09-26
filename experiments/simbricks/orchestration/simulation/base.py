@@ -106,9 +106,17 @@ class Simulator(utils_base.IdObj):
         sync_period = None
         run_sync = False
         for channel in channels:
-            sync_period = min(sync_period, channel.sync_period)
+            sync_period = (
+                min(sync_period, channel.sync_period)
+                if sync_period
+                else channel.sync_period
+            )
             run_sync = run_sync or channel._synchronized
-            latency = max(latency, channel.sys_channel.latency)
+            latency = (
+                max(latency, channel.sys_channel.latency)
+                if latency
+                else channel.sys_channel.latency
+            )
         if latency is None or sync_period is None:
             raise Exception("could not determine eth_latency and sync_period")
         return latency, sync_period, run_sync
