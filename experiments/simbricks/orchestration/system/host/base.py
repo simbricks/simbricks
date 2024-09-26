@@ -30,6 +30,7 @@ import simbricks.orchestration.instantiation.base as instantiation
 from simbricks.orchestration.system import base as base
 from simbricks.orchestration.system import eth as eth
 from simbricks.orchestration.system.host import app
+from simbricks.orchestration.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system.host import disk_images
@@ -80,9 +81,7 @@ class BaseLinuxHost(FullSystemHost):
     def _concat_app_cmds(
         self,
         inst: instantiation.Instantiation,
-        mapper: tp.Callable[
-            [app.BaseLinuxApplication, instantiation.Instantiation], list[str]
-        ],
+        mapper_name: str,
     ) -> list[str]:
         """
         Generate command list from applications by applying `mapper` to each
@@ -90,17 +89,22 @@ class BaseLinuxHost(FullSystemHost):
         """
         cmds = []
         for app in self.applications:
-            cmds += mapper(app, inst)
+            mapper = getattr(app, mapper_name, None)
+            if mapper is None:
+                raise Exception(
+                    f"coulkd not determine mapper function with name {mapper_name}"
+                )
+            cmds += mapper(inst)
 
         return cmds
 
     def run_cmds(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run on node."""
-        return self._concat_app_cmds(inst, app.BaseLinuxApplication.run_cmds)
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.run_cmds.__name__)
 
     def cleanup_cmds(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to cleanup node."""
-        return self._concat_app_cmds(inst, app.BaseLinuxApplication.cleanup_cmds)
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.cleanup_cmds.__name__)
 
     def config_files(self, inst: instantiation.Instantiation) -> dict[str, tp.IO]:
         """
@@ -117,11 +121,11 @@ class BaseLinuxHost(FullSystemHost):
 
     def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
-        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_pre_cp)
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_pre_cp.__name__)
 
     def prepare_post_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node after checkpoint restore."""
-        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_post_cp)
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_post_cp.__name__)
 
     def config_str(self, inst: instantiation.Instantiation) -> str:
         if inst.create_cp():
@@ -139,7 +143,8 @@ class BaseLinuxHost(FullSystemHost):
             + self.run_cmds(inst)
             + self.cleanup_cmds(inst)
         )
-        return "\n".join(es)
+        cmd = "\n".join(es)
+        return cmd
 
     def strfile(self, s: str) -> io.BytesIO:
         """
@@ -170,35 +175,36 @@ class LinuxHost(BaseLinuxHost):
             + '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"',
         ] + super().prepare_pre_cp(inst)
 
-    def prepare_post_cp(self, inst) -> tp.List[str]:
-        l = []
+    def prepare_post_cp(self, inst) -> list[str]:
+        cmds = super().prepare_post_cp(inst)
         for d in self.drivers:
             if d[0] == "/":
-                l.append(f"insmod {d}")
+                cmds.append(f"insmod {d}")
             else:
-                l.append(f"modprobe {d}")
-        eth_i = 0
-        for i in self.interfaces():
-            # Get ifname parameter if set, otherwise default to ethX
-            if isinstance(i, eth.EthSimpleNIC):
-                ifn = f"eth{eth_i}"
-                eth_i += 1
-            else:
-                continue
+                cmds.append(f"modprobe {d}")
 
-            # Force MAC if requested
-            if "force_mac_addr" in i.parameters:
-                mac = i.parameters["force_mac_addr"]
-                l.append(f"ip link set dev {ifn} address " f"{mac}")
+        index = 0
+        for inf in base.Interface.filter_by_type(self.interfaces(), eth.EthInterface):
+            if not utils_base.check_type(inf.component, eth.EthSimpleNIC):
+                continue
+            # Get ifname parameter if set, otherwise default to ethX
+            ifn = f"eth{index}"
+            index += 1
+            com: eth.EthSimpleNIC = inf.component
+
+            # Force MAC if requested TODO: FIXME
+            # if "force_mac_addr" in i.parameters:
+            #     mac = i.parameters["force_mac_addr"]
+            #     l.append(f"ip link set dev {ifn} address " f"{mac}")
 
             # Bring interface up
-            l.append(f"ip link set dev {ifn} up")
+            cmds.append(f"ip link set dev {ifn} up")
 
             # Add IP addresses if included
-            if "ipv4_addrs" in i.parameters:
-                for a in i.parameters["ipv4_addrs"]:
-                    l.append(f"ip addr add {a} dev {ifn}")
-        return super().prepare_post_cp(inst) + l
+            assert com._ip is not None
+            cmds.append(f"ip addr add {com._ip} dev {ifn}")
+
+        return cmds
 
 
 class I40ELinuxHost(LinuxHost):
