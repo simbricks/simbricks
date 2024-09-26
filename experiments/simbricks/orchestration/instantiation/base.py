@@ -212,7 +212,7 @@ class Instantiation(util_base.IdObj):
         assert queue_type is not None
         return self._join_paths(
             base=self._env._shm_base,
-            relative_path=f"/{queue_type}/{queue_ident}",
+            relative_path=f"{queue_type}/{queue_ident}",
             enforce_existence=False,
         )
 
