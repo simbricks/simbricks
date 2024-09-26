@@ -89,6 +89,15 @@ class Interface(util_base.IdObj):
             peer_if = self.channel.a
         return peer_if
 
+    def get_chan_raise(self) -> Channel:
+        if not self.is_connected():
+            raise Exception(f"interface(id={self._id}) is not connected to channel")
+        return self.channel
+
+    def get_opposing_interface(self) -> Interface:
+        chan = self.get_chan_raise()
+        return chan.get_opposing_interface(interface=self)
+
     T = tp.TypeVar("T")
 
     @staticmethod
@@ -113,3 +122,12 @@ class Channel(util_base.IdObj):
         # it's not referenced anywhere, so that's fine I guess.
         self.a.disconnect()
         self.b.disconnect()
+
+    def get_opposing_interface(self, interface: Interface) -> Interface:
+        if interface is not self.a and interface is not self.b:
+            raise Exception(
+                "cannot determine opposing interface, interface is not connected to channel"
+            )
+        opposing = self.a if interface is self.b else self.b
+        assert opposing != interface
+        return opposing
