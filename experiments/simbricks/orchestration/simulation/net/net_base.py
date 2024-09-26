@@ -36,7 +36,7 @@ class NetSim(sim_base.Simulator):
         self,
         simulation: sim_base.Simulation,
         executable: str,
-        name: str,
+        name: str = "",
     ) -> None:
         super().__init__(simulation=simulation, executable=executable, name=name)
 
@@ -58,8 +58,8 @@ class WireNet(NetSim):
         super().__init__(
             simulation=simulation,
             executable="sims/net/wire/net_wire",
-            name=f"WireNet-{self._id}",
         )
+        self.name=f"WireNet-{self._id}"
         self._relative_pcap_file_path: str | None = relative_pcap_filepath
 
     def add(self, wire: eth.EthWire):
@@ -101,8 +101,8 @@ class SwitchNet(NetSim):
         super().__init__(
             simulation=simulation,
             executable=executable,
-            name=f"SwitchNet-{self._id}",
         )
+        self.name=f"SwitchNet-{self._id}"
         self._relative_pcap_file_path: str | None = relative_pcap_filepath
 
     def add(self, switch_spec: eth.EthSwitch):
@@ -151,7 +151,7 @@ class MemSwitchNet(SwitchNet):
             executable="sims/mem/memswitch/memswitch",
             relative_pcap_file_path=relative_pcap_file_path,
         )
-        self._name = f"MemSwitchNet-{self._id}"
+        self.name = f"MemSwitchNet-{self._id}"
         """AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START."""
         self.mem_map = []
 

@@ -60,12 +60,14 @@ class HostSim(sim_base.Simulator):
 class Gem5Sim(HostSim):
 
     def __init__(self, simulation: sim_base.Simulation):
-        super().__init__(simulation=simulation, executable="sims/external/gem5/build/X86/gem5", name=f"Gem5Sim-{self._id}")
+        super().__init__(simulation=simulation, executable="sims/external/gem5/build/X86/gem5")
+        self.name=f"Gem5Sim-{self._id}"
         self.cpu_type_cp = "X86KvmCPU"
         self.cpu_type = "TimingSimpleCPU"
-        self.extra_main_args: list[str] = []
-        self.extra_config_args: list[str] = []
-        self.variant = "fast"
+        self.extra_main_args: list[str] = [] # TODO
+        self.extra_config_args: list[str] = [] # TODO
+        self._variant: str = "fast"
+        self._sys_clock: str =  '1GHz' # TODO: move to system module
 
     def resreq_cores(self) -> int:
         return 1
@@ -97,19 +99,19 @@ class Gem5Sim(HostSim):
         if len(full_sys_hosts) != 1:
             raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
 
-        cmd = f"{inst.join_repo_base(f"{self._executable}.{self.variant}")} --outdir={inst.get_simmulator_output_dir(sim=self)} "
+        cmd = f"{inst.join_repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.get_simmulator_output_dir(sim=self)} "
         cmd += " ".join(self.extra_main_args)
         cmd += (
-            f" {inst.join_repo_base("sims/external/gem5/configs/simbricks/simbricks.py")} --caches --l2cache "
+            f" {inst.join_repo_base('sims/external/gem5/configs/simbricks/simbricks.py')} --caches --l2cache "
             "--l1d_size=32kB --l1i_size=32kB --l2_size=32MB "
             "--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=16 "
             f"--cacheline_size=64 --cpu-clock={full_sys_hosts[0].cpu_freq}"
-            f" --sys-clock={full_sys_hosts[0].sys_clock} " # TODO:FIXME
+            f" --sys-clock={self._sys_clock} "
             f"--checkpoint-dir={inst.cpdir_subdir(sim=self)} "
-            f"--kernel={inst.join_repo_base("images/vmlinux")} "
+            f"--kernel={inst.join_repo_base('images/vmlinux')} "
         )
         for disk in full_sys_hosts[0].disks:
-            cmd += f"--disk-image={disk.path(inst=inst, format="raw")} "
+            cmd += f"--disk-image={disk.path(inst=inst, format='raw')} "
         cmd += (
             f"--cpu-type={cpu_type} --mem-size={full_sys_hosts[0].memory}MB "
             f"--num-cpus={full_sys_hosts[0].cores} "
