@@ -47,7 +47,7 @@ class BaseLinuxApplication(abc.ABC):
     @abc.abstractmethod
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         """Commands to run on node."""
-        return []
+        raise Exception("must be overwritten")
 
     def cleanup_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         """Commands to run to cleanup node."""
