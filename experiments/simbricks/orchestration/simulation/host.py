@@ -32,6 +32,7 @@ from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 from simbricks.orchestration.system import host as sys_host
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
+from simbricks.orchestration.utils import base as utils_base
 
 
 class HostSim(sim_base.Simulator):
@@ -153,23 +154,25 @@ class Gem5Sim(HostSim):
                 cmd += ":sync"
             cmd += " "
 
-        # mem_interfaces = system.Interface.filter_by_type(
-        #     interfaces=fsh_interfaces, ty=sys_mem.MemHostInterface
-        # )
-        # for inf in mem_interfaces:
-        #     socket = self._get_socket(inst=inst, interface=inf)
-        #     if socket is None:
-        #         continue
-        #     assert socket._type == inst_base.SockType.CONNECT
-        #     cmd += (
-        #         f"--simbricks-mem={dev._size}@{dev._addr}@{dev._as_id}@"  # TODO: FIXME
-        #         f"connect:{socket._path}"
-        #         f":latency={latency}ns"
-        #         f":sync_interval={sync_period}ns"
-        #     )
-        #     if run_sync:
-        #         cmd += ":sync"
-        #     cmd += " "
+        mem_interfaces = system.Interface.filter_by_type(
+            interfaces=fsh_interfaces, ty=sys_mem.MemHostInterface
+        )
+        for inf in mem_interfaces:
+            socket = self._get_socket(inst=inst, interface=inf)
+            if socket is None:
+                continue
+            assert socket._type == inst_base.SockType.CONNECT
+            utils_base.has_expected_type(inf.component, sys_mem.MemSimpleDevice)
+            dev: sys_mem.MemSimpleDevice = inf.component
+            cmd += (
+                f"--simbricks-mem={dev._size}@{dev._addr}@{dev._as_id}@"
+                f"connect:{socket._path}"
+                f":latency={latency}ns"
+                f":sync_interval={sync_period}ns"
+            )
+            if run_sync:
+                cmd += ":sync"
+            cmd += " "
 
         # TODO: FIXME
         # for net in self.net_directs:
