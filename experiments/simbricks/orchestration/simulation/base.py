@@ -248,6 +248,9 @@ class Simulator(utils_base.IdObj):
 
     def checkpoint_commands(self) -> list[str]:
         return []
+    
+    def cleanup_commands(self) -> list[str]:
+        return []
 
     @abc.abstractmethod
     def supported_socket_types(self) -> set[inst_base.SockType]:

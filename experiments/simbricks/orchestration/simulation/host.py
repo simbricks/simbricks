@@ -90,6 +90,9 @@ class Gem5Sim(HostSim):
 
     def checkpoint_commands(self) -> list[str]:
         return ["m5 checkpoint"]
+    
+    def cleanup_commands(self) -> list[str]:
+        return ["m5 exit"]
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cpu_type = self.cpu_type

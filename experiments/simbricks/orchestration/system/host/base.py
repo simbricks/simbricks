@@ -105,9 +105,13 @@ class BaseLinuxHost(FullSystemHost):
 
     def cleanup_cmds(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to cleanup node."""
-        return self._concat_app_cmds(
+        cmds = self._concat_app_cmds(
             inst, app.BaseLinuxApplication.cleanup_cmds.__name__
-        )
+        ) 
+        sim = inst.find_sim_by_spec(spec=self)
+        cleanup = sim.cleanup_commands()
+        cmds += cleanup
+        return cmds
 
     def config_files(self, inst: instantiation.Instantiation) -> dict[str, tp.IO]:
         """
