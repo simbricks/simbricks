@@ -26,7 +26,6 @@ import asyncio
 import itertools
 import shlex
 import traceback
-import typing as tp
 import abc
 
 from simbricks.orchestration.utils import graphlib
@@ -39,46 +38,42 @@ from simbricks.orchestration.runtime_new import command_executor
 
 class ExperimentBaseRunner(abc.ABC):
 
-    def __init__(self, simulation: sim_base.Simulation, instantiation: inst_base.Instantiation, verbose: bool) -> None:
+    def __init__(
+        self,
+        simulation: sim_base.Simulation,
+        instantiation: inst_base.Instantiation,
+        verbose: bool,
+    ) -> None:
         self._simulation: sim_base.Simulation = simulation
         self._instantiation: inst_base.Instantiation = instantiation
         self._verbose: bool = verbose
         self._profile_int: int | None = None
         self._out = output.SimulationOutput(self._simulation)
-        self._running: list[tuple[sim_base.Simulator, command_executor.SimpleComponent]] = []
-        self._sockets: list[tuple[command_executor.Executor, inst_base.Socket]] = []
+        self._running: list[
+            tuple[sim_base.Simulator, command_executor.SimpleComponent]
+        ] = []
+        self._sockets: list[inst_base.Socket] = []
         self._wait_sims: list[command_executor.Component] = []
 
     @abc.abstractmethod
     def sim_executor(self, simulator: sim_base.Simulator) -> command_executor.Executor:
         pass
 
-    # def sim_graph(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
-    #     sims = self._simulation.all_simulators()
-    #     graph = {}
-    #     for sim in sims:
-    #         deps = sim.dependencies() + sim.extra_deps
-    #         print(f'deps of {sim}: {sim.dependencies()}')
-    #         graph[sim] = set()
-    #         for d in deps:
-    #             graph[sim].add(d)
-    #     return graph
-
     async def start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
 
         name = sim.full_name()
         if self._verbose:
-            print(f'{self._simulation.name}: starting {name}')
+            print(f"{self._simulation.name}: starting {name}")
 
         run_cmd = sim.run_cmd(self._instantiation)
         if run_cmd is None:
             if self._verbose:
-                print(f'{self._simulation.name}: started dummy {name}')
+                print(f"{self._simulation.name}: started dummy {name}")
             return
 
         # run simulator
-        executor = self.sim_executor(sim)
+        executor = self._instantiation.executor
         sc = executor.create_component(
             name, shlex.split(run_cmd), verbose=self._verbose, canfail=True
         )
@@ -87,16 +82,18 @@ class ExperimentBaseRunner(abc.ABC):
 
         # add sockets for cleanup
         for sock in sim.sockets_cleanup(inst=self._instantiation):
-            self._sockets.append((executor, sock))
+            self._sockets.append(sock)
 
         # Wait till sockets exist
         wait_socks = sim.sockets_wait(inst=self._instantiation)
         if len(wait_socks) > 0:
             if self._verbose:
-                print(f'{self._simulation.name}: waiting for sockets {name}')
+                print(f"{self._simulation.name}: waiting for sockets {name}")
             await self._instantiation.wait_for_sockets(sockets=wait_socks)
             if self._verbose:
-                print(f'{self._simulation.name}: waited successfully for sockets {name}')
+                print(
+                    f"{self._simulation.name}: waited successfully for sockets {name}"
+                )
 
         # add time delay if required
         delay = sim.start_delay()
@@ -107,7 +104,7 @@ class ExperimentBaseRunner(abc.ABC):
             self._wait_sims.append(sc)
 
         if self._verbose:
-            print(f'{self._simulation.name}: started {name}')
+            print(f"{self._simulation.name}: started {name}")
 
     async def before_wait(self) -> None:
         pass
@@ -119,42 +116,15 @@ class ExperimentBaseRunner(abc.ABC):
         pass
 
     async def prepare(self) -> None:
-        # generate config tars
-        # copies = []
-        # for host in self.exp.hosts:
-        #     path = self.env.cfgtar_path(host)
-        #     if self._verbose:
-        #         print('preparing config tar:', path)
-        #     # TODO: FIXME
-        #     host.node_config.make_tar(self.env, path)
-        #     executor = self.sim_executor(host)
-        #     task = asyncio.create_task(executor.send_file(path, self._verbose))
-        #     copies.append(task)
-        # await asyncio.gather(*copies)
-
         # TODO: FIXME
         executor = command_executor.LocalExecutor()
         self._instantiation.executor = executor
         await self._instantiation.prepare()
 
-        # prepare all simulators in parallel
-        # sims = []
-        # for sim in self._simulation.all_simulators():
-        #     sim.prep_tar(self._instantiation)
-        #     prep_cmds = list(sim.prep_cmds(inst=self._instantiation))
-        #     executor = self.sim_executor(sim)
-        #     task = asyncio.create_task(
-        #         executor.run_cmdlist(
-        #             'prepare_' + self._simulation.name, prep_cmds, verbose=self._verbose
-        #         )
-        #     )
-        #     sims.append(task)
-        # await asyncio.gather(*sims)
-
     async def wait_for_sims(self) -> None:
         """Wait for simulators to terminate (the ones marked to wait on)."""
         if self._verbose:
-            print(f'{self._simulation.name}: waiting for hosts to terminate')
+            print(f"{self._simulation.name}: waiting for hosts to terminate")
         for sc in self._wait_sims:
             await sc.wait()
 
@@ -162,7 +132,7 @@ class ExperimentBaseRunner(abc.ABC):
         """Terminates all simulators and collects output."""
         self._out.set_end()
         if self._verbose:
-            print(f'{self._simulation.name}: cleaning up')
+            print(f"{self._simulation.name}: cleaning up")
 
         await self.before_cleanup()
 
@@ -190,7 +160,7 @@ class ExperimentBaseRunner(abc.ABC):
         assert self._profile_int
         while True:
             await asyncio.sleep(self._profile_int)
-            for (_, sc) in self._running:
+            for _, sc in self._running:
                 await sc.sigusr1()
 
     async def run(self) -> output.SimulationOutput:
@@ -222,7 +192,7 @@ class ExperimentBaseRunner(abc.ABC):
             await self.wait_for_sims()
         except asyncio.CancelledError:
             if self._verbose:
-                print(f'{self._simulation.name}: interrupted')
+                print(f"{self._simulation.name}: interrupted")
             self._out.set_interrupted()
         except:  # pylint: disable=bare-except
             self._out.set_failed()
@@ -236,9 +206,7 @@ class ExperimentBaseRunner(abc.ABC):
         # The bare except above guarantees that we always execute the following
         # code, which terminates all simulators and produces a proper output
         # file.
-        terminate_collect_task = asyncio.create_task(
-            self.terminate_collect_sims()
-        )
+        terminate_collect_task = asyncio.create_task(self.terminate_collect_sims())
         # prevent terminate_collect_task from being cancelled
         while True:
             try:
@@ -263,9 +231,7 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
     """Simple experiment runner with just one executor."""
 
     # TODO: FIXME
-    def __init__(
-        self, execs, exp: DistributedExperiment, *args, **kwargs
-    ) -> None:
+    def __init__(self, execs, exp: DistributedExperiment, *args, **kwargs) -> None:
         self.execs = execs
         super().__init__(exp, *args, **kwargs)
         self.exp = exp  # overrides the type in the base class
@@ -280,9 +246,7 @@ class ExperimentDistributedRunner(ExperimentBaseRunner):
         assert self.exp.all_sims_assigned()
 
         # set IP addresses for proxies based on assigned executors
-        for p in itertools.chain(
-            self.exp.proxies_listen, self.exp.proxies_connect
-        ):
+        for p in itertools.chain(self.exp.proxies_listen, self.exp.proxies_connect):
             executor = self.sim_executor(p)
             p.ip = executor.ip
 

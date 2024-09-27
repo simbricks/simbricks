@@ -168,19 +168,27 @@ class LinuxHost(BaseLinuxHost):
     def __init__(self, sys) -> None:
         super().__init__(sys)
         self.drivers: list[str] = []
+        self.hostname: str | None = "ubuntu"
 
     def cleanup_cmds(self, inst: instantiation.Instantiation) -> list[str]:
         return super().cleanup_cmds(inst) + ["poweroff -f"]
 
     def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
-        return [
+        cmds = [
             "set -x",
             "export HOME=/root",
             "export LANG=en_US",
             'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:'
             + '/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"',
-        ] + super().prepare_pre_cp(inst)
+        ]
+        if self.hostname is not None:
+            cmds += [
+                f"hostname -b {self.hostname}",
+                f'echo "127.0.1.1 {self.hostname}\n" >> /etc/hosts',
+            ]
+        cmds += super().prepare_pre_cp(inst)
+        return cmds
 
     def prepare_post_cp(self, inst) -> list[str]:
         cmds = super().prepare_post_cp(inst)
@@ -215,7 +223,7 @@ class LinuxHost(BaseLinuxHost):
 
             # Add IP addresses if included
             assert com._ip is not None
-            cmds.append(f"ip addr add {com._ip} dev {ifn}")
+            cmds.append(f"ip addr add {com._ip}/24 dev {ifn}")
 
         return cmds
 
