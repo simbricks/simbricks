@@ -23,12 +23,9 @@
 from __future__ import annotations
 
 import abc
-import itertools
-import time
 import asyncio
 import typing as tp
 import simbricks.orchestration.system as sys_conf
-import simbricks.orchestration.system.host as sys_host_conf
 import simbricks.orchestration.instantiation.base as inst_base
 import simbricks.orchestration.simulation.channel as sim_chan
 import simbricks.orchestration.utils.base as utils_base
@@ -36,9 +33,6 @@ import simbricks.orchestration.utils.base as utils_base
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.simulation import (
         Channel,
-        HostSim,
-        PCIDevSim,
-        NetSim,
         base as sim_base,
     )
 
@@ -67,6 +61,20 @@ class Simulator(utils_base.IdObj):
         self._extra_args: str | None = None
         simulation.add_sim(self)
 
+    T = tp.TypeVar("T")
+
+    def filter_components_by_pred(
+        self,
+        pred: tp.Callable[[sys_conf.Component], bool],
+        ty: type[T] = sys_conf.Component,
+    ) -> list[T]:
+        return list(filter(pred, self._components))
+
+    def filter_components_by_type(self, ty: type[T]) -> list[T]:
+        return self.filter_components_by_pred(
+            pred=lambda comp: isinstance(comp, ty), ty=ty
+        )
+
     @property
     def extra_args(self) -> str:
         return self._extra_args
@@ -77,8 +85,17 @@ class Simulator(utils_base.IdObj):
 
     @property
     def wait_terminate(self) -> bool:
-        # TODO: FIXME If in the system config for e.g. an application is set that one has to wait for the app, we need to wait for the simulator as well!!!
-        return self._wait
+        if self._wait:
+            return True
+        host_comps = self.filter_components_by_type(ty=sys_conf.Host)
+        for host in host_comps:
+            for app in host.applications:
+                if not isinstance(app, sys_conf.BaseLinuxApplication):
+                    continue
+                lin_app: sys_conf.BaseLinuxApplication = app
+                if lin_app.wait:
+                    return True
+        return False
 
     @wait_terminate.setter
     def wait_terminate(self, wait: bool):
@@ -129,20 +146,6 @@ class Simulator(utils_base.IdObj):
         if latency is None or sync_period is None:
             raise Exception("could not determine eth_latency and sync_period")
         return latency, sync_period, run_sync
-
-    T = tp.TypeVar("T")
-
-    def filter_components_by_pred(
-        self,
-        pred: tp.Callable[[sys_conf.Component], bool],
-        ty: type[T] = sys_conf.Component,
-    ) -> list[T]:
-        return list(filter(pred, self._components))
-
-    def filter_components_by_type(self, ty: type[T]) -> list[T]:
-        return self.filter_components_by_pred(
-            pred=lambda comp: isinstance(comp, ty), ty=ty
-        )
 
     def components(self) -> set[sys_conf.Component]:
         return self._components
@@ -248,7 +251,7 @@ class Simulator(utils_base.IdObj):
 
     def checkpoint_commands(self) -> list[str]:
         return []
-    
+
     def cleanup_commands(self) -> list[str]:
         return []
 
