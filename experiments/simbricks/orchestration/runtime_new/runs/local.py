@@ -61,7 +61,7 @@ class LocalSimpleRuntime(run_base.Runtime):
             # simulators yet
             return
 
-        run.output = await runner.run()  # handles CancelledError
+        run._output = await runner.run()  # handles CancelledError
         self._complete.append(run)
 
         # if the log is huge, this step takes some time
