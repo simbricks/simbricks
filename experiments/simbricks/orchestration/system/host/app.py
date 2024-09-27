@@ -30,6 +30,7 @@ from simbricks.orchestration.instantiation import base as inst_base
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import host as sys_host
 
+
 class Application(abc.ABC):
     def __init__(self, h: sys_host.Host) -> None:
         self.host = h
@@ -54,7 +55,7 @@ class BaseLinuxApplication(abc.ABC):
         if self.end_delay is None:
             return []
         else:
-            return [f'sleep {self.start_delay}']
+            return [f"sleep {self.start_delay}"]
 
     def config_files(self, inst: inst_base.Instantiation) -> dict[str, tp.IO]:
         """
@@ -75,7 +76,7 @@ class BaseLinuxApplication(abc.ABC):
         if self.end_delay is None:
             return []
         else:
-            return [f'sleep {self.end_delay}']
+            return [f"sleep {self.end_delay}"]
 
     def strfile(self, s: str) -> io.BytesIO:
         """
@@ -89,21 +90,24 @@ class BaseLinuxApplication(abc.ABC):
 
 
 class PingClient(BaseLinuxApplication):
-    def __init__(self, h: sys_host.LinuxHost, server_ip: str = '192.168.64.1') -> None:
+    def __init__(self, h: sys_host.LinuxHost, server_ip: str = "192.168.64.1") -> None:
         super().__init__(h)
         self.server_ip = server_ip
 
     def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
-        return [f'ping {self.server_ip} -c 10']
+        return [f"ping {self.server_ip} -c 10"]
 
 
 class Sleep(BaseLinuxApplication):
-    def __init__(self, h: sys_host.LinuxHost, delay: float = 10) -> None:
+    def __init__(self, h: sys_host.LinuxHost, delay: float = 10, infinite: bool = False) -> None:
         super().__init__(h)
+        self.infinite: bool = infinite
         self.delay = delay
 
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
-        return [f'sleep {self.delay}']
+        if self.infinite:
+            return [f"sleep infinity"]
+        return [f"sleep {self.delay}"]
 
 
 class NetperfServer(BaseLinuxApplication):
@@ -111,11 +115,11 @@ class NetperfServer(BaseLinuxApplication):
         super().__init__(h)
 
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
-        return ['netserver', 'sleep infinity']
+        return ["netserver", "sleep infinity"]
 
 
 class NetperfClient(BaseLinuxApplication):
-    def __init__(self, h: sys_host.LinuxHost, server_ip: str = '192.168.64.1') -> None:
+    def __init__(self, h: sys_host.LinuxHost, server_ip: str = "192.168.64.1") -> None:
         super().__init__(h)
         self.server_ip = server_ip
         self.duration_tp = 10
@@ -123,11 +127,11 @@ class NetperfClient(BaseLinuxApplication):
 
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         return [
-            'netserver',
-            'sleep 0.5',
-            f'netperf -H {self.server_ip} -l {self.duration_tp}',
+            "netserver",
+            "sleep 0.5",
+            f"netperf -H {self.server_ip} -l {self.duration_tp}",
             (
-                f'netperf -H {self.server_ip} -l {self.duration_lat} -t TCP_RR'
-                ' -- -o mean_latency,p50_latency,p90_latency,p99_latency'
-            )
+                f"netperf -H {self.server_ip} -l {self.duration_lat} -t TCP_RR"
+                " -- -o mean_latency,p50_latency,p90_latency,p99_latency"
+            ),
         ]

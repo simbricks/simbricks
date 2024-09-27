@@ -57,8 +57,10 @@ ethchannel0 = system.EthChannel(switch.eth_ifs[0], nic0._eth_if)
 ethchannel1 = system.EthChannel(switch.eth_ifs[1], nic1._eth_if)
 
 # configure the software to run on the host
-host0.add_app(system.NetperfClient(host0, nic1._ip))
-host1.add_app(system.NetperfServer(host1))
+# host0.add_app(system.NetperfClient(host0, nic1._ip))
+# host1.add_app(system.NetperfServer(host1))
+host0.add_app(system.PingClient(host0, nic1._ip))
+host1.add_app(system.Sleep(host1, infinite=True))
 
 """
 Execution Config
@@ -103,9 +105,11 @@ for host_type in host_types:
             host_inst0 = host_sim(simulation)
             host_inst0.add(host0)
             host_inst0.wait_terminate = True
+            host_inst0.cpu_type = 'X86KvmCPU'
 
             host_inst1 = host_sim(simulation)
             host_inst1.add(host1)
+            host_inst1.cpu_type = 'X86KvmCPU'
 
             nic_inst0 = nic_sim(simulation)
             nic_inst0.add(nic0)
@@ -116,9 +120,9 @@ for host_type in host_types:
             net_inst = net_sim(simulation)
             net_inst.add(switch)
 
-            sim_helpers.enable_sync_simulation(
-                simulation=simulation, amount=500, ratio=sim.Time.Nanoseconds
-            )
+            # sim_helpers.enable_sync_simulation(
+            #     simulation=simulation, amount=500, ratio=sim.Time.Nanoseconds
+            # )
 
             print(simulation.name + "   all simulators:")
             sims = simulation.all_simulators()
