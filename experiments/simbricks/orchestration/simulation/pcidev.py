@@ -57,6 +57,7 @@ class NICSim(PCIDevSim):
         super().__init__(simulation=simulation, executable=executable, name=name)
 
     def add(self, nic: sys_nic.SimplePCIeNIC):
+        assert len(self._components) < 1
         super().add(nic)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
@@ -90,7 +91,6 @@ class NICSim(PCIDevSim):
         if self.extra_args is not None:
             cmd += " " + self.extra_args
 
-        print(f"NIC RUN COMMAND!!! ===== {cmd}")
         return cmd
 
 
@@ -116,7 +116,8 @@ class CorundumBMNICSim(NICSim):
         self.name=f"CorundumBMNICSim-{self._id}"
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        return super().run_cmd(inst=inst)
+        cmd = super().run_cmd(inst=inst)
+        return cmd
 
 
 class CorundumVerilatorNICSim(NICSim):
@@ -135,5 +136,5 @@ class CorundumVerilatorNICSim(NICSim):
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
-        cmd += str(self.clock_freq)
+        cmd += f" {self.clock_freq}"
         return cmd

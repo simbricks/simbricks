@@ -25,7 +25,6 @@ from __future__ import annotations
 import typing as tp
 import io
 import asyncio
-from os import path
 import simbricks.orchestration.instantiation.base as instantiation
 from simbricks.orchestration.system import base as base
 from simbricks.orchestration.system import eth as eth
@@ -107,7 +106,7 @@ class BaseLinuxHost(FullSystemHost):
         """Commands to run to cleanup node."""
         cmds = self._concat_app_cmds(
             inst, app.BaseLinuxApplication.cleanup_cmds.__name__
-        ) 
+        )
         sim = inst.find_sim_by_spec(spec=self)
         cleanup = sim.cleanup_commands()
         cmds += cleanup
@@ -244,5 +243,9 @@ class CorundumLinuxHost(LinuxHost):
         self.drivers.append("/tmp/guest/mqnic.ko")
 
     def config_files(self, inst: instantiation.Instantiation) -> tp.Dict[str, tp.IO]:
-        m = {"mqnic.ko": open("../images/mqnic/mqnic.ko", "rb")}
-        return {**m, **super().config_files()}
+        m = {
+            "mqnic.ko": open(
+                f"{inst.join_repo_base(relative_path='images/mqnic/mqnic.ko')}", "rb"
+            )
+        }
+        return {**m, **super().config_files(inst=inst)}

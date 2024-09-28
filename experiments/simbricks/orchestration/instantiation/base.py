@@ -347,7 +347,8 @@ class Instantiation(util_base.IdObj):
         await self.executor.await_files(wait_socks, verbose=True)
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
-
+    
+    # TODO: fix paths to support mutliple exeriment runs etc.
     def wrkdir(self) -> str:
         return pathlib.Path(self._env._workdir).resolve()
 
@@ -414,7 +415,6 @@ class Instantiation(util_base.IdObj):
             )
 
         joined = pathlib.Path(base).joinpath(relative_path).resolve()
-        print(f"joined={joined} from base={base}, relative_path={relative_path}")
         if enforce_existence and not joined.exists():
             raise Exception(f"couldn't join {base} and {relative_path}")
         return joined.as_posix()
@@ -442,7 +442,7 @@ class Instantiation(util_base.IdObj):
         return path
 
     def cfgtar_path(self, sim: sim_base.Simulator) -> str:
-        return f"{self._env._workdir}/cfg.{sim.name}.tar"
+        return f"{self.wrkdir()}/cfg.{sim.name}.tar"
 
     def join_tmp_base(self, relative_path: str) -> str:
         return self._join_paths(
