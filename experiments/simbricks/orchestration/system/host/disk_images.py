@@ -38,6 +38,7 @@ class DiskImage(utils_base.IdObj):
     def __init__(self, h: sys_host.Host) -> None:
         super().__init__()
         self.host: sys_host.Host = h
+        self._qemu_img_exec: str = "sims/external/qemu/build/qemu-img"
 
     @abc.abstractmethod
     def available_formats(self) -> list[str]:
@@ -46,7 +47,20 @@ class DiskImage(utils_base.IdObj):
     @abc.abstractmethod
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         raise Exception("must be overwritten")
-    
+
+    async def make_qcow_copy(self, inst: inst_base.Instantiation, format: str) -> str:
+        disk_path = pathlib.Path(self.path(inst=inst, format=format))
+        copy_path = inst.join_tmp_base(relative_path=f"hdcopy.{self._id}")
+        prep_cmds = [
+            (
+                f"{inst.join_repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -o "
+                f'backing_file="{disk_path}" '
+                f"{copy_path}"
+            )
+        ]
+        await inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
+        return copy_path
+
     @staticmethod
     def assert_is_file(path: str) -> str:
         if not pathlib.Path(path).is_file():
@@ -66,7 +80,7 @@ class DiskImage(utils_base.IdObj):
                 break
 
         if format is None:
-            raise Exception('No supported image format found')
+            raise Exception("No supported image format found")
 
         await self._prepare_format(inst, format)
 
@@ -81,7 +95,7 @@ class ExternalDiskImage(DiskImage):
     def available_formats(self) -> list[str]:
         return self.formats
 
-    def path(self, inst: inst_base.Instantiation, format: str)  -> str:
+    def path(self, inst: inst_base.Instantiation, format: str) -> str:
         DiskImage.assert_is_file(self._path)
         return self._path
 
@@ -100,12 +114,13 @@ class DistroDiskImage(DiskImage):
         path = inst.hd_path(self.name)
         if format == "raw":
             path += ".raw"
-        elif format == "qcow":
+        elif format == "qcow2":
             pass
         else:
             raise RuntimeError("Unsupported disk format")
         DiskImage.assert_is_file(path)
         return path
+
 
 # Abstract base class for dynamically generated images
 class DynamicDiskImage(DiskImage):
@@ -119,6 +134,7 @@ class DynamicDiskImage(DiskImage):
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
 
+
 # Builds the Tar with the commands to run etc.
 class LinuxConfigDiskImage(DynamicDiskImage):
     def __init__(self, h: sys_host.LinuxHost) -> None:
@@ -128,12 +144,15 @@ class LinuxConfigDiskImage(DynamicDiskImage):
     def available_formats(self) -> list[str]:
         return ["raw"]
 
+    async def make_qcow_copy(self, inst: inst_base.Instantiation, format: str) -> str:
+        return self.path(inst=inst, format=format)
+
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         path = self.path(inst, format)
         print(path)
-        with tarfile.open(path, 'w:') as tar:
+        with tarfile.open(path, "w:") as tar:
             # add main run script
-            cfg_i = tarfile.TarInfo('guest/run.sh')
+            cfg_i = tarfile.TarInfo("guest/run.sh")
             cfg_i.mode = 0o777
             cfg_f = self.host.strfile(self.host.config_str(inst))
             cfg_f.seek(0, io.SEEK_END)
@@ -143,15 +162,14 @@ class LinuxConfigDiskImage(DynamicDiskImage):
             cfg_f.close()
 
             # add additional config files
-            for (n, f) in self.host.config_files(inst).items():
-                f_i = tarfile.TarInfo('guest/' + n)
+            for n, f in self.host.config_files(inst).items():
+                f_i = tarfile.TarInfo("guest/" + n)
                 f_i.mode = 0o777
                 f.seek(0, io.SEEK_END)
                 f_i.size = f.tell()
                 f.seek(0, io.SEEK_SET)
                 tar.addfile(tarinfo=f_i, fileobj=f)
                 f.close()
-
 
 
 # This is an additional example: building disk images directly from python

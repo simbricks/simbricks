@@ -24,11 +24,9 @@ from __future__ import annotations
 
 import math
 import asyncio
-import typing as tp
 import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.system as system
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 from simbricks.orchestration.system import host as sys_host
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
@@ -90,7 +88,7 @@ class Gem5Sim(HostSim):
 
     def checkpoint_commands(self) -> list[str]:
         return ["m5 checkpoint"]
-    
+
     def cleanup_commands(self) -> list[str]:
         return ["m5 exit"]
 
@@ -192,102 +190,112 @@ class Gem5Sim(HostSim):
 
         cmd += " ".join(self.extra_config_args)
 
-        print(f"GEM5 COMMAND!!! ===== {cmd}")
         return cmd
 
 
 class QemuSim(HostSim):
 
-    def __init__(self, e: sim_base.Simulation):
-        super().__init__(e)
+    def __init__(self, simulation: sim_base.Simulation) -> None:
+        super().__init__(
+            simulation=simulation,
+            executable="sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64",
+        )
+        self.name = f"QemuSim-{self._id}"
+        self._disks: list[tuple[str, str]] = [] # [(path, format)]
 
     def resreq_cores(self) -> int:
-        if self.sync:
-            return 1
-        else:
-            # change it to sum of all hosts
-            return self.hosts[0].cores + 1
+        return 1
 
     def resreq_mem(self) -> int:
         return 8192
 
     def supported_image_formats(self) -> list[str]:
-        return ["raw", "qcow2"]
+        return ["raw", "qcow"]
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
 
-        prep_cmds = []
-        full_sys_hosts = tp.cast(
-            list[system.FullSystemHost],
-            self.filter_components_by_type(ty=system.FullSystemHost),
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)
+        if len(full_sys_hosts) != 1:
+            raise Exception("QEMU only supports simulating 1 FullSystemHost")
+
+        d = []
+        for disk in full_sys_hosts[0].disks:
+            format = (
+                "qcow2" if not isinstance(disk, sys_host.LinuxConfigDiskImage) else "raw"
+            )
+            copy_path = await disk.make_qcow_copy(
+                inst=inst,
+                format=format,
+            )
+            assert copy_path is not None
+            d.append((copy_path, format))
+        self._disks = d
+
+    def checkpoint_commands(self) -> list[str]:
+        return []
+
+    def cleanup_commands(self) -> list[str]:
+        return []
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+
+        latency, period, sync = sim_base.Simulator.get_unique_latency_period_sync(
+            channels=self.get_channels()
         )
 
-        prep_cmds = []
-        for fsh in full_sys_hosts:
-            disks = tp.cast(list[system.DiskImage], fsh.disks)
-            for disk in disks:
-                prep_cmds.append(
-                    f"{inst.qemu_img_path()} create -f qcow2 -o "
-                    f'backing_file="{disk.path(inst=inst, format="qcow2")}" '
-                    f'{inst.hdcopy_path(img=disk, format="qcow2")}'
-                )
-
-        task = asyncio.create_task(
-            inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
-        )
-        await task
-
-    def run_cmd(self, env: ExpEnv) -> str:
-        accel = ",accel=kvm:tcg" if not self.sync else ""
-        if self.hosts[0].disks[0].kcmd_append:
-            kcmd_append = " " + self.hosts[0].kcmd_append
-        else:
-            kcmd_append = ""
+        accel = ",accel=kvm:tcg" if not sync else ""
+        # if self.node_config.kcmd_append: # TODO: FIXME
+        #     kcmd_append = " " + self.node_config.kcmd_append
+        # else:
+        #     kcmd_append = ""
 
         cmd = (
-            f"{env.qemu_path} -machine q35{accel} -serial mon:stdio "
+            f"{inst.join_repo_base(relative_path=self._executable)} -machine q35{accel} -serial mon:stdio "
             "-cpu Skylake-Server -display none -nic none "
-            f"-kernel {env.qemu_kernel_path} "
-            f"-drive file={env.hdcopy_path(self)},if=ide,index=0,media=disk "
-            f"-drive file={env.cfgtar_path(self)},if=ide,index=1,media=disk,"
-            "driver=raw "
-            '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
-            f'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" '
-            f"-m {self.hosts[0].memory} -smp {self.hosts[0].cores} "
+            f"-kernel {inst.join_repo_base('images/bzImage')} "
         )
 
-        if self.sync:
-            unit = self.hosts[0].cpu_freq[-3:]
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)
+        if len(full_sys_hosts) != 1:
+            raise Exception("QEMU only supports simulating 1 FullSystemHost")
+
+        for index, disk in enumerate(self._disks):
+            cmd += f"-drive file={disk[0]},if=ide,index={index},media=disk,driver={disk[1]} "
+        cmd += (
+            '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
+            # f'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" ' # TODO: FIXME
+            f'init=/home/ubuntu/guestinit.sh rw" '
+            f"-m {full_sys_hosts[0].memory} -smp {full_sys_hosts[0].cores} "
+        )
+
+        if sync:
+            unit = full_sys_hosts[0].cpu_freq[-3:]
             if unit.lower() == "ghz":
                 base = 0
             elif unit.lower() == "mhz":
                 base = 3
             else:
                 raise ValueError("cpu frequency specified in unsupported unit")
-            num = float(self.hosts[0].cpu_freq[:-3])
+            num = float(full_sys_hosts[0].cpu_freq[:-3])
             shift = base - int(math.ceil(math.log(num, 2)))
 
             cmd += f" -icount shift={shift},sleep=off "
 
-        for dev in self.hosts[0].ifs:
-            if dev == dev.channel.a:
-                peer_if = dev.channel.b
-            else:
-                peer_if = dev.channel.a
-
-            peer_sim = self.experiment.find_sim(peer_if)
-            chn_sim = self.experiment.find_sim(dev.channel)
-
-            cmd += f"-device simbricks-pci,socket={env.dev_pci_path(peer_sim)}"
-            if self.sync:
+        fsh_interfaces = full_sys_hosts[0].interfaces()
+        pci_interfaces = system.Interface.filter_by_type(
+            interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
+        )
+        for inf in pci_interfaces:
+            socket = self._get_socket(inst=inst, interface=inf)
+            if socket is None:
+                continue
+            assert socket._type is inst_base.SockType.CONNECT
+            cmd += f"-device simbricks-pci,socket={socket._path}"
+            if sync:
                 cmd += ",sync=on"
-                cmd += f",pci-latency={dev.channel.latency}"
-                cmd += f",sync-period={chn_sim.sync_period}"
-                # if self.sync_drift is not None:
-                #     cmd += f',sync-drift={self.sync_drift}'
-                # if self.sync_offset is not None:
-                #     cmd += f',sync-offset={self.sync_offset}'
+                cmd += f",pci-latency={latency}"
+                cmd += f",sync-period={period}"
             else:
                 cmd += ",sync=off"
             cmd += " "

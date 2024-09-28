@@ -19,7 +19,8 @@ experiments = []
 sys = system.System()
 
 # create a host instance and a NIC instance then install the NIC on the host
-host0 = system.I40ELinuxHost(sys)
+host0 = system.CorundumLinuxHost(sys)
+# host0 = system.I40ELinuxHost(sys)
 pcie0 = system.PCIeHostInterface(host0)
 cfg_disk0 = system.DistroDiskImage(h=host0, name="base")
 host0.add_disk(cfg_disk0)
@@ -27,7 +28,8 @@ tar_disk0 = system.LinuxConfigDiskImage(h=host0)
 host0.add_disk(tar_disk0)
 
 host0.add_if(pcie0)
-nic0 = system.IntelI40eNIC(sys)
+nic0 = system.CorundumNIC(sys)
+# nic0 = system.IntelI40eNIC(sys)
 nic0.add_ipv4("10.0.0.1")
 pcichannel0 = system.PCIeChannel(pcie0, nic0._pci_if)
 
@@ -59,7 +61,9 @@ ethchannel1 = system.EthChannel(switch.eth_ifs[1], nic1._eth_if)
 # configure the software to run on the host
 # host0.add_app(system.NetperfClient(host0, nic1._ip))
 # host1.add_app(system.NetperfServer(host1))
-host0.add_app(system.PingClient(host0, nic1._ip))
+ping_client_app = system.PingClient(host0, nic1._ip)
+ping_client_app.wait = True
+host0.add_app(ping_client_app)
 host1.add_app(system.Sleep(host1, infinite=True))
 
 """
@@ -102,27 +106,30 @@ for host_type in host_types:
             else:
                 raise NameError(net_type)
 
-            host_inst0 = host_sim(simulation)
+            host_inst0 = sim.QemuSim(simulation)
             host_inst0.add(host0)
-            host_inst0.wait_terminate = True
-            host_inst0.cpu_type = 'X86KvmCPU'
+            # host_inst0.wait_terminate = True
+            # host_inst0.cpu_type = 'X86KvmCPU'
 
-            host_inst1 = host_sim(simulation)
+            # host_inst1 = sim.Gem5Sim(simulation)
+            host_inst1 = sim.QemuSim(simulation)
             host_inst1.add(host1)
-            host_inst1.cpu_type = 'X86KvmCPU'
+            # host_inst1.cpu_type = 'X86KvmCPU'
 
-            nic_inst0 = nic_sim(simulation)
+            # nic_inst0 = sim.I40eNicSim(simulation=simulation)
+            # nic_inst0 = sim.CorundumBMNICSim(simulation)
+            nic_inst0 = sim.CorundumVerilatorNICSim(simulation)
             nic_inst0.add(nic0)
 
-            nic_inst1 = nic_sim(simulation)
+            nic_inst1 = sim.I40eNicSim(simulation=simulation)
             nic_inst1.add(nic1)
 
-            net_inst = net_sim(simulation)
+            net_inst = sim.SwitchNet(simulation)
             net_inst.add(switch)
 
-            # sim_helpers.enable_sync_simulation(
-            #     simulation=simulation, amount=500, ratio=sim.Time.Nanoseconds
-            # )
+            sim_helpers.enable_sync_simulation(
+                simulation=simulation, amount=500, ratio=sim.Time.Nanoseconds
+            )
 
             print(simulation.name + "   all simulators:")
             sims = simulation.all_simulators()
