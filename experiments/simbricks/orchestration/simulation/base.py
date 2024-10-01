@@ -184,46 +184,64 @@ class Simulator(utils_base.IdObj):
             return False
         return True
 
-    def _get_my_interface(self, chan: sys_conf.Channel) -> sys_conf.Interface:
-        interface = None
-        for inter in chan.interfaces():
-            if inter.component in self._components:
-                assert interface is None
-                interface = inter
-        if interface is None:
-            raise Exception(
-                "unable to find channel interface for simulators specification"
-            )
-        return interface
+    # # TODO: remove
+    # def _get_my_interface(self, chan: sys_conf.Channel) -> sys_conf.Interface:
+    #     interface = None
+    #     for inter in chan.interfaces():
+    #         if inter.component in self._components:
+    #             assert interface is None
+    #             interface = inter
+    #     if interface is None:
+    #         raise Exception(
+    #             "unable to find channel interface for simulators specification"
+    #         )
+    #     return interface
 
-    def _get_socket(
-        self, inst: inst_base.Instantiation, interface: sys_conf.Interface
-    ) -> inst_base.Socket | None:
-        # get the channel associated with this interface
-        chan = interface.get_chan_raise()
-        # check if interfaces channel is simulator internal, i.e. doesnt need an instanciation
-        if not self._chan_needs_instance(chan):
-            return None
-        # create the socket to listen on or connect to
-        socket = inst.get_socket(
-            interface=interface, supported_sock_types=self.supported_socket_types()
-        )
-        return socket
+    # # TODO: remove
+    # def _get_socket(
+    #     self, inst: inst_base.Instantiation, interface: sys_conf.Interface
+    # ) -> inst_base.Socket | None:
+    #     if not self._chan_needs_instance(chan=interface.get_chan_raise()):
+    #         return None
+    #     return inst.get_socket(
+    #         interface=interface, supported_sock_types=self.supported_socket_types()
+    #     )
 
-    def _get_sockets(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
+    # # TODO: remove
+    # def _get_sockets(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
+    #     sockets = []
+    #     for comp_spec in self._components:
+    #         for interface in comp_spec.interfaces():
+    #             socket = self._get_socket(inst=inst, interface=interface)
+    #             if socket is None:
+    #                 continue
+    #             sockets.append(socket)
+    #     return sockets
+
+    def _get_socks_by_comp(
+        self, inst: inst_base.Instantiation, comp: sys_conf.Component
+    ) -> list[inst_base.Socket]:
+        if comp not in self._components:
+            raise Exception("comp must be a simulators component")
         sockets = []
-        for comp_spec in self._components:
-            for interface in comp_spec.interfaces():
-                socket = self._get_socket(inst=inst, interface=interface)
-                if socket is None:
-                    continue
+        for interface in comp.interfaces():
+            socket = inst.get_socket(interface=interface)
+            if socket:
                 sockets.append(socket)
+        return sockets
+
+    def _get_socks_by_all_comp(
+        self, inst: inst_base.Instantiation
+    ) -> list[inst_base.Socket]:
+        sockets = []
+        for comp in self._components:
+            sockets.extend(self._get_socks_by_comp(inst=inst, comp=comp))
         return sockets
 
     def _get_all_sockets_by_type(
         self, inst: inst_base.Instantiation, sock_type: inst_base.SockType
     ) -> list[inst_base.Socket]:
-        sockets = self._get_sockets(inst=inst)
+        sockets = self._get_socks_by_all_comp(inst=inst)
         sockets = Simulator.filter_sockets(sockets=sockets, filter_type=sock_type)
         return sockets
 
@@ -247,7 +265,7 @@ class Simulator(utils_base.IdObj):
     @abc.abstractmethod
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         """Command to execute this simulator."""
-        return ""
+        raise Exception("must be implemented in sub-class")
 
     def checkpoint_commands(self) -> list[str]:
         return []
@@ -256,7 +274,9 @@ class Simulator(utils_base.IdObj):
         return []
 
     @abc.abstractmethod
-    def supported_socket_types(self) -> set[inst_base.SockType]:
+    def supported_socket_types(
+        self, interface: sys_conf.Interface
+    ) -> set[inst_base.SockType]:
         return []
 
     # Sockets to be cleaned up: always the CONNECTING sockets

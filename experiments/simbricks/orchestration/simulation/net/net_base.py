@@ -20,12 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import abc
-import sys
-import simbricks.orchestration.simulation.base as sim_base
-from simbricks.orchestration.system import eth
+from simbricks.orchestration.system import base as sys_base
+from simbricks.orchestration.system import eth as sys_eth
+from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.experiment.experiment_environment_new import ExpEnv
 from simbricks.orchestration.utils import base as base_utils
 
 
@@ -46,7 +44,9 @@ class NetSim(sim_base.Simulator):
     def init_network(self) -> None:
         pass
 
-    def supported_socket_types(self) -> set[inst_base.SockType]:
+    def supported_socket_types(
+        self, interface: sys_base.Interface
+    ) -> set[inst_base.SockType]:
         return [inst_base.SockType.CONNECT]
 
 
@@ -59,11 +59,11 @@ class WireNet(NetSim):
             simulation=simulation,
             executable="sims/net/wire/net_wire",
         )
-        self.name=f"WireNet-{self._id}"
+        self.name = f"WireNet-{self._id}"
         self._relative_pcap_file_path: str | None = relative_pcap_filepath
 
-    def add(self, wire: eth.EthWire):
-        base_utils.has_expected_type(wire, eth.EthWire)
+    def add(self, wire: sys_eth.EthWire):
+        base_utils.has_expected_type(wire, sys_eth.EthWire)
         if len(self._components) > 1:
             raise Exception(
                 "can only add a single wire component to the WireNet simulator"
@@ -76,7 +76,7 @@ class WireNet(NetSim):
             sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
         )
 
-        sockets = self._get_sockets(inst=inst)
+        sockets = self._get_socks_by_all_comp(inst=inst)
         assert len(sockets) == 2
 
         cmd = inst.join_repo_base(self._executable)
@@ -102,11 +102,11 @@ class SwitchNet(NetSim):
             simulation=simulation,
             executable=executable,
         )
-        self.name=f"SwitchNet-{self._id}"
+        self.name = f"SwitchNet-{self._id}"
         self._relative_pcap_file_path: str | None = relative_pcap_filepath
 
-    def add(self, switch_spec: eth.EthSwitch):
-        base_utils.has_expected_type(switch_spec, eth.EthSwitch)
+    def add(self, switch_spec: sys_eth.EthSwitch):
+        base_utils.has_expected_type(switch_spec, sys_eth.EthSwitch)
         if len(self._components) > 1:
             raise Exception("can only add a single switch component to the SwitchNet")
         super().add(switch_spec)
@@ -129,7 +129,7 @@ class SwitchNet(NetSim):
             )
             cmd += " " + pcap_file
 
-        sockets = self._get_sockets(inst=inst)
+        sockets = self._get_socks_by_all_comp(inst=inst)
         listen, connect = sim_base.Simulator.split_sockets_by_type(sockets)
 
         for sock in connect:
@@ -164,4 +164,99 @@ class MemSwitchNet(SwitchNet):
             cmd += "".join(reversed(m[3].split(":")))
             cmd += f",{m[4]}"
 
+        return cmd
+
+
+class SimpleNS3Sim(NetSim):
+
+    def __init__(
+        self,
+        simulation: sim_base.Simulation,
+        name: str = "SimpleNS3Sim",
+        ns3_run_script: str = "",
+    ) -> None:
+        super().__init__(
+            simulation=simulation,
+            executable="sims/external/ns-3/simbricks-run.sh",
+            name=name,
+        )
+        self._ns3_run_script: str = ns3_run_script
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        return f"{inst.join_repo_base(self._executable)} {self._ns3_run_script} "
+
+
+class NS3DumbbellNet(SimpleNS3Sim):
+
+    def __init__(self, simulation: sim_base.Simulation) -> None:
+        super().__init__(
+            simulation=simulation,
+            ns3_run_script="simbricks-dumbbell-example",
+        )
+        self.name = f"NS3DumbbellNet-{self._id}"
+        self._left: sys_eth.EthSwitch | None = None
+        self._right: sys_eth.EthSwitch | None = None
+
+    def add(self, left: sys_eth.EthSwitch, right: sys_eth.EthSwitch):
+        base_utils.has_expected_type(left, sys_eth.EthSwitch)
+        base_utils.has_expected_type(right, sys_eth.EthSwitch)
+
+        if (
+            len(self._components) > 2
+            or self._left is not None
+            or self._right is not None
+        ):
+            raise Exception("NS3DumbbellNet can only simulate two switches")
+
+        super().add(comp=left)
+        super().add(comp=right)
+        self._left = left
+        self._right = right
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        cmd = super().run_cmd(inst=inst)
+
+        left_socks = self._get_socks_by_comp(inst=inst, comp=self._left)
+        for sock in left_socks:
+            assert sock._type == inst_base.SockType.CONNECT
+            cmd += f"--SimbricksPortLeft={sock._path} "
+
+        right_sockets = self._get_socks_by_comp(inst=inst, comp=self._right)
+        for sock in right_sockets:
+            assert sock._type == inst_base.SockType.CONNECT
+            cmd += f"--SimbricksPortRight={sock._path} "
+
+        # TODO cmd += f"{self.opt}"
+        print(
+            f"!!!!!!!!!!!!!!!!!!!!!! NS3DumbbellNet run_cmd: {cmd} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        )
+        return cmd
+
+
+class NS3BridgeNet(SimpleNS3Sim):
+
+    def __init__(self, simulation: sim_base.Simulation) -> None:
+        super().__init__(
+            simulation=simulation,
+            ns3_run_script="simbricks-bridge-example",
+        )
+        self.name = f"NS3BridgeNet-{self._id}"
+
+    def add(self, switch_comp: sys_eth.EthSwitch):
+        base_utils.has_expected_type(switch_comp, sys_eth.EthSwitch)
+        if len(self._components) > 1:
+            raise Exception("NS3BridgeNet can only simulate one switch/bridge")
+        super().add(comp=switch_comp)
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        cmd = super().run_cmd(inst=inst)
+
+        sockets = self._get_socks_by_all_comp(inst=inst)
+        for sock in sockets:
+            cmd += f"--SimbricksPort={sock._path} "
+
+        # TODO cmd += f"{self.opt}"
+        print(
+            f"!!!!!!!!!!!!!!!!!!!!!! NS3BridgeNet run_cmd: {cmd} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        )
         return cmd

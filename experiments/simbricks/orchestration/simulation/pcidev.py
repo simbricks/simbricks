@@ -22,7 +22,7 @@
 
 from __future__ import annotations
 
-import typing as tp
+from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system import nic as sys_nic
@@ -41,7 +41,9 @@ class PCIDevSim(sim_base.Simulator):
     def full_name(self) -> str:
         return "dev." + self.name
 
-    def supported_socket_types(self) -> set[inst_base.SockType]:
+    def supported_socket_types(
+        self, interface: sys_base.Interface
+    ) -> set[inst_base.SockType]:
         return [inst_base.SockType.LISTEN]
 
 
@@ -70,13 +72,13 @@ class NICSim(PCIDevSim):
 
         pci_devices = self.filter_components_by_type(ty=sys_pcie.PCIeSimpleDevice)
         assert len(pci_devices) == 1
-        socket = self._get_socket(inst=inst, interface=pci_devices[0]._pci_if)
+        socket = inst.get_socket(interface=pci_devices[0]._pci_if)
         assert socket is not None and socket._type == inst_base.SockType.LISTEN
         cmd += f"{socket._path} "
 
         eth_devices = self.filter_components_by_type(ty=sys_eth.EthSimpleNIC)
         assert len(eth_devices) == 1
-        socket = self._get_socket(inst=inst, interface=eth_devices[0]._eth_if)
+        socket = inst.get_socket(interface=eth_devices[0]._eth_if)
         assert socket is not None and socket._type == inst_base.SockType.LISTEN
         cmd += f"{socket._path} "
 
@@ -95,13 +97,13 @@ class NICSim(PCIDevSim):
 
 
 class I40eNicSim(NICSim):
- 
+
     def __init__(self, simulation: sim_base.Simulation):
         super().__init__(
             simulation=simulation,
             executable="sims/nic/i40e_bm/i40e_bm",
         )
-        self.name=f"NICSim-{self._id}"
+        self.name = f"NICSim-{self._id}"
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return super().run_cmd(inst=inst)
@@ -113,7 +115,7 @@ class CorundumBMNICSim(NICSim):
             simulation=simulation,
             executable="sims/nic/corundum_bm/corundum_bm",
         )
-        self.name=f"CorundumBMNICSim-{self._id}"
+        self.name = f"CorundumBMNICSim-{self._id}"
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
@@ -127,7 +129,7 @@ class CorundumVerilatorNICSim(NICSim):
             simulation=simulation,
             executable="sims/nic/corundum/corundum_verilator",
         )
-        self.name=f"CorundumVerilatorNICSim-{self._id}"
+        self.name = f"CorundumVerilatorNICSim-{self._id}"
         self.clock_freq = 250  # MHz
 
     def resreq_mem(self) -> int:
