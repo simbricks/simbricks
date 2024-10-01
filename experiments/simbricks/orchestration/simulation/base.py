@@ -184,40 +184,6 @@ class Simulator(utils_base.IdObj):
             return False
         return True
 
-    # # TODO: remove
-    # def _get_my_interface(self, chan: sys_conf.Channel) -> sys_conf.Interface:
-    #     interface = None
-    #     for inter in chan.interfaces():
-    #         if inter.component in self._components:
-    #             assert interface is None
-    #             interface = inter
-    #     if interface is None:
-    #         raise Exception(
-    #             "unable to find channel interface for simulators specification"
-    #         )
-    #     return interface
-
-    # # TODO: remove
-    # def _get_socket(
-    #     self, inst: inst_base.Instantiation, interface: sys_conf.Interface
-    # ) -> inst_base.Socket | None:
-    #     if not self._chan_needs_instance(chan=interface.get_chan_raise()):
-    #         return None
-    #     return inst.get_socket(
-    #         interface=interface, supported_sock_types=self.supported_socket_types()
-    #     )
-
-    # # TODO: remove
-    # def _get_sockets(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
-    #     sockets = []
-    #     for comp_spec in self._components:
-    #         for interface in comp_spec.interfaces():
-    #             socket = self._get_socket(inst=inst, interface=interface)
-    #             if socket is None:
-    #                 continue
-    #             sockets.append(socket)
-    #     return sockets
-
     def _get_socks_by_comp(
         self, inst: inst_base.Instantiation, comp: sys_conf.Component
     ) -> list[inst_base.Socket]:
