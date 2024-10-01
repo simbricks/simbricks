@@ -210,28 +210,32 @@ class Instantiation(util_base.IdObj):
             enforce_existence=False,
         )
 
-    def _create_opposing_socket(
-        self, socket: Socket, supported_sock_types: set[SockType] = set()
-    ) -> Socket:
+    def _create_opposing_socket(self, socket: Socket, socket_type: SockType) -> Socket:
         new_ty = (
             SockType.LISTEN if socket._type == SockType.CONNECT else SockType.CONNECT
         )
-        if new_ty not in supported_sock_types:
+        if new_ty != socket_type:
             raise Exception(
-                f"cannot create opposing socket, as required type is not supported: required={new_ty.name}, supported={','.join(supported_sock_types)}"
+                f"cannot create opposing socket, as required type is not supported: required={new_ty.name}, supported={socket_type.name}"
             )
         new_path = socket._path
         new_socket = Socket(path=new_path, ty=new_ty)
         return new_socket
 
-    def get_socket(
-        self,
-        interface: sys_base.Interface,
-        supported_sock_types: set[SockType] = set(),
+    def get_socket(self, interface: sys_base.Interface) -> Socket | None:
+        socket = self._get_socket_by_interface(interface=interface)
+        if socket:
+            return socket
+        return None
+
+    def _get_socket(
+        self, interface: sys_base.Interface, socket_type: SockType
     ) -> Socket:
 
         if self._opposing_interface_within_same_sim(interface=interface):
-            raise Exception("interface does not need a socket")
+            raise Exception(
+                "we do not create a socket for interfacces taht both beloing to the same simulator"
+            )
 
         # check if already a socket is associated with this interface
         socket = self._get_socket_by_interface(interface=interface)
@@ -242,26 +246,15 @@ class Instantiation(util_base.IdObj):
         socket = self._get_opposing_socket_by_interface(interface=interface)
         if socket is not None:
             new_socket = self._create_opposing_socket(
-                socket=socket, supported_sock_types=supported_sock_types
+                socket=socket, socket_type=socket_type
             )
             self._updated_tracker_mapping(interface=interface, socket=new_socket)
             print(f"created socket: {new_socket._path}")
             return new_socket
 
-        # neither connecting nor listening side already created a socket, thus we
-        # create a completely new 'CONNECT' socket
-        if len(supported_sock_types) < 1 or (
-            SockType.LISTEN not in supported_sock_types
-            and SockType.CONNECT not in supported_sock_types
-        ):
-            raise Exception("cannot create a socket if no socket type is supported")
-        sock_type = (
-            SockType.CONNECT
-            if SockType.CONNECT in supported_sock_types
-            else SockType.LISTEN
-        )
+        # create socket if opposing socket was not created yet
         sock_path = self._interface_to_sock_path(interface=interface)
-        new_socket = Socket(path=sock_path, ty=sock_type)
+        new_socket = Socket(path=sock_path, ty=socket_type)
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
         print(f"created socket: {new_socket._path}")
         return new_socket
@@ -274,7 +267,11 @@ class Instantiation(util_base.IdObj):
             sim_a: sim_base.Simulator, depends_on: sim_base.Simulator
         ):
             if depends_on in sim_dependency:
-                assert sim_a not in sim_dependency[depends_on]
+                if sim_a in sim_dependency[depends_on]:
+                    # TODO: FIXME
+                    raise Exception(
+                        "detected cylic dependency, this is currently not supported"
+                    )
 
             a_dependencies = set()
             if sim_a in sim_dependency:
@@ -283,41 +280,44 @@ class Instantiation(util_base.IdObj):
             a_dependencies.add(depends_on)
             sim_dependency[sim_a] = a_dependencies
 
-        def update_a_depends_on_b(sim_a: sim_base.Simulator, sim_b: sim_base.Simulator):
-            a_sock: set[SockType] = sim_a.supported_socket_types()
-            b_sock: set[SockType] = sim_b.supported_socket_types()
+        def update_a_depends_on_b(inf_a: sys_base.Interface, inf_b: sys_base.Interface):
+            sim_a = self.find_sim_by_interface(interface=inf_a)
+            sim_b = self.find_sim_by_interface(interface=inf_b)
+            a_sock: set[SockType] = sim_a.supported_socket_types(interface=inf_a)
+            b_sock: set[SockType] = sim_b.supported_socket_types(interface=inf_b)
 
             if a_sock != b_sock:
                 if len(a_sock) == 0 or len(b_sock) == 0:
                     raise Exception(
-                        "cannot solve if one simulator doesnt support any socket type"
+                        "cannot create socket and resolve dependency if no socket type is supported for an interface"
                     )
-
                 if SockType.CONNECT in a_sock:
                     assert SockType.LISTEN in b_sock
                     insert_dependency(sim_a, depends_on=sim_b)
+                    self._get_socket(interface=inf_a, socket_type=SockType.CONNECT)
+                    self._get_socket(interface=inf_b, socket_type=SockType.LISTEN)
                 else:
                     assert SockType.CONNECT in b_sock
                     insert_dependency(sim_b, depends_on=sim_a)
+                    self._get_socket(interface=inf_b, socket_type=SockType.CONNECT)
+                    self._get_socket(interface=inf_a, socket_type=SockType.LISTEN)
             else:
                 # deadlock?
                 if len(a_sock) != 2 or len(b_sock) != 2:
                     raise Exception("cannot solve deadlock")
-
                 # both support both we just pick an order
                 insert_dependency(sim_a, depends_on=sim_b)
+                self._get_socket(interface=sim_a, socket_type=SockType.CONNECT)
+                self._get_socket(interface=sim_b, socket_type=SockType.LISTEN)
 
-        # TODO: pre-calculate the socket paths and whether they are listening or connecting sockets in here!
+        # build dependency graph
         for sim in self._simulation.all_simulators():
             for comp in sim._components:
                 for sim_inf in comp.interfaces():
-                    # no dependency here? a.k.a both interfaces within the same simulator?
                     if self._opposing_interface_within_same_sim(interface=sim_inf):
                         continue
                     opposing_inf = self._get_opposing_interface(interface=sim_inf)
-                    opposing_sim = self.find_sim_by_spec(spec=opposing_inf.component)
-                    assert sim != opposing_sim
-                    update_a_depends_on_b(sim, opposing_sim)
+                    update_a_depends_on_b(inf_a=sim_inf, inf_b=opposing_inf)
 
         self._sim_dependency = sim_dependency
 
@@ -347,7 +347,7 @@ class Instantiation(util_base.IdObj):
         await self.executor.await_files(wait_socks, verbose=True)
 
     # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
-    
+
     # TODO: fix paths to support mutliple exeriment runs etc.
     def wrkdir(self) -> str:
         return pathlib.Path(self._env._workdir).resolve()
@@ -405,6 +405,9 @@ class Instantiation(util_base.IdObj):
         await self.executor.mkdir(tmpdir)
 
         await self._simulation.prepare(inst=self)
+
+    async def cleanup(self) -> None:
+        pass  # TODO: implement cleanup functionality (e.g. delete )
 
     def _join_paths(
         self, base: str = "", relative_path: str = "", enforce_existence=False
@@ -485,6 +488,11 @@ class Instantiation(util_base.IdObj):
             base=self._env._output_base,
             relative_path=f"out-{run_number}.json",
         )
+
+    def find_sim_by_interface(
+        self, interface: sys_base.Interface
+    ) -> sim_base.Simulator:
+        return self.find_sim_by_spec(spec=interface.component)
 
     def find_sim_by_spec(self, spec: sys_base.Component) -> sim_base.Simulator:
         util_base.has_expected_type(spec, sys_base.Component)

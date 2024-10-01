@@ -55,7 +55,7 @@ class EthSimpleNIC(base.Component):
 class BaseEthNetComponent(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.eth_ifs: EthInterface = []
+        self.eth_ifs: list[EthInterface] = []
 
     def add_if(self, i: EthInterface) -> None:
         self.eth_ifs.append(i)

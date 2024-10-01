@@ -50,7 +50,9 @@ class HostSim(sim_base.Simulator):
     def supported_image_formats(self) -> list[str]:
         raise Exception("implement me")
 
-    def supported_socket_types(self) -> set[inst_base.SockType]:
+    def supported_socket_types(
+        self, interface: system.Interface
+    ) -> set[inst_base.SockType]:
         return [inst_base.SockType.CONNECT]
 
 
@@ -142,7 +144,7 @@ class Gem5Sim(HostSim):
             interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
         )
         for inf in pci_interfaces:
-            socket = self._get_socket(inst=inst, interface=inf)
+            socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue
             assert socket._type == inst_base.SockType.CONNECT
@@ -159,7 +161,7 @@ class Gem5Sim(HostSim):
             interfaces=fsh_interfaces, ty=sys_mem.MemHostInterface
         )
         for inf in mem_interfaces:
-            socket = self._get_socket(inst=inst, interface=inf)
+            socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue
             assert socket._type == inst_base.SockType.CONNECT
@@ -201,7 +203,7 @@ class QemuSim(HostSim):
             executable="sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64",
         )
         self.name = f"QemuSim-{self._id}"
-        self._disks: list[tuple[str, str]] = [] # [(path, format)]
+        self._disks: list[tuple[str, str]] = []  # [(path, format)]
 
     def resreq_cores(self) -> int:
         return 1
@@ -222,7 +224,9 @@ class QemuSim(HostSim):
         d = []
         for disk in full_sys_hosts[0].disks:
             format = (
-                "qcow2" if not isinstance(disk, sys_host.LinuxConfigDiskImage) else "raw"
+                "qcow2"
+                if not isinstance(disk, sys_host.LinuxConfigDiskImage)
+                else "raw"
             )
             copy_path = await disk.make_qcow_copy(
                 inst=inst,
@@ -236,7 +240,7 @@ class QemuSim(HostSim):
         return []
 
     def cleanup_commands(self) -> list[str]:
-        return []
+        return ["poweroff -f"]
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
 
@@ -287,7 +291,7 @@ class QemuSim(HostSim):
             interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
         )
         for inf in pci_interfaces:
-            socket = self._get_socket(inst=inst, interface=inf)
+            socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue
             assert socket._type is inst_base.SockType.CONNECT
