@@ -138,8 +138,8 @@ class BaseLinuxHost(FullSystemHost):
         )
 
     def config_str(self, inst: instantiation.Instantiation) -> str:
-        if inst.create_cp():
-            sim = inst.find_sim_by_spec(spec=self)
+        sim = inst.find_sim_by_spec(spec=self)
+        if inst.create_checkpoint:
             cp_cmd = sim.checkpoint_commands()
         else:
             cp_cmd = []

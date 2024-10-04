@@ -27,6 +27,7 @@ import asyncio
 from simbricks.orchestration.runtime_new import simulation_executor
 from simbricks.orchestration.runtime_new import command_executor
 from simbricks.orchestration.runtime_new.runs import base as run_base
+from simbricks.orchestration.instantiation import base as inst_base
 
 
 class LocalSimpleRuntime(run_base.Runtime):
@@ -50,8 +51,8 @@ class LocalSimpleRuntime(run_base.Runtime):
     async def do_run(self, run: run_base.Run) -> None:
         """Actually executes `run`."""
         try:
-            runner = simulation_executor.ExperimentSimpleRunner(
-                self._executor, run._simulation, run._instantiation, self._verbose
+            runner = simulation_executor.SimulationSimpleRunner(
+                self._executor, run.instantiation, self._verbose
             )
             if self._profile_int:
                 runner.profile_int = self.profile_int
@@ -68,10 +69,12 @@ class LocalSimpleRuntime(run_base.Runtime):
         if self._verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
 
-        output_path = run._instantiation.get_simulation_output_path(
-            run_number=run._run_nr
+        output_path = run.instantiation.get_simulation_output_path(
+            run_nr=run._run_nr
         )
         run._output.dump(outpath=output_path)
+
+        await runner.cleanup()
 
     async def start(self) -> None:
         """Execute the runs defined in `self.runnable`."""
@@ -112,10 +115,13 @@ class LocalParallelRuntime(run_base.Runtime):
         self._starter_task: asyncio.Task
 
     def add_run(self, run: run_base.Run) -> None:
-        if run._simulation.resreq_cores() > self._cores:
+        if run.instantiation.simulation.resreq_cores() > self._cores:
             raise RuntimeError("Not enough cores available for run")
 
-        if self._mem is not None and run._simulation.resreq_mem() > self._mem:
+        if (
+            self._mem is not None
+            and run.instantiation.simulation.resreq_mem() > self._mem
+        ):
             raise RuntimeError("Not enough memory available for run")
 
         if run._prereq is None:
@@ -126,8 +132,8 @@ class LocalParallelRuntime(run_base.Runtime):
     async def do_run(self, run: run_base.Run) -> run_base.Run | None:
         """Actually executes `run`."""
         try:
-            runner = simulation_executor.ExperimentSimpleRunner(
-                self._executor, run._simulation, run._inst_env, self._verbose
+            runner = simulation_executor.SimulationSimpleRunner(
+                self._executor, run.instantiation, self._verbose
             )
             if self._profile_int is not None:
                 runner._profile_int = self._profile_int
@@ -141,13 +147,16 @@ class LocalParallelRuntime(run_base.Runtime):
         run._output = await runner.run()  # already handles CancelledError
 
         # if the log is huge, this step takes some time
-        if self.verbose:
+        if self._verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
 
-        output_path = run._instantiation.get_simulation_output_path(
+        output_path = run.instantiation.get_simulation_output_path(
             run_number=run._run_nr
         )
         run._output.dump(outpath=output_path)
+
+        await runner.cleanup()
+
         print("finished run ", run.name())
         return run
 
@@ -162,12 +171,14 @@ class LocalParallelRuntime(run_base.Runtime):
         for r_awaitable in done:
             run = await r_awaitable
             self._complete.add(run)
-            self._cores_used -= run._simulation.resreq_cores()
-            self._mem_used -= run._simulation.resreq_mem()
+            self._cores_used -= run.instantiation.simulation.resreq_cores()
+            self._mem_used -= run.instantiation.simulation.resreq_mem()
 
     def enough_resources(self, run: run_base.Run) -> bool:
         """Check if enough cores and mem are available for the run."""
-        simulation = run._simulation  # pylint: disable=redefined-outer-name
+        simulation = (
+            run.instantiation.simulation
+        )  # pylint: disable=redefined-outer-name
 
         if self._cores is not None:
             enough_cores = (self._cores - self._cores_used) >= simulation.resreq_cores()
@@ -207,8 +218,8 @@ class LocalParallelRuntime(run_base.Runtime):
                 print("waiting for prereq")
                 await self.wait_completion()
 
-            self._cores_used += run._simulation.resreq_cores()
-            self._mem_used += run._simulation.resreq_mem()
+            self._cores_used += run.instantiation.simulation.resreq_cores()
+            self._mem_used += run.instantiation.simulation.resreq_mem()
 
             job = asyncio.create_task(self.do_run(run))
             self._pending_jobs.add(job)

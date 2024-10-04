@@ -43,7 +43,7 @@ class BaseLinuxApplication(abc.ABC):
         self.host = h
         self.start_delay: float | None = None
         self.end_delay: float | None = None
-        self.wait = True
+        self.wait = False
 
     @abc.abstractmethod
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:

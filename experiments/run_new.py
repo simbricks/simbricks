@@ -34,14 +34,14 @@ import signal
 import sys
 
 from simbricks.orchestration import exectools
-from simbricks.orchestration.experiment import experiment_environment
 
 from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.simulation import output
+from simbricks.orchestration.simulation import output as sim_out
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.runtime_new import runs
+from simbricks.orchestration.runtime_new.runs import base as runs_base
+from simbricks.orchestration.runtime_new.runs import base as runs_base
+from simbricks.orchestration.runtime_new.runs import local as rt_local
 from simbricks.orchestration.runtime_new import command_executor
-from simbricks.orchestration.runtime_new import simulation_executor
 
 
 def parse_args() -> argparse.Namespace:
@@ -261,56 +261,14 @@ def warn_multi_exec(executors: list[command_executor.Executor]):
 
 
 def add_exp(
-    simulation: sim_base.Simulation,
-    rt: runs.base.Runtime,
-    run_number: int,
-    prereq: runs.base.Run | None,
-    create_cp: bool,
-    restore_cp: bool,
-    args: argparse.Namespace,
-):
+    instantiation: inst_base.Instantiation,
+    prereq: runs_base.Run | None,
+    rt: runs_base.Runtime,
+) -> runs_base.Run:
 
-    outpath = f"{args.outdir}/{simulation.name}-{run_number}.json"
-    if os.path.exists(outpath) and not args.force:
-        print(f"skip {simulation.name} run {run_number}")
-        return None
-
-    workdir = f"{args.workdir}/{simulation.name}/{run_number}"
-    cpdir = f"{args.workdir}/{simulation.name}/0"
-    if args.shmdir is not None:
-        shmdir = f"{args.shmdir}/{simulation.name}/{run_number}"
-
-    shm_base = ""  # TODO
-    if args.shmdir is not None:
-        env.shm_base = os.path.abspath(shmdir)
-
-    # TODO: user can specify output base
-    output_base = ""
-
-    tmp_sim_files = ""  # TODO
-
-    inst_env = inst_base.InstantiationEnvironment(
-        repo_path=args.repo,
-        # workdir=workdir,
-        # cpdir=cpdir,
-        # create_cp=create_cp,
-        # restore_cp=restore_cp,
-        # shm_base=shm_base,
-        # output_base=output_base,
-        # tmp_simulation_files=tmp_sim_files,
-    )
-
-    inst_ = inst_base.Instantiation(sim=simulation, env=inst_env)    
-    output_ = output.SimulationOutput(simulation) 
-    run = runs.base.Run(
-        simulation=simulation,
-        instantiation=inst_,
-        prereq=prereq,
-        output = output_
-    )
-
+    output = sim_out.SimulationOutput(instantiation.simulation)
+    run = runs_base.Run(instantiation=instantiation, prereq=prereq, output=output)
     rt.add_run(run)
-
     return run
 
 
@@ -322,18 +280,18 @@ def main():
         executors = load_executors(args.hosts)
 
     # initialize runtime
-    if args.runtime == "parallel":
+    if args.runtime == "parallel":  # TODO: FIXME
         warn_multi_exec(executors)
-        rt = runs.LocalParallelRuntime(
+        rt = rt_local.LocalParallelRuntime(
             cores=args.cores, mem=args.mem, verbose=args.verbose, executor=executors[0]
         )
-    elif args.runtime == "slurm":
-        rt = runs.SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
-    elif args.runtime == "dist":
-        rt = runs.DistributedSimpleRuntime(executors, verbose=args.verbose)
+    # elif args.runtime == "slurm":
+    #     rt = runs.SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
+    # elif args.runtime == "dist":
+    #     rt = runs.DistributedSimpleRuntime(executors, verbose=args.verbose)
     else:
         warn_multi_exec(executors)
-        rt = runs.LocalSimpleRuntime(verbose=args.verbose, executor=executors[0])
+        rt = rt_local.LocalSimpleRuntime(verbose=args.verbose, executor=executors[0])
 
     if args.profile_int:
         rt.enable_profiler(args.profile_int)
@@ -341,7 +299,7 @@ def main():
     # load experiments
     if not args.pickled:
         # default: load python modules with experiments
-        simulations: list[sim_base.Simulation] = []
+        instantiations: list[inst_base.Instantiation] = []
         for path in args.experiments:
             modname, _ = os.path.splitext(os.path.basename(path))
 
@@ -355,23 +313,22 @@ def main():
             if spec.loader is None:
                 raise ExperimentModuleLoadError("spec.loader is None")
             spec.loader.exec_module(mod)
-            simulations += mod.experiments
+            instantiations += mod.instantiations
 
         if args.list:
-            for sim in simulations:
-                print(sim.name)
+            for inst in instantiations:
+                print(inst.simulation.name)
             sys.exit(0)
 
-        for sim in simulations:
-            # TODO: do we want a sitributed SImulation class? --> probably not, choose slightly different abstraction
-            if args.auto_dist and not isinstance(sim, sim_base.DistributedExperiment):
-                sim = runs.auto_dist(sim, executors, args.proxy_type)
+        for inst in instantiations:
+            # if args.auto_dist and not isinstance(sim, sim_base.DistributedExperiment):
+            #     sim = runs_base.auto_dist(sim, executors, args.proxy_type)
 
             # apply filter if any specified
             if (args.filter) and (len(args.filter) > 0):
                 match = False
                 for f in args.filter:
-                    match = fnmatch.fnmatch(sim.name, f)
+                    match = fnmatch.fnmatch(inst.simulation.name, f)
                     if match:
                         break
 
@@ -380,19 +337,30 @@ def main():
 
             # if this is an experiment with a checkpoint we might have to create
             # it
-            # TODO: what to do / how to handel checkpointing
-            if sim.checkpoint:
-                prereq = add_exp(sim, rt, 0, None, True, False, args)
-            else:
-                prereq = None
+            prereq = None
+            if (
+                inst.create_checkpoint
+                and inst.simulation.any_supports_checkpointing()
+            ):
+                checkpointing_inst = inst.copy()
+                checkpointing_inst.restore_checkpoint = False
+                checkpointing_inst.create_checkpoint = True
+                inst.create_checkpoint = False
+                inst.restore_checkpoint = True
 
-            for run in range(args.firstrun, args.firstrun + args.runs):
-                add_exp(sim, rt, run, prereq, False, sim.checkpoint, args)
-    else:
-        # otherwise load pickled run object
-        for path in args.experiments:
-            with open(path, "rb") as f:
-                rt.add_run(pickle.load(f))
+                prereq = add_exp(instantiation=checkpointing_inst, rt=rt, prereq=None)
+
+            for index in range(args.firstrun, args.firstrun + args.runs):
+                inst_copy = inst.copy()
+                inst_copy.preserve_tmp_folder = False
+                if index == args.firstrun + args.runs - 1:
+                    inst_copy._preserve_checkpoints = False
+                add_exp(instantiation=inst_copy, rt=rt, prereq=prereq)
+    # else:
+    #     # otherwise load pickled run object
+    #     for path in args.experiments:
+    #         with open(path, "rb") as f:
+    #             rt.add_run(pickle.load(f))
 
     # register interrupt handler
     signal.signal(signal.SIGINT, lambda *_: rt.interrupt())
