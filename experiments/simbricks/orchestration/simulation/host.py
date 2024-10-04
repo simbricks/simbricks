@@ -102,9 +102,10 @@ class Gem5Sim(HostSim):
         if inst.create_checkpoint:
             cpu_type = self.cpu_type_cp
 
-        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.BaseLinuxHost)
         if len(full_sys_hosts) != 1:
             raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
+        host_spec = full_sys_hosts[0]
 
         cmd = f"{inst.join_repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.get_simmulator_output_dir(sim=self)} "
         cmd += " ".join(self.extra_main_args)
@@ -112,22 +113,21 @@ class Gem5Sim(HostSim):
             f" {inst.join_repo_base('sims/external/gem5/configs/simbricks/simbricks.py')} --caches --l2cache "
             "--l1d_size=32kB --l1i_size=32kB --l2_size=32MB "
             "--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=16 "
-            f"--cacheline_size=64 --cpu-clock={full_sys_hosts[0].cpu_freq}"
+            f"--cacheline_size=64 --cpu-clock={host_spec.cpu_freq}"
             f" --sys-clock={self._sys_clock} "
             f"--checkpoint-dir={inst.cpdir_subdir(sim=self)} "
             f"--kernel={inst.join_repo_base('images/vmlinux')} "
         )
-        for disk in full_sys_hosts[0].disks:
+        for disk in host_spec.disks:
             cmd += f"--disk-image={disk.path(inst=inst, format='raw')} "
         cmd += (
-            f"--cpu-type={cpu_type} --mem-size={full_sys_hosts[0].memory}MB "
-            f"--num-cpus={full_sys_hosts[0].cores} "
+            f"--cpu-type={cpu_type} --mem-size={host_spec.memory}MB "
+            f"--num-cpus={host_spec.cores} "
             "--mem-type=DDR4_2400_16x4 "
         )
 
-        # TODO
-        # if self.node_config.kcmd_append:
-        #     cmd += f'--command-line-append="{self.node_config.kcmd_append}" '
+        if host_spec.kcmd_append is not None:
+            cmd += f'--command-line-append="{host_spec.kcmd_append}" '
 
         if inst.create_checkpoint:
             cmd += "--max-checkpoints=1 "
@@ -141,7 +141,7 @@ class Gem5Sim(HostSim):
             )
         )
 
-        fsh_interfaces = full_sys_hosts[0].interfaces()
+        fsh_interfaces = host_spec.interfaces()
 
         pci_interfaces = system.Interface.filter_by_type(
             interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
@@ -250,12 +250,7 @@ class QemuSim(HostSim):
         latency, period, sync = sim_base.Simulator.get_unique_latency_period_sync(
             channels=self.get_channels()
         )
-
         accel = ",accel=kvm:tcg" if not sync else ""
-        # if self.node_config.kcmd_append: # TODO: FIXME
-        #     kcmd_append = " " + self.node_config.kcmd_append
-        # else:
-        #     kcmd_append = ""
 
         cmd = (
             f"{inst.join_repo_base(relative_path=self._executable)} -machine q35{accel} -serial mon:stdio "
@@ -263,33 +258,37 @@ class QemuSim(HostSim):
             f"-kernel {inst.join_repo_base('images/bzImage')} "
         )
 
-        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.BaseLinuxHost)
         if len(full_sys_hosts) != 1:
             raise Exception("QEMU only supports simulating 1 FullSystemHost")
+        host_spec = full_sys_hosts[0]
+
+        kcmd_append = ""
+        if host_spec.kcmd_append is not None:
+            kcmd_append = " " + host_spec.kcmd_append
 
         for index, disk in enumerate(self._disks):
             cmd += f"-drive file={disk[0]},if=ide,index={index},media=disk,driver={disk[1]} "
         cmd += (
             '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
-            # f'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" ' # TODO: FIXME
-            f'init=/home/ubuntu/guestinit.sh rw" '
-            f"-m {full_sys_hosts[0].memory} -smp {full_sys_hosts[0].cores} "
+            f'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" '
+            f"-m {host_spec.memory} -smp {host_spec.cores} "
         )
 
         if sync:
-            unit = full_sys_hosts[0].cpu_freq[-3:]
+            unit = host_spec.cpu_freq[-3:]
             if unit.lower() == "ghz":
                 base = 0
             elif unit.lower() == "mhz":
                 base = 3
             else:
                 raise ValueError("cpu frequency specified in unsupported unit")
-            num = float(full_sys_hosts[0].cpu_freq[:-3])
+            num = float(host_spec.cpu_freq[:-3])
             shift = base - int(math.ceil(math.log(num, 2)))
 
             cmd += f" -icount shift={shift},sleep=off "
 
-        fsh_interfaces = full_sys_hosts[0].interfaces()
+        fsh_interfaces = host_spec.interfaces()
         pci_interfaces = system.Interface.filter_by_type(
             interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
         )

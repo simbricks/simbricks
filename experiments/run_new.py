@@ -338,10 +338,7 @@ def main():
             # if this is an experiment with a checkpoint we might have to create
             # it
             prereq = None
-            if (
-                inst.create_checkpoint
-                and inst.simulation.any_supports_checkpointing()
-            ):
+            if inst.create_checkpoint and inst.simulation.any_supports_checkpointing():
                 checkpointing_inst = inst.copy()
                 checkpointing_inst.restore_checkpoint = False
                 checkpointing_inst.create_checkpoint = True
@@ -353,6 +350,8 @@ def main():
             for index in range(args.firstrun, args.firstrun + args.runs):
                 inst_copy = inst.copy()
                 inst_copy.preserve_tmp_folder = False
+                inst_copy.create_checkpoint = inst.create_checkpoint
+                inst_copy.restore_checkpoint = inst.restore_checkpoint
                 if index == args.firstrun + args.runs - 1:
                     inst_copy._preserve_checkpoints = False
                 add_exp(instantiation=inst_copy, rt=rt, prereq=prereq)

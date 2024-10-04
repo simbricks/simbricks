@@ -73,7 +73,7 @@ class BaseLinuxHost(FullSystemHost):
         super().__init__(s)
         self.applications: list[app.BaseLinuxApplication] = []
         self.load_modules = []
-        self.kcmd_append = ""
+        self.kcmd_append: str | None = None
 
     def add_app(self, a: app.BaseLinuxApplication) -> None:
         self.applications.append(a)
