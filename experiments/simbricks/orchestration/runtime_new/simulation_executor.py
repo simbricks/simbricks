@@ -36,19 +36,17 @@ from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.runtime_new import command_executor
 
 
-class ExperimentBaseRunner(abc.ABC):
+class SimulationBaseRunner(abc.ABC):
 
     def __init__(
         self,
-        simulation: sim_base.Simulation,
         instantiation: inst_base.Instantiation,
         verbose: bool,
     ) -> None:
-        self._simulation: sim_base.Simulation = simulation
         self._instantiation: inst_base.Instantiation = instantiation
         self._verbose: bool = verbose
         self._profile_int: int | None = None
-        self._out = output.SimulationOutput(self._simulation)
+        self._out = output.SimulationOutput(self._instantiation.simulation)
         self._running: list[
             tuple[sim_base.Simulator, command_executor.SimpleComponent]
         ] = []
@@ -64,16 +62,16 @@ class ExperimentBaseRunner(abc.ABC):
 
         name = sim.full_name()
         if self._verbose:
-            print(f"{self._simulation.name}: starting {name}")
+            print(f"{self._instantiation.simulation.name}: starting {name}")
 
         run_cmd = sim.run_cmd(self._instantiation)
         if run_cmd is None:
             if self._verbose:
-                print(f"{self._simulation.name}: started dummy {name}")
+                print(f"{self._instantiation.simulation.name}: started dummy {name}")
             return
 
         # run simulator
-        executor = self._instantiation.executor
+        executor = self._instantiation.executor # TODO: this should be a function or something
         sc = executor.create_component(
             name, shlex.split(run_cmd), verbose=self._verbose, canfail=True
         )
@@ -88,11 +86,11 @@ class ExperimentBaseRunner(abc.ABC):
         wait_socks = sim.sockets_wait(inst=self._instantiation)
         if len(wait_socks) > 0:
             if self._verbose:
-                print(f"{self._simulation.name}: waiting for sockets {name}")
+                print(f"{self._instantiation.simulation.name}: waiting for sockets {name}")
             await self._instantiation.wait_for_sockets(sockets=wait_socks)
             if self._verbose:
                 print(
-                    f"{self._simulation.name}: waited successfully for sockets {name}"
+                    f"{self._instantiation.simulation.name}: waited successfully for sockets {name}"
                 )
 
         # add time delay if required
@@ -104,7 +102,7 @@ class ExperimentBaseRunner(abc.ABC):
             self._wait_sims.append(sc)
 
         if self._verbose:
-            print(f"{self._simulation.name}: started {name}")
+            print(f"{self._instantiation.simulation.name}: started {name}")
 
     async def before_wait(self) -> None:
         pass
@@ -124,15 +122,15 @@ class ExperimentBaseRunner(abc.ABC):
     async def wait_for_sims(self) -> None:
         """Wait for simulators to terminate (the ones marked to wait on)."""
         if self._verbose:
-            print(f"{self._simulation.name}: waiting for hosts to terminate")
+            print(f"{self._instantiation.simulation.name}: waiting for hosts to terminate")
         for sc in self._wait_sims:
             await sc.wait()
 
-    async def terminate_collect_sims(self) -> output.SimulationOutput:
+    async def terminate_collect_sims(self) -> None: # output.SimulationOutput:
         """Terminates all simulators and collects output."""
         self._out.set_end()
         if self._verbose:
-            print(f"{self._simulation.name}: cleaning up")
+            print(f"{self._instantiation.simulation.name}: cleaning up")
 
         await self.before_cleanup()
 
@@ -145,9 +143,6 @@ class ExperimentBaseRunner(abc.ABC):
         # wait for all processes to terminate
         for _, sc in self._running:
             await sc.wait()
-
-        # remove all sockets
-        await self._instantiation.cleanup_sockets(sockets=self._sockets)
 
         # add all simulator components to the output
         for sim, sc in self._running:
@@ -215,8 +210,11 @@ class ExperimentBaseRunner(abc.ABC):
                 print(e)
                 pass
 
+    async def cleanup(self) -> None:
+        await self._instantiation.cleanup()
 
-class ExperimentSimpleRunner(ExperimentBaseRunner):
+
+class SimulationSimpleRunner(SimulationBaseRunner):
     """Simple experiment runner with just one executor."""
 
     def __init__(self, executor: command_executor.Executor, *args, **kwargs) -> None:
@@ -227,27 +225,27 @@ class ExperimentSimpleRunner(ExperimentBaseRunner):
         return self._executor
 
 
-class ExperimentDistributedRunner(ExperimentBaseRunner):
-    """Simple experiment runner with just one executor."""
+# class ExperimentDistributedRunner(ExperimentBaseRunner):
+#     """Simple experiment runner with just one executor."""
 
-    # TODO: FIXME
-    def __init__(self, execs, exp: DistributedExperiment, *args, **kwargs) -> None:
-        self.execs = execs
-        super().__init__(exp, *args, **kwargs)
-        self.exp = exp  # overrides the type in the base class
-        assert self.exp.num_hosts <= len(execs)
+#     # TODO: FIXME
+#     def __init__(self, execs, exp: DistributedExperiment, *args, **kwargs) -> None:
+#         self.execs = execs
+#         super().__init__(exp, *args, **kwargs)
+#         self.exp = exp  # overrides the type in the base class
+#         assert self.exp.num_hosts <= len(execs)
 
-    def sim_executor(self, sim) -> command_executor.Executor:
-        h_id = self.exp.host_mapping[sim]
-        return self.execs[h_id]
+#     def sim_executor(self, sim) -> command_executor.Executor:
+#         h_id = self.exp.host_mapping[sim]
+#         return self.execs[h_id]
 
-    async def prepare(self) -> None:
-        # make sure all simulators are assigned to an executor
-        assert self.exp.all_sims_assigned()
+#     async def prepare(self) -> None:
+#         # make sure all simulators are assigned to an executor
+#         assert self.exp.all_sims_assigned()
 
-        # set IP addresses for proxies based on assigned executors
-        for p in itertools.chain(self.exp.proxies_listen, self.exp.proxies_connect):
-            executor = self.sim_executor(p)
-            p.ip = executor.ip
+#         # set IP addresses for proxies based on assigned executors
+#         for p in itertools.chain(self.exp.proxies_listen, self.exp.proxies_connect):
+#             executor = self.sim_executor(p)
+#             p.ip = executor.ip
 
-        await super().prepare()
+#         await super().prepare()

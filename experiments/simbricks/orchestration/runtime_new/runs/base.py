@@ -27,9 +27,7 @@ import itertools
 import abc
 
 from simbricks.orchestration.simulation import output
-from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.runtime_new import command_executor
 
 
 class Run:
@@ -39,22 +37,22 @@ class Run:
 
     def __init__(
         self,
-        simulation: sim_base.Simulation,
         instantiation: inst_base.Instantiation,
         prereq: Run | None = None,
         output: output.SimulationOutput | None = None,
         job_id: int | None = None,
+        cp: bool = False,
     ):
-        self._simulation: sim_base.Simulation = simulation
+        self.instantiation: inst_base.Instantiation = instantiation
         self._run_nr = next(self.__run_nr)
-        self._instantiation: inst_base.Instantiation = instantiation
         self._output: output.SimulationOutput | None = output
         self._prereq: Run | None = prereq
         self._job_id: int | None = job_id
+        self.checkpoint: bool = cp
         """Slurm job id."""
 
     def name(self) -> str:
-        return self._simulation.name + "." + str(self._run_nr)
+        return self.instantiation.simulation.name + "." + str(self._run_nr)
 
 
 class Runtime(metaclass=abc.ABCMeta):

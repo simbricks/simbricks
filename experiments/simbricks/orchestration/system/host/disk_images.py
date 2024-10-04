@@ -50,7 +50,7 @@ class DiskImage(utils_base.IdObj):
 
     async def make_qcow_copy(self, inst: inst_base.Instantiation, format: str) -> str:
         disk_path = pathlib.Path(self.path(inst=inst, format=format))
-        copy_path = inst.join_tmp_base(relative_path=f"hdcopy.{self._id}")
+        copy_path = inst.join_imgs_path(relative_path=f"hdcopy.{self._id}")
         prep_cmds = [
             (
                 f"{inst.join_repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -o "

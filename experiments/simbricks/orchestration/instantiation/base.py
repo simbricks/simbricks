@@ -22,7 +22,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import enum
 import pathlib
 import shutil
@@ -32,7 +31,6 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
-from simbricks.orchestration.system.host import base as sys_host
 from simbricks.orchestration.system.host import disk_images
 from simbricks.orchestration.runtime_new import command_executor
 
@@ -57,57 +55,23 @@ class InstantiationEnvironment(util_base.IdObj):
 
     def __init__(
         self,
-        repo_path: str = pathlib.Path(__file__).parents[3].resolve(),
+        repo_path: str = pathlib.Path(__file__).parents[4].resolve(),
         workdir: str | None = None,
-        output_base: str | None = None,
-        cpdir: str | None = None,
-        create_cp: bool = False,
-        restore_cp: bool = False,
-        shm_base: str | None = None,
-        tmp_simulation_files: str | None = None,
-        qemu_img_path: str | None = None,
-        qemu_path: str | None = None,
     ):
         super().__init__()
         self._repodir: str = pathlib.Path(repo_path).resolve()
         self._workdir: str = (
             workdir if workdir else pathlib.Path(f"{self._repodir}/wrkdir").resolve()
         )
-        self._output_base: str = (
-            output_base
-            if output_base
-            else pathlib.Path(f"{self._workdir}/output").resolve()
-        )
-        self._cpdir: str = (
-            cpdir
-            if cpdir
-            else pathlib.Path(f"{self._output_base}/checkpoints").resolve()
-        )
-        self._shm_base: str = (
-            shm_base if shm_base else pathlib.Path(f"{self._workdir}/shm").resolve()
-        )
-        self._tmp_simulation_files: str = (
-            tmp_simulation_files
-            if tmp_simulation_files
-            else (pathlib.Path(f"{self._workdir}/tmp").resolve())
-        )
-        self._create_cp: bool = create_cp
-        self._restore_cp: bool = restore_cp
-
-        self._qemu_img_path: str = (
-            qemu_img_path
-            if qemu_img_path
-            else pathlib.Path(
-                f"{self._repodir}/sims/external/qemu/build/qemu-img"
-            ).resolve()
-        )
-        self._qemu_path: str = (
-            qemu_path
-            if qemu_path
-            else pathlib.Path(
-                f"{self._repodir}/sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64"
-            ).resolve()
-        )
+        self._output_base: str = pathlib.Path(f"{self._workdir}/output").resolve()
+        self._tmp_simulation_files: str = pathlib.Path(f"{self._workdir}/tmp").resolve()
+        self._imgdir: str = pathlib.Path(f"{self._tmp_simulation_files}/imgs").resolve()
+        self._cpdir: str = pathlib.Path(
+            f"{self._tmp_simulation_files}/checkpoints"
+        ).resolve()
+        self._shm_base: str = pathlib.Path(
+            f"{self._tmp_simulation_files}/shm"
+        ).resolve()
 
 
 class Instantiation(util_base.IdObj):
@@ -118,13 +82,14 @@ class Instantiation(util_base.IdObj):
         env: InstantiationEnvironment = InstantiationEnvironment(),
     ):
         super().__init__()
-        self._simulation: sim_base.Simulation = sim
-        self._env: InstantiationEnvironment = env
+        self.simulation: sim_base.Simulation = sim
+        self.env: InstantiationEnvironment = env
         self._executor: command_executor.Executor | None = None
+        self._create_checkpoint: bool = False
+        self._restore_checkpoint: bool = False
+        self._preserve_checkpoints: bool = True
+        self.preserve_tmp_folder: bool = False
         self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
-        self._simulation_topo: (
-            dict[sys_base.Interface, set[sys_base.Interface]] | None
-        ) = None
         self._sim_dependency: (
             dict[sim_base.Simulator, set[sim_base.Simulator]] | None
         ) = None
@@ -143,12 +108,6 @@ class Instantiation(util_base.IdObj):
     @executor.setter
     def executor(self, executor: command_executor.Executor):
         self._executor = executor
-
-    def qemu_img_path(self) -> str:
-        return self._env._qemu_img_path
-
-    def qemu_path(self) -> str:
-        return self._env._qemu_path
 
     def _get_opposing_interface(
         self, interface: sys_base.Interface
@@ -203,7 +162,7 @@ class Instantiation(util_base.IdObj):
                 raise Exception("cannot create socket path for given interface type")
 
         assert queue_type is not None
-        print(f"_interface_to_sock_path: self._env._shm_base={self.shm_base_dir()}")
+        print(f"_interface_to_sock_path: self.env._shm_base={self.shm_base_dir()}")
         return self._join_paths(
             base=self.shm_base_dir(),
             relative_path=f"{queue_type}-{queue_ident}",
@@ -311,7 +270,7 @@ class Instantiation(util_base.IdObj):
                 self._get_socket(interface=sim_b, socket_type=SockType.LISTEN)
 
         # build dependency graph
-        for sim in self._simulation.all_simulators():
+        for sim in self.simulation.all_simulators():
             for comp in sim._components:
                 for sim_inf in comp.interfaces():
                     if self._opposing_interface_within_same_sim(interface=sim_inf):
@@ -324,20 +283,9 @@ class Instantiation(util_base.IdObj):
     def sim_dependencies(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
         if self._sim_dependency is not None:
             return self._sim_dependency
-
         self._build_simulation_topology()
         assert self._sim_dependency is not None
         return self._sim_dependency
-
-    async def cleanup_sockets(
-        self,
-        sockets: list[Socket] = [],
-    ) -> None:
-        scs = []
-        for sock in sockets:
-            scs.append(asyncio.create_task(self.executor.rmtree(path=sock._path)))
-        if len(scs) > 0:
-            await asyncio.gather(*scs)
 
     async def wait_for_sockets(
         self,
@@ -346,68 +294,92 @@ class Instantiation(util_base.IdObj):
         wait_socks = list(map(lambda sock: sock._path, sockets))
         await self.executor.await_files(wait_socks, verbose=True)
 
-    # TODO: add more methods constructing paths as required by methods in simulators or image handling classes
+    @property
+    def create_checkpoint(self) -> bool:
+        """
+        Whether to use checkpoint and restore for simulators.
 
-    # TODO: fix paths to support mutliple exeriment runs etc.
-    def wrkdir(self) -> str:
-        return pathlib.Path(self._env._workdir).resolve()
+        The most common use-case for this is accelerating host simulator startup
+        by first running in a less accurate mode, then checkpointing the system
+        state after boot and running simulations from there.
+        """
+        assert (self._create_checkpoint ^ self._restore_checkpoint) or (
+            not self._create_checkpoint and not self._restore_checkpoint
+        )
+        return self._create_checkpoint
+
+    @create_checkpoint.setter
+    def create_checkpoint(self, create_checkpoint: bool) -> None:
+        assert (self._create_checkpoint ^ self._restore_checkpoint) or (
+            not self._create_checkpoint and not self._restore_checkpoint
+        )
+        self._create_checkpoint = create_checkpoint
+
+    @property
+    def restore_checkpoint(self) -> bool:
+        assert (self._create_checkpoint ^ self._restore_checkpoint) or (
+            not self._create_checkpoint and not self._restore_checkpoint
+        )
+        return self._restore_checkpoint
+
+    @restore_checkpoint.setter
+    def restore_checkpoint(self, restore_checkpoint: bool) -> None:
+        assert (self._create_checkpoint ^ self._restore_checkpoint) or (
+            not self._create_checkpoint and not self._restore_checkpoint
+        )
+        self._restore_checkpoint = restore_checkpoint
+
+    def copy(self) -> Instantiation:
+        copy = Instantiation(sim=self.simulation, env=self.env)
+        return copy
+
+    def out_base_dir(self) -> str:
+        return pathlib.Path(
+            f"{self.env._output_base}/{self.simulation.name}"  # /{self.run._run_nr}"
+        ).resolve()
 
     def shm_base_dir(self) -> str:
-        return pathlib.Path(self._env._shm_base).resolve()
+        return pathlib.Path(
+            f"{self.env._shm_base}/{self.simulation.name}"  # /{self.run._run_nr}"
+        ).resolve()
 
-    def create_cp(self) -> bool:
-        return self._env._create_cp
-
-    def restore_cp(self) -> bool:
-        return self._env._restore_cp
+    def imgs_dir(self) -> str:
+        return pathlib.Path(
+            f"{self.env._imgdir}/{self.simulation.name}"  # /{self.run._run_nr}"
+        ).resolve()
 
     def cpdir(self) -> str:
-        return pathlib.Path(self._env._cpdir).resolve()
+        return pathlib.Path(
+            f"{self.env._cpdir}/{self.simulation.name}"  # /{self.run._run_nr}"
+        ).resolve()
 
     def wrkdir(self) -> str:
-        return pathlib.Path(self._env._workdir).resolve()
-
-    def tmp_dir(self) -> str:
-        return pathlib.Path(self._env._tmp_simulation_files).resolve()
+        return pathlib.Path(
+            f"{self.env._workdir}/{self.simulation.name}"  # /{self.run._run_nr}"
+        ).resolve()
 
     async def prepare(self) -> None:
-        wrkdir = self.wrkdir()
-        print(f"wrkdir={wrkdir}")
-        shutil.rmtree(wrkdir, ignore_errors=True)
-        await self.executor.rmtree(wrkdir)
+        to_prepare = [self.shm_base_dir(), self.imgs_dir()]
+        if not self.create_checkpoint and not self.restore_checkpoint:
+            to_prepare.append(self.cpdir())
+        for tp in to_prepare:
+            shutil.rmtree(tp, ignore_errors=True)
+            await self.executor.rmtree(tp)
 
-        shm_base = self.shm_base_dir()
-        print(f"shm_base={shm_base}")
-        shutil.rmtree(shm_base, ignore_errors=True)
-        await self.executor.rmtree(shm_base)
+            pathlib.Path(tp).mkdir(parents=True, exist_ok=True)
+            await self.executor.mkdir(tp)
 
-        cpdir = self.cpdir()
-        print(f"cpdir={cpdir}")
-        if self.create_cp():
-            shutil.rmtree(cpdir, ignore_errors=True)
-            await self.executor.rmtree(cpdir)
-
-        tmpdir = self.tmp_dir()
-        print(f"tmpdir={tmpdir}")
-        shutil.rmtree(tmpdir, ignore_errors=True)
-        await self.executor.rmtree(tmpdir)
-
-        pathlib.Path(wrkdir).mkdir(parents=True, exist_ok=True)
-        await self.executor.mkdir(wrkdir)
-
-        pathlib.Path(cpdir).mkdir(parents=True, exist_ok=True)
-        await self.executor.mkdir(cpdir)
-
-        pathlib.Path(shm_base).mkdir(parents=True, exist_ok=True)
-        await self.executor.mkdir(shm_base)
-
-        pathlib.Path(tmpdir).mkdir(parents=True, exist_ok=True)
-        await self.executor.mkdir(tmpdir)
-
-        await self._simulation.prepare(inst=self)
+        await self.simulation.prepare(inst=self)
 
     async def cleanup(self) -> None:
-        pass  # TODO: implement cleanup functionality (e.g. delete )
+        if self.preserve_tmp_folder:
+            return
+        to_delete = [self.shm_base_dir(), self.imgs_dir()]
+        if not self._preserve_checkpoints:
+            to_delete.append(self.cpdir())
+        for td in to_delete:
+            shutil.rmtree(td, ignore_errors=True)
+            await self.executor.rmtree(td)
 
     def _join_paths(
         self, base: str = "", relative_path: str = "", enforce_existence=False
@@ -424,12 +396,12 @@ class Instantiation(util_base.IdObj):
 
     def join_repo_base(self, relative_path: str) -> str:
         return self._join_paths(
-            base=self._env._repodir, relative_path=relative_path, enforce_existence=True
+            base=self.env._repodir, relative_path=relative_path, enforce_existence=True
         )
 
     def join_output_base(self, relative_path: str) -> str:
         return self._join_paths(
-            base=self._env._output_base,
+            base=self.out_base_dir(),
             relative_path=relative_path,
             enforce_existence=True,
         )
@@ -438,7 +410,7 @@ class Instantiation(util_base.IdObj):
         if Instantiation.is_absolute_exists(hd_name_or_path):
             return hd_name_or_path
         path = self._join_paths(
-            base=self._env._repodir,
+            base=self.env._repodir,
             relative_path=f"images/output-{hd_name_or_path}/{hd_name_or_path}",
             enforce_existence=True,
         )
@@ -447,23 +419,29 @@ class Instantiation(util_base.IdObj):
     def cfgtar_path(self, sim: sim_base.Simulator) -> str:
         return f"{self.wrkdir()}/cfg.{sim.name}.tar"
 
-    def join_tmp_base(self, relative_path: str) -> str:
+    # def join_tmp_base(self, relative_path: str) -> str:
+    #     return self._join_paths(
+    #         base=self.tmp_dir(),
+    #         relative_path=relative_path,
+    #     )
+
+    def join_imgs_path(self, relative_path: str) -> str:
         return self._join_paths(
-            base=self.tmp_dir(),
+            base=self.imgs_dir(),
             relative_path=relative_path,
         )
 
     def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
         filename = f"{img._id}.{format}"
         return self._join_paths(
-            base=self.tmp_dir(),
+            base=self.imgs_dir(),
             relative_path=filename,
         )
 
     def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
         filename = f"{img._id}_hdcopy.{format}"
         return self._join_paths(
-            base=self.tmp_dir(),
+            base=self.imgs_dir(),
             relative_path=filename,
         )
 
@@ -475,7 +453,7 @@ class Instantiation(util_base.IdObj):
 
     def get_simmulator_output_dir(self, sim: sim_base.Simulator) -> str:
         dir_path = f"output.{sim.full_name()}-{sim._id}"
-        return self._join_paths(base=self._env._output_base, relative_path=dir_path)
+        return self._join_paths(base=self.out_base_dir(), relative_path=dir_path)
 
     def get_simulator_shm_pool_path(self, sim: sim_base.Simulator) -> str:
         return self._join_paths(
@@ -483,10 +461,10 @@ class Instantiation(util_base.IdObj):
             relative_path=f"{sim.full_name()}-shm-pool-{sim._id}",
         )
 
-    def get_simulation_output_path(self, run_number: int) -> str:
+    def get_simulation_output_path(self, run_nr: int) -> str:
         return self._join_paths(
-            base=self._env._output_base,
-            relative_path=f"out-{run_number}.json",
+            base=self.out_base_dir(),
+            relative_path=f"{run_nr}/out.json",
         )
 
     def find_sim_by_interface(
@@ -496,4 +474,4 @@ class Instantiation(util_base.IdObj):
 
     def find_sim_by_spec(self, spec: sys_base.Component) -> sim_base.Simulator:
         util_base.has_expected_type(spec, sys_base.Component)
-        return self._simulation.find_sim(spec)
+        return self.simulation.find_sim(spec)

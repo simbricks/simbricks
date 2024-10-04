@@ -20,12 +20,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.runtime_new import command_executor
+from __future__ import annotations
+
+import json
 import time
 import pathlib
-import json
+import typing
+from simbricks.orchestration.runtime_new import command_executor
 
+if typing.TYPE_CHECKING:
+    from simbricks.orchestration.simulation import base as sim_base
 
 class SimulationOutput:
     """Manages an experiment's output."""

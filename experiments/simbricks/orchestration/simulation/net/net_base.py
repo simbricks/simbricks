@@ -138,7 +138,6 @@ class SwitchNet(NetSim):
         for sock in listen:
             cmd += " -h " + sock._path
 
-        print(f"SWITCH NET CMD!!! ===== {cmd}")
         return cmd
 
 
@@ -227,9 +226,6 @@ class NS3DumbbellNet(SimpleNS3Sim):
             cmd += f"--SimbricksPortRight={sock._path} "
 
         # TODO cmd += f"{self.opt}"
-        print(
-            f"!!!!!!!!!!!!!!!!!!!!!! NS3DumbbellNet run_cmd: {cmd} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        )
         return cmd
 
 
@@ -256,7 +252,4 @@ class NS3BridgeNet(SimpleNS3Sim):
             cmd += f"--SimbricksPort={sock._path} "
 
         # TODO cmd += f"{self.opt}"
-        print(
-            f"!!!!!!!!!!!!!!!!!!!!!! NS3BridgeNet run_cmd: {cmd} !!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        )
         return cmd

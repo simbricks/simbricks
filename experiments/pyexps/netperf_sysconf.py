@@ -14,7 +14,7 @@ This scripts generates the experiments with all the combinations of different ex
 host_types = ["gem5"]
 nic_types = ["i40e"]
 net_types = ["switch"]
-experiments = []
+instantiations: list[inst.Instantiation] = []
 
 sys = system.System()
 
@@ -121,7 +121,8 @@ for host_type in host_types:
             else:
                 raise NameError(net_type)
 
-            host_inst0 = sim.QemuSim(simulation)
+            host_inst0 = sim.Gem5Sim(simulation)
+            # host_inst0 = sim.QemuSim(simulation)
             host_inst0.add(host0)
             host_inst0.name = "Client-Host"
             # host_inst0.wait_terminate = True
@@ -129,7 +130,7 @@ for host_type in host_types:
 
             # host_inst1 = sim.Gem5Sim(simulation)
             host_inst1 = sim.QemuSim(simulation)
-            host_inst1.name = "Server-Simulator"
+            host_inst1.name = "Server-Host"
             host_inst1.add(host1)
             # host_inst1.cpu_type = 'X86KvmCPU'
 
@@ -158,4 +159,7 @@ for host_type in host_types:
             for s in sims:
                 print(s)
 
-            experiments.append(simulation)
+            instance = inst.Instantiation(sim=simulation)
+            instance.preserve_tmp_folder = False
+            instance.create_checkpoint = True
+            instantiations.append(instance)

@@ -70,6 +70,9 @@ class Gem5Sim(HostSim):
         self._variant: str = "fast"
         self._sys_clock: str = "1GHz"  # TODO: move to system module
 
+    def supports_checkpointing(self) -> bool:
+        return True
+
     def resreq_cores(self) -> int:
         return 1
 
@@ -96,7 +99,7 @@ class Gem5Sim(HostSim):
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cpu_type = self.cpu_type
-        if inst.create_cp():
+        if inst.create_checkpoint:
             cpu_type = self.cpu_type_cp
 
         full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)
@@ -126,10 +129,10 @@ class Gem5Sim(HostSim):
         # if self.node_config.kcmd_append:
         #     cmd += f'--command-line-append="{self.node_config.kcmd_append}" '
 
-        if inst.create_cp():
+        if inst.create_checkpoint:
             cmd += "--max-checkpoints=1 "
 
-        if inst.restore_cp():
+        if inst.restore_checkpoint:
             cmd += "-r 1 "
 
         latency, sync_period, run_sync = (
@@ -153,7 +156,7 @@ class Gem5Sim(HostSim):
                 f":latency={latency}ns"
                 f":sync_interval={sync_period}ns"
             )
-            if run_sync:
+            if run_sync and not inst.create_checkpoint:
                 cmd += ":sync"
             cmd += " "
 
@@ -173,7 +176,7 @@ class Gem5Sim(HostSim):
                 f":latency={latency}ns"
                 f":sync_interval={sync_period}ns"
             )
-            if run_sync:
+            if run_sync and not inst.create_checkpoint:
                 cmd += ":sync"
             cmd += " "
 

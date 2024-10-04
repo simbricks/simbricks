@@ -287,14 +287,6 @@ class Simulation(utils_base.IdObj):
         """
         self.timeout: int | None = None
         """Timeout for experiment in seconds."""
-        self.checkpoint = False
-        """
-        Whether to use checkpoint and restore for simulators.
-
-        The most common use-case for this is accelerating host simulator startup
-        by first running in a less accurate mode, then checkpointing the system
-        state after boot and running simulations from there.
-        """
         self.metadata: dict[str, tp.Any] = {}
 
         self._sys_sim_map: dict[sys_conf.Component, Simulator] = {}
@@ -368,10 +360,10 @@ class Simulation(utils_base.IdObj):
             promises.append(sim.prepare(inst=inst))
         await asyncio.gather(*promises)
 
-    # TODO: FIXME
-    def enable_checkpointing_if_supported() -> None:
-        raise Exception("not implemented")
-
-    # TODO: FIXME
-    def is_checkpointing_enabled(self) -> bool:
-        raise Exception("not implemented")
+    def any_supports_checkpointing(self) -> bool:
+        if (
+            len(list(filter(lambda sim: sim.supports_checkpointing(), self._sim_list)))
+            > 0
+        ):
+            return True
+        return False
