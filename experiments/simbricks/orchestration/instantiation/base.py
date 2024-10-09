@@ -26,6 +26,8 @@ import enum
 import pathlib
 import shutil
 import typing
+import itertools
+import copy
 from simbricks.orchestration.utils import base as util_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import pcie as sys_pcie
@@ -74,7 +76,9 @@ class InstantiationEnvironment(util_base.IdObj):
         ).resolve()
 
 
-class Instantiation(util_base.IdObj):
+class Instantiation():
+
+    __id_iter = itertools.count()
 
     def __init__(
         self,
@@ -82,6 +86,7 @@ class Instantiation(util_base.IdObj):
         env: InstantiationEnvironment = InstantiationEnvironment(),
     ):
         super().__init__()
+        self._id = next(self.__id_iter)
         self.simulation: sim_base.Simulation = sim
         self.env: InstantiationEnvironment = env
         self._executor: command_executor.Executor | None = None
@@ -330,32 +335,33 @@ class Instantiation(util_base.IdObj):
         self._restore_checkpoint = restore_checkpoint
 
     def copy(self) -> Instantiation:
-        copy = Instantiation(sim=self.simulation, env=self.env)
-        return copy
+        cop = Instantiation(sim=self.simulation, env=self.env)
+        cop.simulation = copy.deepcopy(self.simulation) # maybe there is a smarter way of achieving this...
+        return cop
 
     def out_base_dir(self) -> str:
         return pathlib.Path(
-            f"{self.env._output_base}/{self.simulation.name}"  # /{self.run._run_nr}"
+            f"{self.env._output_base}/{self.simulation.name}/{self._id}"
         ).resolve()
 
     def shm_base_dir(self) -> str:
         return pathlib.Path(
-            f"{self.env._shm_base}/{self.simulation.name}"  # /{self.run._run_nr}"
+            f"{self.env._shm_base}/{self.simulation.name}/{self._id}"
         ).resolve()
 
     def imgs_dir(self) -> str:
         return pathlib.Path(
-            f"{self.env._imgdir}/{self.simulation.name}"  # /{self.run._run_nr}"
+            f"{self.env._imgdir}/{self.simulation.name}/{self._id}"
         ).resolve()
 
     def cpdir(self) -> str:
         return pathlib.Path(
-            f"{self.env._cpdir}/{self.simulation.name}"  # /{self.run._run_nr}"
+            f"{self.env._cpdir}/{self.simulation.name}" # /{self._id}"
         ).resolve()
 
     def wrkdir(self) -> str:
         return pathlib.Path(
-            f"{self.env._workdir}/{self.simulation.name}"  # /{self.run._run_nr}"
+            f"{self.env._workdir}/{self.simulation.name}" # /{self._id}"
         ).resolve()
 
     async def prepare(self) -> None:
@@ -461,10 +467,10 @@ class Instantiation(util_base.IdObj):
             relative_path=f"{sim.full_name()}-shm-pool-{sim._id}",
         )
 
-    def get_simulation_output_path(self, run_nr: int) -> str:
+    def get_simulation_output_path(self) -> str:
         return self._join_paths(
             base=self.out_base_dir(),
-            relative_path=f"{run_nr}/out.json",
+            relative_path=f"out.json",
         )
 
     def find_sim_by_interface(

@@ -280,7 +280,7 @@ def main():
         executors = load_executors(args.hosts)
 
     # initialize runtime
-    if args.runtime == "parallel":  # TODO: FIXME
+    if args.runtime == "parallel":
         warn_multi_exec(executors)
         rt = rt_local.LocalParallelRuntime(
             cores=args.cores, mem=args.mem, verbose=args.verbose, executor=executors[0]
