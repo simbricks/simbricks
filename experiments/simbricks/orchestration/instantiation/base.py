@@ -337,6 +337,12 @@ class Instantiation():
     def copy(self) -> Instantiation:
         cop = Instantiation(sim=self.simulation, env=self.env)
         cop.simulation = copy.deepcopy(self.simulation) # maybe there is a smarter way of achieving this...
+        cop._create_checkpoint = self._create_checkpoint 
+        cop._restore_checkpoint = self._restore_checkpoint 
+        cop._preserve_checkpoints = self._preserve_checkpoints 
+        cop.preserve_tmp_folder = self.preserve_tmp_folder 
+        cop._socket_per_interface = {}
+        cop._sim_dependency = {}
         return cop
 
     def out_base_dir(self) -> str:
