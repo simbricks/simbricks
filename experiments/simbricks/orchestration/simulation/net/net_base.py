@@ -180,6 +180,7 @@ class SimpleNS3Sim(NetSim):
             name=name,
         )
         self._ns3_run_script: str = ns3_run_script
+        self.opt: str | None = None
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return f"{inst.join_repo_base(self._executable)} {self._ns3_run_script} "
@@ -225,7 +226,9 @@ class NS3DumbbellNet(SimpleNS3Sim):
             assert sock._type == inst_base.SockType.CONNECT
             cmd += f"--SimbricksPortRight={sock._path} "
 
-        # TODO cmd += f"{self.opt}"
+        if self.opt is not None:
+            cmd += f"{self.opt}"
+        
         return cmd
 
 
@@ -251,5 +254,7 @@ class NS3BridgeNet(SimpleNS3Sim):
         for sock in sockets:
             cmd += f"--SimbricksPort={sock._path} "
 
-        # TODO cmd += f"{self.opt}"
+        if self.opt is not None:
+            cmd += f"{self.opt}"
+
         return cmd

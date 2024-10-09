@@ -69,9 +69,7 @@ class LocalSimpleRuntime(run_base.Runtime):
         if self._verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
 
-        output_path = run.instantiation.get_simulation_output_path(
-            run_nr=run._run_nr
-        )
+        output_path = run.instantiation.get_simulation_output_path()
         run._output.dump(outpath=output_path)
 
         await runner.cleanup()
@@ -150,9 +148,7 @@ class LocalParallelRuntime(run_base.Runtime):
         if self._verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
 
-        output_path = run.instantiation.get_simulation_output_path(
-            run_number=run._run_nr
-        )
+        output_path = run.instantiation.get_simulation_output_path()
         run._output.dump(outpath=output_path)
 
         await runner.cleanup()

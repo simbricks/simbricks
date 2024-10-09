@@ -65,8 +65,8 @@ class Gem5Sim(HostSim):
         self.name = f"Gem5Sim-{self._id}"
         self.cpu_type_cp = "X86KvmCPU"
         self.cpu_type = "TimingSimpleCPU"
-        self.extra_main_args: list[str] = []  # TODO
-        self.extra_config_args: list[str] = []  # TODO
+        self.extra_main_args: list[str] = []
+        self.extra_config_args: list[str] = []
         self._variant: str = "fast"
         self._sys_clock: str = "1GHz"  # TODO: move to system module
 
