@@ -84,6 +84,19 @@ class DiskImage(utils_base.IdObj):
 
         await self._prepare_format(inst, format)
 
+    def toJSON(self) -> dict:
+        json_obj = {}
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
+        json_obj["host"] = self.host.id()
+        json_obj["qemu_img_exec"] = self._qemu_img_exec
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
+
 
 # Disk image where user just provides a path
 class ExternalDiskImage(DiskImage):
@@ -98,6 +111,17 @@ class ExternalDiskImage(DiskImage):
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         DiskImage.assert_is_file(self._path)
         return self._path
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["path"] = self._path
+        json_obj["formats"] = self.formats
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 # Disk images shipped with simbricks
@@ -120,6 +144,17 @@ class DistroDiskImage(DiskImage):
             raise RuntimeError("Unsupported disk format")
         DiskImage.assert_is_file(path)
         return path
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["name"] = self.name
+        json_obj["formats"] = self.formats
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 # Abstract base class for dynamically generated images
@@ -185,4 +220,14 @@ class PackerDiskImage(DynamicDiskImage):
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         # TODO: invoke packer to build the image if necessary
+        pass
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["config_path"] = self.config_path
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
         pass

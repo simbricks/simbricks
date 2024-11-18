@@ -68,3 +68,16 @@ class MemSimpleDevice(base.Component):
         utils_base.has_expected_type(obj=interface, expected_type=MemDeviceInterface)
         assert self._mem_if is None
         self._mem_if = interface
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["mem_if"] = self._mem_if.id()
+        json_obj["addr"] = self._addr
+        json_obj["size"] = self._size
+        json_obj["as_id"] = self._as_id
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass

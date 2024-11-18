@@ -20,46 +20,28 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import abc
-import itertools
+import json
+
+from simbricks.orchestration.utils import base as util_base
+from simbricks.orchestration.system import base as sys_base
 
 
-class IdObj(abc.ABC):
-    __id_iter = itertools.count()
+def toJSON(system: sys_base.System) -> dict:
 
-    def __init__(self):
-        self._id = next(self.__id_iter)
+    json_obj = {}
 
-    def id(self) -> int:
-        return self._id
+    util_base.has_attribute(system, "toJSON")
+    json_obj["system"] = system.toJSON()
 
-    def toJSON(self):
-        json_obj = {}
-        json_obj["id"] = self._id
-        return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+    channels: set[sys_base.Channel] = set()
+    for comp in system.all_component:
+        for inf in comp.interfaces():
+            channels.add(inf.channel)
 
-def check_type(obj, expected_type) -> bool:
-    """
-    Checks if obj has type or is a subtype of expected_type
-    obj: an class object
-    expected_type: a type object
-    """
-    return isinstance(obj, expected_type)
+    channels_json = []
+    for chan in channels:
+        util_base.has_attribute(chan, "toJSON")
+        channels_json.append(chan.toJSON())
+    json_obj["channels"] = channels_json
 
-
-def has_expected_type(obj, expected_type) -> None:
-    if not check_type(obj=obj, expected_type=expected_type):
-        raise Exception(
-            f"obj of type {type(obj)} has not the type or is not a subtype of {expected_type}"
-        )
-    
-def has_attribute(obj, attr: str) -> None:
-    if not hasattr(obj, attr):
-        raise Exception(
-            f"obj of type {type(obj)} no attribute called {attr}"
-        )
+    return json.dumps({"specification": json_obj})

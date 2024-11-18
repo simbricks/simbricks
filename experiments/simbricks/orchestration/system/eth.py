@@ -51,6 +51,17 @@ class EthSimpleNIC(base.Component):
 
     def add_if(self, interface: EthInterface) -> None:
         raise Exception("EthSimpleNIC already has ethernet interface")
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["ip"] = self._ip
+        json_obj["eth_if"] = self._eth_if.id()
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 class BaseEthNetComponent(base.Component):
     def __init__(self, s: base.System) -> None:
@@ -62,6 +73,17 @@ class BaseEthNetComponent(base.Component):
 
     def interfaces(self) -> list[EthInterface]:
         return self.eth_ifs
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        eth_interfaces = [inf.id() for inf in self.eth_ifs]
+        json_obj["eth_if"] = eth_interfaces
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class EthWire(BaseEthNetComponent):

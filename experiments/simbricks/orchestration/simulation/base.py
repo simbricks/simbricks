@@ -277,7 +277,7 @@ class Simulation(utils_base.IdObj):
     Contains the simulators to be run and experiment-wide parameters.
     """
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, system: sys_conf.System) -> None:
         super().__init__()
         self.name = name
         """
@@ -285,6 +285,7 @@ class Simulation(utils_base.IdObj):
 
         Can be used to run only a selection of experiments.
         """
+        self.system: sys_conf.System = system
         self.timeout: int | None = None
         """Timeout for experiment in seconds."""
         self.metadata: dict[str, tp.Any] = {}

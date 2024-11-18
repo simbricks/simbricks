@@ -40,16 +40,32 @@ class Host(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
         self.ifs: list[base.Interface] = []
-        self.applications: list[app.Application]
+        self.applications: list[app.Application] = []
 
     def interfaces(self) -> list[base.Interface]:
         return self.ifs
-
+    
     def add_if(self, interface: base.Interface) -> None:
         self.ifs.append(interface)
 
     def add_app(self, a: app.Application) -> None:
         self.applications.append(a)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+
+        applications_json = []
+        for app in self.applications:
+            utils_base.has_attribute(app, 'toJSON')
+            applications_json.append(app.toJSON())
+        json_obj["applications"] = applications_json
+
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class FullSystemHost(Host):
@@ -66,6 +82,25 @@ class FullSystemHost(Host):
     async def prepare(self, inst: instantiation.Instantiation) -> None:
         promises = [disk.prepare(inst) for disk in self.disks]
         await asyncio.gather(*promises)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["memory"] = self.memory
+        json_obj["cores"] = self.cores
+        json_obj["cpu_freq"] = self.cpu_freq
+
+        disks_json = []
+        for disk in self.disks:
+            utils_base.has_attribute(disk, 'toJSON')
+            disks_json.append(disk.toJSON())
+        json_obj["disks"] = disks_json
+
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class BaseLinuxHost(FullSystemHost):
@@ -165,6 +200,17 @@ class BaseLinuxHost(FullSystemHost):
         simulated node.
         """
         return io.BytesIO(bytes(s, encoding="UTF-8"))
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["load_modules"] = self.load_modules
+        json_obj["kcmd_append"] = self.kcmd_append
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class LinuxHost(BaseLinuxHost):
@@ -229,6 +275,17 @@ class LinuxHost(BaseLinuxHost):
             cmds.append(f"ip addr add {com._ip}/24 dev {ifn}")
 
         return cmds
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["drivers"] = self.drivers
+        json_obj["hostname"] = self.hostname
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class I40ELinuxHost(LinuxHost):

@@ -26,21 +26,35 @@ import typing as tp
 import abc
 import io
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import host as sys_host
 
 
-class Application(abc.ABC):
+class Application(utils_base.IdObj):
     def __init__(self, h: sys_host.Host) -> None:
+        super().__init__()
         self.host = h
+
+    def toJSON(self) -> dict:
+        json_obj = {}
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
+        json_obj["host"] = self.host.id()
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 # Note AK: Maybe we can factor most of the duplicate calls with the host out
 # into a separate module.
-class BaseLinuxApplication(abc.ABC):
+class BaseLinuxApplication(Application):
     def __init__(self, h: sys_host.LinuxHost) -> None:
-        self.host = h
+        super().__init__(h)
         self.start_delay: float | None = None
         self.end_delay: float | None = None
         self.wait = False
@@ -87,6 +101,18 @@ class BaseLinuxApplication(abc.ABC):
         simulated node.
         """
         return io.BytesIO(bytes(s, encoding="UTF-8"))
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["start_delay"] = self.start_delay
+        json_obj["end_delay"] = self.end_delay
+        json_obj["wait"] = self.wait
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class PingClient(BaseLinuxApplication):
@@ -96,6 +122,16 @@ class PingClient(BaseLinuxApplication):
 
     def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
         return [f"ping {self.server_ip} -c 10"]
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["server_ip"] = self.server_ip
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class Sleep(BaseLinuxApplication):
@@ -108,6 +144,17 @@ class Sleep(BaseLinuxApplication):
         if self.infinite:
             return [f"sleep infinity"]
         return [f"sleep {self.delay}"]
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["infinite"] = self.infinite
+        json_obj["delay"] = self.delay
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class NetperfServer(BaseLinuxApplication):
@@ -121,9 +168,9 @@ class NetperfServer(BaseLinuxApplication):
 class NetperfClient(BaseLinuxApplication):
     def __init__(self, h: sys_host.LinuxHost, server_ip: str = "192.168.64.1") -> None:
         super().__init__(h)
-        self.server_ip = server_ip
-        self.duration_tp = 10
-        self.duration_lat = 10
+        self.server_ip: str = server_ip
+        self.duration_tp: int = 10
+        self.duration_lat: int = 10
 
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         return [
@@ -135,3 +182,15 @@ class NetperfClient(BaseLinuxApplication):
                 " -- -o mean_latency,p50_latency,p90_latency,p99_latency"
             ),
         ]
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["server_ip"] = self.server_ip
+        json_obj["duration_tp"] = self.duration_tp
+        json_obj["duration_lat"] = self.duration_lat
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass

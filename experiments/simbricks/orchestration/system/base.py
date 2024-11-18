@@ -29,16 +29,35 @@ from simbricks.orchestration.utils import base as util_base
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
 
-
-class System:
+class System(util_base.IdObj):
     """Defines System configuration of the whole simulation"""
 
     def __init__(self) -> None:
+        super().__init__()
         self.all_component: list[Component] = []
 
     def add_component(self, c: Component) -> None:
         assert c.system == self
         self.all_component.append(c)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__ 
+
+        components_json = []
+        for comp in self.all_component:
+            util_base.has_attribute(comp, 'toJSON')
+            comp_json = comp.toJSON()
+            components_json.append(comp_json)
+
+        json_obj["all_component"] = components_json
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class Component(util_base.IdObj):
@@ -62,6 +81,26 @@ class Component(util_base.IdObj):
         return [i.channel for i in self.interfaces() if i.is_connected()]
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
+        pass
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
+        json_obj["system"] = self.system.id()
+        json_obj["name"] = self.name
+
+        interfaces_json = []
+        for inf in self.interfaces():
+            util_base.has_attribute(inf, 'toJSON')
+            interfaces_json.append(inf.toJSON())
+        json_obj["interfaces"] = interfaces_json
+
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
         pass
 
 
@@ -103,6 +142,19 @@ class Interface(util_base.IdObj):
     @staticmethod
     def filter_by_type(interfaces: list[Interface], ty: type[T]) -> list[T]:
         return list(filter(lambda inf: isinstance(inf, ty), interfaces))
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
+        json_obj["component"] = self.component.id()
+        json_obj["channel"] = self.channel.id()
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
 
 class Channel(util_base.IdObj):
@@ -131,3 +183,17 @@ class Channel(util_base.IdObj):
         opposing = self.a if interface is self.b else self.b
         assert opposing != interface
         return opposing
+    
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
+        json_obj["latency"] = self.latency
+        json_obj["interface_a"] = self.a.id()
+        json_obj["interface_b"] = self.b.id()
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
