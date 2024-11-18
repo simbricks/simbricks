@@ -63,3 +63,13 @@ class PCIeSimpleDevice(base.Component):
 
     def add_if(self, interface: PCIeDeviceInterface) -> None:
         raise Exception("PCIeSimpleDevice already has PCI device interface")
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["pci_if"] = self._pci_if.id()
+        return json_obj
+    
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
