@@ -1091,7 +1091,6 @@ class NS3DumbbellNet(NetSim):
             f'{env.repodir}/sims/external/ns-3'
             f'/simbricks-run.sh simbricks-dumbbell-example {ports} {self.opt}'
         )
-        print(cmd)
 
         return cmd
 
@@ -1107,7 +1106,6 @@ class NS3BridgeNet(NetSim):
             f'{env.repodir}/sims/external/ns-3'
             f'/simbricks-run.sh simbricks-bridge-example {ports} {self.opt}'
         )
-        print(cmd)
 
         return cmd
 
