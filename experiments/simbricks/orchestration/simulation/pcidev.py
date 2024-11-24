@@ -50,13 +50,13 @@ class PCIDevSim(sim_base.Simulator):
 class NICSim(PCIDevSim):
     """Base class for NIC simulators."""
 
-    def full_name(self) -> str:
-        return "nic." + self.name
-
     def __init__(
         self, simulation: sim_base.Simulation, executable: str, name: str = ""
     ) -> None:
         super().__init__(simulation=simulation, executable=executable, name=name)
+
+    def full_name(self) -> str:
+        return "nic." + self.name
 
     def add(self, nic: sys_nic.SimplePCIeNIC):
         assert len(self._components) < 1
@@ -105,6 +105,15 @@ class I40eNicSim(NICSim):
         )
         self.name = f"NICSim-{self._id}"
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
+
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return super().run_cmd(inst=inst)
 
@@ -116,6 +125,15 @@ class CorundumBMNICSim(NICSim):
             executable="sims/nic/corundum_bm/corundum_bm",
         )
         self.name = f"CorundumBMNICSim-{self._id}"
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
@@ -135,6 +153,16 @@ class CorundumVerilatorNICSim(NICSim):
     def resreq_mem(self) -> int:
         # this is a guess
         return 512
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["clock_freq"] = self.clock_freq
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
