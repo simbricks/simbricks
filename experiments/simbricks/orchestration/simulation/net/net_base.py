@@ -49,6 +49,16 @@ class NetSim(sim_base.Simulator):
     ) -> set[inst_base.SockType]:
         return [inst_base.SockType.CONNECT]
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        # TODO: FIXME
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
+
 
 class WireNet(NetSim):
 
@@ -69,6 +79,16 @@ class WireNet(NetSim):
                 "can only add a single wire component to the WireNet simulator"
             )
         super().add(wire)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["relative_pcap_file_path"] = self._relative_pcap_file_path
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         channels = self.get_channels()
@@ -110,6 +130,16 @@ class SwitchNet(NetSim):
         if len(self._components) > 1:
             raise Exception("can only add a single switch component to the SwitchNet")
         super().add(switch_spec)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["relative_pcap_file_path"] = self._relative_pcap_file_path
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         channels = self.get_channels()
@@ -155,6 +185,15 @@ class MemSwitchNet(SwitchNet):
         """AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START."""
         self.mem_map = []
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
+
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst)
 
@@ -181,6 +220,18 @@ class SimpleNS3Sim(NetSim):
         )
         self._ns3_run_script: str = ns3_run_script
         self.opt: str | None = None
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["ns3_run_script"] = self._ns3_run_script
+        if self.opt:
+            json_obj["opt"] = self.opt
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return f"{inst.join_repo_base(self._executable)} {self._ns3_run_script} "
@@ -213,6 +264,17 @@ class NS3DumbbellNet(SimpleNS3Sim):
         self._left = left
         self._right = right
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["left"] = self._left.id()
+        json_obj["right"] = self._right.id()
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
+
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
 
@@ -228,7 +290,7 @@ class NS3DumbbellNet(SimpleNS3Sim):
 
         if self.opt is not None:
             cmd += f"{self.opt}"
-        
+
         return cmd
 
 
@@ -246,6 +308,15 @@ class NS3BridgeNet(SimpleNS3Sim):
         if len(self._components) > 1:
             raise Exception("NS3BridgeNet can only simulate one switch/bridge")
         super().add(comp=switch_comp)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)

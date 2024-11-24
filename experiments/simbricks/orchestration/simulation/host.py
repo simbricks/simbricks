@@ -82,6 +82,21 @@ class Gem5Sim(HostSim):
     def supported_image_formats(self) -> list[str]:
         return ["raw"]
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["cpu_type_cp"] = self.cpu_type_cp
+        json_obj["cpu_type"] = self.cpu_type
+        json_obj["extra_main_args"] = self.extra_main_args
+        json_obj["extra_config_args"] = self.extra_config_args
+        json_obj["_variant"] = self._variant
+        json_obj["_sys_clock"] = self._sys_clock
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
+
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
 
@@ -216,6 +231,16 @@ class QemuSim(HostSim):
 
     def supported_image_formats(self) -> list[str]:
         return ["raw", "qcow"]
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        # disks is created upon invocation of "prepare", hence we do not need to serialize it
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)

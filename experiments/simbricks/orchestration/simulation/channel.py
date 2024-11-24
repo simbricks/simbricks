@@ -34,12 +34,25 @@ class Time(enum.IntEnum):
     Seconds = 10 ** (9)
 
 
-class Channel:
+class Channel(utils_base.IdObj):
 
     def __init__(self, chan: system_base.Channel):
+        super().__init__()
         self._synchronized: bool = False
         self.sync_period: int = 500  # nano seconds
         self.sys_channel: system_base.Channel = chan
+
+    def toJSON(self):
+        json_obj = super().toJSON()
+        json_obj["synchronized"] = self._synchronized
+        json_obj["sync_period"] = self.sync_period
+        json_obj["sys_channel"] = self.sys_channel.id()
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO
+        pass
 
     def full_name(self) -> str:
         return "channel." + self.name

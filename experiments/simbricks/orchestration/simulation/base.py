@@ -101,6 +101,30 @@ class Simulator(utils_base.IdObj):
     def wait_terminate(self, wait: bool):
         self._wait = wait
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
+        json_obj["name"] = self.name
+        json_obj["executable"] = self._executable
+        json_obj["simulation"] = self._simulation.id()
+
+        components_json = []
+        for comp in self._components:
+            components_json.append(comp.id())
+        json_obj["components"] = components_json
+
+        json_obj["wait"] = self._wait
+        json_obj["start_tick"] = self._start_tick
+        if self._extra_args:
+            json_obj["extra_args"] = self._extra_args
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
+
     @staticmethod
     def filter_sockets(
         sockets: list[inst_base.Socket],
@@ -292,12 +316,54 @@ class Simulation(utils_base.IdObj):
 
         self._sys_sim_map: dict[sys_conf.Component, Simulator] = {}
         """System component and its simulator pairs"""
+        self._sim_list: list[Simulator] = []
+        """Channel spec and its instanciation"""
 
         self._chan_map: dict[sys_conf.Channel, sim_chan.Channel] = {}
         """Channel spec and its instanciation"""
 
-        self._sim_list: list[Simulator] = []
-        """Channel spec and its instanciation"""
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
+
+        json_obj["name"] = self.name
+        json_obj["system"] = self.system.id()
+        if self.timeout:
+            json_obj["timeout"] = self.timeout
+
+        simulators_json = []
+        for sim in self._sim_list:
+            utils_base.has_attribute(sim, "toJSON")
+            simulators_json.append(sim.toJSON())
+
+        json_obj["sim_list"] = simulators_json
+
+        sys_sim_map_json = []
+        for comp, sim in self._sys_sim_map.items():
+            sys_sim_map_json.append({comp.id(): sim.id()})
+
+        json_obj["sys_sim_map"] = sys_sim_map_json
+
+        chan_map_json = []
+        chan_json = []
+        for (
+            sys_chan,
+            sim_chan,
+        ) in self._chan_map.items():
+            chan_map_json.append({sys_chan.id(): sim_chan.id()})
+            utils_base.has_attribute(sim_chan, "toJSON")
+            chan_json.append(sim_chan.toJSON())
+
+        json_obj["chan_map"] = chan_map_json
+        json_obj["simulation_channels"] = chan_json
+
+        return json_obj
+
+    @staticmethod
+    def fromJSON(json_obj):
+        # TODO: FIXME
+        pass
 
     def add_sim(self, sim: Simulator):
         if sim in self._sim_list:
