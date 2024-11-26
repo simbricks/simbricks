@@ -39,14 +39,7 @@ if tp.TYPE_CHECKING:
 class Host(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
-        self.ifs: list[base.Interface] = []
         self.applications: list[app.Application] = []
-
-    def interfaces(self) -> list[base.Interface]:
-        return self.ifs
-    
-    def add_if(self, interface: base.Interface) -> None:
-        self.ifs.append(interface)
 
     def add_app(self, a: app.Application) -> None:
         self.applications.append(a)
@@ -56,24 +49,33 @@ class Host(base.Component):
 
         applications_json = []
         for app in self.applications:
-            utils_base.has_attribute(app, 'toJSON')
+            utils_base.has_attribute(app, "toJSON")
             applications_json.append(app.toJSON())
         json_obj["applications"] = applications_json
 
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> Host:
+        instance = super().fromJSON(system=system, json_obj=json_obj)
+        instance.applications = []
+
+        applications_json = utils_base.get_json_attr_top(json_obj, "applications")
+        for app_json in applications_json:
+            app_class = utils_base.get_cls_by_json(app_json)
+            utils_base.has_attribute(app_class, "fromJSON")
+            app = app_class.fromJSON(system, app_json)
+            instance.add_app(app)
+
+        return instance
 
 
 class FullSystemHost(Host):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.memory = 512
-        self.cores = 1
-        self.cpu_freq = "3GHz"
+        self.memory: int = 512
+        self.cores: int = 1
+        self.cpu_freq: str = "3GHz"
         self.disks: list[disk_images.DiskImage] = []
 
     def add_disk(self, disk: disk_images.DiskImage) -> None:
@@ -91,16 +93,28 @@ class FullSystemHost(Host):
 
         disks_json = []
         for disk in self.disks:
-            utils_base.has_attribute(disk, 'toJSON')
+            utils_base.has_attribute(disk, "toJSON")
             disks_json.append(disk.toJSON())
         json_obj["disks"] = disks_json
 
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> FullSystemHost:
+        instance = super().fromJSON(system, json_obj)
+        instance.memory = int(utils_base.get_json_attr_top(json_obj, "memory"))
+        instance.cores = int(utils_base.get_json_attr_top(json_obj, "cores"))
+        instance.cpu_freq = utils_base.get_json_attr_top(json_obj, "cpu_freq")
+
+        instance.disks = []
+        disks_json = utils_base.get_json_attr_top(json_obj, "disks")
+        for disk_js in disks_json:
+            disk_class = utils_base.get_cls_by_json(disk_js)
+            utils_base.has_attribute(disk_class, "fromJSON")
+            disk = disk_class.fromJSON(system, disk_js)
+            instance.add_disk(disk)
+
+        return instance
 
 
 class BaseLinuxHost(FullSystemHost):
@@ -200,17 +214,19 @@ class BaseLinuxHost(FullSystemHost):
         simulated node.
         """
         return io.BytesIO(bytes(s, encoding="UTF-8"))
-    
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["load_modules"] = self.load_modules
         json_obj["kcmd_append"] = self.kcmd_append
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> BaseLinuxHost:
+        instance = super().fromJSON(system, json_obj)
+        instance.load_modules = utils_base.get_json_attr_top(json_obj, "load_modules")
+        instance.kcmd_append = utils_base.get_json_attr_top(json_obj, "kcmd_append")
+        return instance
 
 
 class LinuxHost(BaseLinuxHost):
@@ -275,17 +291,19 @@ class LinuxHost(BaseLinuxHost):
             cmds.append(f"ip addr add {com._ip}/24 dev {ifn}")
 
         return cmds
-    
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["drivers"] = self.drivers
         json_obj["hostname"] = self.hostname
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> LinuxHost:
+        instance = super().fromJSON(system, json_obj)
+        instance.drivers = utils_base.get_json_attr_top(json_obj, "drivers")
+        instance.hostname = utils_base.get_json_attr_top(json_obj, "hostname")
+        return instance
 
 
 class I40ELinuxHost(LinuxHost):

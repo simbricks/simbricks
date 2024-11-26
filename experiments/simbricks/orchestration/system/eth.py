@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 from simbricks.orchestration.system import base
 from simbricks.orchestration.utils import base as utils_base
 
@@ -44,46 +46,50 @@ class EthSimpleNIC(base.Component):
         super().__init__(s)
         self._ip: str | None = None
         self._eth_if: EthInterface = EthInterface(self)
+        super().add_if(self._eth_if)
 
     def add_ipv4(self, ip: str) -> None:
         assert self._ip is None
         self._ip = ip
 
     def add_if(self, interface: EthInterface) -> None:
-        raise Exception("EthSimpleNIC already has ethernet interface")
-    
+        utils_base.has_expected_type(interface, EthInterface)
+        if hasattr(self, "_eth_if") and self._eth_if:
+            raise Exception(
+                f"you overwrite EthSimpleNIC._eth_if ({self._eth_if.id()} -> {interface.id()}) "
+            )
+        self._eth_if = interface
+        super().add_if(self._eth_if)
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["ip"] = self._ip
         json_obj["eth_if"] = self._eth_if.id()
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> EthSimpleNIC:
+        instance = super().fromJSON(system, json_obj)
+        instance._ip = utils_base.get_json_attr_top(json_obj, "ip")
+        eth_inf_id = int(utils_base.get_json_attr_top(json_obj, "eth_if"))
+        instance._eth_if = system.get_inf(eth_inf_id)
+        return instance
+
 
 class BaseEthNetComponent(base.Component):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.eth_ifs: list[EthInterface] = []
 
     def add_if(self, i: EthInterface) -> None:
-        self.eth_ifs.append(i)
+        utils_base.has_expected_type(i, EthInterface)
+        super().add_if(i)
 
-    def interfaces(self) -> list[EthInterface]:
-        return self.eth_ifs
-    
     def toJSON(self) -> dict:
-        json_obj = super().toJSON()
-        eth_interfaces = [inf.id() for inf in self.eth_ifs]
-        json_obj["eth_if"] = eth_interfaces
-        return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+        return super().toJSON()
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> BaseEthNetComponent:
+        return super().fromJSON(system, json_obj)
 
 
 class EthWire(BaseEthNetComponent):
@@ -91,9 +97,9 @@ class EthWire(BaseEthNetComponent):
         super().__init__(s)
 
     def add_if(self, i: EthInterface) -> None:
-        if len(self.eth_ifs) > 2:
+        if len(self.ifs) > 2:
             raise Exception("one can only add 2 interfaces to a EthWire")
-        self.eth_ifs.append(i)
+        super().add_if(i)
 
 
 class EthSwitch(BaseEthNetComponent):

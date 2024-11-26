@@ -29,6 +29,7 @@ import tarfile
 import typing as tp
 from simbricks.orchestration.utils import base as utils_base
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.system import base as sys_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import host as sys_host
@@ -85,17 +86,22 @@ class DiskImage(utils_base.IdObj):
         await self._prepare_format(inst, format)
 
     def toJSON(self) -> dict:
-        json_obj = {}
+        json_obj = super().toJSON()
         json_obj["type"] = self.__class__.__name__
         json_obj["module"] = self.__class__.__module__
         json_obj["host"] = self.host.id()
         json_obj["qemu_img_exec"] = self._qemu_img_exec
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DiskImage:
+        instance = super().fromJSON(json_obj)
+        host_id = int(utils_base.get_json_attr_top(json_obj, "host"))
+        instance.host = system.get_comp(host_id)
+        instance._qemu_img_exec = utils_base.get_json_attr_top(
+            json_obj, "qemu_img_exec"
+        )
+        return instance
 
 
 # Disk image where user just provides a path
@@ -111,17 +117,19 @@ class ExternalDiskImage(DiskImage):
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         DiskImage.assert_is_file(self._path)
         return self._path
-    
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["path"] = self._path
         json_obj["formats"] = self.formats
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DiskImage:
+        instance = super().fromJSON(system, json_obj)
+        instance._path = utils_base.get_json_attr_top(json_obj, "path")
+        instance.formats = utils_base.get_json_attr_top(json_obj, "formats")
+        return instance
 
 
 # Disk images shipped with simbricks
@@ -144,17 +152,19 @@ class DistroDiskImage(DiskImage):
             raise RuntimeError("Unsupported disk format")
         DiskImage.assert_is_file(path)
         return path
-    
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["name"] = self.name
         json_obj["formats"] = self.formats
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DiskImage:
+        instance = super().fromJSON(system, json_obj)
+        instance.name = utils_base.get_json_attr_top(json_obj, "name")
+        instance.formats = utils_base.get_json_attr_top(json_obj, "formats")
+        return instance
 
 
 # Abstract base class for dynamically generated images
@@ -168,6 +178,10 @@ class DynamicDiskImage(DiskImage):
     @abc.abstractmethod
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DynamicDiskImage:
+        return super().fromJSON(system, json_obj)
 
 
 # Builds the Tar with the commands to run etc.
@@ -206,6 +220,10 @@ class LinuxConfigDiskImage(DynamicDiskImage):
                 tar.addfile(tarinfo=f_i, fileobj=f)
                 f.close()
 
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> LinuxConfigDiskImage:
+        return super().fromJSON(system, json_obj)
+
 
 # This is an additional example: building disk images directly from python
 # Could of course also have a version that generates the packer config from
@@ -226,8 +244,9 @@ class PackerDiskImage(DynamicDiskImage):
         json_obj = super().toJSON()
         json_obj["config_path"] = self.config_path
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> PackerDiskImage:
+        instance = super().fromJSON(system, json_obj)
+        instance.config_path = utils_base.get_json_attr_top(json_obj, "config_path")
+        return instance
