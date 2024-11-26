@@ -44,6 +44,8 @@ class Channel(utils_base.IdObj):
 
     def toJSON(self):
         json_obj = super().toJSON()
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
         json_obj["synchronized"] = self._synchronized
         json_obj["sync_period"] = self.sync_period
         json_obj["sys_channel"] = self.sys_channel.id()

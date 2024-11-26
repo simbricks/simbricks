@@ -35,11 +35,36 @@ class System(util_base.IdObj):
 
     def __init__(self) -> None:
         super().__init__()
-        self.all_component: list[Component] = []
+        self._all_components: dict[int, Component] = {}
+        self._all_interfaces: dict[int, Interface] = {}
+        self._all_channels: dict[int, Channel] = {}
 
-    def add_component(self, c: Component) -> None:
+    def _add_component(self, c: Component) -> None:
         assert c.system == self
-        self.all_component.append(c)
+        assert c.id() not in self._all_components
+        self._all_components[c.id()] = c
+
+    def get_comp(self, ident: int) -> Component:
+        assert ident in self._all_components
+        return self._all_components[ident]
+
+    def _add_interface(self, i: Interface) -> None:
+        assert i.component.id() in self._all_components
+        assert i.id() not in self._all_interfaces
+        self._all_interfaces[i.id()] = i
+
+    def get_inf(self, ident: int) -> Interface:
+        assert ident in self._all_interfaces
+        return self._all_interfaces[ident]
+
+    def _add_channel(self, c: Channel) -> None:
+        assert c.a.id() in self._all_interfaces and c.b.id() in self._all_interfaces
+        assert c.id() not in self._all_channels
+        self._all_channels[c.id()] = c
+
+    def get_chan(self, ident: int) -> Channel:
+        assert ident in self._all_channels
+        return self._all_channels[ident]
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -47,19 +72,15 @@ class System(util_base.IdObj):
         json_obj["module"] = self.__class__.__module__
 
         components_json = []
-        channels: set[Channel] = set()
-        for comp in self.all_component:
+        for _, comp in self._all_components.items():
             util_base.has_attribute(comp, "toJSON")
             comp_json = comp.toJSON()
             components_json.append(comp_json)
 
-            for inf in comp.interfaces():
-                channels.add(inf.channel)
-
-        json_obj["all_component"] = components_json
+        json_obj["all_components"] = components_json
 
         channels_json = []
-        for chan in channels:
+        for _, chan in self._all_channels.items():
             util_base.has_attribute(chan, "toJSON")
             channels_json.append(chan.toJSON())
 
@@ -67,10 +88,26 @@ class System(util_base.IdObj):
 
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+    @classmethod
+    def fromJSON(cls, json_obj: dict) -> System:
+        instance = super().fromJSON(json_obj)
+        instance._all_components = {}
+        instance._all_interfaces = {}
+        instance._all_channels = {}
+
+        components_json = util_base.get_json_attr_top(json_obj, "all_components")
+        for comp_json in components_json:
+            comp_class = util_base.get_cls_by_json(comp_json)
+            util_base.has_attribute(comp_class, "fromJSON")
+            comp = comp_class.fromJSON(instance, comp_json)
+
+        channels_json = util_base.get_json_attr_top(json_obj, "channels")
+        for chan_json in channels_json:
+            chan_class = util_base.get_cls_by_json(chan_json)
+            util_base.has_attribute(chan_class, "fromJSON")
+            chan = chan_class.fromJSON(instance, chan_json)
+
+        return instance
 
 
 class Component(util_base.IdObj):
@@ -78,17 +115,17 @@ class Component(util_base.IdObj):
     def __init__(self, s: System) -> None:
         super().__init__()
         self.system = s
+        self.ifs: list[Interface] = []
         s.parameters = {}
-        s.add_component(self)
-        self.name: str = ""
+        s._add_component(self)
+        self.name: str | None = None
 
-    @abc.abstractmethod
     def interfaces(self) -> list[Interface]:
-        return []
+        return self.ifs
 
-    @abc.abstractmethod
-    def add_if(self, interface: tp.Any) -> None:
-        raise Exception("must be overwritten by subclass")
+    # NOTE: overwrite and call in subclasses
+    def add_if(self, interface: Interface) -> None:
+        self.ifs.append(interface)
 
     def channels(self) -> list[Channel]:
         return [i.channel for i in self.interfaces() if i.is_connected()]
@@ -111,16 +148,29 @@ class Component(util_base.IdObj):
 
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+    @classmethod
+    def fromJSON(cls, system: System, json_obj: dict) -> Component:
+        instance = super().fromJSON(json_obj)
+        instance.name = util_base.get_json_attr_top_or_none(json_obj, "name")
+        instance.system = system
+        system._add_component(instance)
+
+        instance.ifs = []
+        interfaces_json = util_base.get_json_attr_top(json_obj, "interfaces")
+        for inf_json in interfaces_json:
+            inf_class = util_base.get_cls_by_json(inf_json)
+            util_base.has_attribute(inf_class, "fromJSON")
+            # NOTE: this will add the interface to the system map for retrieval in sub-classes
+            inf = inf_class.fromJSON(system, inf_json)
+
+        return instance
 
 
 class Interface(util_base.IdObj):
     def __init__(self, c: Component) -> None:
         super().__init__()
         self.component = c
+        c.system._add_interface(self)
         self.channel: Channel | None = None
 
     def is_connected(self) -> bool:
@@ -130,7 +180,10 @@ class Interface(util_base.IdObj):
         self.channel = None
 
     def connect(self, c: Channel) -> None:
-        assert self.channel is None
+        if self.channel is not None:
+            raise Exception(
+                f"cannot connect interface {self.id()} to channel {c.id()}. interface is already connected to channel {self.channel.id()}"
+            )
         self.channel = c
 
     def find_peer(self) -> Interface:
@@ -164,10 +217,16 @@ class Interface(util_base.IdObj):
         json_obj["channel"] = self.channel.id()
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+    @classmethod
+    def fromJSON(cls, system: System, json_obj: dict) -> Interface:
+        instance = super().fromJSON(json_obj)
+        comp_id = util_base.get_json_attr_top(json_obj, "component")
+        comp = system.get_comp(comp_id)
+        instance.component = comp
+        comp.add_if(instance)
+        system._add_interface(instance)
+        instance.channel = None
+        return instance
 
 
 class Channel(util_base.IdObj):
@@ -178,6 +237,7 @@ class Channel(util_base.IdObj):
         self.a.connect(self)
         self.b: Interface = b
         self.b.connect(self)
+        a.component.system._add_channel(self)
 
     def interfaces(self) -> list[Interface]:
         return [self.a, self.b]
@@ -206,7 +266,20 @@ class Channel(util_base.IdObj):
         json_obj["interface_b"] = self.b.id()
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+    @classmethod
+    def fromJSON(cls, system: System, json_obj: dict) -> Channel:
+        instance = super().fromJSON(json_obj)
+        instance.latency = int(util_base.get_json_attr_top(json_obj, "latency"))
+
+        inf_id_a = int(util_base.get_json_attr_top(json_obj, "interface_a"))
+        inf_id_b = int(util_base.get_json_attr_top(json_obj, "interface_b"))
+        inf_a = system.get_inf(ident=inf_id_a)
+        inf_b = system.get_inf(ident=inf_id_b)
+        instance.a = inf_a
+        instance.a.connect(instance)
+        instance.b = inf_b
+        instance.b.connect(instance)
+
+        system._add_channel(instance)
+
+        return instance

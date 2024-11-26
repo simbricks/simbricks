@@ -22,6 +22,7 @@
 
 import abc
 import itertools
+import importlib
 
 
 class IdObj(abc.ABC):
@@ -37,11 +38,13 @@ class IdObj(abc.ABC):
         json_obj = {}
         json_obj["id"] = self._id
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, json_obj):
+        instance = cls.__new__(cls)
+        instance._id = get_json_attr_top(json_obj, "id")
+        return instance
+
 
 def check_type(obj, expected_type) -> bool:
     """
@@ -57,9 +60,41 @@ def has_expected_type(obj, expected_type) -> None:
         raise Exception(
             f"obj of type {type(obj)} has not the type or is not a subtype of {expected_type}"
         )
-    
+
+
 def has_attribute(obj, attr: str) -> None:
     if not hasattr(obj, attr):
-        raise Exception(
-            f"obj of type {type(obj)} no attribute called {attr}"
-        )
+        raise Exception(f"obj of type {type(obj)} no attribute called {attr}")
+
+
+def get_json_attr_top_or_none(json_obj: dict, attr: str) -> dict | None:
+    if attr in json_obj:
+        return json_obj[attr]
+
+    return None
+
+
+def has_json_attr_top(json_obj: dict, attr: str) -> None:
+    if not attr in json_obj:
+        raise Exception(f"{json_obj} does not contain key {attr}")
+
+
+def get_json_attr_top(json_obj: dict, attr: str) -> dict:
+    has_json_attr_top(json_obj, attr)
+    return json_obj[attr]
+
+
+def get_cls_from_type_module(type_name: str, module_name: str):
+    # Import the module
+    module = importlib.import_module(module_name)
+
+    # Get the class from the module
+    cls = getattr(module, type_name)
+
+    return cls
+
+
+def get_cls_by_json(json_obj: dict):
+    type_name = get_json_attr_top(json_obj, "type")
+    module_name = get_json_attr_top(json_obj, "module")
+    return get_cls_from_type_module(type_name, module_name)

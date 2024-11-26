@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 from simbricks.orchestration.system import base
 from simbricks.orchestration.utils import base as utils_base
 
@@ -57,19 +59,25 @@ class PCIeSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
         self._pci_if: PCIeDeviceInterface = PCIeDeviceInterface(self)
-
-    def interfaces(self) -> list[base.Interface]:
-        return [self._pci_if]
+        super().add_if(self._pci_if)
 
     def add_if(self, interface: PCIeDeviceInterface) -> None:
-        raise Exception("PCIeSimpleDevice already has PCI device interface")
+        utils_base.has_expected_type(interface, PCIeDeviceInterface)
+        if self._pci_if:
+            raise Exception(
+                f"you overwrite PCIeSimpleDevice._pci_if. ({self._pci_if.id()} -> {interface.id()})"
+            )
+        self._pci_if = interface
+        super().add_if(interface)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["pci_if"] = self._pci_if.id()
         return json_obj
-    
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> PCIeSimpleDevice:
+        instance = super().fromJSON(system=system, json_obj=json_obj)
+        inf_id = int(utils_base.get_json_attr_top(json_obj, "pci_if"))
+        instance._pci_if = system.get_inf(inf_id)
+        return instance
