@@ -88,7 +88,7 @@ for host_type in host_types:
     for nic_type in nic_types:
         for net_type in net_types:
             simulation = sim.Simulation(
-                "n-" + host_type + "-" + nic_type + "-" + net_type
+                name="n-" + host_type + "-" + nic_type + "-" + net_type, system=sys
             )
             # Host
             if host_type == "gem5":
