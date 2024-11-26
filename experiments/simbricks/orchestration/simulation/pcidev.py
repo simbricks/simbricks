@@ -70,15 +70,15 @@ class NICSim(PCIDevSim):
 
         cmd = f"{inst.join_repo_base(relative_path=self._executable)} "
 
-        pci_devices = self.filter_components_by_type(ty=sys_pcie.PCIeSimpleDevice)
-        assert len(pci_devices) == 1
-        socket = inst.get_socket(interface=pci_devices[0]._pci_if)
+        nic_devices = self.filter_components_by_type(ty=sys_nic.SimplePCIeNIC)
+        assert len(nic_devices) == 1
+        nic_device = nic_devices[0]
+        
+        socket = inst.get_socket(interface=nic_device._pci_if)
         assert socket is not None and socket._type == inst_base.SockType.LISTEN
         cmd += f"{socket._path} "
 
-        eth_devices = self.filter_components_by_type(ty=sys_eth.EthSimpleNIC)
-        assert len(eth_devices) == 1
-        socket = inst.get_socket(interface=eth_devices[0]._eth_if)
+        socket = inst.get_socket(interface=nic_device._eth_if)
         assert socket is not None and socket._type == inst_base.SockType.LISTEN
         cmd += f"{socket._path} "
 
@@ -93,6 +93,7 @@ class NICSim(PCIDevSim):
         if self.extra_args is not None:
             cmd += " " + self.extra_args
 
+        print(cmd)
         return cmd
 
 

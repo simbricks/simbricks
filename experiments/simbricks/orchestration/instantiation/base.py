@@ -85,7 +85,6 @@ class Instantiation():
         sim: sim_base.Simulation,
         env: InstantiationEnvironment = InstantiationEnvironment(),
     ):
-        super().__init__()
         self._id = next(self.__id_iter)
         self.simulation: sim_base.Simulation = sim
         self.env: InstantiationEnvironment = env
@@ -342,7 +341,7 @@ class Instantiation():
         cop._preserve_checkpoints = self._preserve_checkpoints 
         cop.preserve_tmp_folder = self.preserve_tmp_folder 
         cop._socket_per_interface = {}
-        cop._sim_dependency = {}
+        cop._sim_dependency = None
         return cop
 
     def out_base_dir(self) -> str:

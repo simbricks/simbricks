@@ -54,7 +54,7 @@ class DiskImage(utils_base.IdObj):
         copy_path = inst.join_imgs_path(relative_path=f"hdcopy.{self._id}")
         prep_cmds = [
             (
-                f"{inst.join_repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -o "
+                f"{inst.join_repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -F qcow2 -o "
                 f'backing_file="{disk_path}" '
                 f"{copy_path}"
             )
