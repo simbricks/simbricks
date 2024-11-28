@@ -20,8 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import enum
 
+from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as system_base
 from simbricks.orchestration.utils import base as utils_base
 
@@ -51,10 +54,18 @@ class Channel(utils_base.IdObj):
         json_obj["sys_channel"] = self.sys_channel.id()
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO
-        pass
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> Channel:
+        instance = super().fromJSON(json_obj)
+        instance._synchronized = bool(
+            utils_base.get_json_attr_top(json_obj, "synchronized")
+        )
+        instance.sync_period = int(
+            utils_base.get_json_attr_top(json_obj, "sync_period")
+        )
+        chan_id = int(utils_base.get_json_attr_top(json_obj, "sys_channel"))
+        instance.sys_channel = simulation.system.get_chan(chan_id)
+        return instance
 
     def full_name(self) -> str:
         return "channel." + self.name

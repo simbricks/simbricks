@@ -38,6 +38,13 @@ class HostSim(sim_base.Simulator):
     def __init__(self, simulation: sim_base.Simulation, executable: str, name=""):
         super().__init__(simulation=simulation, executable=executable, name=name)
 
+    def toJSON(self) -> dict:
+        return super().toJSON()
+
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> Gem5Sim:
+        return super().fromJSON(simulation, json_obj)
+
     def full_name(self) -> str:
         return "host." + self.name
 
@@ -92,10 +99,20 @@ class Gem5Sim(HostSim):
         json_obj["_sys_clock"] = self._sys_clock
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> Gem5Sim:
+        instance = super().fromJSON(simulation, json_obj)
+        instance.cpu_type_cp = utils_base.get_json_attr_top(json_obj, "cpu_type_cp")
+        instance.cpu_type = utils_base.get_json_attr_top(json_obj, "cpu_type")
+        instance.extra_main_args = utils_base.get_json_attr_top(
+            json_obj, "extra_main_args"
+        )
+        instance.extra_config_args = utils_base.get_json_attr_top(
+            json_obj, "extra_config_args"
+        )
+        instance._variant = utils_base.get_json_attr_top(json_obj, "_variant")
+        instance._sys_clock = utils_base.get_json_attr_top(json_obj, "_sys_clock")
+        return instance
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
@@ -237,10 +254,9 @@ class QemuSim(HostSim):
         # disks is created upon invocation of "prepare", hence we do not need to serialize it
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> QemuSim:
+        return super().fromJSON(simulation, json_obj)
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
@@ -331,4 +347,5 @@ class QemuSim(HostSim):
                 cmd += ",sync=off"
             cmd += " "
 
+        print(cmd)
         return cmd

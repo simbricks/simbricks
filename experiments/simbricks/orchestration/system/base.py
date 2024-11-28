@@ -45,7 +45,9 @@ class System(util_base.IdObj):
         self._all_components[c.id()] = c
 
     def get_comp(self, ident: int) -> Component:
-        assert ident in self._all_components
+        if ident not in self._all_components:
+            raise Exception(f"system object does not store component with id {ident}")
+
         return self._all_components[ident]
 
     def _add_interface(self, i: Interface) -> None:
@@ -54,7 +56,9 @@ class System(util_base.IdObj):
         self._all_interfaces[i.id()] = i
 
     def get_inf(self, ident: int) -> Interface:
-        assert ident in self._all_interfaces
+        if ident not in self._all_interfaces:
+            raise Exception(f"system object does not store interface with id {ident}")
+
         return self._all_interfaces[ident]
 
     def _add_channel(self, c: Channel) -> None:
@@ -63,7 +67,9 @@ class System(util_base.IdObj):
         self._all_channels[c.id()] = c
 
     def get_chan(self, ident: int) -> Channel:
-        assert ident in self._all_channels
+        if ident not in self._all_channels:
+            raise Exception(f"system does not store channel with id {ident}")
+
         return self._all_channels[ident]
 
     def toJSON(self) -> dict:
