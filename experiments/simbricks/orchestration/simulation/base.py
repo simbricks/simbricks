@@ -347,6 +347,7 @@ class Simulation(utils_base.IdObj):
         json_obj["module"] = self.__class__.__module__
 
         json_obj["name"] = self.name
+        json_obj["metadata"] = self.metadata
         json_obj["system"] = self.system.id()
         json_obj["timeout"] = self.timeout
 
@@ -383,7 +384,7 @@ class Simulation(utils_base.IdObj):
     @classmethod
     def fromJSON(cls, system: sys_conf.System, json_obj: dict) -> Simulation:
         instance = super().fromJSON(json_obj)
-
+        instance.metadata = utils_base.get_json_attr_top(json_obj, "metadata")
         instance.name = utils_base.get_json_attr_top(json_obj, "name")
         system_id = int(utils_base.get_json_attr_top(json_obj, "system"))
         assert system_id == system.id()
