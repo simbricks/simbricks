@@ -28,6 +28,7 @@ import asyncio
 import simbricks.orchestration.instantiation.base as instantiation
 from simbricks.orchestration.system import base as base
 from simbricks.orchestration.system import eth as eth
+from simbricks.orchestration.system import nic as nic
 from simbricks.orchestration.system import pcie as pcie
 from simbricks.orchestration.system.host import app
 from simbricks.orchestration.utils import base as utils_base
@@ -271,12 +272,14 @@ class LinuxHost(BaseLinuxHost):
                 continue
 
             inf = host_inf.get_opposing_interface()
-            if not utils_base.check_type(inf.component, eth.EthSimpleNIC):
+            if not utils_base.check_types(
+                inf.component, eth.EthSimpleNIC, nic.SimplePCIeNIC
+            ):
                 continue
             # Get ifname parameter if set, otherwise default to ethX
             ifn = f"eth{index}"
             index += 1
-            com: eth.EthSimpleNIC = inf.component
+            com: eth.EthSimpleNIC | nic.SimplePCIeNIC = inf.component
 
             # Force MAC if requested TODO: FIXME
             # if "force_mac_addr" in i.parameters:
