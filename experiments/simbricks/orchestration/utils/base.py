@@ -55,6 +55,19 @@ def check_type(obj, expected_type) -> bool:
     return isinstance(obj, expected_type)
 
 
+def check_types(obj, *expected_types) -> bool:
+    """
+    Checks if obj has type or is a subtype of any of expected_types
+    obj: an class object
+    expected_types: list of type objects
+    """
+    for exp_ty in expected_types:
+        if check_type(obj, expected_type=exp_ty):
+            return True
+
+    return False
+
+
 def has_expected_type(obj, expected_type) -> None:
     if not check_type(obj=obj, expected_type=expected_type):
         raise Exception(
