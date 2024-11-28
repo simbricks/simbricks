@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.simulation import base as sim_base
@@ -51,13 +53,11 @@ class NetSim(sim_base.Simulator):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        # TODO: FIXME
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> NetSim:
+        return super().fromJSON(simulation, json_obj)
 
 
 class WireNet(NetSim):
@@ -85,10 +85,11 @@ class WireNet(NetSim):
         json_obj["relative_pcap_file_path"] = self._relative_pcap_file_path
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> WireNet:
+        instance = super().fromJSON(simulation, json_obj)
         # TODO: FIXME
-        pass
+        return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         channels = self.get_channels()
@@ -136,10 +137,11 @@ class SwitchNet(NetSim):
         json_obj["relative_pcap_file_path"] = self._relative_pcap_file_path
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> SwitchNet:
+        instance = super().fromJSON(simulation, json_obj)
         # TODO: FIXME
-        pass
+        return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         channels = self.get_channels()
@@ -189,10 +191,11 @@ class MemSwitchNet(SwitchNet):
         json_obj = super().toJSON()
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> MemSwitchNet:
+        instance = super().fromJSON(simulation, json_obj)
         # TODO: FIXME
-        pass
+        return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst)
@@ -224,14 +227,17 @@ class SimpleNS3Sim(NetSim):
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["ns3_run_script"] = self._ns3_run_script
-        if self.opt:
-            json_obj["opt"] = self.opt
+        json_obj["opt"] = self.opt
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> SimpleNS3Sim:
+        instance = super().fromJSON(simulation, json_obj)
+        instance._ns3_run_script = base_utils.get_json_attr_top(
+            json_obj, "ns3_run_script"
+        )
+        instance.opt = base_utils.get_json_attr_top_or_none(json_obj, "opt")
+        return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return f"{inst.join_repo_base(self._executable)} {self._ns3_run_script} "
@@ -270,10 +276,16 @@ class NS3DumbbellNet(SimpleNS3Sim):
         json_obj["right"] = self._right.id()
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(
+        cls, simulation: sim_base.Simulation, json_obj: dict
+    ) -> NS3DumbbellNet:
+        instance = super().fromJSON(simulation, json_obj)
+        left_id = int(base_utils.get_json_attr_top(json_obj, "left"))
+        instance._left = json_obj["left"] = simulation.system.get_comp(left_id)
+        right_id = int(base_utils.get_json_attr_top(json_obj, "right"))
+        instance._right = json_obj["right"] = simulation.system.get_comp(right_id)
+        return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
@@ -291,6 +303,7 @@ class NS3DumbbellNet(SimpleNS3Sim):
         if self.opt is not None:
             cmd += f"{self.opt}"
 
+        print(cmd)
         return cmd
 
 
@@ -313,10 +326,11 @@ class NS3BridgeNet(SimpleNS3Sim):
         json_obj = super().toJSON()
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> NS3BridgeNet:
+        instance = super().fromJSON(simulation, json_obj)
         # TODO: FIXME
-        pass
+        return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)

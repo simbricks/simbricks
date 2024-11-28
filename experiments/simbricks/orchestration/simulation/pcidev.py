@@ -73,7 +73,7 @@ class NICSim(PCIDevSim):
         nic_devices = self.filter_components_by_type(ty=sys_nic.SimplePCIeNIC)
         assert len(nic_devices) == 1
         nic_device = nic_devices[0]
-        
+
         socket = inst.get_socket(interface=nic_device._pci_if)
         assert socket is not None and socket._type == inst_base.SockType.LISTEN
         cmd += f"{socket._path} "
@@ -110,10 +110,9 @@ class I40eNicSim(NICSim):
         json_obj = super().toJSON()
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> I40eNicSim:
+        return super().fromJSON(simulation, json_obj)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         return super().run_cmd(inst=inst)
@@ -131,10 +130,11 @@ class CorundumBMNICSim(NICSim):
         json_obj = super().toJSON()
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(
+        cls, simulation: sim_base.Simulation, json_obj: dict
+    ) -> CorundumBMNICSim:
+        return super().fromJSON(simulation, json_obj)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
@@ -160,10 +160,11 @@ class CorundumVerilatorNICSim(NICSim):
         json_obj["clock_freq"] = self.clock_freq
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(
+        cls, simulation: sim_base.Simulation, json_obj: dict
+    ) -> CorundumVerilatorNICSim:
+        return super().fromJSON(simulation, json_obj)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)

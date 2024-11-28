@@ -48,11 +48,11 @@ class Simulator(utils_base.IdObj):
     ) -> None:
         super().__init__()
         self.name: str = name
-        self._executable = executable
+        self._executable: str = executable
         self._simulation: sim_base.Simulation = simulation
         self._components: set[sys_conf.Component] = set()
         self._wait: bool = False
-        self._start_tick = 0
+        self._start_tick: int = 0
         """The timestamp at which to start the simulation. This is useful when
         the simulator is only attached at a later point in time and needs to
         synchronize with connected simulators. For example, this could be used
@@ -116,14 +116,33 @@ class Simulator(utils_base.IdObj):
 
         json_obj["wait"] = self._wait
         json_obj["start_tick"] = self._start_tick
-        if self._extra_args:
-            json_obj["extra_args"] = self._extra_args
+        json_obj["extra_args"] = self._extra_args
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(cls, simulation: Simulation, json_obj: dict) -> Simulator:
+        instance = super().fromJSON(json_obj)
+        instance.name = utils_base.get_json_attr_top(json_obj, "name")
+        instance._executable = utils_base.get_json_attr_top(json_obj, "executable")
+
+        sim_id = int(utils_base.get_json_attr_top(json_obj, "simulation"))
+        assert sim_id == simulation.id()
+        instance._simulation = simulation
+
+        instance._components = set()
+        components_json = utils_base.get_json_attr_top(json_obj, "components")
+        for comp_id in components_json:
+            component = simulation.system.get_comp(comp_id)
+            Simulator.add(instance, component)
+            # instance.add(component)
+
+        instance._wait = bool(utils_base.get_json_attr_top(json_obj, "wait"))
+        instance._start_tick = int(utils_base.get_json_attr_top(json_obj, "start_tick"))
+        instance._extra_args = utils_base.get_json_attr_top_or_none(
+            json_obj, "extra_args"
+        )
+
+        return instance
 
     @staticmethod
     def filter_sockets(
@@ -329,8 +348,7 @@ class Simulation(utils_base.IdObj):
 
         json_obj["name"] = self.name
         json_obj["system"] = self.system.id()
-        if self.timeout:
-            json_obj["timeout"] = self.timeout
+        json_obj["timeout"] = self.timeout
 
         simulators_json = []
         for sim in self._sim_list:
@@ -339,11 +357,12 @@ class Simulation(utils_base.IdObj):
 
         json_obj["sim_list"] = simulators_json
 
-        sys_sim_map_json = []
-        for comp, sim in self._sys_sim_map.items():
-            sys_sim_map_json.append({comp.id(): sim.id()})
+        # TODO: we do not need this --> we can create it implicitly when deserializing because the simulators store a list of components themselves
+        # sys_sim_map_json = []
+        # for comp, sim in self._sys_sim_map.items():
+        #     sys_sim_map_json.append([comp.id(), sim.id()])
 
-        json_obj["sys_sim_map"] = sys_sim_map_json
+        # json_obj["sys_sim_map"] = sys_sim_map_json
 
         chan_map_json = []
         chan_json = []
@@ -351,19 +370,54 @@ class Simulation(utils_base.IdObj):
             sys_chan,
             sim_chan,
         ) in self._chan_map.items():
-            chan_map_json.append({sys_chan.id(): sim_chan.id()})
             utils_base.has_attribute(sim_chan, "toJSON")
-            chan_json.append(sim_chan.toJSON())
+            chan_json = sim_chan.toJSON()
+            chan_map_json.append([sys_chan.id(), chan_json])
+            # chan_json.append(sim_chan.toJSON())
 
         json_obj["chan_map"] = chan_map_json
-        json_obj["simulation_channels"] = chan_json
+        # json_obj["simulation_channels"] = chan_json
 
         return json_obj
 
-    @staticmethod
-    def fromJSON(json_obj):
-        # TODO: FIXME
-        pass
+    @classmethod
+    def fromJSON(cls, system: sys_conf.System, json_obj: dict) -> Simulation:
+        instance = super().fromJSON(json_obj)
+
+        instance.name = utils_base.get_json_attr_top(json_obj, "name")
+        system_id = int(utils_base.get_json_attr_top(json_obj, "system"))
+        assert system_id == system.id()
+        instance.system = system
+        instance.timeout = utils_base.get_json_attr_top_or_none(json_obj, "timeout")
+
+        instance._sim_list = []
+        instance._sys_sim_map = {}
+        simulators_json = utils_base.get_json_attr_top(json_obj, "sim_list")
+        for sim_json in simulators_json:
+            sim_class = utils_base.get_cls_by_json(sim_json)
+            utils_base.has_attribute(sim_class, "fromJSON")
+            sim = sim_class.fromJSON(instance, sim_json)
+            instance._sim_list.append(sim)
+
+        # TODO: probably do not need this --> we create it when deserializing the simulators that store a list of components themselves
+        # instance._sys_sim_map: dict[sys_conf.Component, Simulator] = {}
+        # sys_sim_map_json = utils_base.get_json_attr_top(json_obj, "sys_sim_map")
+        # print(sys_sim_map_json)
+        # for sys_id, sim_id in sys_sim_map_json:
+        #     print(f"{sys_id} --> {sim_id}")
+        #     # TODO
+        #     pass
+
+        instance._chan_map = {}
+        chan_map_json = utils_base.get_json_attr_top(json_obj, "chan_map")
+        for sys_id, chan_json in chan_map_json:
+            chan_class = utils_base.get_cls_by_json(chan_json)
+            utils_base.has_attribute(chan_class, "fromJSON")
+            sim_chan = chan_class.fromJSON(instance, chan_json)
+            sys_chan = instance.system.get_chan(sys_id)
+            instance.update_channel_mapping(sys_chan=sys_chan, sim_chan=sim_chan)
+
+        return instance
 
     def add_sim(self, sim: Simulator):
         if sim in self._sim_list:
@@ -379,12 +433,21 @@ class Simulation(utils_base.IdObj):
     def is_channel_instantiated(self, chan: sys_conf.Channel) -> bool:
         return chan in self._chan_map
 
+    def update_channel_mapping(
+        self, sys_chan: sys_conf.Channel, sim_chan: sim_chan.Channel
+    ) -> None:
+        if self.is_channel_instantiated(sys_chan):
+            raise Exception(
+                f"channel {sys_chan} is already mapped. Cannot insert mapping {sys_chan.id()} -> {sim_chan.id()}"
+            )
+        self._chan_map[sys_chan] = sim_chan
+
     def retrieve_or_create_channel(self, chan: sys_conf.Channel) -> sim_chan.Channel:
         if self.is_channel_instantiated(chan):
             return self._chan_map[chan]
 
         channel = sim_chan.Channel(chan)
-        self._chan_map[chan] = channel
+        self.update_channel_mapping(sys_chan=chan, sim_chan=channel)
         return channel
 
     def all_simulators(self) -> list[Simulator]:
