@@ -31,7 +31,10 @@ build-backend = "poetry.core.masonry.api"
 name = "simbricks-local"
 version = "0.0.1"
 description = "simbricks lib to execute a simbricks experiment locally"
-authors = [ "Jakob Görgen <jakob@simbricks.io>", ]
+authors = [
+  "Jakob Görgen <jakob@simbricks.io>",
+  "Antoine Kaufmann <antoine@simbricks.io>",
+]
 packages = [
   { include = "simbricks" }
 ]
