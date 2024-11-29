@@ -36,6 +36,9 @@ packages = [
   { include = "simbricks" }
 ]
 
+[tool.poetry.scripts]
+simbricks-runner = "simbricks.runner.__main__:main"
+
 [tool.poetry.dependencies]
 simbricks-orchestration = "*"
 simbricks-runtime = "*"
