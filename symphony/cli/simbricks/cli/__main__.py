@@ -33,10 +33,13 @@ app.add_typer(audit.app, name="audit")
 
 @app.callback()
 @async_cli()
-async def main(
+async def amain(
     ns: Annotated[str, Option(help='Namespace to operate in.')] = 'foo/bar/baz',
 ):
     state.namespace = ns
 
-if __name__ == "__main__":
+def main():
     app()
+
+if __name__ == "__main__":
+    main()
