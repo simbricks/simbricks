@@ -29,4 +29,5 @@ black==24.10.0
 -e ./orchestration
 -e ./runner
 -e ./runtime
+-e ./local
 -e ./utils
