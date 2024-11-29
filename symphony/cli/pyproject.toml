@@ -36,6 +36,9 @@ packages = [
   { include = "simbricks" }
 ]
 
+[tool.poetry.scripts]
+simbricks-cli = "simbricks.cli.__main__:main"
+
 [tool.poetry.dependencies]
 typer = "0.13.1"
 simbricks-orchestration = "*"
