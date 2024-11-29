@@ -51,3 +51,4 @@ compile_commands.json
 .cache
 .eggs
 .vscode
+symphony/*/dist
