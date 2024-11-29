@@ -20,18 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# [build-system] 
-# requires = ["setuptools>=64.00", "wheel"] 
-# build-backend = "setuptools.build_meta"
-# 
-# [project]
-# name = "simbricks_runtime"
-# version = "0.1.0"
-# description = "simbricks runtime that can be used to execute an actual simulation"
-# dependencies = [ ]
-# packages = [
-#     { include = "simbricks" }
-# ]
+[tool.black]
+line-length = 120
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -45,3 +35,7 @@ authors = [ "Jakob Görgen <jakob@simbricks.io>", ]
 packages = [
   { include = "simbricks" }
 ]
+
+[tool.poetry.dependencies]
+simbricks-orchestration = "*"
+simbricks-utils = "*"
