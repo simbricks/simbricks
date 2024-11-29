@@ -42,7 +42,7 @@ async def run_instantiation(inst: inst_base.Instantiation) -> dict:
     return output.__dict__
 
 
-async def main():
+async def amain():
     base_client = client.BaseClient(base_url="http://0.0.0.0:8000")
     namespace_client = client.NSClient(base_client=base_client, namespace="foo/bar/baz")
     sb_client = client.SimBricksClient(namespace_client)
@@ -76,5 +76,8 @@ async def main():
 
         await rc.update_run(run_obj['id'], 'completed', json.dumps(out))
 
+def main():
+    asyncio.run(amain())
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
