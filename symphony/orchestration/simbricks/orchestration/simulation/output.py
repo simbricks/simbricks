@@ -26,7 +26,7 @@ import json
 import time
 import pathlib
 import typing
-from simbricks.orchestration.runtime_new import command_executor
+from simbricks.runtime import command_executor
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base

@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration.runtime_new.runs.base import Run, Runtime
-from simbricks.orchestration.runtime_new.runs.distributed import (
+from simbricks.runtime.runs.base import Run, Runtime
+from simbricks.runtime.runs.distributed import (
     DistributedSimpleRuntime, auto_dist
 )
-from simbricks.orchestration.runtime_new.runs.local import (
+from simbricks.runtime.runs.local import (
     LocalParallelRuntime, LocalSimpleRuntime
 )
-from simbricks.orchestration.runtime_new.runs.slurm import SlurmRuntime
+from simbricks.runtime.runs.slurm import SlurmRuntime

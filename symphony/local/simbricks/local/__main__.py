@@ -33,15 +33,14 @@ import pickle
 import signal
 import sys
 
-from simbricks.orchestration import exectools
 
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.simulation import output as sim_out
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.runtime.runs import base as runs_base
-from simbricks.orchestration.runtime.runs import base as runs_base
-from simbricks.orchestration.runtime.runs import local as rt_local
-from simbricks.orchestration.runtime import command_executor
+from simbricks.runtime.runs import base as runs_base
+from simbricks.runtime.runs import base as runs_base
+from simbricks.runtime.runs import local as rt_local
+from simbricks.runtime import command_executor
 
 
 def parse_args() -> argparse.Namespace:
@@ -230,7 +229,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_executors(path: str) -> list[exectools.Executor]:
+def load_executors(path: str) -> list[command_executor.Executor]:
     """Load hosts list from json file and return list of executors."""
     with open(path, "r", encoding="utf-8") as f:
         hosts = json.load(f)

@@ -28,12 +28,11 @@ import shlex
 import traceback
 import abc
 
-from simbricks.orchestration.utils import graphlib
-
 from simbricks.orchestration.simulation import output
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.runtime_new import command_executor
+from simbricks.runtime import command_executor
+from simbricks.utils import graphlib
 
 
 class SimulationBaseRunner(abc.ABC):
