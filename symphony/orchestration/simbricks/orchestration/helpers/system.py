@@ -22,7 +22,7 @@
 
 
 from simbricks.orchestration import system
-from simbricks.orchestration.utils import base as utils_base
+from simbricks.utils import base as utils_base
 
 
 def connect_host_and_device(

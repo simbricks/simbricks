@@ -23,11 +23,11 @@
 import asyncio
 import json
 
-from simbricks.orchestration.runtime_new import simulation_executor
+from simbricks.runtime import simulation_executor
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.runtime_new import command_executor
+from simbricks.runtime import command_executor
 from simbricks import client
 
 verbose = True
