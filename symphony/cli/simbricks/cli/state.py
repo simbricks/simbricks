@@ -26,15 +26,13 @@ from simbricks.client import BaseClient, NSClient, SimBricksClient
 class State():
     def __init__(self):
         self.namespace = ''
-        self.api_base = os.environ.get("SIMBRICKS_BASE_URL",
-            "http://0.0.0.0:8000")
         self._base_client: BaseClient | None = None
         self._ns_client: NSClient | None = None
         self._simbricks_client: SimBricksClient | None = None
 
     def base_client(self):
         if self._base_client is None:
-            self._base_client = BaseClient(base_url=self.api_base)
+            self._base_client = BaseClient()
         return self._base_client
 
     def ns_client(self):
