@@ -14,5 +14,8 @@
 		}
 	},
 	"remoteUser": "simbricks",
+	"remoteEnv": {
+		"PATH": "/home/simbricks/.local/bin:${containerEnv:PATH}"
+	},
 	"postStartCommand": "sudo chmod o+rw /dev/kvm"
 }
