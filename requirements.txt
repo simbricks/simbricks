@@ -4,3 +4,4 @@ pre-commit==3.7.1
 yapf==0.40.2
 pytype==2024.4.11
 isort==5.13.2
+poetry==1.8.4
