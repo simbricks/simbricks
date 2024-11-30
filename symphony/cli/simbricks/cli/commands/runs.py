@@ -22,7 +22,7 @@
 
 import asyncio
 from pathlib import Path
-import simbricks.utils
+import simbricks.utils.load_mod as load_mod
 from typer import Typer, Argument, Option
 from typing_extensions import Annotated
 from ..state import state
@@ -94,7 +94,7 @@ async def submit_script(
 
     system_client = state.simbricks_client()
 
-    experiment_mod = simbricks.utils.load_module(module_path=path)
+    experiment_mod = load_mod.load_module(module_path=path)
     instantiations = experiment_mod.instantiations
 
     sb_inst = instantiations[0]
