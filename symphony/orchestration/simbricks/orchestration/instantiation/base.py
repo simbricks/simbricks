@@ -57,14 +57,12 @@ class InstantiationEnvironment(util_base.IdObj):
 
     def __init__(
         self,
-        repo_path: str = pathlib.Path(__file__).parents[4].resolve(),
-        workdir: str | None = None,
+        workdir: pathlib.Path = pathlib.Path.cwd() / pathlib.Path('simbricks-workdir'),
+        simbricksdir: pathlib.Path = pathlib.Path('/simbricks'),
     ):
         super().__init__()
-        self._repodir: str = pathlib.Path(repo_path).resolve()
-        self._workdir: str = (
-            workdir if workdir else pathlib.Path(f"{self._repodir}/wrkdir").resolve()
-        )
+        self._simbricksdir: str = simbricksdir.resolve()
+        self._workdir: str = workdir.resolve()
         self._output_base: str = pathlib.Path(f"{self._workdir}/output").resolve()
         self._tmp_simulation_files: str = pathlib.Path(f"{self._workdir}/tmp").resolve()
         self._imgdir: str = pathlib.Path(f"{self._tmp_simulation_files}/imgs").resolve()
@@ -407,7 +405,7 @@ class Instantiation():
 
     def join_repo_base(self, relative_path: str) -> str:
         return self._join_paths(
-            base=self.env._repodir, relative_path=relative_path, enforce_existence=True
+            base=self.env._simbricksdir, relative_path=relative_path, enforce_existence=True
         )
 
     def join_output_base(self, relative_path: str) -> str:
@@ -421,7 +419,7 @@ class Instantiation():
         if Instantiation.is_absolute_exists(hd_name_or_path):
             return hd_name_or_path
         path = self._join_paths(
-            base=self.env._repodir,
+            base=self.env._simbricksdir,
             relative_path=f"images/output-{hd_name_or_path}/{hd_name_or_path}",
             enforce_existence=True,
         )
