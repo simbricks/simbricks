@@ -22,7 +22,7 @@
 
 import asyncio
 import json
-
+import pathlib
 from simbricks.runtime import simulation_executor
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.system import base as sys_base
@@ -48,6 +48,8 @@ async def amain():
     sb_client = client.SimBricksClient(namespace_client)
     rc = client.RunnerClient(namespace_client, 42)
 
+    workdir = pathlib.Path('./runner-work').resolve()
+
     while True:
         run_obj = await rc.next_run()
         if not run_obj:
@@ -56,6 +58,9 @@ async def amain():
             continue
 
         print(f'Preparing run {run_obj["id"]}')
+        run_workdir = workdir / f'run-{run_obj["id"]}'
+        run_workdir.mkdir(parents=True)
+
         inst_obj = await sb_client.get_instantiation(run_obj['instantiation_id'])
         sim_obj = await sb_client.get_simulation(inst_obj['simulation_id'])
         sys_obj = await sb_client.get_system(sim_obj['system_id'])
@@ -63,7 +68,11 @@ async def amain():
         system = sys_base.System.fromJSON(json.loads(sys_obj['sb_json']))
         simulation = sim_base.Simulation.fromJSON(system, json.loads(sim_obj['sb_json']))
 
+         # TODO: set from args
+        env = inst_base.InstantiationEnvironment(workdir = run_workdir)
+
         inst = inst_base.Instantiation(sim=simulation)
+        inst.env = env
         inst.preserve_tmp_folder = False
         inst.create_checkpoint = True
 
