@@ -265,6 +265,9 @@ def add_exp(
     rt: runs_base.Runtime,
 ) -> runs_base.Run:
 
+    env = inst_base.InstantiationEnvironment() # TODO: set from args
+    instantiation.env = env
+
     output = sim_out.SimulationOutput(instantiation.simulation)
     run = runs_base.Run(instantiation=instantiation, prereq=prereq, output=output)
     rt.add_run(run)
