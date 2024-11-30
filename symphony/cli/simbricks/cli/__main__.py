@@ -23,7 +23,7 @@
 from typer import Typer, Option
 from typing_extensions import Annotated
 from simbricks.cli.commands import audit, namespaces, runs
-from simbricks.cli import state
+from simbricks.cli.state import state
 from simbricks.cli.utils import async_cli
 
 app = Typer()
