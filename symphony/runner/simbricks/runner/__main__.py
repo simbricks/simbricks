@@ -43,7 +43,7 @@ async def run_instantiation(inst: inst_base.Instantiation) -> dict:
 
 
 async def amain():
-    base_client = client.BaseClient(base_url="http://0.0.0.0:8000")
+    base_client = client.BaseClient()
     namespace_client = client.NSClient(base_client=base_client, namespace="foo/bar/baz")
     sb_client = client.SimBricksClient(namespace_client)
     rc = client.RunnerClient(namespace_client, 42)
