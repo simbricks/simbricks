@@ -20,26 +20,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-[tool.black]
-line-length = 120
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+class ClientSettings(BaseSettings):
+    base_url: str = "https://app.simbricks.io/api"
 
-[tool.poetry]
-name = "simbricks-client"
-version = "0.0.1"
-description = "simbricks client lib to send and retrieve experiments"
-authors = [
-  "Jakob Görgen <jakob@simbricks.io>",
-  "Antoine Kaufmann <antoine@simbricks.io>",
-]
-packages = [
-  { include = "simbricks" }
-]
+    auth_client_id: str = "api.auth.simbricks.io"
+    auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
+    auth_dev_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
 
-[tool.poetry.dependencies]
-aiohttp = "3.9.5"
-pydantic-settings = "2.6.1"
-simbricks-orchestration = "*"
+@lru_cache
+def client_settings() -> ClientSettings:
+    return ClientSettings(_env_file="internal.env", _env_file_encoding="utf-8")
