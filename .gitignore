@@ -52,3 +52,4 @@ compile_commands.json
 .eggs
 .vscode
 symphony/**/dist
+auth.json
