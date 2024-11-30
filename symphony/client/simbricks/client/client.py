@@ -25,13 +25,14 @@ import aiohttp
 import typing
 import contextlib
 from .auth import TokenProvider
+from .settings import client_settings
 from simbricks.orchestration import system
 from simbricks.orchestration import simulation
 from simbricks.orchestration import instantiation
 
 
 class BaseClient:
-    def __init__(self, base_url="https://app.simbricks.io/api"):
+    def __init__(self, base_url=client_settings().base_url):
         self._base_url = base_url
         self._token_provider = TokenProvider()
 

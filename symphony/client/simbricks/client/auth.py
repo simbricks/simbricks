@@ -24,6 +24,7 @@ import json
 import aiohttp
 import time
 import os
+from .settings import client_settings
 
 
 class Token:
@@ -56,9 +57,9 @@ class TokenClient:
 
     def __init__(
         self,
-        device_auth_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device",
-        token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token",
-        client_id: str = "api.auth.simbricks.io",
+        device_auth_url: str = client_settings().auth_dev_url,
+        token_url: str = client_settings().auth_token_url,
+        client_id: str = client_settings().auth_client_id,
     ):
         self._device_auth_url: str = device_auth_url
         self._token_url: str = token_url
