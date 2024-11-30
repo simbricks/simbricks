@@ -81,11 +81,10 @@ class Instantiation():
     def __init__(
         self,
         sim: sim_base.Simulation,
-        env: InstantiationEnvironment = InstantiationEnvironment(),
     ):
         self._id = next(self.__id_iter)
         self.simulation: sim_base.Simulation = sim
-        self.env: InstantiationEnvironment = env
+        self.env: InstantiationEnvironment | None = None
         self._executor: command_executor.Executor | None = None
         self._create_checkpoint: bool = False
         self._restore_checkpoint: bool = False
@@ -332,7 +331,7 @@ class Instantiation():
         self._restore_checkpoint = restore_checkpoint
 
     def copy(self) -> Instantiation:
-        cop = Instantiation(sim=self.simulation, env=self.env)
+        cop = Instantiation(sim=self.simulation)
         cop.simulation = copy.deepcopy(self.simulation) # maybe there is a smarter way of achieving this...
         cop._create_checkpoint = self._create_checkpoint 
         cop._restore_checkpoint = self._restore_checkpoint 
