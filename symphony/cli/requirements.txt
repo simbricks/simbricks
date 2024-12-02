@@ -22,6 +22,7 @@
 
 # external dependencies
 typer==0.13.1
+rich==13.9.4
 
 # local dependencies
 -e ../orchestration
