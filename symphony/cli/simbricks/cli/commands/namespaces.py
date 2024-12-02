@@ -23,21 +23,69 @@
 from pathlib import Path
 from typer import Typer, Option
 from typing_extensions import Annotated
+from rich.table import Table
+from rich.console import Console
 from ..state import state
 from ..utils import async_cli
 
-app = Typer(
-    help="Managing SimBricks namespaces."
-)
+app = Typer(help="Managing SimBricks namespaces.")
+
+
+def print_namespace_table(namespaces) -> None:
+    table = Table()
+    table.add_column("Id")
+    table.add_column("name")
+    table.add_column("parent")
+    for ns in namespaces:
+        table.add_row(str(ns["id"]), str(ns["name"]), str(ns["parent_id"]))
+
+    console = Console()
+    console.print(table)
+
 
 @app.command()
 @async_cli()
 async def ls():
     """List available namespaces."""
-    print(f"Listing Namespaces in {state.namespace}:")
+    client = state.ns_client()
+
+    namespaces = await client.get_all()
+    print_namespace_table(namespaces)
+
+
+@app.command()
+@async_cli()
+async def ls_id(ident: int):
+    """List namespace with given id ident."""
+    client = state.ns_client()
+
+    namespace = await client.get_ns(ident)
+    print_namespace_table([namespace])
+
+
+@app.command()
+@async_cli()
+async def ls_cur():
+    """List current namespace."""
+    client = state.ns_client()
+
+    namespace = await client.get_cur()
+    print_namespace_table([namespace])
+
 
 @app.command()
 @async_cli()
 async def create(name: str):
     """Create a new namespace."""
-    print(f"Creating namespace {name} in {state.namespace}")
+
+    client = state.ns_client()
+
+    # create namespace relative to current namespace
+    cur_ns = await client.get_cur()
+    cur_ns_id = int(cur_ns["id"])
+
+    # create the actual namespace
+    namespace = await client.create(parent_id=cur_ns_id, name=name)
+    ns_id = namespace["id"]
+
+    print(f"Creating namespace {name} in {state.namespace}. New namespace: {ns_id}")
