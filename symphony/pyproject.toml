@@ -40,7 +40,6 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-numpy = "^1.21.0"
 simbricks-cli = "*"
 simbricks-client = "*"
 simbricks-orchestration = "*"
