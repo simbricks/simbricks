@@ -44,5 +44,6 @@ simbricks-cli = "simbricks.cli.__main__:main"
 
 [tool.poetry.dependencies]
 typer = "0.13.1"
+rich = "13.9.4"
 simbricks-client = "*"
 simbricks-orchestration = "*"
