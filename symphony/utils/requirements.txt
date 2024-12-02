@@ -21,5 +21,6 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # external dependencies
+black==24.10.0
 
 # local dependencies
