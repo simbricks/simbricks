@@ -61,9 +61,7 @@ class BaseClient:
         url = f"{self._base_url}{url}"
 
         async with self.session() as session:
-            async with session.post(
-                url=url, data=data, **kwargs
-            ) as resp:  # TODO: handel connection error
+            async with session.post(url=url, data=data, **kwargs) as resp:  # TODO: handel connection error
                 print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
@@ -76,9 +74,7 @@ class BaseClient:
         url = f"{self._base_url}{url}"
 
         async with self.session() as session:
-            async with session.put(
-                url=url, data=data, **kwargs
-            ) as resp:  # TODO: handel connection error
+            async with session.put(url=url, data=data, **kwargs) as resp:  # TODO: handel connection error
                 print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
@@ -90,9 +86,8 @@ class BaseClient:
 
         url = f"{self._base_url}{url}"
         async with self.session() as session:
-            async with session.get(
-                url=url, data=data, **kwargs
-            ) as resp:  # TODO: handel connection error
+            async with session.get(url=url, data=data, **kwargs) as resp:  # TODO: handel connection error
+                print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
 
@@ -114,18 +109,14 @@ class NSClient:
     async def post(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._base_client.post(
-            url=self._build_ns_prefix(url=url), data=data, **kwargs
-        ) as resp:
+        async with self._base_client.post(url=self._build_ns_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def put(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._base_client.put(
-            url=self._build_ns_prefix(url=url), data=data, **kwargs
-        ) as resp:
+        async with self._base_client.put(url=self._build_ns_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
@@ -133,13 +124,31 @@ class NSClient:
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
 
-        async with self._base_client.get(
-            url=self._build_ns_prefix(url=url), data=data, **kwargs
-        ) as resp:
+        async with self._base_client.get(url=self._build_ns_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
     async def info(self):
         async with self.get(url="/info") as resp:
+            return await resp.json()
+
+    async def create(self, parent_id: int, name: str):
+        namespace_json = {"parent_id": parent_id, "name": name}
+        async with self.post(url="/", json=namespace_json) as resp:
+            return await resp.json()
+
+    # retrieve namespace ns_id, useful for retrieving a child the current namespace
+    async def get_ns(self, ns_id: int):
+        async with self.get(url=f"/one/{ns_id}") as resp:
+            return await resp.json()
+
+    # retrieve the current namespace
+    async def get_cur(self):
+        async with self.get(url="/") as resp:
+            return await resp.json()
+
+    # recursively retrieve all namespaces beginning with the current including all children
+    async def get_all(self):
+        async with self.get(url="/all") as resp:
             return await resp.json()
 
 
@@ -165,13 +174,8 @@ class SimBricksClient:
         async with self._ns_client.get(url=f"/systems/{system_id}") as resp:
             return await resp.json()
 
-    async def create_simulation(
-        self, system_db_id: int, simulation: simulation.Simulation
-    ) -> simulation.Simulation:
-        json_obj = {
-            "system_id": system_db_id, 
-            "sb_json": simulation.toJSON()
-        }
+    async def create_simulation(self, system_db_id: int, simulation: simulation.Simulation) -> simulation.Simulation:
+        json_obj = {"system_id": system_db_id, "sb_json": simulation.toJSON()}
         print(json_obj)
         async with self._ns_client.post(url="/simulations", json=json_obj) as resp:
             return await resp.json()
@@ -179,31 +183,22 @@ class SimBricksClient:
     async def get_simulation(self, simulation_id: int) -> dict:
         async with self._ns_client.get(url=f"/simulations/{simulation_id}") as resp:
             return await resp.json()
-        
+
     async def get_simulations(self) -> list[dict]:
         async with self._ns_client.get(url="/simulations") as resp:
             return await resp.json()
 
-    async def create_instantiation(
-        self, sim_db_id: int, instantiation: simulation.Simulation
-    ) -> simulation.Simulation:
-        json_obj = {
-            "simulation_id": sim_db_id,
-            "sb_json": {} # FIXME
-        }
+    async def create_instantiation(self, sim_db_id: int, instantiation: simulation.Simulation) -> simulation.Simulation:
+        json_obj = {"simulation_id": sim_db_id, "sb_json": {}}  # FIXME
         print(json_obj)
         async with self._ns_client.post(url="/instantiations", json=json_obj) as resp:
             return await resp.json()
 
-    async def get_instantiation(
-        self, instantiation_id: int
-    ) -> instantiation.Instantiation:
+    async def get_instantiation(self, instantiation_id: int) -> instantiation.Instantiation:
         async with self._ns_client.get(url=f"/instantiations/{instantiation_id}") as resp:
             return await resp.json()
 
-    async def create_run(
-        self, inst_db_id: int
-    ) -> dict:
+    async def create_run(self, inst_db_id: int) -> dict:
         json_obj = {
             "instantiation_id": inst_db_id,
             "state": "pending",
@@ -221,7 +216,6 @@ class SimBricksClient:
             return await resp.json()
 
 
-
 class RunnerClient:
 
     def __init__(self, ns_client, id: int) -> None:
@@ -235,18 +229,14 @@ class RunnerClient:
     async def post(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._ns_client.post(
-            url=self._build_prefix(url=url), data=data, **kwargs
-        ) as resp:
+        async with self._ns_client.post(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def put(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._ns_client.put(
-            url=self._build_prefix(url=url), data=data, **kwargs
-        ) as resp:
+        async with self._ns_client.put(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
@@ -254,15 +244,10 @@ class RunnerClient:
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
 
-        async with self._ns_client.get(
-            url=self._build_prefix(url=url), data=data, **kwargs
-        ) as resp:
+        async with self._ns_client.get(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
-
-    async def next_run(
-        self
-    ) -> dict | None:
+    async def next_run(self) -> dict | None:
         async with self.get(f"/next_run") as resp:
             if resp.status == 200:
                 return await resp.json()
@@ -271,7 +256,6 @@ class RunnerClient:
             else:
                 resp.raise_for_status()
 
-
     async def update_run(
         self,
         run_id: int,
@@ -279,10 +263,10 @@ class RunnerClient:
         output: str,
     ) -> None:
         obj = {
-            'state': state,
-            'output': output,
-            'id': run_id,
-            'instantiation_id': 42,
+            "state": state,
+            "output": output,
+            "id": run_id,
+            "instantiation_id": 42,
         }
         async with self.put(url=f"/update_run/{run_id}", json=obj) as resp:
             ret = await resp.json()
