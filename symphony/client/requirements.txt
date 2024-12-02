@@ -22,6 +22,7 @@
 
 # external dependencies
 aiohttp==3.9.5
+pydantic-settings==2.6.1
 
 # local dependencies
 -e ../orchestration
