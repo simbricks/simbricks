@@ -91,6 +91,17 @@ class BaseClient:
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
 
+    @contextlib.asynccontextmanager
+    async def delete(self, url: str, **kwargs: typing.Any) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+
+        url = f"{self._base_url}{url}"
+
+        async with self.session() as session:
+            async with session.delete(url=url, **kwargs) as resp:  # TODO: handel connection error
+                print(await resp.text())
+                resp.raise_for_status()  # TODO: handel gracefully
+                yield resp
+
     async def info(self):
         async with self.get(url="/info") as resp:
             return await resp.json()
@@ -135,6 +146,10 @@ class NSClient:
         namespace_json = {"parent_id": parent_id, "name": name}
         async with self.post(url="/", json=namespace_json) as resp:
             return await resp.json()
+
+    async def delete(self, ns_id: int):
+        async with self._base_client.delete(url=self._build_ns_prefix(f"/{ns_id}")) as _:
+            return
 
     # retrieve namespace ns_id, useful for retrieving a child the current namespace
     async def get_ns(self, ns_id: int):

@@ -89,3 +89,13 @@ async def create(name: str):
     ns_id = namespace["id"]
 
     print(f"Creating namespace {name} in {state.namespace}. New namespace: {ns_id}")
+
+
+@app.command()
+@async_cli()
+async def delete(ident: int):
+    """Delete a namespace."""
+
+    client = state.ns_client()
+    await client.delete(ident)
+    print(f"Deleted namespace with id {ident}.")
