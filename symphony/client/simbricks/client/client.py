@@ -107,11 +107,38 @@ class BaseClient:
             return await resp.json()
 
 
+class AdminClient:
+
+    def __init__(self, base_client: BaseClient = BaseClient()):
+        self._base_client = base_client
+
+    def _prefix(self, url: str) -> str:
+        return f"/admin{url}"
+
+    async def get_ns(self, ns_id: int):
+        async with self._base_client.get(url=self._prefix(f"/{ns_id}")) as resp:
+            return await resp.json()
+
+    async def get_all_ns(self):
+        async with self._base_client.get(url=self._prefix("/")) as resp:
+            return await resp.json()
+
+    async def create_ns(self, parent_id: int | None, name: str):
+        namespace_json = {"name": name}
+        if parent_id:
+            namespace_json["parent_id"] = parent_id
+        async with self._base_client.post(url=self._prefix("/"), json=namespace_json) as resp:
+            return await resp.json()
+
+    async def delete(self, ns_id: int):
+        async with self._base_client.delete(url=self._prefix(f"/{ns_id}")) as resp:
+            return await resp.json()
+
+
 class NSClient:
     def __init__(self, base_client: BaseClient = BaseClient(), namespace: str = ""):
         self._base_client: BaseClient = base_client
         self._namespace = namespace
-        self._session: aiohttp.ClientSession | None = None
 
     def _build_ns_prefix(self, url: str) -> str:
         return f"/ns/{self._namespace}/-{url}"
@@ -226,7 +253,7 @@ class SimBricksClient:
         async with self._ns_client.get(url=f"/runs/{run_id}") as resp:
             return await resp.json()
 
-    async def get_runs(self) -> [dict]:
+    async def get_runs(self) -> list[dict]:
         async with self._ns_client.get(url=f"/runs") as resp:
             return await resp.json()
 

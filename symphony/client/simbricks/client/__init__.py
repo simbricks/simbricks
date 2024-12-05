@@ -20,4 +20,4 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from .client import BaseClient, NSClient, SimBricksClient, RunnerClient
+from .client import BaseClient, AdminClient, NSClient, SimBricksClient, RunnerClient
