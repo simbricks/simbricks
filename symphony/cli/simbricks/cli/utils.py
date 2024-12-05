@@ -22,6 +22,8 @@
 
 import asyncio
 import functools
+from rich.table import Table
+from rich.console import Console
 
 def async_cli():
     """
@@ -34,3 +36,14 @@ def async_cli():
             return asyncio.run(f(*args, **kwargs))
         return wrapper
     return decorator_async_cli
+
+def print_namespace_table(namespaces) -> None:
+    table = Table()
+    table.add_column("Id")
+    table.add_column("name")
+    table.add_column("parent")
+    for ns in namespaces:
+        table.add_row(str(ns["id"]), str(ns["name"]), str(ns["parent_id"]))
+
+    console = Console()
+    console.print(table)
