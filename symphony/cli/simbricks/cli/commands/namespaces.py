@@ -20,34 +20,18 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from pathlib import Path
-from typer import Typer, Option
-from typing_extensions import Annotated
-from rich.table import Table
-from rich.console import Console
+from typer import Typer
 from ..state import state
-from ..utils import async_cli
+from ..utils import async_cli, print_namespace_table
 
 app = Typer(help="Managing SimBricks namespaces.")
-
-
-def print_namespace_table(namespaces) -> None:
-    table = Table()
-    table.add_column("Id")
-    table.add_column("name")
-    table.add_column("parent")
-    for ns in namespaces:
-        table.add_row(str(ns["id"]), str(ns["name"]), str(ns["parent_id"]))
-
-    console = Console()
-    console.print(table)
 
 
 @app.command()
 @async_cli()
 async def ls():
     """List available namespaces."""
-    client = state.ns_client()
+    client = state.ns_client
 
     namespaces = await client.get_all()
     print_namespace_table(namespaces)
@@ -57,7 +41,7 @@ async def ls():
 @async_cli()
 async def ls_id(ident: int):
     """List namespace with given id ident."""
-    client = state.ns_client()
+    client = state.ns_client
 
     namespace = await client.get_ns(ident)
     print_namespace_table([namespace])
@@ -67,7 +51,7 @@ async def ls_id(ident: int):
 @async_cli()
 async def ls_cur():
     """List current namespace."""
-    client = state.ns_client()
+    client = state.ns_client
 
     namespace = await client.get_cur()
     print_namespace_table([namespace])
@@ -78,7 +62,7 @@ async def ls_cur():
 async def create(name: str):
     """Create a new namespace."""
 
-    client = state.ns_client()
+    client = state.ns_client
 
     # create namespace relative to current namespace
     cur_ns = await client.get_cur()
@@ -96,6 +80,6 @@ async def create(name: str):
 async def delete(ident: int):
     """Delete a namespace."""
 
-    client = state.ns_client()
+    client = state.ns_client
     await client.delete(ident)
     print(f"Deleted namespace with id {ident}.")

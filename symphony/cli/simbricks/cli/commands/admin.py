@@ -22,28 +22,45 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
-from simbricks.cli.commands import audit, admin, namespaces, runs
-from simbricks.cli.state import state
-from simbricks.cli.utils import async_cli
 
-app = Typer()
-app.add_typer(namespaces.app, name="ns")
-app.add_typer(runs.app, name="runs")
-app.add_typer(audit.app, name="audit")
-app.add_typer(admin.app, name="admin")
+from ..state import state
+from ..utils import async_cli, print_namespace_table
+
+app = Typer(help="SimBricks admin commands.")
 
 
-@app.callback()
+@app.command()
 @async_cli()
-async def amain(
-    ns: Annotated[str, Option(help="Namespace to operate in.")] = "foo/bar/baz",
-):
-    state.namespace = ns
+async def ns_ls():
+    """List all available namespaces."""
+    client = state.admin_client
+    namespaces = await client.get_all_ns()
+    print_namespace_table(namespaces)
 
 
-def main():
-    app()
+@app.command()
+@async_cli()
+async def ns_ls_id(ident: int):
+    """List namespace with given id ident."""
+    client = state.admin_client
+    namespace = await client.get_ns(ns_id=ident)
+    print_namespace_table([namespace])
 
 
-if __name__ == "__main__":
-    main()
+@app.command()
+@async_cli()
+async def ns_create(name: str, parent_id: Annotated[int, Option(help="optional parent namesapce")] = None):
+    """Create a new namespace."""
+    client = state.admin_client
+    namespace = await client.create_ns(parent_id=parent_id, name=name)
+    ns_id = namespace["id"]
+    print(f"Creating namespace {name} in {state.namespace}. New namespace: {ns_id}")
+
+
+@app.command()
+@async_cli()
+async def ns_delete(ident: int):
+    """Delete a namespace."""
+    client = state.admin_client
+    await client.delete(ns_id=ident)
+    print(f"Deleted namespace with id {ident}.")
