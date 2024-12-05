@@ -39,7 +39,7 @@ app = Typer(
 @async_cli()
 async def ls():
     """List runs."""
-    runs = await state.simbricks_client().get_runs()
+    runs = await state.simbricks_client.get_runs()
 
     table = Table()
     table.add_column('Id')
@@ -56,13 +56,13 @@ async def ls():
 @async_cli()
 async def show(run_id: int):
     """Show individual run."""
-    run = await state.simbricks_client().get_run(run_id)
+    run = await state.simbricks_client.get_run(run_id)
     print(run)
 
 async def follow_run(run_id: int):
     last_run = None
     while True:
-        run = await state.simbricks_client().get_run(run_id)
+        run = await state.simbricks_client.get_run(run_id)
         if not last_run or last_run['state'] != run['state']:
             print(f'State:', run['state'])
         if not last_run or (
@@ -92,7 +92,7 @@ async def submit_script(
 ):
     """Submit a SimBricks python simulation script to run."""
 
-    system_client = state.simbricks_client()
+    system_client = state.simbricks_client
 
     experiment_mod = load_mod.load_module(module_path=path)
     instantiations = experiment_mod.instantiations

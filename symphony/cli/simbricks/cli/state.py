@@ -21,29 +21,40 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os
-from simbricks.client import BaseClient, NSClient, SimBricksClient
+from simbricks.client import BaseClient, AdminClient, NSClient, SimBricksClient
 
-class State():
+
+class State:
     def __init__(self):
-        self.namespace = ''
+        self.namespace = ""
         self._base_client: BaseClient | None = None
+        self._admin_client: AdminClient = None
         self._ns_client: NSClient | None = None
         self._simbricks_client: SimBricksClient | None = None
 
+    @property
     def base_client(self):
         if self._base_client is None:
             self._base_client = BaseClient()
         return self._base_client
 
+    @property
+    def admin_client(self):
+        if self._admin_client is None:
+            self._admin_client = AdminClient(base_client=self.base_client)
+        return self._admin_client
+
+    @property
     def ns_client(self):
         if self._ns_client is None:
-            self._ns_client = NSClient(base_client=self.base_client(),
-                namespace=self.namespace)
+            self._ns_client = NSClient(base_client=self.base_client, namespace=self.namespace)
         return self._ns_client
 
+    @property
     def simbricks_client(self):
         if self._simbricks_client is None:
-            self._simbricks_client = SimBricksClient(self.ns_client())
+            self._simbricks_client = SimBricksClient(self.ns_client)
         return self._simbricks_client
+
 
 state = State()

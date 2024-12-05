@@ -20,9 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from pathlib import Path
-from typer import Typer, Option
-from typing_extensions import Annotated
+from typer import Typer
 from ..state import state
 from ..utils import async_cli
 
