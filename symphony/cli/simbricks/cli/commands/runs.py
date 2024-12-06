@@ -20,6 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import json
 import asyncio
 from pathlib import Path
 import simbricks.utils.load_mod as load_mod
@@ -31,9 +32,8 @@ from ..utils import async_cli
 from rich.console import Console
 from rich.table import Table
 
-app = Typer(
-    help="Managing SimBricks runs."
-)
+app = Typer(help="Managing SimBricks runs.")
+
 
 @app.command()
 @async_cli()
@@ -42,15 +42,15 @@ async def ls():
     runs = await state.simbricks_client.get_runs()
 
     table = Table()
-    table.add_column('Id')
-    table.add_column('Instantiation')
-    table.add_column('State')
+    table.add_column("Id")
+    table.add_column("Instantiation")
+    table.add_column("State")
     for r in runs:
-        table.add_row(str(r['id']), str(r['instantiation_id']),
-            r['state'])
+        table.add_row(str(r["id"]), str(r["instantiation_id"]), r["state"])
 
     console = Console()
     console.print(table)
+
 
 @app.command()
 @async_cli()
@@ -59,22 +59,22 @@ async def show(run_id: int):
     run = await state.simbricks_client.get_run(run_id)
     print(run)
 
+
 async def follow_run(run_id: int):
     last_run = None
     while True:
         run = await state.simbricks_client.get_run(run_id)
-        if not last_run or last_run['state'] != run['state']:
-            print(f'State:', run['state'])
-        if not last_run or (
-                len(last_run['output']) != len(run['output']) and
-                len(run['output']) != 0):
-            prev_len = len(last_run['output']) if last_run else 0
-            print(run['output'][prev_len:])
-        if run['state'] != 'pending' and run['state'] != 'running':
+        if not last_run or last_run["state"] != run["state"]:
+            print(f"State:", run["state"])
+        if not last_run or (len(last_run["output"]) != len(run["output"]) and len(run["output"]) != 0):
+            prev_len = len(last_run["output"]) if last_run else 0
+            print(run["output"][prev_len:])
+        if run["state"] != "pending" and run["state"] != "running":
             break
 
         last_run = run
         await asyncio.sleep(1)
+
 
 @app.command()
 @async_cli()
@@ -82,13 +82,56 @@ async def follow(run_id: int):
     """Follow individual run as it executes."""
     await follow_run(run_id)
 
+
+@app.command()
+@async_cli()
+async def delete(run_id: int):
+    """Delete an individual run."""
+    client = state.simbricks_client
+    await client.delete_run(run_id)
+
+
+@app.command()
+@async_cli()
+async def set_input_tarball(run_id: int, source_file: str):
+    """Set the tarball input for an individual run."""
+    client = state.simbricks_client
+    await client.set_run_input(run_id, source_file)
+
+
+@app.command()
+@async_cli()
+async def set_output_artifact(run_id: int, source_file: str):
+    """Set the tarball input for an individual run."""
+    client = state.simbricks_client
+    await client.set_run_artifact(run_id, source_file)
+
+
+@app.command()
+@async_cli()
+async def get_output_artifact(run_id: int, destination_file: str):
+    """Follow individual run as it executes."""
+    client = state.simbricks_client
+    await client.get_run_artifact(run_id, destination_file)
+
+
+@app.command()
+@async_cli()
+async def update_run(run_id: int, updates: str):
+    """Update run with the 'updates' json string."""
+    client = state.simbricks_client
+    json_updates = json.loads(updates)
+    await client.update_run(run_id, updates=json_updates)
+
+
 @app.command()
 @async_cli()
 async def submit_script(
     path: Annotated[Path, Argument(help="Python simulation script to submit.")],
-    follow: Annotated[bool, Option("--follow", "-f",
-        help="Wait for run to terminate and show output live.")] = False,
-
+    follow: Annotated[bool, Option("--follow", "-f", help="Wait for run to terminate and show output live.")] = False,
+    input: Annotated[
+        str | None, Option("--input", "-i", help="Specify a tarball file of inputs needed for running the simulation.")
+    ] = None,
 ):
     """Submit a SimBricks python simulation script to run."""
 
@@ -119,7 +162,12 @@ async def submit_script(
     inst_id = int(instantiation["id"])
 
     run = await system_client.create_run(inst_id)
+    run_id = run["id"]
+    if input:
+        await system_client.set_run_input(run_id, input)
+    await system_client.update_run(run_id, {"state": "pending", "output": ""})
+
     print(run)
 
     if follow:
-        await follow_run(run['id'])
+        await follow_run(run_id)
