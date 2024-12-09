@@ -292,8 +292,12 @@ class SimBricksClient:
         async with self._ns_client.delete(url=f"/instantiations/{inst_id}") as resp:
             return await resp.json()
 
-    async def get_instantiation(self, instantiation_id: int) -> instantiation.Instantiation:
+    async def get_instantiation(self, instantiation_id: int) -> dict:
         async with self._ns_client.get(url=f"/instantiations/{instantiation_id}") as resp:
+            return await resp.json()
+
+    async def get_instantiations(self) -> list[dict]:
+        async with self._ns_client.get(url="/instantiations") as resp:
             return await resp.json()
 
     async def create_run(self, inst_db_id: int) -> dict:
