@@ -60,27 +60,12 @@ async def show(run_id: int):
     print(run)
 
 
-async def follow_run(run_id: int):
-    last_run = None
-    while True:
-        run = await state.simbricks_client.get_run(run_id)
-        if not last_run or last_run["state"] != run["state"]:
-            print(f"State:", run["state"])
-        if not last_run or (len(last_run["output"]) != len(run["output"]) and len(run["output"]) != 0):
-            prev_len = len(last_run["output"]) if last_run else 0
-            print(run["output"][prev_len:])
-        if run["state"] != "pending" and run["state"] != "running":
-            break
-
-        last_run = run
-        await asyncio.sleep(1)
-
-
 @app.command()
 @async_cli()
 async def follow(run_id: int):
     """Follow individual run as it executes."""
-    await follow_run(run_id)
+    client = state.simbricks_client
+    await client.follow_run(run_id)
 
 
 @app.command()
@@ -170,4 +155,4 @@ async def submit_script(
     print(run)
 
     if follow:
-        await follow_run(run_id)
+        await system_client.follow_run(run_id)

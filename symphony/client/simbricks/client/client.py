@@ -24,6 +24,8 @@
 import aiohttp
 import typing
 import contextlib
+import asyncio
+import rich
 from .auth import TokenProvider
 from .settings import client_settings
 from simbricks.orchestration import system
@@ -304,6 +306,30 @@ class SimBricksClient:
     async def get_runs(self) -> list[dict]:
         async with self._ns_client.get(url=f"/runs") as resp:
             return await resp.json()
+
+    async def follow_run(self, run_id: int) -> None:
+        console = rich.console.Console()
+        with console.status(f"[bold green]Waiting for run {run_id} to finish...") as status:
+            last_run = None
+            prev_len = 0
+            while True:
+                run = await self.get_run(run_id)
+
+                if not last_run or last_run["state"] != run["state"]:
+                    console.log(f"Run State:", run["state"])
+
+                if not last_run or (len(last_run["output"]) != len(run["output"]) and len(run["output"]) != 0):
+                    prev_len = len(last_run["output"]) if last_run else 0
+                    console.log(run["output"][prev_len:])
+
+                # did we finish?
+                if run["state"] != "pending" and run["state"] != "running":
+                    break
+
+                last_run = run
+                await asyncio.sleep(2)
+
+        console.log("Run {run_id} finished")
 
     async def set_run_input(self, rid: int, uploaded_input_file: str):
         with open(uploaded_input_file, "rb") as f:
