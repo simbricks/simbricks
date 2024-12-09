@@ -26,6 +26,7 @@ import typing
 import contextlib
 import asyncio
 import rich
+import json
 from .auth import TokenProvider
 from .settings import client_settings
 from simbricks.orchestration import system
@@ -246,7 +247,8 @@ class SimBricksClient:
             return await resp.json()
 
     async def create_system(self, system: system.System) -> dict:
-        json_obj = {"sb_json": system.toJSON()}
+        sys_json = json.dumps(system.toJSON())
+        json_obj = {"sb_json": sys_json}
         async with self._ns_client.post(url="/systems", json=json_obj) as resp:
             return await resp.json()
 
@@ -259,8 +261,8 @@ class SimBricksClient:
             return await resp.json()
 
     async def create_simulation(self, system_db_id: int, simulation: simulation.Simulation) -> simulation.Simulation:
-        json_obj = {"system_id": system_db_id, "sb_json": simulation.toJSON()}
-        print(json_obj)
+        sim_js = json.dumps(simulation.toJSON())
+        json_obj = {"system_id": system_db_id, "sb_json": sim_js}
         async with self._ns_client.post(url="/simulations", json=json_obj) as resp:
             return await resp.json()
 
@@ -273,8 +275,8 @@ class SimBricksClient:
             return await resp.json()
 
     async def create_instantiation(self, sim_db_id: int, instantiation: simulation.Simulation) -> simulation.Simulation:
-        json_obj = {"simulation_id": sim_db_id, "sb_json": {}}  # FIXME
-        print(json_obj)
+        inst_json = json.dumps({}) # FIXME
+        json_obj = {"simulation_id": sim_db_id, "sb_json": inst_json}
         async with self._ns_client.post(url="/instantiations", json=json_obj) as resp:
             return await resp.json()
 
