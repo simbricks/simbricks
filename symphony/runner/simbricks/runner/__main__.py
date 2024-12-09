@@ -56,9 +56,10 @@ async def amain():
             print('No valid run, sleeping')
             await asyncio.sleep(5)
             continue
-
-        print(f'Preparing run {run_obj["id"]}')
-        run_workdir = workdir / f'run-{run_obj["id"]}'
+        
+        run_id = run_obj["id"]
+        print(f'Preparing run {run_id}')
+        run_workdir = workdir / f'run-{run_id}'
         run_workdir.mkdir(parents=True)
 
         inst_obj = await sb_client.get_instantiation(run_obj['instantiation_id'])
@@ -76,14 +77,16 @@ async def amain():
         inst.preserve_tmp_folder = False
         inst.create_checkpoint = True
 
-        print(f'Starting run {run_obj["id"]}')
+        print(f'Starting run {run_id}')
 
-        await rc.update_run(run_obj['id'], 'running', '')
+        await rc.update_run(run_id, 'running', '')
         out = await run_instantiation(inst)
+        if inst.create_artifact:
+            await sb_client.set_run_artifact(run_id, inst.artifact_name)
 
-        print(f'Finished run {run_obj["id"]}')
+        print(f'Finished run {run_id}')
 
-        await rc.update_run(run_obj['id'], 'completed', json.dumps(out))
+        await rc.update_run(run_id, 'completed', json.dumps(out))
 
 def main():
     asyncio.run(amain())
