@@ -25,17 +25,22 @@ import functools
 from rich.table import Table
 from rich.console import Console
 
+
 def async_cli():
     """
     Decorator function turning async cli routines into regular ones for
     typer.
     """
+
     def decorator_async_cli(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             return asyncio.run(f(*args, **kwargs))
+
         return wrapper
+
     return decorator_async_cli
+
 
 def print_namespace_table(namespaces) -> None:
     table = Table()
@@ -44,6 +49,27 @@ def print_namespace_table(namespaces) -> None:
     table.add_column("parent")
     for ns in namespaces:
         table.add_row(str(ns["id"]), str(ns["name"]), str(ns["parent_id"]))
+
+    console = Console()
+    console.print(table)
+
+
+def print_systems_table(systems):
+    table = Table()
+    table.add_column("Id")
+    for sys in systems:
+        table.add_row(str(sys["id"]))
+
+    console = Console()
+    console.print(table)
+
+
+def print_simulations_table(instantiations):
+    table = Table()
+    table.add_column("Id")
+    table.add_column("SystemId")
+    for sys in instantiations:
+        table.add_row(str(sys["id"]), str(sys["system_id"]))
 
     console = Console()
     console.print(table)

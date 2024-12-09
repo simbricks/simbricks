@@ -20,32 +20,33 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer, Option
-from typing_extensions import Annotated
-from simbricks.cli.commands import audit, admin, namespaces, runs, systems, simulations
-from simbricks.cli.state import state
-from simbricks.cli.utils import async_cli
+from typer import Typer
+from ..state import state
+from ..utils import async_cli
+from ..utils import print_simulations_table
 
-app = Typer()
-app.add_typer(namespaces.app, name="ns")
-app.add_typer(runs.app, name="runs")
-app.add_typer(audit.app, name="audit")
-app.add_typer(admin.app, name="admin")
-app.add_typer(systems.app, name="systems")
-app.add_typer(simulations.app, name="sims")
+app = Typer(help="Managing SimBricks Simulations.")
 
 
-@app.callback()
+@app.command()
 @async_cli()
-async def amain(
-    ns: Annotated[str, Option(help="Namespace to operate in.")] = "foo/bar/baz",
-):
-    state.namespace = ns
+async def ls():
+    """List Simulations."""
+    simulations = await state.simbricks_client.get_simulations()
+    print_simulations_table(simulations)
 
 
-def main():
-    app()
+@app.command()
+@async_cli()
+async def show(sim_id: int):
+    """Show individual Simulation."""
+    sim = await state.simbricks_client.get_simulation(simulation_id=sim_id)
+    print_simulations_table([sim])
 
 
-if __name__ == "__main__":
-    main()
+@app.command()
+@async_cli()
+async def delete(sim_id: int):
+    """Delete an individual SImulation."""
+    client = state.simbricks_client
+    await client.delete_simulation(sim_id=sim_id)

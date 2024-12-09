@@ -252,6 +252,10 @@ class SimBricksClient:
         async with self._ns_client.post(url="/systems", json=json_obj) as resp:
             return await resp.json()
 
+    async def delete_system(self, sys_id: int):
+        async with self._ns_client.delete(url=f"/systems/{sys_id}") as resp:
+            return await resp.json()
+
     async def get_systems(self) -> list[dict]:
         async with self._ns_client.get(url="/systems") as resp:
             return await resp.json()
@@ -266,6 +270,10 @@ class SimBricksClient:
         async with self._ns_client.post(url="/simulations", json=json_obj) as resp:
             return await resp.json()
 
+    async def delete_simulation(self, sim_id: int):
+        async with self._ns_client.delete(url=f"/simulations/{sim_id}") as resp:
+            return await resp.json()
+
     async def get_simulation(self, simulation_id: int) -> dict:
         async with self._ns_client.get(url=f"/simulations/{simulation_id}") as resp:
             return await resp.json()
@@ -275,9 +283,13 @@ class SimBricksClient:
             return await resp.json()
 
     async def create_instantiation(self, sim_db_id: int, instantiation: simulation.Simulation) -> simulation.Simulation:
-        inst_json = json.dumps({}) # FIXME
+        inst_json = json.dumps({})  # FIXME
         json_obj = {"simulation_id": sim_db_id, "sb_json": inst_json}
         async with self._ns_client.post(url="/instantiations", json=json_obj) as resp:
+            return await resp.json()
+
+    async def delete_instantiation(self, inst_id: int):
+        async with self._ns_client.delete(url=f"/instantiations/{inst_id}") as resp:
             return await resp.json()
 
     async def get_instantiation(self, instantiation_id: int) -> instantiation.Instantiation:
