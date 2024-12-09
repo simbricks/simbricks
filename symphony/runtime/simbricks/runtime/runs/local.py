@@ -27,7 +27,6 @@ import asyncio
 from simbricks.runtime import simulation_executor
 from simbricks.runtime import command_executor
 from simbricks.runtime.runs import base as run_base
-from simbricks.orchestration.instantiation import base as inst_base
 
 
 class LocalSimpleRuntime(run_base.Runtime):
