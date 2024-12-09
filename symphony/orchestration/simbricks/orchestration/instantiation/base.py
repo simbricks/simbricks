@@ -28,6 +28,7 @@ import shutil
 import typing
 import itertools
 import copy
+import uuid
 from simbricks.utils import base as util_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import pcie as sys_pcie
@@ -85,12 +86,16 @@ class Instantiation():
         self._id = next(self.__id_iter)
         self.simulation: sim_base.Simulation = sim
         self.env: InstantiationEnvironment | None = None
+        self.artifact_name: str = f"simbricks-artifact-{str(uuid.uuid4())}.zip"
+        self.artifact_paths: list[str] = []
         self._executor: command_executor.Executor | None = None
         self._create_checkpoint: bool = False
         self._restore_checkpoint: bool = False
         self._preserve_checkpoints: bool = True
         self.preserve_tmp_folder: bool = False
+        # NOTE: temporary data structure
         self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
+        # NOTE: temporary data structure
         self._sim_dependency: (
             dict[sim_base.Simulator, set[sim_base.Simulator]] | None
         ) = None
@@ -105,6 +110,10 @@ class Instantiation():
         if self._executor is None:
             raise Exception("you must set an executor")
         return self._executor
+    
+    @property
+    def create_artifact(self) -> bool:
+        return len(self.artifact_paths) > 0
 
     @executor.setter
     def executor(self, executor: command_executor.Executor):
@@ -330,9 +339,12 @@ class Instantiation():
         )
         self._restore_checkpoint = restore_checkpoint
 
+    # TODO: this needs fixing...
     def copy(self) -> Instantiation:
         cop = Instantiation(sim=self.simulation)
         cop.simulation = copy.deepcopy(self.simulation) # maybe there is a smarter way of achieving this...
+        cop.artifact_name = self.artifact_name
+        cop.artifact_paths = self.artifact_paths
         cop._create_checkpoint = self._create_checkpoint 
         cop._restore_checkpoint = self._restore_checkpoint 
         cop._preserve_checkpoints = self._preserve_checkpoints 

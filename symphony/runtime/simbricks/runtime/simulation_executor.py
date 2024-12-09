@@ -23,11 +23,11 @@
 from __future__ import annotations
 
 import asyncio
-import itertools
 import shlex
 import traceback
 import abc
 
+from simbricks.utils import artifatcs as art
 from simbricks.orchestration.simulation import output
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
@@ -107,7 +107,11 @@ class SimulationBaseRunner(abc.ABC):
         pass
 
     async def before_cleanup(self) -> None:
-        pass
+        if self._instantiation.create_artifact:
+            art.create_artifact(
+                artifact_name=self._instantiation.artifact_name, 
+                paths_to_include=self._instantiation.artifact_paths
+            )
 
     async def after_cleanup(self) -> None:
         pass
@@ -125,7 +129,7 @@ class SimulationBaseRunner(abc.ABC):
         for sc in self._wait_sims:
             await sc.wait()
 
-    async def terminate_collect_sims(self) -> None: # output.SimulationOutput:
+    async def terminate_collect_sims(self) -> output.SimulationOutput:
         """Terminates all simulators and collects output."""
         self._out.set_end()
         if self._verbose:
