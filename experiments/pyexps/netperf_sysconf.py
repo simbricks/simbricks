@@ -121,8 +121,8 @@ for host_type in host_types:
             else:
                 raise NameError(net_type)
 
-            host_inst0 = sim.Gem5Sim(simulation)
-            # host_inst0 = sim.QemuSim(simulation)
+            # host_inst0 = sim.Gem5Sim(simulation)
+            host_inst0 = sim.QemuSim(simulation)
             host_inst0.add(host0)
             host_inst0.name = "Client-Host"
             # host_inst0.wait_terminate = True
@@ -161,5 +161,7 @@ for host_type in host_types:
 
             instance = inst.Instantiation(sim=simulation)
             instance.preserve_tmp_folder = False
-            instance.create_checkpoint = True
+            instance.create_checkpoint = False
+            instance.artifact_paths = ["simbricks-workdir/output"]
+            
             instantiations.append(instance)
