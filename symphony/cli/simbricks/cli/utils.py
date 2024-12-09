@@ -73,3 +73,13 @@ def print_simulations_table(instantiations):
 
     console = Console()
     console.print(table)
+
+def print_instantiations_table(instantiations):
+    table = Table()
+    table.add_column("Id")
+    table.add_column("SimulationId")
+    for sys in instantiations:
+        table.add_row(str(sys["id"]), str(sys["simulation_id"]))
+
+    console = Console()
+    console.print(table)
