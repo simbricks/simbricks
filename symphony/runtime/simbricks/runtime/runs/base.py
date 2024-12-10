@@ -26,7 +26,7 @@ from __future__ import annotations
 import itertools
 import abc
 
-from simbricks.orchestration.simulation import output
+from simbricks.runtime import output
 from simbricks.orchestration.instantiation import base as inst_base
 
 
