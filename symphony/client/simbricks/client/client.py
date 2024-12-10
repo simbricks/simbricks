@@ -25,13 +25,12 @@ import aiohttp
 import typing
 import contextlib
 import asyncio
-import rich
 import json
+from rich.console import Console
 from .auth import TokenProvider
 from .settings import client_settings
 from simbricks.orchestration import system
 from simbricks.orchestration import simulation
-from simbricks.orchestration import instantiation
 
 
 class BaseClient:
@@ -326,7 +325,7 @@ class SimBricksClient:
             return await resp.json()
 
     async def follow_run(self, run_id: int) -> None:
-        console = rich.console.Console()
+        console = Console()
         with console.status(f"[bold green]Waiting for run {run_id} to finish...") as status:
             last_run = None
             prev_len = 0
