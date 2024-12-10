@@ -30,6 +30,7 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.runtime import command_executor
 from simbricks import client
+from .settings import runner_settings as runset
 from simbricks.utils import artifatcs as art
 
 verbose = True
@@ -83,10 +84,10 @@ async def run_instantiation(sc: client.SimBricksClient, rc: client.RunnerClient,
     await rc.update_run(run_id, "completed", json.dumps(output.toJSON()))
 
 async def amain():
-    base_client = client.BaseClient(base_url="http://172.17.0.1:8000")
-    namespace_client = client.NSClient(base_client=base_client, namespace="foo/bar/baz")
+    base_client = client.BaseClient(base_url=runset().base_url)
+    namespace_client = client.NSClient(base_client=base_client, namespace=runset().namespace)
     sb_client = client.SimBricksClient(namespace_client)
-    rc = client.RunnerClient(namespace_client, 42)
+    rc = client.RunnerClient(namespace_client, runset().runner_id)
 
     workdir = pathlib.Path("./runner-work").resolve()
 
