@@ -42,7 +42,7 @@ def _add_folder_to_zip(zip_file: zipfile.ZipFile, dir_path: str) -> None:
             if child_path.is_file():
                 _add_file_to_zip(zip_file=zip_file, file_path=child_path)
     else:
-        raise Exception(f"_add_folder_to_zip: cannot add {path} to zip")
+        raise Exception(f"_add_folder_to_zip: cannot add {str(path)} to zip")
 
 
 # create an artifact containing all files and folders specified as paths.
