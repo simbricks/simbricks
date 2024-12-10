@@ -23,7 +23,6 @@
 import asyncio
 import json
 import pathlib
-import rich
 from rich.console import Console
 from simbricks.runtime import simulation_executor
 from simbricks.orchestration.instantiation import base as inst_base
@@ -31,6 +30,7 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.runtime import command_executor
 from simbricks import client
+from simbricks.utils import artifatcs as art
 
 verbose = True
 
@@ -53,10 +53,14 @@ async def periodically_update(rc: client.RunnerClient, run_id: int,
     except asyncio.CancelledError:
         pass
 
-async def run_instantiation(rc: client.RunnerClient, run_id: int, inst: inst_base.Instantiation) -> dict:
+async def run_instantiation(sc: client.SimBricksClient, rc: client.RunnerClient, run_id: int, inst: inst_base.Instantiation) -> None:
+    
+    await rc.update_run(run_id, "running", "")
+    
     executor = command_executor.LocalExecutor()
     runner = simulation_executor.SimulationSimpleRunner(executor, inst, verbose)
     await runner.prepare()
+    
     listeners = []
     for sim in inst.simulation.all_simulators():
         listener = command_executor.LegacyOutputListener()
@@ -67,11 +71,19 @@ async def run_instantiation(rc: client.RunnerClient, run_id: int, inst: inst_bas
     output = await runner.run()
     update_task.cancel()
 
-    return output.toJSON()
+    output_path = inst.get_simulation_output_path()
+    output.dump(outpath=output_path)
 
+    if inst.create_artifact:
+        art.create_artifact(
+            artifact_name=inst.artifact_name, paths_to_include=inst.artifact_paths
+        )
+        await sc.set_run_artifact(run_id, inst.artifact_name)
+
+    await rc.update_run(run_id, "completed", json.dumps(output.toJSON()))
 
 async def amain():
-    base_client = client.BaseClient(base_url="http://127.0.0.1:8000")
+    base_client = client.BaseClient(base_url="http://172.17.0.1:8000")
     namespace_client = client.NSClient(base_client=base_client, namespace="foo/bar/baz")
     sb_client = client.SimBricksClient(namespace_client)
     rc = client.RunnerClient(namespace_client, 42)
@@ -106,13 +118,10 @@ async def amain():
             inst.env = env
             inst.preserve_tmp_folder = False
             inst.create_checkpoint = True
+            inst.artifact_paths = [f"{run_workdir}/output"]
 
             console.log(f"Starting run {run_id}")
-            await rc.update_run(run_id, "running", "")
-            out = await run_instantiation(rc, run_id, inst)
-            if inst.create_artifact:
-                await sb_client.set_run_artifact(run_id, inst.artifact_name)
-            await rc.update_run(run_id, "completed", json.dumps(out))
+            await run_instantiation(sb_client, rc, run_id, inst)
             console.log(f"Finished run {run_id}")
 
 
