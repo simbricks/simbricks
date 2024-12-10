@@ -53,3 +53,32 @@ def disalbe_sync_simulation(simulation: sim_base.Simulation) -> None:
 
     for chan in simulation.get_all_channels(lazy=False):
         chan._synchronized = False
+
+
+def simple_simulation(
+    system: system.System,
+    sync=False,
+    compmap=dict[type[system.Component], type[sim_base.Simulator]]
+):
+  """Create simple simulation from system. Uses a map from component type to
+  simulator type and then creates one simulator per component."""
+  # FIXME: name from system, but system has no name
+  simulation = sim_base.Simulation(
+      name="netperf_sysconf", system=system
+  )
+
+  for comp in system._all_components.values():
+    if comp in simulation._sys_sim_map:
+      continue
+
+    for (ct,st) in compmap.items():
+      if isinstance(comp, ct):
+        simulator = st(simulation)
+        simulator.add(comp)
+        if comp.name:
+          simulator.name = comp.name
+
+    if not sync:
+      disalbe_sync_simulation(simulation=simulation)
+
+  return simulation
