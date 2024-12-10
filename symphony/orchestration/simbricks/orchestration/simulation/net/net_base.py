@@ -88,7 +88,7 @@ class WireNet(NetSim):
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> WireNet:
         instance = super().fromJSON(simulation, json_obj)
-        # TODO: FIXME
+        instance._relative_pcap_file_path = base_utils.get_json_attr_top(json_obj, "relative_pcap_file_path") 
         return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
@@ -140,7 +140,7 @@ class SwitchNet(NetSim):
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> SwitchNet:
         instance = super().fromJSON(simulation, json_obj)
-        # TODO: FIXME
+        instance._relative_pcap_file_path = base_utils.get_json_attr_top(json_obj, "relative_pcap_file_path") 
         return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
@@ -189,6 +189,7 @@ class MemSwitchNet(SwitchNet):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
+        # TODO: FIXME
         return json_obj
 
     @classmethod
