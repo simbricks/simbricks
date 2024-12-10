@@ -43,6 +43,7 @@ packages = [
 simbricks-runner = "simbricks.runner.__main__:main"
 
 [tool.poetry.dependencies]
+rich = "13.9.4"
 simbricks-orchestration = "*"
 simbricks-runtime = "*"
 simbricks-local = "*"
