@@ -91,6 +91,11 @@ class BaseEthNetComponent(base.Component):
     def fromJSON(cls, system: base.System, json_obj: dict) -> BaseEthNetComponent:
         return super().fromJSON(system, json_obj)
 
+    def connect_eth_peer_if(self, peer_i: EthInterface) -> EthChannel:
+        i = EthInterface(self)
+        self.add_if(i)
+        return EthChannel(peer_i, i)
+
 
 class EthWire(BaseEthNetComponent):
     def __init__(self, s: base.System) -> None:

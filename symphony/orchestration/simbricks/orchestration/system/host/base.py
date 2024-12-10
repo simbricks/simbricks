@@ -70,6 +70,11 @@ class Host(base.Component):
 
         return instance
 
+    def connect_pcie_dev(self, dev: pcie.PCIeSimpleDevice):
+        pcie_if = pcie.PCIeHostInterface(self)
+        self.add_if(pcie_if)
+        pcichannel0 = pcie.PCIeChannel(pcie_if, dev._pci_if)
+
 
 class FullSystemHost(Host):
     def __init__(self, s: base.System) -> None:
