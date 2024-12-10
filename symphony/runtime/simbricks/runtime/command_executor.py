@@ -20,11 +20,12 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import abc
 import asyncio
 import os
 import pathlib
-import re
 import shlex
 import shutil
 import signal
@@ -32,20 +33,74 @@ import typing as tp
 from asyncio.subprocess import Process
 
 
+class OutputListener:
+
+    def __init__(self):
+        self.cmd_parts: list[str] = []
+
+    @abc.abstractmethod
+    async def handel_err(self, lines: list[str]) -> None:
+        pass
+
+    @abc.abstractmethod
+    async def handel_out(self, lines: list[str]) -> None:
+        pass
+
+    def toJSON(self) -> dict:
+        return {
+            "cmd": self.cmd_parts,
+        }
+
+
+class LegacyOutputListener(OutputListener):
+
+    def __init__(self):
+        super().__init__()
+        self.stdout: list[str] = []
+        self.stderr: list[str] = []
+        self.merged_output: list[str] = []
+
+    def _add_to_lists(self, extend: list[str], to_add_to: list[str]) -> None:
+        if isinstance(extend, list):
+            to_add_to.extend(extend)
+            self.merged_output.extend(extend)
+        else:
+            raise Exception("ComponentOutputHandle: can only add str or list[str] to outputs")
+
+    async def handel_out(self, lines: list[str]) -> None:
+        self._add_to_lists(extend=lines, to_add_to=self.stdout)
+
+    async def handel_err(self, lines: list[str]) -> None:
+        self._add_to_lists(extend=lines, to_add_to=self.stderr)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj.update(
+            {
+                "stdout": self.stdout,
+                "stderr": self.stderr,
+                "merged_output": self.merged_output,
+            }
+        )
+        return json_obj
+
+
 class Component(object):
 
     def __init__(self, cmd_parts: tp.List[str], with_stdin=False):
         self.is_ready = False
-        self.stdout: tp.List[str] = []
         self.stdout_buf = bytearray()
-        self.stderr: tp.List[str] = []
         self.stderr_buf = bytearray()
-        self.cmd_parts = cmd_parts
-        #print(cmd_parts)
-        self.with_stdin = with_stdin
+        self.cmd_parts: list[str] = cmd_parts
+        self._output_handler: list[OutputListener] = []
+        self.with_stdin: bool = with_stdin
 
         self._proc: Process
         self._terminate_future: asyncio.Task
+
+    def subscribe(self, listener: OutputListener) -> None:
+        listener.cmd_parts = self.cmd_parts
+        self._output_handler.append(listener)
 
     def _parse_buf(self, buf: bytearray, data: bytes) -> tp.List[str]:
         if data is not None:
@@ -53,14 +108,14 @@ class Component(object):
         lines = []
         start = 0
         for i in range(0, len(buf)):
-            if buf[i] == ord('\n'):
-                l = buf[start:i].decode('utf-8')
+            if buf[i] == ord("\n"):
+                l = buf[start:i].decode("utf-8")
                 lines.append(l)
                 start = i + 1
         del buf[0:start]
 
         if len(data) == 0 and len(buf) > 0:
-            lines.append(buf.decode('utf-8'))
+            lines.append(buf.decode("utf-8"))
         return lines
 
     async def _consume_out(self, data: bytes) -> None:
@@ -68,14 +123,16 @@ class Component(object):
         ls = self._parse_buf(self.stdout_buf, data)
         if len(ls) > 0 or eof:
             await self.process_out(ls, eof=eof)
-            self.stdout.extend(ls)
+            for h in self._output_handler:
+                await h.handel_out(ls)
 
     async def _consume_err(self, data: bytes) -> None:
         eof = len(data) == 0
         ls = self._parse_buf(self.stderr_buf, data)
         if len(ls) > 0 or eof:
             await self.process_err(ls, eof=eof)
-            self.stderr.extend(ls)
+            for h in self._output_handler:
+                await h.handel_err(ls)
 
     async def _read_stream(self, stream: asyncio.StreamReader, fn):
         while True:
@@ -87,12 +144,8 @@ class Component(object):
                 return
 
     async def _waiter(self) -> None:
-        stdout_handler = asyncio.create_task(
-            self._read_stream(self._proc.stdout, self._consume_out)
-        )
-        stderr_handler = asyncio.create_task(
-            self._read_stream(self._proc.stderr, self._consume_err)
-        )
+        stdout_handler = asyncio.create_task(self._read_stream(self._proc.stdout, self._consume_out))
+        stderr_handler = asyncio.create_task(self._read_stream(self._proc.stderr, self._consume_err))
         rc = await self._proc.wait()
         await asyncio.gather(stdout_handler, stderr_handler)
         await self.terminated(rc)
@@ -150,22 +203,14 @@ class Component(object):
             return
         # before Python 3.11, asyncio.wait_for() throws asyncio.TimeoutError -_-
         except (TimeoutError, asyncio.TimeoutError):
-            print(
-                f'terminating component {self.cmd_parts[0]} '
-                f'pid {self._proc.pid}',
-                flush=True
-            )
+            print(f"terminating component {self.cmd_parts[0]} " f"pid {self._proc.pid}", flush=True)
             await self.terminate()
 
         try:
             await asyncio.wait_for(self._proc.wait(), delay)
             return
         except (TimeoutError, asyncio.TimeoutError):
-            print(
-                f'killing component {self.cmd_parts[0]} '
-                f'pid {self._proc.pid}',
-                flush=True
-            )
+            print(f"killing component {self.cmd_parts[0]} " f"pid {self._proc.pid}", flush=True)
             await self.kill()
         await self._proc.wait()
 
@@ -189,15 +234,7 @@ class Component(object):
 
 class SimpleComponent(Component):
 
-    def __init__(
-        self,
-        label: str,
-        cmd_parts: tp.List[str],
-        *args,
-        verbose=True,
-        canfail=False,
-        **kwargs
-    ) -> None:
+    def __init__(self, label: str, cmd_parts: tp.List[str], *args, verbose=True, canfail=False, **kwargs) -> None:
         self.label = label
         self.verbose = verbose
         self.canfail = canfail
@@ -207,109 +244,18 @@ class SimpleComponent(Component):
     async def process_out(self, lines: tp.List[str], eof: bool) -> None:
         if self.verbose:
             for _ in lines:
-                print(self.label, 'OUT:', lines, flush=True)
+                print(self.label, "OUT:", lines, flush=True)
 
     async def process_err(self, lines: tp.List[str], eof: bool) -> None:
         if self.verbose:
             for _ in lines:
-                print(self.label, 'ERR:', lines, flush=True)
+                print(self.label, "ERR:", lines, flush=True)
 
     async def terminated(self, rc: int) -> None:
         if self.verbose:
-            print(self.label, 'TERMINATED:', rc, flush=True)
+            print(self.label, "TERMINATED:", rc, flush=True)
         if not self.canfail and rc != 0:
-            raise RuntimeError('Command Failed: ' + str(self.cmd_parts))
-
-
-class SimpleRemoteComponent(SimpleComponent):
-
-    def __init__(
-        self,
-        host_name: str,
-        label: str,
-        cmd_parts: tp.List[str],
-        *args,
-        cwd: tp.Optional[str] = None,
-        ssh_extra_args: tp.Optional[tp.List[str]] = None,
-        **kwargs
-    ) -> None:
-        if ssh_extra_args is None:
-            ssh_extra_args = []
-
-        self.host_name = host_name
-        self.extra_flags = ssh_extra_args
-        # add a wrapper to print the PID
-        remote_parts = ['echo', 'PID', '$$', '&&']
-
-        if cwd is not None:
-            # if necessary add a CD command
-            remote_parts += ['cd', cwd, '&&']
-
-        # escape actual command parts
-        cmd_parts = list(map(shlex.quote, cmd_parts))
-
-        # use exec to make sure the command we run keeps the PIDS
-        remote_parts += ['exec'] + cmd_parts
-
-        # wrap up command in ssh invocation
-        parts = self._ssh_cmd(remote_parts)
-
-        super().__init__(label, parts, *args, **kwargs)
-
-        self._pid_fut: tp.Optional[asyncio.Future] = None
-
-    def _ssh_cmd(self, parts: tp.List[str]) -> tp.List[str]:
-        """SSH invocation of command for this host."""
-        return [
-            'ssh',
-            '-o',
-            'UserKnownHostsFile=/dev/null',
-            '-o',
-            'StrictHostKeyChecking=no'
-        ] + self.extra_flags + [self.host_name, '--'] + parts
-
-    async def start(self) -> None:
-        """Start this command (includes waiting for its pid)."""
-        self._pid_fut = asyncio.get_running_loop().create_future()
-        await super().start()
-        await self._pid_fut
-
-    async def process_out(self, lines: tp.List[str], eof: bool) -> None:
-        """Scans output and set PID future once PID line found."""
-        if not self._pid_fut.done():
-            newlines = []
-            pid_re = re.compile(r'^PID\s+(\d+)\s*$')
-            for l in lines:
-                m = pid_re.match(l)
-                if m:
-                    pid = int(m.group(1))
-                    self._pid_fut.set_result(pid)
-                else:
-                    newlines.append(l)
-            lines = newlines
-
-            if eof and not self._pid_fut.done():
-                # cancel PID future if it's not going to happen
-                print('PID not found but EOF already found:', self.label)
-                self._pid_fut.cancel()
-        await super().process_out(lines, eof)
-
-    async def _kill_cmd(self, sig: str) -> None:
-        """Send signal to command by running ssh kill -$sig $PID."""
-        cmd_parts = self._ssh_cmd([
-            'kill', '-' + sig, str(self._pid_fut.result())
-        ])
-        proc = await asyncio.create_subprocess_exec(*cmd_parts)
-        await proc.wait()
-
-    async def interrupt(self) -> None:
-        await self._kill_cmd('INT')
-
-    async def terminate(self) -> None:
-        await self._kill_cmd('TERM')
-
-    async def kill(self) -> None:
-        await self._kill_cmd('KILL')
+            raise RuntimeError("Command Failed: " + str(self.cmd_parts))
 
 
 class Executor(abc.ABC):
@@ -318,9 +264,7 @@ class Executor(abc.ABC):
         self.ip = None
 
     @abc.abstractmethod
-    def create_component(
-        self, label: str, parts: tp.List[str], **kwargs
-    ) -> SimpleComponent:
+    def create_component(self, label: str, parts: tp.List[str], **kwargs) -> SimpleComponent:
         pass
 
     @abc.abstractmethod
@@ -340,14 +284,10 @@ class Executor(abc.ABC):
         pass
 
     # runs the list of commands as strings sequentially
-    async def run_cmdlist(
-        self, label: str, cmds: tp.List[str], verbose=True
-    ) -> None:
+    async def run_cmdlist(self, label: str, cmds: tp.List[str], verbose=True) -> None:
         i = 0
         for cmd in cmds:
-            cmd_c = self.create_component(
-                label + '.' + str(i), shlex.split(cmd), verbose=verbose
-            )
+            cmd_c = self.create_component(label + "." + str(i), shlex.split(cmd), verbose=verbose)
             await cmd_c.start()
             await cmd_c.wait()
 
@@ -362,16 +302,12 @@ class Executor(abc.ABC):
 
 class LocalExecutor(Executor):
 
-    def create_component(
-        self, label: str, parts: tp.List[str], **kwargs
-    ) -> SimpleComponent:
+    def create_component(self, label: str, parts: list[str], **kwargs) -> SimpleComponent:
         return SimpleComponent(label, parts, **kwargs)
 
-    async def await_file(
-        self, path: str, delay=0.05, verbose=False, timeout=30
-    ) -> None:
+    async def await_file(self, path: str, delay=0.05, verbose=False, timeout=30) -> None:
         if verbose:
-            print(f'await_file({path})')
+            print(f"await_file({path})")
         t = 0
         while not os.path.exists(path):
             if t >= timeout:
@@ -391,86 +327,3 @@ class LocalExecutor(Executor):
             shutil.rmtree(path, ignore_errors=True)
         elif os.path.exists(path):
             os.unlink(path)
-
-
-class RemoteExecutor(Executor):
-
-    def __init__(self, host_name: str, workdir: str) -> None:
-        super().__init__()
-
-        self.host_name = host_name
-        self.cwd = workdir
-        self.ssh_extra_args = []
-        self.scp_extra_args = []
-
-    def create_component(
-        self, label: str, parts: tp.List[str], **kwargs
-    ) -> SimpleRemoteComponent:
-        return SimpleRemoteComponent(
-            self.host_name,
-            label,
-            parts,
-            cwd=self.cwd,
-            ssh_extra_args=self.ssh_extra_args,
-            **kwargs
-        )
-
-    async def await_file(
-        self, path: str, delay=0.05, verbose=False, timeout=30
-    ) -> None:
-        if verbose:
-            print(f'{self.host_name}.await_file({path}) started')
-
-        to_its = timeout / delay
-        loop_cmd = (
-            f'i=0 ; while [ ! -e {path} ] ; do '
-            f'if [ $i -ge {to_its:u} ] ; then exit 1 ; fi ; '
-            f'sleep {delay} ; '
-            'i=$(($i+1)) ; done; exit 0'
-        ) % (path, to_its, delay)
-        parts = ['/bin/sh', '-c', loop_cmd]
-        sc = self.create_component(
-            f"{self.host_name}.await_file('{path}')",
-            parts,
-            canfail=False,
-            verbose=verbose
-        )
-        await sc.start()
-        await sc.wait()
-
-    # TODO: Implement opitimized await_files()
-
-    async def send_file(self, path: str, verbose=False) -> None:
-        parts = [
-            'scp',
-            '-o',
-            'UserKnownHostsFile=/dev/null',
-            '-o',
-            'StrictHostKeyChecking=no'
-        ] + self.scp_extra_args + [path, f'{self.host_name}:{path}']
-        sc = SimpleComponent(
-            f'{self.host_name}.send_file("{path}")',
-            parts,
-            canfail=False,
-            verbose=verbose
-        )
-        await sc.start()
-        await sc.wait()
-
-    async def mkdir(self, path: str, verbose=False) -> None:
-        sc = self.create_component(
-            f"{self.host_name}.mkdir('{path}')", ['mkdir', '-p', path],
-            canfail=False,
-            verbose=verbose
-        )
-        await sc.start()
-        await sc.wait()
-
-    async def rmtree(self, path: str, verbose=False) -> None:
-        sc = self.create_component(
-            f'{self.host_name}.rmtree("{path}")', ['rm', '-rf', path],
-            canfail=False,
-            verbose=verbose
-        )
-        await sc.start()
-        await sc.wait()

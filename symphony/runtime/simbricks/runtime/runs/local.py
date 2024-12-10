@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 
+from simbricks.utils import artifatcs as art
 from simbricks.runtime import simulation_executor
 from simbricks.runtime import command_executor
 from simbricks.runtime.runs import base as run_base
@@ -49,13 +50,14 @@ class LocalSimpleRuntime(run_base.Runtime):
 
     async def do_run(self, run: run_base.Run) -> None:
         """Actually executes `run`."""
+
         try:
-            runner = simulation_executor.SimulationSimpleRunner(
-                self._executor, run.instantiation, self._verbose
-            )
+            runner = simulation_executor.SimulationSimpleRunner(self._executor, run.instantiation, self._verbose)
             if self._profile_int:
                 runner.profile_int = self.profile_int
             await runner.prepare()
+            for sim in run.instantiation.simulation.all_simulators():
+                runner.add_listener(sim, command_executor.LegacyOutputListener())
         except asyncio.CancelledError:
             # it is safe to just exit here because we are not running any
             # simulators yet
@@ -68,8 +70,13 @@ class LocalSimpleRuntime(run_base.Runtime):
         if self._verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
 
+        # dump output into a file and then, before cleanup, create an artifact
         output_path = run.instantiation.get_simulation_output_path()
         run._output.dump(outpath=output_path)
+        if run.instantiation.create_artifact:
+            art.create_artifact(
+                artifact_name=run.instantiation.artifact_name, paths_to_include=run.instantiation.artifact_paths
+            )
 
         await runner.cleanup()
 
@@ -115,10 +122,7 @@ class LocalParallelRuntime(run_base.Runtime):
         if run.instantiation.simulation.resreq_cores() > self._cores:
             raise RuntimeError("Not enough cores available for run")
 
-        if (
-            self._mem is not None
-            and run.instantiation.simulation.resreq_mem() > self._mem
-        ):
+        if self._mem is not None and run.instantiation.simulation.resreq_mem() > self._mem:
             raise RuntimeError("Not enough memory available for run")
 
         if run._prereq is None:
@@ -129,12 +133,12 @@ class LocalParallelRuntime(run_base.Runtime):
     async def do_run(self, run: run_base.Run) -> run_base.Run | None:
         """Actually executes `run`."""
         try:
-            runner = simulation_executor.SimulationSimpleRunner(
-                self._executor, run.instantiation, self._verbose
-            )
+            runner = simulation_executor.SimulationSimpleRunner(self._executor, run.instantiation, self._verbose)
             if self._profile_int is not None:
                 runner._profile_int = self._profile_int
             await runner.prepare()
+            for sim in run.instantiation.simulation.all_simulators():
+                runner.add_listener(sim, command_executor.LegacyOutputListener())
         except asyncio.CancelledError:
             # it is safe to just exit here because we are not running any
             # simulators yet
@@ -159,9 +163,7 @@ class LocalParallelRuntime(run_base.Runtime):
         """Wait for any run to terminate and return."""
         assert self._pending_jobs
 
-        done, self._pending_jobs = await asyncio.wait(
-            self._pending_jobs, return_when=asyncio.FIRST_COMPLETED
-        )
+        done, self._pending_jobs = await asyncio.wait(self._pending_jobs, return_when=asyncio.FIRST_COMPLETED)
 
         for r_awaitable in done:
             run = await r_awaitable
@@ -171,9 +173,7 @@ class LocalParallelRuntime(run_base.Runtime):
 
     def enough_resources(self, run: run_base.Run) -> bool:
         """Check if enough cores and mem are available for the run."""
-        simulation = (
-            run.instantiation.simulation
-        )  # pylint: disable=redefined-outer-name
+        simulation = run.instantiation.simulation  # pylint: disable=redefined-outer-name
 
         if self._cores is not None:
             enough_cores = (self._cores - self._cores_used) >= simulation.resreq_cores()

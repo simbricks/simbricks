@@ -27,8 +27,7 @@ import shlex
 import traceback
 import abc
 
-from simbricks.utils import artifatcs as art
-from simbricks.orchestration.simulation import output
+from simbricks.runtime import output
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.runtime import command_executor
@@ -45,16 +44,24 @@ class SimulationBaseRunner(abc.ABC):
         self._instantiation: inst_base.Instantiation = instantiation
         self._verbose: bool = verbose
         self._profile_int: int | None = None
-        self._out = output.SimulationOutput(self._instantiation.simulation)
-        self._running: list[
-            tuple[sim_base.Simulator, command_executor.SimpleComponent]
-        ] = []
+        self._out: output.SimulationOutput = output.SimulationOutput(self._instantiation.simulation)
+        self._out_listener: dict[sim_base.Simulator, command_executor.OutputListener] = {}
+        self._running: list[tuple[sim_base.Simulator, command_executor.SimpleComponent]] = []
         self._sockets: list[inst_base.Socket] = []
         self._wait_sims: list[command_executor.Component] = []
 
     @abc.abstractmethod
     def sim_executor(self, simulator: sim_base.Simulator) -> command_executor.Executor:
         pass
+
+    def sim_listener(self, sim: sim_base.Simulator) -> command_executor.OutputListener:
+        if sim not in self._out_listener:
+            raise Exception(f"no listener specified for simulator {sim.id()}")
+        return self._out_listener[sim]
+
+    def add_listener(self, sim: sim_base.Simulator, listener: command_executor.OutputListener) -> None:
+        self._out_listener[sim] = listener
+        self._out.add_mapping(sim, listener)
 
     async def start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
@@ -70,10 +77,11 @@ class SimulationBaseRunner(abc.ABC):
             return
 
         # run simulator
-        executor = self._instantiation.executor # TODO: this should be a function or something
-        sc = executor.create_component(
-            name, shlex.split(run_cmd), verbose=self._verbose, canfail=True
-        )
+        executor = self._instantiation.executor  # TODO: this should be a function or something
+        cmds = shlex.split(run_cmd)
+        sc = executor.create_component(name, cmds, verbose=self._verbose, canfail=True)
+        if listener := self.sim_listener(sim=sim):
+            sc.subscribe(listener=listener)
         await sc.start()
         self._running.append((sim, sc))
 
@@ -88,9 +96,7 @@ class SimulationBaseRunner(abc.ABC):
                 print(f"{self._instantiation.simulation.name}: waiting for sockets {name}")
             await self._instantiation.wait_for_sockets(sockets=wait_socks)
             if self._verbose:
-                print(
-                    f"{self._instantiation.simulation.name}: waited successfully for sockets {name}"
-                )
+                print(f"{self._instantiation.simulation.name}: waited successfully for sockets {name}")
 
         # add time delay if required
         delay = sim.start_delay()
@@ -107,11 +113,7 @@ class SimulationBaseRunner(abc.ABC):
         pass
 
     async def before_cleanup(self) -> None:
-        if self._instantiation.create_artifact:
-            art.create_artifact(
-                artifact_name=self._instantiation.artifact_name, 
-                paths_to_include=self._instantiation.artifact_paths
-            )
+        pass
 
     async def after_cleanup(self) -> None:
         pass
@@ -146,10 +148,6 @@ class SimulationBaseRunner(abc.ABC):
         # wait for all processes to terminate
         for _, sc in self._running:
             await sc.wait()
-
-        # add all simulator components to the output
-        for sim, sc in self._running:
-            self._out.add_sim(sim, sc)
 
         await self.after_cleanup()
         return self._out
