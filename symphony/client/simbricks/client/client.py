@@ -74,7 +74,7 @@ class BaseClient:
             async with session.post(
                 url=self.build_url(url), data=data, **kwargs
             ) as resp:  # TODO: handel connection error
-                print(await resp.text())
+                # print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
 
@@ -90,7 +90,7 @@ class BaseClient:
             async with session.put(
                 url=self.build_url(url), data=data, **kwargs
             ) as resp:  # TODO: handel connection error
-                print(await resp.text())
+                # print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
 
@@ -102,7 +102,7 @@ class BaseClient:
             async with session.patch(
                 url=self.build_url(url), data=data, **kwargs
             ) as resp:  # TODO: handel connection error
-                print(await resp.text())
+                # print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
 
@@ -114,7 +114,7 @@ class BaseClient:
             async with session.get(
                 url=self.build_url(url), data=data, **kwargs
             ) as resp:  # TODO: handel connection error
-                print(await resp.text())
+                # print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
 
@@ -122,7 +122,7 @@ class BaseClient:
     async def delete(self, url: str, **kwargs: typing.Any) -> typing.AsyncIterator[aiohttp.ClientResponse]:
         async with self.session() as session:
             async with session.delete(url=self.build_url(url), **kwargs) as resp:  # TODO: handel connection error
-                print(await resp.text())
+                # print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 yield resp
 
@@ -337,14 +337,15 @@ class SimBricksClient:
 
                 if not last_run or (len(last_run["output"]) != len(run["output"]) and len(run["output"]) != 0):
                     prev_len = len(last_run["output"]) if last_run else 0
-                    console.log(run["output"][prev_len:])
+                    # console.log(run["output"][prev_len:])
+                    console.log(run["output"]) # TODO: FIXME
 
                 # did we finish?
                 if run["state"] != "pending" and run["state"] != "running":
                     break
 
                 last_run = run
-                await asyncio.sleep(2)
+                await asyncio.sleep(15)
 
         console.log("Run {run_id} finished")
 
