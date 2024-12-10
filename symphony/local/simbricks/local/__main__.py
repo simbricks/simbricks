@@ -29,13 +29,11 @@ import importlib
 import importlib.util
 import json
 import os
-import pickle
 import signal
 import sys
 
 
-from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.simulation import output as sim_out
+from simbricks.runtime import output as sim_out
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.runtime.runs import base as runs_base
 from simbricks.runtime.runs import base as runs_base
