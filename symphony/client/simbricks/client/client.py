@@ -451,6 +451,6 @@ class RunnerClient:
                 "stderr": stderr,
                 "output": line,
             }
-            objs.append[obj]
+            objs.append(obj)
         async with self.post(url=f"/{run_id}/console", json=objs) as resp:
             ret = await resp.json()
