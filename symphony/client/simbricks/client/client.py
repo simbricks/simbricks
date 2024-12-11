@@ -428,3 +428,23 @@ class RunnerClient:
         }
         async with self.put(url=f"/update_run/{run_id}", json=obj) as resp:
             ret = await resp.json()
+
+
+    async def send_out(
+        self,
+        run_id: int,
+        simulator: str,
+        stderr: bool,
+        output: list[str],
+    ) -> None:
+        objs = []
+        for line in output:
+            obj = {
+                "run_id": run_id,
+                "simulator": simulator,
+                "stderr": stderr,
+                "output": line,
+            }
+            objs.append[obj]
+        async with self.post(url=f"/{run_id}/console", json=objs) as resp:
+            ret = await resp.json()

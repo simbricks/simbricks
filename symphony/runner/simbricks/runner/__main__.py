@@ -37,17 +37,25 @@ verbose = True
 
 # TODO: FIXME, create a custom listener for the runner to register + create backend endpoint to update the output etc.
 async def periodically_update(rc: client.RunnerClient, run_id: int, 
-                              listeners: list[command_executor.LegacyOutputListener]) -> None:
+                              listeners: list[tuple[str, simulation_executor.SimulationSimpleRunner]]) -> None:
     try:
         while True:
             all_out: list[str] = []
+            sim_outs: list[tuple[str, bool, str]] = []
             for listener in listeners:
-                all_out.extend(listener.merged_output)
-                listener.merged_output = []
+                all_out.extend(listener[1].merged_output)
+                listener[1].merged_output = []
+                sim_outs.append((listener[0], False, listener[1].stdout))
+                sim_outs.append((listener[0], True, listener[1].stderr))
+                listener[1].stdout = []
+                listener[1].stderr = []
             
             if len(all_out) > 0:
-                print(all_out)
+                #print(all_out)
                 await rc.update_run(run_id, "running", json.dumps(all_out))
+
+            for sim_out in sim_outs:
+                await rc.send_out(run_id, sim_out[0], sim_out[1], sim_out[2])
             
             await asyncio.sleep(0.5)
 
@@ -66,7 +74,7 @@ async def run_instantiation(sc: client.SimBricksClient, rc: client.RunnerClient,
     for sim in inst.simulation.all_simulators():
         listener = command_executor.LegacyOutputListener()
         runner.add_listener(sim, listener)
-        listeners.append(listener)
+        listeners.append((sim.name, listener))
 
     update_task = asyncio.create_task(periodically_update(rc=rc, run_id=run_id, listeners=listeners))
     output = await runner.run()
