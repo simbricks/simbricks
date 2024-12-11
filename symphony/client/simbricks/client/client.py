@@ -347,9 +347,9 @@ class SimBricksClient:
                     break
 
                 last_run = run
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
 
-        console.log("Run {run_id} finished")
+        console.log(f"Run {run_id} finished")
 
     async def set_run_input(self, rid: int, uploaded_input_file: str):
         with open(uploaded_input_file, "rb") as f:
