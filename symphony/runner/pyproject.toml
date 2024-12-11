@@ -29,7 +29,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-runner"
-version = "0.0.1"
+version = "0.0.2"
 description = "simbricks runner lib"
 authors = [
   "Jakob Görgen <jakob@simbricks.io>",
