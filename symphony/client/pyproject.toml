@@ -29,7 +29,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-client"
-version = "0.0.1"
+version = "0.0.2"
 description = "simbricks client lib to send and retrieve experiments"
 authors = [
   "Jakob Görgen <jakob@simbricks.io>",
