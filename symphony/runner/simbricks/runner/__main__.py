@@ -91,7 +91,7 @@ async def run_instantiation(sc: client.SimBricksClient, rc: client.RunnerClient,
         )
         await sc.set_run_artifact(run_id, inst.artifact_name)
 
-    await rc.update_run(run_id, "completed", json.dumps(output.toJSON()))
+    await rc.update_run(run_id, "completed", json.dumps(list(d)[0].result().toJSON()))
 
 async def amain():
     base_client = client.BaseClient(base_url=runset().base_url)
