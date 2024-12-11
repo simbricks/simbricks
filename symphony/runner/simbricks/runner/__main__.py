@@ -96,7 +96,6 @@ async def amain():
         while True:
             run_obj = await rc.next_run()
             if not run_obj:
-                console.log("No valid run, sleeping")
                 await asyncio.sleep(5)
                 continue
 
