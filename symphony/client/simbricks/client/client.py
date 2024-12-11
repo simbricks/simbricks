@@ -338,7 +338,7 @@ class SimBricksClient:
                     console.log(f"Run State:", run["state"])
 
                 if len(output) != prev_len:
-                    for l in output[prev_len]:
+                    for l in output[prev_len:]:
                       console.log(l["simulator"] + ':' + l["output"])
                     prev_len = len(output)
 
