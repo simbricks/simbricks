@@ -23,7 +23,9 @@
 include mk/subdir_pre.mk
 
 SYMPHONY_DIR := $(d)/
-SYMPHONY_MODS := cli local runtime client orchestration runner utils
+SYMPHONY_MODS := utils orchestration client cli runtime runner local
+
+SYMPHONY_PUBLICATION_REPO ?= testpypi
 
 symphony-dev:
 	pip install -r $(base_dir)requirements.txt
@@ -32,10 +34,16 @@ symphony-dev:
 symphony-build:
 	for m in $(SYMPHONY_MODS); do \
 		(cd $(SYMPHONY_DIR)$$m && \
-		poetry build -o ../dist/); \
+		poetry build); \
 	done
 
-.PHONY: symphony-dev symphony-build
+symphony-publish:
+	for m in $(SYMPHONY_MODS); do \
+		(cd $(SYMPHONY_DIR)$$m && \
+		poetry publish -r $(SYMPHONY_PUBLICATION_REPO)); \
+	done
 
-CLEAN := $(SYMPHONY_DIR)dist
+.PHONY: symphony-dev symphony-build symphony-publish
+
+CLEAN := $(addsuffix /dist, $(addprefix $(SYMPHONY_DIR), $(SYMPHONY_MODS)))
 include mk/subdir_post.mk
