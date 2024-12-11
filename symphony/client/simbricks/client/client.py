@@ -328,24 +328,26 @@ class SimBricksClient:
         console = Console()
         with console.status(f"[bold green]Waiting for run {run_id} to finish...") as status:
             last_run = None
+            output = []
             prev_len = 0
             while True:
                 run = await self.get_run(run_id)
+                output = await self.get_run_console(run_id)
 
                 if not last_run or last_run["state"] != run["state"]:
                     console.log(f"Run State:", run["state"])
 
-                if not last_run or (len(last_run["output"]) != len(run["output"]) and len(run["output"]) != 0):
-                    prev_len = len(last_run["output"]) if last_run else 0
-                    # console.log(run["output"][prev_len:])
-                    console.log(run["output"]) # TODO: FIXME
+                if len(output) != prev_len:
+                    for l in output[prev_len]:
+                      console.log(l["simulator"] + ':' + l["output"])
+                    prev_len = len(output)
 
                 # did we finish?
                 if run["state"] != "pending" and run["state"] != "running":
                     break
 
                 last_run = run
-                await asyncio.sleep(15)
+                await asyncio.sleep(1)
 
         console.log("Run {run_id} finished")
 
@@ -372,6 +374,10 @@ class SimBricksClient:
             content = await resp.read()
             with open(store_path, "wb") as f:
                 f.write(content)
+
+    async def get_run_console(self, rid: int) -> list[dict]:
+        async with self._ns_client.get(url=f"/runs/{rid}/console") as resp:
+            return await resp.json()
 
 
 class RunnerClient:
