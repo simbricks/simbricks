@@ -37,7 +37,7 @@ verbose = True
 
 # TODO: FIXME, create a custom listener for the runner to register + create backend endpoint to update the output etc.
 async def periodically_update(rc: client.RunnerClient, run_id: int, 
-                              listeners: list[tuple[str, simulation_executor.SimulationSimpleRunner]]) -> None:
+                              listeners: list[tuple[str, command_executor.LegacyOutputListener]]) -> None:
     try:
         while True:
             all_out: list[str] = []
@@ -55,7 +55,8 @@ async def periodically_update(rc: client.RunnerClient, run_id: int,
                 await rc.update_run(run_id, "running", json.dumps(all_out))
 
             for sim_out in sim_outs:
-                await rc.send_out(run_id, sim_out[0], sim_out[1], sim_out[2])
+                if len(sim_out[2]) > 0:
+                    await rc.send_out(run_id, sim_out[0], sim_out[1], sim_out[2])
             
             await asyncio.sleep(0.5)
 
@@ -77,11 +78,12 @@ async def run_instantiation(sc: client.SimBricksClient, rc: client.RunnerClient,
         listeners.append((sim.name, listener))
 
     update_task = asyncio.create_task(periodically_update(rc=rc, run_id=run_id, listeners=listeners))
-    output = await runner.run()
-    update_task.cancel()
+    d, p = await asyncio.wait([asyncio.create_task(runner.run()), update_task], return_when=asyncio.FIRST_COMPLETED)
+    for pending in p:
+        pending.cancel()
 
     output_path = inst.get_simulation_output_path()
-    output.dump(outpath=output_path)
+    list(d)[0].result().dump(outpath=output_path)
 
     if inst.create_artifact:
         art.create_artifact(
