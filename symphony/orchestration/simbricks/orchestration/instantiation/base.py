@@ -34,7 +34,7 @@ from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system.host import disk_images
-from simbricks.orchestration.instantiation import inst_socket
+from simbricks.orchestration.instantiation import socket as inst_socket
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
