@@ -348,7 +348,7 @@ class SimBricksClient:
 
                 if len(output) != prev_len:
                     for l in output[prev_len:]:
-                      console.log(l["simulator"] + ':' + l["output"])
+                        console.log(l["simulator"] + ":" + l["output"])
                     prev_len = len(output)
 
                 # did we finish?
@@ -420,6 +420,28 @@ class RunnerClient:
         async with self._ns_client.get(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
+    async def create_runner(self, label: str, tags: list[str]) -> dict:
+        obj = {"label": label, "tags": list(map(lambda t: {"label": t, "runner_id": None}, tags))}
+        print(obj)
+        async with self._ns_client.post(url=f"/runners", json=obj) as resp:
+            return await resp.json()
+
+    async def update_runner(self, updates: dict[str, typing.Any]) -> dict:
+        async with self.post(url="", json=updates) as resp:
+            return await resp.json()
+
+    async def delete_runner(self, runner_id: int) -> dict:
+        async with self._ns_client.delete(url=f"/runners/{runner_id}") as resp:
+            return await resp.json()
+
+    async def get_runner(self, runner_id: int) -> dict:
+        async with self._ns_client.get(url=f"/runners/{runner_id}") as resp:
+            return await resp.json()
+
+    async def list_runners(self) -> dict:
+        async with self._ns_client.get(url=f"/runners") as resp:
+            return await resp.json()
+
     async def next_run(self) -> dict | None:
         async with self.get(f"/next_run") as resp:
             if resp.status == 200:
@@ -443,7 +465,6 @@ class RunnerClient:
         }
         async with self.put(url=f"/update_run/{run_id}", json=obj) as resp:
             ret = await resp.json()
-
 
     async def send_out(
         self,
