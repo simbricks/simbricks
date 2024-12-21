@@ -64,67 +64,76 @@ class BaseClient:
             await session.close()
 
     @contextlib.asynccontextmanager
-    async def post(
-        self,
-        url: str,
-        data: typing.Any = None,
-        **kwargs: typing.Any,
+    async def request(
+        self, meth: str, url: str, data: typing.Any = None, retry: bool = True,
+        **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
         async with self.session() as session:
-            async with session.post(
-                url=self.build_url(url), data=data, **kwargs
+            async with session.request(
+                method=meth, url=self.build_url(url), data=data, **kwargs
             ) as resp:  # TODO: handel connection error
-                # print(await resp.text())
-                resp.raise_for_status()  # TODO: handel gracefully
-                yield resp
+                if resp.status == 401 and 'WWW-Authenticate' in resp.headers \
+                      and retry:
+                    wwa = resp.headers['WWW-Authenticate']
+                    parts = wwa.split(',')
+                    ticket = None
+                    for p in parts:
+                        p = p.strip()
+                        if p.startswith("ticket=\""):
+                            ticket = p[8:-1]
+
+                    if ticket:
+                        await self._token_provider.resource_token(ticket)
+                        async with self.request(
+                            meth, url, data, False, **kwargs
+                        ) as resp:
+                            yield resp
+                else:
+                  resp.raise_for_status()  # TODO: handel gracefully
+                  yield resp
+
+    @contextlib.asynccontextmanager
+    async def get(
+        self, url: str, data: typing.Any = None, **kwargs: typing.Any,
+    ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+        async with self.request(
+            meth=aiohttp.hdrs.METH_GET, url=url, data=data, **kwargs
+        ) as resp:
+            yield resp
+
+    @contextlib.asynccontextmanager
+    async def post(
+        self, url: str, data: typing.Any = None, **kwargs: typing.Any,
+    ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+        async with self.request(
+            meth=aiohttp.hdrs.METH_POST, url=url, data=data, **kwargs
+        ) as resp:
+            yield resp
 
     @contextlib.asynccontextmanager
     async def put(
-        self,
-        url: str,
-        overwrite_headers: dict[str, typing.Any] | None = None,
-        data: typing.Any = None,
-        **kwargs: typing.Any,
+        self, url: str, data: typing.Any = None, **kwargs: typing.Any,
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.session(overwrite_headers=overwrite_headers) as session:
-            async with session.put(
-                url=self.build_url(url), data=data, **kwargs
-            ) as resp:  # TODO: handel connection error
-                # print(await resp.text())
-                resp.raise_for_status()  # TODO: handel gracefully
-                yield resp
+        async with self.request(
+            meth=aiohttp.hdrs.METH_PUT, url=url, data=data, **kwargs
+        ) as resp:
+            yield resp
 
     @contextlib.asynccontextmanager
     async def patch(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.session() as session:
-            async with session.patch(
-                url=self.build_url(url), data=data, **kwargs
-            ) as resp:  # TODO: handel connection error
-                # print(await resp.text())
-                resp.raise_for_status()  # TODO: handel gracefully
-                yield resp
-
-    @contextlib.asynccontextmanager
-    async def get(
-        self, url: str, data: typing.Any = None, **kwargs: typing.Any
-    ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.session() as session:
-            async with session.get(
-                url=self.build_url(url), data=data, **kwargs
-            ) as resp:  # TODO: handel connection error
-                # print(await resp.text())
-                resp.raise_for_status()  # TODO: handel gracefully
-                yield resp
+        async with self.request(
+            meth=aiohttp.hdrs.METH_PATCH, url=url, data=data, **kwargs
+        ) as resp:
+            yield resp
 
     @contextlib.asynccontextmanager
     async def delete(self, url: str, **kwargs: typing.Any) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.session() as session:
-            async with session.delete(url=self.build_url(url), **kwargs) as resp:  # TODO: handel connection error
-                # print(await resp.text())
-                resp.raise_for_status()  # TODO: handel gracefully
-                yield resp
+        async with self.request(
+            meth=aiohttp.hdrs.METH_DELETE, url=url, **kwargs
+        ) as resp:
+            yield resp
 
     async def info(self):
         async with self.get(url="/info") as resp:
