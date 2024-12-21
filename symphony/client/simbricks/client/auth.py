@@ -74,7 +74,7 @@ class TokenClient:
         return Token(
             access_token=json_obj["access_token"],
             refresh_token=json_obj["refresh_token"],
-            session_state=json_obj["session_state"],
+            session_state='',
             access_valid_until=access_valid_until,
             refresh_valid_until=refresh_valid_until,
         )
@@ -166,6 +166,29 @@ class TokenClient:
         assert token
         return token
 
+    async def resource_token(self, token: Token, ticket: str) -> Token:
+        assert token.is_access_valid()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                url=self._token_url,
+                headers={"Authorization": f"Bearer {token.access_token}"},
+                data={
+                    "client_id": self._client_id,
+                    "grant_type": "urn:ietf:params:oauth:grant-type:uma-ticket",
+                    "ticket": ticket,
+                },
+            ) as resp:
+                print(await resp.text())
+                resp.raise_for_status()  # TODO: handel gracefully
+                json_resp = await resp.json()
+                if "error" in json_resp:
+                    raise Exception(f"error refreshing token: {json_resp}")
+
+                token = self._create_token_from_resp(json_obj=json_resp)
+
+        assert token
+        return token
+
 
 class TokenProvider:
 
@@ -217,3 +240,8 @@ class TokenProvider:
         await self._refresh_token()
         assert self._token
         return self._token.access_token
+
+    async def resource_token(self, ticket):
+        await self._refresh_token()
+        self._token = await self._toke_client.resource_token(self._token, ticket)
+        self._store_token()
