@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os
-from simbricks.client import BaseClient, AdminClient, NSClient, SimBricksClient
+from simbricks.client import BaseClient, AdminClient, NSClient, SimBricksClient, RunnerClient
 
 
 class State:
@@ -31,6 +31,7 @@ class State:
         self._admin_client: AdminClient = None
         self._ns_client: NSClient | None = None
         self._simbricks_client: SimBricksClient | None = None
+        self._runner_client: RunnerClient | None = None
 
     @property
     def base_client(self):
@@ -55,6 +56,12 @@ class State:
         if self._simbricks_client is None:
             self._simbricks_client = SimBricksClient(self.ns_client)
         return self._simbricks_client
+
+    @property
+    def runner_client(self):
+        if self._runner_client is None:
+            self._runner_client = RunnerClient(self.ns_client, id=-1)
+        return self._runner_client
 
 
 state = State()

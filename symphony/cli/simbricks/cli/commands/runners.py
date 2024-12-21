@@ -20,34 +20,40 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer, Option
-from typing_extensions import Annotated
-from simbricks.cli.commands import audit, admin, namespaces, runs, systems, simulations, instantiations, runners
-from simbricks.cli.state import state
-from simbricks.cli.utils import async_cli
-
-app = Typer()
-app.add_typer(namespaces.app, name="ns")
-app.add_typer(runs.app, name="runs")
-app.add_typer(audit.app, name="audit")
-app.add_typer(admin.app, name="admin")
-app.add_typer(systems.app, name="systems")
-app.add_typer(simulations.app, name="sims")
-app.add_typer(instantiations.app, name="insts")
-app.add_typer(runners.app, name="runners")
+from typer import Typer
+from ..state import state
+from ..utils import async_cli, print_runner_table
 
 
-@app.callback()
+app = Typer(help="Managing SimBricks runners.")
+
+
+@app.command()
 @async_cli()
-async def amain(
-    ns: Annotated[str, Option(help="Namespace to operate in.")] = "foo/bar/baz",
-):
-    state.namespace = ns
+async def ls():
+    """List runners."""
+    runs = await state.runner_client.list_runners()
+    print_runner_table(runs)
 
 
-def main():
-    app()
+@app.command()
+@async_cli()
+async def show(runner_id: int):
+    """Show individual runner."""
+    runner = await state.runner_client.get_runner(runner_id=runner_id)
+    print_runner_table([runner])
 
 
-if __name__ == "__main__":
-    main()
+@app.command()
+@async_cli()
+async def delete(runner_id: int):
+    """Delete an individual runner."""
+    await state.runner_client.delete_runner(runner_id=runner_id)
+
+
+@app.command()
+@async_cli()
+async def create(label: str, tags: list[str]):
+    """Update a runner with the the given label and tags."""
+    runner = await state.runner_client.create_runner(label=label, tags=tags)
+    print_runner_table([runner])
