@@ -61,7 +61,7 @@ class HostSim(sim_base.Simulator):
     def supported_socket_types(
         self, interface: system.Interface
     ) -> set[inst_base.SockType]:
-        return [inst_socket.SockType.CONNECT]
+        return {inst_base.SockType.CONNECT}
 
 
 class Gem5Sim(HostSim):

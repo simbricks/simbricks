@@ -45,7 +45,7 @@ class PCIDevSim(sim_base.Simulator):
     def supported_socket_types(
         self, interface: sys_base.Interface
     ) -> set[inst_socket.SockType]:
-        return [inst_socket.SockType.LISTEN]
+        return {inst_socket.SockType.LISTEN}
 
 
 class NICSim(PCIDevSim):

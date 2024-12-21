@@ -50,7 +50,7 @@ class NetSim(sim_base.Simulator):
     def supported_socket_types(
         self, interface: sys_base.Interface
     ) -> set[inst_socket.SockType]:
-        return [inst_base.SockType.CONNECT]
+        return {inst_socket.SockType.CONNECT}
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
