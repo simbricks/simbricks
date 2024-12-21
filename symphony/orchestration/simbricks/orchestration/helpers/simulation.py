@@ -34,7 +34,7 @@ def add_specs(simulator: sim_base.Simulator, *specifications) -> None:
 
 
 def enable_sync_simulation(
-    simulation: sim_base.Simulation, amount: int = None, ratio: sim_chan.Time = None
+    simulation: sim_base.Simulation, amount: int | None = None, ratio: sim_chan.Time = None
 ) -> None:
     utils_base.has_expected_type(obj=simulation, expected_type=sim_base.Simulation)
     set_period: bool = amount is not None and ratio is not None
