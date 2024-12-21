@@ -38,7 +38,7 @@ if tp.TYPE_CHECKING:
     )
 
 
-class Simulator(utils_base.IdObj):
+class Simulator(utils_base.IdObj, abc.ABC):
     """Base class for all simulators."""
 
     def __init__(
