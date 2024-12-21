@@ -287,7 +287,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
     def supported_socket_types(
         self, interface: sys_conf.Interface
     ) -> set[inst_socket.sockType]:
-        return []
+        return {}
 
     # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument
@@ -451,6 +451,11 @@ class Simulation(utils_base.IdObj):
         channel = sim_chan.Channel(chan)
         self.update_channel_mapping(sys_chan=chan, sim_chan=channel)
         return channel
+
+    def get_channel(self, chan: sys_conf.Channel) -> sim_chan.Channel:
+        if not self.is_channel_instantiated(chan):
+            raise RuntimeError(f"Channel {chan} is not instantiated")
+        return self._chan_map[chan]
 
     def all_simulators(self) -> list[Simulator]:
         return self._sim_list
