@@ -50,6 +50,8 @@ mk/local.mk
 compile_commands.json
 .cache
 .eggs
+.env
+.python-version
 .vscode
 symphony/**/dist
 auth.json
