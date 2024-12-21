@@ -22,7 +22,6 @@
 
 from __future__ import annotations
 
-import enum
 import pathlib
 import shutil
 import typing
@@ -35,23 +34,11 @@ from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system.host import disk_images
+from simbricks.orchestration.instantiation import inst_socket
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.runtime import command_executor
-
-
-class SockType(enum.Enum):
-    LISTEN = enum.auto()
-    CONNECT = enum.auto()
-
-
-class Socket(util_base.IdObj):
-
-    def __init__(self, path: str = "", ty: SockType = SockType.LISTEN):
-        super().__init__()
-        self._path = path
-        self._type = ty
 
 
 class InstantiationEnvironment(util_base.IdObj):
@@ -94,7 +81,7 @@ class Instantiation():
         self._preserve_checkpoints: bool = True
         self.preserve_tmp_folder: bool = False
         # NOTE: temporary data structure
-        self._socket_per_interface: dict[sys_base.Interface, Socket] = {}
+        self._socket_per_interface: dict[sys_base.Interface, inst_socket.Socket] = {}
         # NOTE: temporary data structure
         self._sim_dependency: (
             dict[sim_base.Simulator, set[sim_base.Simulator]] | None
@@ -137,21 +124,21 @@ class Instantiation():
         )
 
     def _updated_tracker_mapping(
-        self, interface: sys_base.Interface, socket: Socket
+        self, interface: sys_base.Interface, socket: inst_socket.Socket
     ) -> None:
         # update interface mapping
         if interface in self._socket_per_interface:
             raise Exception("an interface cannot be associated with two sockets")
         self._socket_per_interface[interface] = socket
 
-    def _get_socket_by_interface(self, interface: sys_base.Interface) -> Socket | None:
+    def _get_socket_by_interface(self, interface: sys_base.Interface) -> inst_socket.Socket | None:
         if interface not in self._socket_per_interface:
             return None
         return self._socket_per_interface[interface]
 
     def _get_opposing_socket_by_interface(
         self, interface: sys_base.Interface
-    ) -> Socket | None:
+    ) -> inst_socket.Socket | None:
         opposing_interface = self._get_opposing_interface(interface=interface)
         socket = self._get_socket_by_interface(interface=opposing_interface)
         return socket
@@ -179,27 +166,27 @@ class Instantiation():
             enforce_existence=False,
         )
 
-    def _create_opposing_socket(self, socket: Socket, socket_type: SockType) -> Socket:
+    def _create_opposing_socket(self, socket: inst_socket.Socket, socket_type: inst_socket.SockType) -> inst_socket.Socket:
         new_ty = (
-            SockType.LISTEN if socket._type == SockType.CONNECT else SockType.CONNECT
+            inst_socket.SockType.LISTEN if socket._type == inst_socket.SockType.CONNECT else inst_socket.SockType.CONNECT
         )
         if new_ty != socket_type:
             raise Exception(
                 f"cannot create opposing socket, as required type is not supported: required={new_ty.name}, supported={socket_type.name}"
             )
         new_path = socket._path
-        new_socket = Socket(path=new_path, ty=new_ty)
+        new_socket = inst_socket.Socket(path=new_path, ty=new_ty)
         return new_socket
 
-    def get_socket(self, interface: sys_base.Interface) -> Socket | None:
+    def get_socket(self, interface: sys_base.Interface) -> inst_socket.Socket | None:
         socket = self._get_socket_by_interface(interface=interface)
         if socket:
             return socket
         return None
 
     def _get_socket(
-        self, interface: sys_base.Interface, socket_type: SockType
-    ) -> Socket:
+        self, interface: sys_base.Interface, socket_type: inst_socket.SockType
+    ) -> inst_socket.Socket:
 
         if self._opposing_interface_within_same_sim(interface=interface):
             raise Exception(
@@ -223,7 +210,7 @@ class Instantiation():
 
         # create socket if opposing socket was not created yet
         sock_path = self._interface_to_sock_path(interface=interface)
-        new_socket = Socket(path=sock_path, ty=socket_type)
+        new_socket = inst_socket.Socket(path=sock_path, ty=socket_type)
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
         print(f"created socket: {new_socket._path}")
         return new_socket
@@ -252,32 +239,32 @@ class Instantiation():
         def update_a_depends_on_b(inf_a: sys_base.Interface, inf_b: sys_base.Interface):
             sim_a = self.find_sim_by_interface(interface=inf_a)
             sim_b = self.find_sim_by_interface(interface=inf_b)
-            a_sock: set[SockType] = sim_a.supported_socket_types(interface=inf_a)
-            b_sock: set[SockType] = sim_b.supported_socket_types(interface=inf_b)
+            a_sock: set[inst_socket.SockType] = sim_a.supported_socket_types(interface=inf_a)
+            b_sock: set[inst_socket.SockType] = sim_b.supported_socket_types(interface=inf_b)
 
             if a_sock != b_sock:
                 if len(a_sock) == 0 or len(b_sock) == 0:
                     raise Exception(
                         "cannot create socket and resolve dependency if no socket type is supported for an interface"
                     )
-                if SockType.CONNECT in a_sock:
-                    assert SockType.LISTEN in b_sock
+                if inst_socket.SockType.CONNECT in a_sock:
+                    assert inst_socket.SockType.LISTEN in b_sock
                     insert_dependency(sim_a, depends_on=sim_b)
-                    self._get_socket(interface=inf_a, socket_type=SockType.CONNECT)
-                    self._get_socket(interface=inf_b, socket_type=SockType.LISTEN)
+                    self._get_socket(interface=inf_a, socket_type=inst_socket.SockType.CONNECT)
+                    self._get_socket(interface=inf_b, socket_type=inst_socket.SockType.LISTEN)
                 else:
-                    assert SockType.CONNECT in b_sock
+                    assert inst_socket.SockType.CONNECT in b_sock
                     insert_dependency(sim_b, depends_on=sim_a)
-                    self._get_socket(interface=inf_b, socket_type=SockType.CONNECT)
-                    self._get_socket(interface=inf_a, socket_type=SockType.LISTEN)
+                    self._get_socket(interface=inf_b, socket_type=inst_socket.SockType.CONNECT)
+                    self._get_socket(interface=inf_a, socket_type=inst_socket.SockType.LISTEN)
             else:
                 # deadlock?
                 if len(a_sock) != 2 or len(b_sock) != 2:
                     raise Exception("cannot solve deadlock")
                 # both support both we just pick an order
                 insert_dependency(sim_a, depends_on=sim_b)
-                self._get_socket(interface=sim_a, socket_type=SockType.CONNECT)
-                self._get_socket(interface=sim_b, socket_type=SockType.LISTEN)
+                self._get_socket(interface=sim_a, socket_type=inst_socket.SockType.CONNECT)
+                self._get_socket(interface=sim_b, socket_type=inst_socket.SockType.LISTEN)
 
         # build dependency graph
         for sim in self.simulation.all_simulators():
@@ -299,7 +286,7 @@ class Instantiation():
 
     async def wait_for_sockets(
         self,
-        sockets: list[Socket] = [],
+        sockets: list[inst_socket.Socket] = [],
     ) -> None:
         wait_socks = list(map(lambda sock: sock._path, sockets))
         await self.executor.await_files(wait_socks, verbose=True)

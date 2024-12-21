@@ -27,6 +27,7 @@ from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system import nic as sys_nic
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.orchestration.simulation import base as sim_base
 
 
@@ -43,8 +44,8 @@ class PCIDevSim(sim_base.Simulator):
 
     def supported_socket_types(
         self, interface: sys_base.Interface
-    ) -> set[inst_base.SockType]:
-        return [inst_base.SockType.LISTEN]
+    ) -> set[inst_socket.SockType]:
+        return [inst_socket.SockType.LISTEN]
 
 
 class NICSim(PCIDevSim):
@@ -75,11 +76,11 @@ class NICSim(PCIDevSim):
         nic_device = nic_devices[0]
 
         socket = inst.get_socket(interface=nic_device._pci_if)
-        assert socket is not None and socket._type == inst_base.SockType.LISTEN
+        assert socket is not None and socket._type == inst_socket.SockType.LISTEN
         cmd += f"{socket._path} "
 
         socket = inst.get_socket(interface=nic_device._eth_if)
-        assert socket is not None and socket._type == inst_base.SockType.LISTEN
+        assert socket is not None and socket._type == inst_socket.SockType.LISTEN
         cmd += f"{socket._path} "
 
         cmd += (

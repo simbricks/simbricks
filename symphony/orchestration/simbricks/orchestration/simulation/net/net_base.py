@@ -26,6 +26,7 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.utils import base as base_utils
 
 
@@ -48,7 +49,7 @@ class NetSim(sim_base.Simulator):
 
     def supported_socket_types(
         self, interface: sys_base.Interface
-    ) -> set[inst_base.SockType]:
+    ) -> set[inst_socket.SockType]:
         return [inst_base.SockType.CONNECT]
 
     def toJSON(self) -> dict:
@@ -293,12 +294,12 @@ class NS3DumbbellNet(SimpleNS3Sim):
 
         left_socks = self._get_socks_by_comp(inst=inst, comp=self._left)
         for sock in left_socks:
-            assert sock._type == inst_base.SockType.CONNECT
+            assert sock._type == inst_socket.SockType.CONNECT
             cmd += f"--SimbricksPortLeft={sock._path} "
 
         right_sockets = self._get_socks_by_comp(inst=inst, comp=self._right)
         for sock in right_sockets:
-            assert sock._type == inst_base.SockType.CONNECT
+            assert sock._type == inst_socket.SockType.CONNECT
             cmd += f"--SimbricksPortRight={sock._path} "
 
         if self.opt is not None:
