@@ -148,7 +148,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
     @staticmethod
     def filter_sockets(
         sockets: list[inst_socket.Socket],
-        filter_type: inst_socket.sockType = inst_socket.sockType.LISTEN,
+        filter_type: inst_socket.SockType = inst_socket.SockType.LISTEN,
     ) -> list[inst_socket.Socket]:
         res = list(filter(lambda sock: sock._type == filter_type, sockets))
         return res
@@ -158,10 +158,10 @@ class Simulator(utils_base.IdObj, abc.ABC):
         sockets: list[inst_socket.Socket],
     ) -> tuple[list[inst_socket.Socket], list[inst_socket.Socket]]:
         listen = Simulator.filter_sockets(
-            sockets=sockets, filter_type=inst_socket.sockType.LISTEN
+            sockets=sockets, filter_type=inst_socket.SockType.LISTEN
         )
         connect = Simulator.filter_sockets(
-            sockets=sockets, filter_type=inst_socket.sockType.CONNECT
+            sockets=sockets, filter_type=inst_socket.SockType.CONNECT
         )
         return listen, connect
 
@@ -249,7 +249,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
         return sockets
 
     def _get_all_sockets_by_type(
-        self, inst: inst_base.Instantiation, sock_type: inst_socket.sockType
+        self, inst: inst_base.Instantiation, sock_type: inst_socket.SockType
     ) -> list[inst_socket.Socket]:
         sockets = self._get_socks_by_all_comp(inst=inst)
         sockets = Simulator.filter_sockets(sockets=sockets, filter_type=sock_type)
@@ -286,21 +286,21 @@ class Simulator(utils_base.IdObj, abc.ABC):
     @abc.abstractmethod
     def supported_socket_types(
         self, interface: sys_conf.Interface
-    ) -> set[inst_socket.sockType]:
+    ) -> set[inst_socket.SockType]:
         return {}
 
     # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument
     def sockets_cleanup(self, inst: inst_base.Instantiation) -> list[inst_socket.Socket]:
         return self._get_all_sockets_by_type(
-            inst=inst, sock_type=inst_socket.sockType.LISTEN
+            inst=inst, sock_type=inst_socket.SockType.LISTEN
         )
 
     # sockets to wait for indicating the simulator is ready
     # pylint: disable=unused-argument
     def sockets_wait(self, inst: inst_base.Instantiation) -> list[inst_socket.Socket]:
         return self._get_all_sockets_by_type(
-            inst=inst, sock_type=inst_socket.sockType.LISTEN
+            inst=inst, sock_type=inst_socket.SockType.LISTEN
         )
 
     def start_delay(self) -> int:
