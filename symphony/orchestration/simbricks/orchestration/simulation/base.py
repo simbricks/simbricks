@@ -27,6 +27,7 @@ import asyncio
 import typing as tp
 import simbricks.orchestration.system as sys_conf
 import simbricks.orchestration.instantiation.base as inst_base
+import simbricks.orchestration.instantiation.socket as inst_socket
 import simbricks.orchestration.simulation.channel as sim_chan
 import simbricks.utils.base as utils_base
 
@@ -146,21 +147,21 @@ class Simulator(utils_base.IdObj):
 
     @staticmethod
     def filter_sockets(
-        sockets: list[inst_base.Socket],
-        filter_type: inst_base.SockType = inst_base.SockType.LISTEN,
-    ) -> list[inst_base.Socket]:
+        sockets: list[inst_socket.Socket],
+        filter_type: inst_socket.sockType = inst_socket.sockType.LISTEN,
+    ) -> list[inst_socket.Socket]:
         res = list(filter(lambda sock: sock._type == filter_type, sockets))
         return res
 
     @staticmethod
     def split_sockets_by_type(
-        sockets: list[inst_base.Socket],
-    ) -> tuple[list[inst_base.Socket], list[inst_base.Socket]]:
+        sockets: list[inst_socket.Socket],
+    ) -> tuple[list[inst_socket.Socket], list[inst_socket.Socket]]:
         listen = Simulator.filter_sockets(
-            sockets=sockets, filter_type=inst_base.SockType.LISTEN
+            sockets=sockets, filter_type=inst_socket.sockType.LISTEN
         )
         connect = Simulator.filter_sockets(
-            sockets=sockets, filter_type=inst_base.SockType.CONNECT
+            sockets=sockets, filter_type=inst_socket.sockType.CONNECT
         )
         return listen, connect
 
@@ -229,7 +230,7 @@ class Simulator(utils_base.IdObj):
 
     def _get_socks_by_comp(
         self, inst: inst_base.Instantiation, comp: sys_conf.Component
-    ) -> list[inst_base.Socket]:
+    ) -> list[inst_socket.Socket]:
         if comp not in self._components:
             raise Exception("comp must be a simulators component")
         sockets = []
@@ -241,15 +242,15 @@ class Simulator(utils_base.IdObj):
 
     def _get_socks_by_all_comp(
         self, inst: inst_base.Instantiation
-    ) -> list[inst_base.Socket]:
+    ) -> list[inst_socket.Socket]:
         sockets = []
         for comp in self._components:
             sockets.extend(self._get_socks_by_comp(inst=inst, comp=comp))
         return sockets
 
     def _get_all_sockets_by_type(
-        self, inst: inst_base.Instantiation, sock_type: inst_base.SockType
-    ) -> list[inst_base.Socket]:
+        self, inst: inst_base.Instantiation, sock_type: inst_socket.sockType
+    ) -> list[inst_socket.Socket]:
         sockets = self._get_socks_by_all_comp(inst=inst)
         sockets = Simulator.filter_sockets(sockets=sockets, filter_type=sock_type)
         return sockets
@@ -285,21 +286,21 @@ class Simulator(utils_base.IdObj):
     @abc.abstractmethod
     def supported_socket_types(
         self, interface: sys_conf.Interface
-    ) -> set[inst_base.SockType]:
+    ) -> set[inst_socket.sockType]:
         return []
 
     # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument
-    def sockets_cleanup(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
+    def sockets_cleanup(self, inst: inst_base.Instantiation) -> list[inst_socket.Socket]:
         return self._get_all_sockets_by_type(
-            inst=inst, sock_type=inst_base.SockType.LISTEN
+            inst=inst, sock_type=inst_socket.sockType.LISTEN
         )
 
     # sockets to wait for indicating the simulator is ready
     # pylint: disable=unused-argument
-    def sockets_wait(self, inst: inst_base.Instantiation) -> list[inst_base.Socket]:
+    def sockets_wait(self, inst: inst_base.Instantiation) -> list[inst_socket.Socket]:
         return self._get_all_sockets_by_type(
-            inst=inst, sock_type=inst_base.SockType.LISTEN
+            inst=inst, sock_type=inst_socket.sockType.LISTEN
         )
 
     def start_delay(self) -> int:

@@ -30,6 +30,7 @@ import abc
 from simbricks.runtime import output
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.runtime import command_executor
 from simbricks.utils import graphlib
 
@@ -47,7 +48,7 @@ class SimulationBaseRunner(abc.ABC):
         self._out: output.SimulationOutput = output.SimulationOutput(self._instantiation.simulation)
         self._out_listener: dict[sim_base.Simulator, command_executor.OutputListener] = {}
         self._running: list[tuple[sim_base.Simulator, command_executor.SimpleComponent]] = []
-        self._sockets: list[inst_base.Socket] = []
+        self._sockets: list[inst_socket.Socket] = []
         self._wait_sims: list[command_executor.Component] = []
 
     @abc.abstractmethod

@@ -31,6 +31,7 @@ from simbricks.orchestration.system import host as sys_host
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.utils import base as utils_base
+from simbricks.orchestration.instantiation import socket as inst_socket
 
 
 class HostSim(sim_base.Simulator):
@@ -60,7 +61,7 @@ class HostSim(sim_base.Simulator):
     def supported_socket_types(
         self, interface: system.Interface
     ) -> set[inst_base.SockType]:
-        return [inst_base.SockType.CONNECT]
+        return [inst_socket.SockType.CONNECT]
 
 
 class Gem5Sim(HostSim):
