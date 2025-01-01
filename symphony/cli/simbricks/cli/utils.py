@@ -99,3 +99,15 @@ def print_runner_table(runners):
 
     console = Console()
     console.print(table)
+
+def print_members_table(members: dict[str, list[dict]]):
+    table = Table()
+    table.add_column("Role")
+    table.add_column("User")
+    table.add_column("First")
+    table.add_column("Last")
+    for r, ms in members.items():
+        for m in ms:
+            table.add_row(r, m['username'], m['first_name'], m['last_name'])
+    console = Console()
+    console.print(table)
