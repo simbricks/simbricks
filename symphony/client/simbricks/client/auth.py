@@ -178,7 +178,6 @@ class TokenClient:
                     "ticket": ticket,
                 },
             ) as resp:
-                print(await resp.text())
                 resp.raise_for_status()  # TODO: handel gracefully
                 json_resp = await resp.json()
                 if "error" in json_resp:
