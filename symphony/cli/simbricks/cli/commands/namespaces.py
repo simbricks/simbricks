@@ -22,7 +22,7 @@
 
 from typer import Typer
 from ..state import state
-from ..utils import async_cli, print_namespace_table
+from ..utils import async_cli, print_namespace_table, print_members_table
 
 app = Typer(help="Managing SimBricks namespaces.")
 
@@ -83,3 +83,23 @@ async def delete(ident: int):
     client = state.ns_client
     await client.delete_ns(ident)
     print(f"Deleted namespace with id {ident}.")
+
+
+@app.command()
+@async_cli()
+async def members():
+    """List all members."""
+
+    client = state.ns_client
+    members = await client.get_members()
+    print_members_table(members)
+
+
+@app.command()
+@async_cli()
+async def member_add(user: str, role: str):
+    """Add member to namespace."""
+
+    client = state.ns_client
+    members = await client.add_member(role, user)
+    print(f"Added user {user} with role {role}.")
