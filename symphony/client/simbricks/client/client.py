@@ -244,6 +244,19 @@ class NSClient:
         async with self.get(url="/all") as resp:
             return await resp.json()
 
+    async def get_members(self) -> dict[str,list[dict]]:
+        async with self.get(url="/members") as resp:
+            return await resp.json()
+
+    async def get_role_members(self, role: str) -> list[dict]:
+        async with self.get(url=f"/members/{role}") as resp:
+            return await resp.json()
+
+    async def add_member(self, role: str, username: str) -> None:
+        req_json = {"username": username}
+        async with self.post(url=f"/members/{role}", json=req_json) as resp:
+            await resp.json()
+
 
 class SimBricksClient:
 
