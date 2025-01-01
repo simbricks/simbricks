@@ -435,7 +435,6 @@ class RunnerClient:
 
     async def create_runner(self, label: str, tags: list[str]) -> dict:
         obj = {"label": label, "tags": list(map(lambda t: {"label": t, "runner_id": None}, tags))}
-        print(obj)
         async with self._ns_client.post(url=f"/runners", json=obj) as resp:
             return await resp.json()
 
