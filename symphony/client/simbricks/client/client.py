@@ -26,6 +26,7 @@ import typing
 import contextlib
 import asyncio
 import json
+from simbricks.utils import base as utils_base
 from rich.console import Console
 from .auth import TokenProvider
 from .settings import client_settings
@@ -65,74 +66,69 @@ class BaseClient:
 
     @contextlib.asynccontextmanager
     async def request(
-        self, meth: str, url: str, data: typing.Any = None, retry: bool = True,
-        **kwargs: typing.Any
+        self, meth: str, url: str, data: typing.Any = None, retry: bool = True, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
         async with self.session() as session:
             async with session.request(
                 method=meth, url=self.build_url(url), data=data, **kwargs
             ) as resp:  # TODO: handel connection error
-                if resp.status == 401 and 'WWW-Authenticate' in resp.headers \
-                      and retry:
-                    wwa = resp.headers['WWW-Authenticate']
-                    parts = wwa.split(',')
+                if resp.status == 401 and "WWW-Authenticate" in resp.headers and retry:
+                    wwa = resp.headers["WWW-Authenticate"]
+                    parts = wwa.split(",")
                     ticket = None
                     for p in parts:
                         p = p.strip()
-                        if p.startswith("ticket=\""):
+                        if p.startswith('ticket="'):
                             ticket = p[8:-1]
 
                     if ticket:
                         await self._token_provider.resource_token(ticket)
-                        async with self.request(
-                            meth, url, data, False, **kwargs
-                        ) as resp:
+                        async with self.request(meth, url, data, False, **kwargs) as resp:
                             yield resp
                 else:
-                  resp.raise_for_status()  # TODO: handel gracefully
-                  yield resp
+                    resp.raise_for_status()  # TODO: handel gracefully
+                    yield resp
 
     @contextlib.asynccontextmanager
     async def get(
-        self, url: str, data: typing.Any = None, **kwargs: typing.Any,
+        self,
+        url: str,
+        data: typing.Any = None,
+        **kwargs: typing.Any,
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.request(
-            meth=aiohttp.hdrs.METH_GET, url=url, data=data, **kwargs
-        ) as resp:
+        async with self.request(meth=aiohttp.hdrs.METH_GET, url=url, data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def post(
-        self, url: str, data: typing.Any = None, **kwargs: typing.Any,
+        self,
+        url: str,
+        data: typing.Any = None,
+        **kwargs: typing.Any,
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.request(
-            meth=aiohttp.hdrs.METH_POST, url=url, data=data, **kwargs
-        ) as resp:
+        async with self.request(meth=aiohttp.hdrs.METH_POST, url=url, data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def put(
-        self, url: str, data: typing.Any = None, **kwargs: typing.Any,
+        self,
+        url: str,
+        data: typing.Any = None,
+        **kwargs: typing.Any,
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.request(
-            meth=aiohttp.hdrs.METH_PUT, url=url, data=data, **kwargs
-        ) as resp:
+        async with self.request(meth=aiohttp.hdrs.METH_PUT, url=url, data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def patch(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.request(
-            meth=aiohttp.hdrs.METH_PATCH, url=url, data=data, **kwargs
-        ) as resp:
+        async with self.request(meth=aiohttp.hdrs.METH_PATCH, url=url, data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def delete(self, url: str, **kwargs: typing.Any) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self.request(
-            meth=aiohttp.hdrs.METH_DELETE, url=url, **kwargs
-        ) as resp:
+        async with self.request(meth=aiohttp.hdrs.METH_DELETE, url=url, **kwargs) as resp:
             yield resp
 
     async def info(self):
@@ -187,13 +183,10 @@ class NSClient:
     async def put(
         self,
         url: str,
-        overwrite_headers: dict[str, typing.Any] | None = None,
         data: typing.Any = None,
         **kwargs: typing.Any,
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._base_client.put(
-            url=self._build_ns_prefix(url=url), overwrite_headers=overwrite_headers, data=data, **kwargs
-        ) as resp:
+        async with self._base_client.put(url=self._build_ns_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
@@ -244,7 +237,7 @@ class NSClient:
         async with self.get(url="/all") as resp:
             return await resp.json()
 
-    async def get_members(self) -> dict[str,list[dict]]:
+    async def get_members(self) -> dict[str, list[dict]]:
         async with self.get(url="/members") as resp:
             return await resp.json()
 
@@ -436,6 +429,33 @@ class RunnerClient:
     async def create_runner(self, label: str, tags: list[str]) -> dict:
         obj = {"label": label, "tags": list(map(lambda t: {"label": t, "runner_id": None}, tags))}
         async with self._ns_client.post(url=f"/runners", json=obj) as resp:
+            return await resp.json()
+
+    async def create_runner_event(self, runner_id: int, action: str, run_id: int | None) -> dict:
+        obj = {"runner_id": runner_id, "action": action, "run_id": run_id}
+        async with self._ns_client.post(url=f"/runners/{runner_id}/events", json=obj) as resp:
+            return await resp.json()
+
+    async def update_runner_event(
+        self, runner_id: int, event_id: int, action: str | None, run_id: int | None, event_status: str | None
+    ) -> dict:
+        obj = {
+            "id": event_id,
+            "runner_id": runner_id,
+            "action": action,
+            "run_id": run_id,
+            "event_status": event_status,
+        }
+        obj = utils_base.filter_None_dict(to_filter=obj)
+        async with self._ns_client.put(url=f"/runners/{runner_id}/events", json=obj) as resp:
+            return await resp.json()
+
+    async def get_events(
+        self, runner_id: int, action: str | None, run_id: int | None, limit: int | None, event_status: str | None
+    ) -> dict:
+        params = {"action": action, "run_id": run_id, "event_status": event_status, "limit": limit}
+        params = utils_base.filter_None_dict(to_filter=params)
+        async with self._ns_client.get(url=f"/runners/{runner_id}/events", params=params) as resp:
             return await resp.json()
 
     async def update_runner(self, updates: dict[str, typing.Any]) -> dict:

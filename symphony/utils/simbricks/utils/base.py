@@ -46,6 +46,11 @@ class IdObj(abc.ABC):
         return instance
 
 
+def filter_None_dict(to_filter: dict) -> dict:
+    res = {k: v for k, v in to_filter.items() if v is not None}
+    return res
+
+
 def check_type(obj, expected_type) -> bool:
     """
     Checks if obj has type or is a subtype of expected_type
@@ -70,9 +75,7 @@ def check_types(obj, *expected_types) -> bool:
 
 def has_expected_type(obj, expected_type) -> None:
     if not check_type(obj=obj, expected_type=expected_type):
-        raise Exception(
-            f"obj of type {type(obj)} has not the type or is not a subtype of {expected_type}"
-        )
+        raise Exception(f"obj of type {type(obj)} has not the type or is not a subtype of {expected_type}")
 
 
 def has_attribute(obj, attr: str) -> None:
