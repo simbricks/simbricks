@@ -20,9 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer
+from typer import Typer, Option
+from typing_extensions import Annotated
 from ..state import state
-from ..utils import async_cli, print_runner_table
+from ..utils import async_cli, print_runner_table, print_table_generic
 
 
 app = Typer(help="Managing SimBricks runners.")
@@ -57,3 +58,51 @@ async def create(label: str, tags: list[str]):
     """Update a runner with the the given label and tags."""
     runner = await state.runner_client.create_runner(label=label, tags=tags)
     print_runner_table([runner])
+
+
+@app.command()
+@async_cli()
+async def create_event(
+    runner_id: int,
+    action: str,
+    run_id: Annotated[int | None, Option("--run", "-r", help="Set event for specific run.")] = None,
+):
+    """Send a run related event to a runner (Available actions: kill, heartbeat, simulation_status)."""
+    event = await state.runner_client.create_runner_event(runner_id=runner_id, action=action, run_id=run_id)
+    print_table_generic([event], "id", "runner_id", "action", "run_id", "event_status")
+
+
+@app.command()
+@async_cli()
+async def update_event(
+    runner_id: int,
+    event_id: int,
+    action: Annotated[
+        str | None, Option("--action", "-a", help="Action to set (kill, heartbeat, simulation_status).")
+    ] = None,
+    event_status: Annotated[
+        str | None, Option("--status", "-s", help="Status to set (pending, completed, cancelled).")
+    ] = None,
+    run_id: Annotated[int | None, Option("--run", "-r", help="Run to set.")] = None,
+):
+    """Update a runner event."""
+    event = await state.runner_client.update_runner_event(
+        runner_id=runner_id, event_id=event_id, action=action, event_status=event_status, run_id=run_id
+    )
+    print_table_generic([event], "id", "runner_id", "action", "run_id", "event_status")
+
+
+@app.command()
+@async_cli()
+async def ls_events(
+    runner_id: int,
+    action: Annotated[str | None, Option("--action", "-a", help="Filter for action.")] = None,
+    event_status: Annotated[str | None, Option("--status", "-s", help="Filter for status.")] = None,
+    run_id: Annotated[int | None, Option("--run", "-r", help="Filter for run.")] = None,
+    limit: Annotated[int | None, Option("--limit", "-l", help="Limit results.")] = None,
+):
+    """List runner related events"""
+    events = await state.runner_client.get_events(
+        runner_id=runner_id, action=action, run_id=run_id, event_status=event_status, limit=limit
+    )
+    print_table_generic(events, "id", "runner_id", "action", "run_id", "event_status")
