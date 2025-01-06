@@ -41,6 +41,18 @@ def async_cli():
 
     return decorator_async_cli
 
+def print_table_generic(to_print, *args):
+    table = Table()
+
+    for key in args:
+        table.add_column(key)
+    
+    for val in to_print:
+        row = [str(val[key]) for key in args]
+        table.add_row(*row)
+
+    console = Console()
+    console.print(table)
 
 def print_namespace_table(namespaces) -> None:
     table = Table()
