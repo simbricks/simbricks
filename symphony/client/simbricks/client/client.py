@@ -339,33 +339,6 @@ class SimBricksClient:
         async with self._ns_client.get(url=f"/runs") as resp:
             return await resp.json()
 
-    async def follow_run(self, run_id: int) -> None:
-        console = Console()
-        with console.status(f"[bold green]Waiting for run {run_id} to finish...") as status:
-            last_run = None
-            output = []
-            prev_len = 0
-            while True:
-                run = await self.get_run(run_id)
-                output = await self.get_run_console(run_id)
-
-                if not last_run or last_run["state"] != run["state"]:
-                    console.log(f"Run State:", run["state"])
-
-                if len(output) != prev_len:
-                    for l in output[prev_len:]:
-                        console.log(l["simulator"] + ":" + l["output"])
-                    prev_len = len(output)
-
-                # did we finish?
-                if run["state"] != "pending" and run["state"] != "running":
-                    break
-
-                last_run = run
-                await asyncio.sleep(3)
-
-        console.log(f"Run {run_id} finished")
-
     async def set_run_input(self, rid: int, uploaded_input_file: str):
         with open(uploaded_input_file, "rb") as f:
             file_data = {"file": f}

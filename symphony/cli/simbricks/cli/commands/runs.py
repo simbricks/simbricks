@@ -21,12 +21,12 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
-import asyncio
 from pathlib import Path
 import simbricks.utils.load_mod as load_mod
 from typer import Typer, Argument, Option
 from typing_extensions import Annotated
 from simbricks.client.provider import client_provider
+from simbricks.client.opus import base as opus_base
 from ..utils import async_cli
 
 from rich.console import Console
@@ -64,8 +64,7 @@ async def show(run_id: int):
 @async_cli()
 async def follow(run_id: int):
     """Follow individual run as it executes."""
-    client = client_provider.simbricks_client
-    await client.follow_run(run_id)
+    await opus_base.follow_run(run_id=run_id)
 
 
 @app.command()
@@ -132,24 +131,9 @@ async def submit_script(
 
     experiment_mod = load_mod.load_module(module_path=path)
     instantiations = experiment_mod.instantiations
-
     sb_inst = instantiations[0]
-    sb_simulation = sb_inst.simulation
-    sb_system = sb_simulation.system
 
-    system = await system_client.create_system(sb_system)
-    system_id = int(system["id"])
-    system = await system_client.get_system(system_id)
-
-    simulation = await system_client.create_simulation(system_id, sb_simulation)
-    sim_id = int(simulation["id"])
-    simulation = await system_client.get_simulation(sim_id)
-
-    instantiation = await system_client.create_instantiation(sim_id, None)
-    inst_id = int(instantiation["id"])
-
-    run = await system_client.create_run(inst_id)
-    run_id = run["id"]
+    run_id = await opus_base.create_run(instantiation=sb_inst)
     if input:
         await system_client.set_run_input(run_id, input)
 
@@ -157,4 +141,4 @@ async def submit_script(
         await client_provider.runner_client.create_runner_event(action="start_run", run_id=run_id)
 
     if follow:
-        await system_client.follow_run(run_id)
+        await opus_base.follow_run(run_id=run_id)
