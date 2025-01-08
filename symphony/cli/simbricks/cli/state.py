@@ -27,6 +27,7 @@ from simbricks.client import BaseClient, AdminClient, NSClient, SimBricksClient,
 class State:
     def __init__(self):
         self.namespace = ""
+        self.runner_id: int = -1
         self._base_client: BaseClient | None = None
         self._admin_client: AdminClient = None
         self._ns_client: NSClient | None = None
@@ -60,7 +61,7 @@ class State:
     @property
     def runner_client(self):
         if self._runner_client is None:
-            self._runner_client = RunnerClient(self.ns_client, id=-1)
+            self._runner_client = RunnerClient(self.ns_client, id=self.runner_id)
         return self._runner_client
 
 
