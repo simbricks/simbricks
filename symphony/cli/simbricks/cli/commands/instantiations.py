@@ -23,7 +23,7 @@
 from typer import Typer
 from simbricks.client.provider import client_provider
 from ..utils import async_cli
-from ..utils import print_instantiations_table
+from ..utils import print_table_generic
 
 app = Typer(help="Managing SimBricks Instantiations.")
 
@@ -33,7 +33,7 @@ app = Typer(help="Managing SimBricks Instantiations.")
 async def ls():
     """List Instantiations."""
     insts = await client_provider.simbricks_client.get_instantiations()
-    print_instantiations_table(insts)
+    print_table_generic("Instantiations", insts, "id", "simulation_id")
 
 
 @app.command()
@@ -41,7 +41,7 @@ async def ls():
 async def show(inst_id: int):
     """Show individual Instantiation."""
     inst = await client_provider.simbricks_client.get_instantiation(instantiation_id=inst_id)
-    print_instantiations_table([inst])
+    print_table_generic("Instantiations", [inst], "id", "simulation_id")
 
 
 @app.command()
