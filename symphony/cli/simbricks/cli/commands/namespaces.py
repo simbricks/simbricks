@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from typer import Typer
-from ..state import state
+from simbricks.client.provider import client_provider
 from ..utils import async_cli, print_namespace_table, print_members_table
 
 app = Typer(help="Managing SimBricks namespaces.")
@@ -31,7 +31,7 @@ app = Typer(help="Managing SimBricks namespaces.")
 @async_cli()
 async def ls():
     """List available namespaces."""
-    client = state.ns_client
+    client = client_provider.ns_client
 
     namespaces = await client.get_all()
     print_namespace_table(namespaces)
@@ -41,7 +41,7 @@ async def ls():
 @async_cli()
 async def ls_id(ident: int):
     """List namespace with given id ident."""
-    client = state.ns_client
+    client = client_provider.ns_client
 
     namespace = await client.get_ns(ident)
     print_namespace_table([namespace])
@@ -51,7 +51,7 @@ async def ls_id(ident: int):
 @async_cli()
 async def ls_cur():
     """List current namespace."""
-    client = state.ns_client
+    client = client_provider.ns_client
 
     namespace = await client.get_cur()
     print_namespace_table([namespace])
@@ -62,7 +62,7 @@ async def ls_cur():
 async def create(name: str):
     """Create a new namespace."""
 
-    client = state.ns_client
+    client = client_provider.ns_client
 
     # create namespace relative to current namespace
     cur_ns = await client.get_cur()
@@ -72,7 +72,7 @@ async def create(name: str):
     namespace = await client.create(parent_id=cur_ns_id, name=name)
     ns_id = namespace["id"]
 
-    print(f"Creating namespace {name} in {state.namespace}. New namespace: {ns_id}")
+    print(f"Creating namespace {name} in {client_provider.namespace}. New namespace: {ns_id}")
 
 
 @app.command()
@@ -80,7 +80,7 @@ async def create(name: str):
 async def delete(ident: int):
     """Delete a namespace."""
 
-    client = state.ns_client
+    client = client_provider.ns_client
     await client.delete_ns(ident)
     print(f"Deleted namespace with id {ident}.")
 
@@ -90,7 +90,7 @@ async def delete(ident: int):
 async def members():
     """List all members."""
 
-    client = state.ns_client
+    client = client_provider.ns_client
     members = await client.get_members()
     print_members_table(members)
 
@@ -100,6 +100,6 @@ async def members():
 async def member_add(user: str, role: str):
     """Add member to namespace."""
 
-    client = state.ns_client
+    client = client_provider.ns_client
     members = await client.add_member(role, user)
     print(f"Added user {user} with role {role}.")

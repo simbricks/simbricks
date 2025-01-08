@@ -22,8 +22,7 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
-
-from ..state import state
+from simbricks.client.provider import client_provider
 from ..utils import async_cli, print_namespace_table
 
 app = Typer(help="SimBricks admin commands.")
@@ -33,7 +32,7 @@ app = Typer(help="SimBricks admin commands.")
 @async_cli()
 async def ns_ls():
     """List all available namespaces."""
-    client = state.admin_client
+    client = client_provider.admin_client
     namespaces = await client.get_all_ns()
     print_namespace_table(namespaces)
 
@@ -42,7 +41,7 @@ async def ns_ls():
 @async_cli()
 async def ns_ls_id(ident: int):
     """List namespace with given id ident."""
-    client = state.admin_client
+    client = client_provider.admin_client
     namespace = await client.get_ns(ns_id=ident)
     print_namespace_table([namespace])
 
@@ -51,16 +50,16 @@ async def ns_ls_id(ident: int):
 @async_cli()
 async def ns_create(name: str, parent_id: Annotated[int, Option(help="optional parent namesapce")] = None):
     """Create a new namespace."""
-    client = state.admin_client
+    client = client_provider.admin_client
     namespace = await client.create_ns(parent_id=parent_id, name=name)
     ns_id = namespace["id"]
-    print(f"Creating namespace {name} in {state.namespace}. New namespace: {ns_id}")
+    print(f"Creating namespace {name} in {client_provider.namespace}. New namespace: {ns_id}")
 
 
 @app.command()
 @async_cli()
 async def ns_delete(ident: int):
     """Delete a namespace."""
-    client = state.admin_client
+    client = client_provider.admin_client
     await client.delete(ns_id=ident)
     print(f"Deleted namespace with id {ident}.")

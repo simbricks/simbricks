@@ -23,7 +23,7 @@
 from typer import Typer, Option
 from typing_extensions import Annotated
 from simbricks.cli.commands import audit, admin, namespaces, runs, systems, simulations, instantiations, runners
-from simbricks.cli.state import state
+from simbricks.client.provider import client_provider
 from simbricks.cli.utils import async_cli
 
 app = Typer()
@@ -43,8 +43,8 @@ async def amain(
     ns: Annotated[str, Option(help="Namespace to operate in.")] = "foo/bar/baz",
     runner_ident: Annotated[int, Option(help="Runner ident to operate on.")] = -1,
 ):
-    state.namespace = ns
-    state.runner_id = runner_ident
+    client_provider.namespace = ns
+    client_provider.runner_id = runner_ident
 
 
 def main():

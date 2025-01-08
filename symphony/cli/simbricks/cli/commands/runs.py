@@ -26,7 +26,7 @@ from pathlib import Path
 import simbricks.utils.load_mod as load_mod
 from typer import Typer, Argument, Option
 from typing_extensions import Annotated
-from ..state import state
+from simbricks.client.provider import client_provider
 from ..utils import async_cli
 
 from rich.console import Console
@@ -39,7 +39,7 @@ app = Typer(help="Managing SimBricks runs.")
 @async_cli()
 async def ls():
     """List runs."""
-    runs = await state.simbricks_client.get_runs()
+    runs = await client_provider.simbricks_client.get_runs()
 
     table = Table()
     table.add_column("Id")
@@ -56,7 +56,7 @@ async def ls():
 @async_cli()
 async def show(run_id: int):
     """Show individual run."""
-    run = await state.simbricks_client.get_run(run_id)
+    run = await client_provider.simbricks_client.get_run(run_id)
     print(run)
 
 
@@ -64,7 +64,7 @@ async def show(run_id: int):
 @async_cli()
 async def follow(run_id: int):
     """Follow individual run as it executes."""
-    client = state.simbricks_client
+    client = client_provider.simbricks_client
     await client.follow_run(run_id)
 
 
@@ -72,7 +72,7 @@ async def follow(run_id: int):
 @async_cli()
 async def delete(run_id: int):
     """Delete an individual run."""
-    client = state.simbricks_client
+    client = client_provider.simbricks_client
     await client.delete_run(run_id)
 
 
@@ -80,7 +80,7 @@ async def delete(run_id: int):
 @async_cli()
 async def set_input_tarball(run_id: int, source_file: str):
     """Set the tarball input for an individual run."""
-    client = state.simbricks_client
+    client = client_provider.simbricks_client
     await client.set_run_input(run_id, source_file)
 
 
@@ -88,7 +88,7 @@ async def set_input_tarball(run_id: int, source_file: str):
 @async_cli()
 async def set_output_artifact(run_id: int, source_file: str):
     """Set the tarball input for an individual run."""
-    client = state.simbricks_client
+    client = client_provider.simbricks_client
     await client.set_run_artifact(run_id, source_file)
 
 
@@ -96,7 +96,7 @@ async def set_output_artifact(run_id: int, source_file: str):
 @async_cli()
 async def get_output_artifact(run_id: int, destination_file: str):
     """Follow individual run as it executes."""
-    client = state.simbricks_client
+    client = client_provider.simbricks_client
     await client.get_run_artifact(run_id, destination_file)
 
 
@@ -104,7 +104,7 @@ async def get_output_artifact(run_id: int, destination_file: str):
 @async_cli()
 async def update_run(run_id: int, updates: str):
     """Update run with the 'updates' json string."""
-    client = state.simbricks_client
+    client = client_provider.simbricks_client
     json_updates = json.loads(updates)
     await client.update_run(run_id, updates=json_updates)
 
@@ -128,7 +128,7 @@ async def submit_script(
 ):
     """Submit a SimBricks python simulation script to run."""
 
-    system_client = state.simbricks_client
+    system_client = client_provider.simbricks_client
 
     experiment_mod = load_mod.load_module(module_path=path)
     instantiations = experiment_mod.instantiations
@@ -154,7 +154,7 @@ async def submit_script(
         await system_client.set_run_input(run_id, input)
 
     if start:
-        await state.runner_client.create_runner_event(action="start_run", run_id=run_id)
+        await client_provider.runner_client.create_runner_event(action="start_run", run_id=run_id)
 
     if follow:
         await system_client.follow_run(run_id)

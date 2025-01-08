@@ -22,7 +22,7 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
-from ..state import state
+from simbricks.client.provider import client_provider
 from ..utils import async_cli, print_runner_table, print_table_generic
 
 
@@ -33,7 +33,7 @@ app = Typer(help="Managing SimBricks runners.")
 @async_cli()
 async def ls():
     """List runners."""
-    runs = await state.runner_client.list_runners()
+    runs = await client_provider.runner_client.list_runners()
     print_runner_table(runs)
 
 
@@ -41,7 +41,7 @@ async def ls():
 @async_cli()
 async def show(runner_id: int):
     """Show individual runner."""
-    runner = await state.runner_client.get_runner(runner_id=runner_id)
+    runner = await client_provider.runner_client.get_runner(runner_id=runner_id)
     print_runner_table([runner])
 
 
@@ -49,14 +49,14 @@ async def show(runner_id: int):
 @async_cli()
 async def delete(runner_id: int):
     """Delete an individual runner."""
-    await state.runner_client.delete_runner(runner_id=runner_id)
+    await client_provider.runner_client.delete_runner(runner_id=runner_id)
 
 
 @app.command()
 @async_cli()
 async def create(label: str, tags: list[str]):
     """Update a runner with the the given label and tags."""
-    runner = await state.runner_client.create_runner(label=label, tags=tags)
+    runner = await client_provider.runner_client.create_runner(label=label, tags=tags)
     print_runner_table([runner])
 
 
@@ -67,7 +67,7 @@ async def create_event(
     run_id: Annotated[int | None, Option("--run", "-r", help="Set event for specific run.")] = None,
 ):
     """Send a run related event to a runner (Available actions: kill, heartbeat, simulation_status, start_run)."""
-    event = await state.runner_client.create_runner_event(action=action, run_id=run_id)
+    event = await client_provider.runner_client.create_runner_event(action=action, run_id=run_id)
     print_table_generic("Event", [event], "id", "runner_id", "action", "run_id", "event_status")
 
 
@@ -75,7 +75,7 @@ async def create_event(
 @async_cli()
 async def delete_event(event_id: int):
     """Delete a runner event."""
-    await state.runner_client.delete_runner_event(event_id=event_id)
+    await client_provider.runner_client.delete_runner_event(event_id=event_id)
 
 
 @app.command()
@@ -91,7 +91,7 @@ async def update_event(
     run_id: Annotated[int | None, Option("--run", "-r", help="Run to set.")] = None,
 ):
     """Update a runner event."""
-    event = await state.runner_client.update_runner_event(
+    event = await client_provider.runner_client.update_runner_event(
         event_id=event_id, action=action, event_status=event_status, run_id=run_id
     )
     print_table_generic("Event", [event], "id", "runner_id", "action", "run_id", "event_status")
@@ -106,5 +106,5 @@ async def ls_events(
     limit: Annotated[int | None, Option("--limit", "-l", help="Limit results.")] = None,
 ):
     """List runner related events"""
-    events = await state.runner_client.get_events(action=action, run_id=run_id, event_status=event_status, limit=limit)
+    events = await client_provider.runner_client.get_events(action=action, run_id=run_id, event_status=event_status, limit=limit)
     print_table_generic("Events", events, "id", "runner_id", "action", "run_id", "event_status")
