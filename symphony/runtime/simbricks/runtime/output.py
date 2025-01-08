@@ -56,6 +56,9 @@ class SimulationOutput:
     def set_failed(self) -> None:
         self._success = False
 
+    def failed(self) -> bool:
+        return not self._success
+        
     def set_interrupted(self) -> None:
         self._success = False
         self._interrupted = True
