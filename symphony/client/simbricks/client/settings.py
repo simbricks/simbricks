@@ -30,6 +30,9 @@ class ClientSettings(BaseSettings):
     auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
     auth_dev_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
 
+    namespace: str = ""
+    runner_id: int = -1
+
 @lru_cache
 def client_settings() -> ClientSettings:
     return ClientSettings(_env_file="internal.env", _env_file_encoding="utf-8")
