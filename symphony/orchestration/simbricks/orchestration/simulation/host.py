@@ -60,8 +60,8 @@ class HostSim(sim_base.Simulator):
 
     def supported_socket_types(
         self, interface: system.Interface
-    ) -> set[inst_base.SockType]:
-        return {inst_base.SockType.CONNECT}
+    ) -> set[inst_socket.SockType]:
+        return {inst_socket.SockType.CONNECT}
 
 
 class Gem5Sim(HostSim):
@@ -183,7 +183,7 @@ class Gem5Sim(HostSim):
             socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue
-            assert socket._type == inst_base.SockType.CONNECT
+            assert socket._type == inst_socket.SockType.CONNECT
             cmd += (
                 f"--simbricks-pci=connect:{socket._path}"
                 f":latency={latency}ns"
@@ -200,7 +200,7 @@ class Gem5Sim(HostSim):
             socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue
-            assert socket._type == inst_base.SockType.CONNECT
+            assert socket._type == inst_socket.SockType.CONNECT
             utils_base.has_expected_type(inf.component, sys_mem.MemSimpleDevice)
             dev: sys_mem.MemSimpleDevice = inf.component
             cmd += (
@@ -338,7 +338,7 @@ class QemuSim(HostSim):
             socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue
-            assert socket._type is inst_base.SockType.CONNECT
+            assert socket._type is inst_socket.SockType.CONNECT
             cmd += f"-device simbricks-pci,socket={socket._path}"
             if sync:
                 cmd += ",sync=on"
