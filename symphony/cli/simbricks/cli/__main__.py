@@ -41,8 +41,10 @@ app.add_typer(runners.app, name="runners")
 @async_cli()
 async def amain(
     ns: Annotated[str, Option(help="Namespace to operate in.")] = "foo/bar/baz",
+    runner_ident: Annotated[int, Option(help="Runner ident to operate on.")] = -1,
 ):
     state.namespace = ns
+    state.runner_id = runner_ident
 
 
 def main():
