@@ -362,7 +362,7 @@ class SimBricksClient:
                     break
 
                 last_run = run
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(3)
 
         console.log(f"Run {run_id} finished")
 
@@ -412,6 +412,13 @@ class RunnerClient:
             yield resp
 
     @contextlib.asynccontextmanager
+    async def delete(
+        self, url: str, data: typing.Any = None, **kwargs: typing.Any
+    ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+        async with self._ns_client.delete(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
+            yield resp
+
+    @contextlib.asynccontextmanager
     async def put(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
@@ -431,31 +438,35 @@ class RunnerClient:
         async with self._ns_client.post(url=f"/runners", json=obj) as resp:
             return await resp.json()
 
-    async def create_runner_event(self, runner_id: int, action: str, run_id: int | None) -> dict:
-        obj = {"runner_id": runner_id, "action": action, "run_id": run_id}
-        async with self._ns_client.post(url=f"/runners/{runner_id}/events", json=obj) as resp:
+    async def create_runner_event(self, action: str, run_id: int | None) -> dict:
+        obj = {"runner_id": self._runner_id, "action": action, "run_id": run_id}
+        async with self.post(url=f"/events", json=obj) as resp:
             return await resp.json()
 
+    async def delete_runner_event(self, event_id: int) -> None:
+        async with self.delete(url=f"/events/{event_id}") as resp:
+            await resp.json()
+
     async def update_runner_event(
-        self, runner_id: int, event_id: int, action: str | None, run_id: int | None, event_status: str | None
+        self, event_id: int, action: str | None, run_id: int | None, event_status: str | None
     ) -> dict:
         obj = {
             "id": event_id,
-            "runner_id": runner_id,
+            "runner_id": self._runner_id,
             "action": action,
             "run_id": run_id,
             "event_status": event_status,
         }
         obj = utils_base.filter_None_dict(to_filter=obj)
-        async with self._ns_client.put(url=f"/runners/{runner_id}/events", json=obj) as resp:
+        async with self.put(url=f"/events", json=obj) as resp:
             return await resp.json()
 
     async def get_events(
-        self, runner_id: int, action: str | None, run_id: int | None, limit: int | None, event_status: str | None
+        self, action: str | None, run_id: int | None, limit: int | None, event_status: str | None
     ) -> dict:
         params = {"action": action, "run_id": run_id, "event_status": event_status, "limit": limit}
         params = utils_base.filter_None_dict(to_filter=params)
-        async with self._ns_client.get(url=f"/runners/{runner_id}/events", params=params) as resp:
+        async with self.get(url=f"/events", params=params) as resp:
             return await resp.json()
 
     async def update_runner(self, updates: dict[str, typing.Any]) -> dict:
@@ -472,6 +483,27 @@ class RunnerClient:
 
     async def list_runners(self) -> dict:
         async with self._ns_client.get(url=f"/runners") as resp:
+            return await resp.json()
+
+    async def send_heartbeat(self) -> None:
+        async with self.put(url="/heartbeat") as resp:
+            await resp.json()
+
+    async def filter_get_runs(
+        self,
+        run_id: int | None = None,
+        instantiation_id: int | None = None,
+        state: str | None = None,
+        limit: int | None = None,
+    ):
+        obj = {
+            "id": run_id,
+            "instantiation_id": instantiation_id,
+            "state": state,
+            "limit": limit,
+        }
+        utils_base.filter_None_dict(to_filter=obj)
+        async with self.post(url="/filter_get_run", json=obj) as resp:
             return await resp.json()
 
     async def next_run(self) -> dict | None:
@@ -496,7 +528,7 @@ class RunnerClient:
             "instantiation_id": 42,
         }
         async with self.put(url=f"/update_run/{run_id}", json=obj) as resp:
-            ret = await resp.json()
+            await resp.json()
 
     async def send_out(
         self,
