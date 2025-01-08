@@ -23,7 +23,7 @@
 from typer import Typer
 from simbricks.client.provider import client_provider
 from ..utils import async_cli
-from ..utils import print_systems_table
+from ..utils import print_table_generic
 
 app = Typer(help="Managing SimBricks Systems.")
 
@@ -33,15 +33,15 @@ app = Typer(help="Managing SimBricks Systems.")
 async def ls():
     """List Systems."""
     systems = await client_provider.simbricks_client.get_systems()
-    print_systems_table(systems=systems)
+    print_table_generic("Systems", systems, "id")
 
 
 @app.command()
 @async_cli()
 async def show(system_id: int):
     """Show individual System."""
-    run = await client_provider.simbricks_client.get_system(system_id=system_id)
-    print_systems_table([run])
+    system = await client_provider.simbricks_client.get_system(system_id=system_id)
+    print_table_generic("Systems", [system], "id")
 
 
 @app.command()

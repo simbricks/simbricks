@@ -23,7 +23,7 @@
 from typer import Typer, Option
 from typing_extensions import Annotated
 from simbricks.client.provider import client_provider
-from ..utils import async_cli, print_runner_table, print_table_generic
+from ..utils import async_cli, print_table_generic
 
 
 app = Typer(help="Managing SimBricks runners.")
@@ -33,8 +33,8 @@ app = Typer(help="Managing SimBricks runners.")
 @async_cli()
 async def ls():
     """List runners."""
-    runs = await client_provider.runner_client.list_runners()
-    print_runner_table(runs)
+    runners = await client_provider.runner_client.list_runners()
+    print_table_generic("Runners", runners, "id", "label", "tags")
 
 
 @app.command()
@@ -42,7 +42,7 @@ async def ls():
 async def show(runner_id: int):
     """Show individual runner."""
     runner = await client_provider.runner_client.get_runner(runner_id=runner_id)
-    print_runner_table([runner])
+    print_table_generic("Runners", [runner], "id", "label", "tags")
 
 
 @app.command()
@@ -57,7 +57,7 @@ async def delete(runner_id: int):
 async def create(label: str, tags: list[str]):
     """Update a runner with the the given label and tags."""
     runner = await client_provider.runner_client.create_runner(label=label, tags=tags)
-    print_runner_table([runner])
+    print_table_generic("Runner", [runner], "id", "label", "tags")
 
 
 @app.command()
@@ -106,5 +106,7 @@ async def ls_events(
     limit: Annotated[int | None, Option("--limit", "-l", help="Limit results.")] = None,
 ):
     """List runner related events"""
-    events = await client_provider.runner_client.get_events(action=action, run_id=run_id, event_status=event_status, limit=limit)
+    events = await client_provider.runner_client.get_events(
+        action=action, run_id=run_id, event_status=event_status, limit=limit
+    )
     print_table_generic("Events", events, "id", "runner_id", "action", "run_id", "event_status")

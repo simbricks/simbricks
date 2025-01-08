@@ -22,7 +22,7 @@
 
 from typer import Typer
 from simbricks.client.provider import client_provider
-from ..utils import async_cli, print_namespace_table, print_members_table
+from ..utils import async_cli, print_table_generic, print_members_table
 
 app = Typer(help="Managing SimBricks namespaces.")
 
@@ -34,7 +34,7 @@ async def ls():
     client = client_provider.ns_client
 
     namespaces = await client.get_all()
-    print_namespace_table(namespaces)
+    print_table_generic("Namespaces", namespaces, "id", "name", "parent_id")
 
 
 @app.command()
@@ -44,7 +44,7 @@ async def ls_id(ident: int):
     client = client_provider.ns_client
 
     namespace = await client.get_ns(ident)
-    print_namespace_table([namespace])
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
 
 
 @app.command()
@@ -54,7 +54,7 @@ async def ls_cur():
     client = client_provider.ns_client
 
     namespace = await client.get_cur()
-    print_namespace_table([namespace])
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
 
 
 @app.command()
@@ -70,9 +70,7 @@ async def create(name: str):
 
     # create the actual namespace
     namespace = await client.create(parent_id=cur_ns_id, name=name)
-    ns_id = namespace["id"]
-
-    print(f"Creating namespace {name} in {client_provider.namespace}. New namespace: {ns_id}")
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
 
 
 @app.command()

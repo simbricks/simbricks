@@ -23,7 +23,7 @@
 from typer import Typer, Option
 from typing_extensions import Annotated
 from simbricks.client.provider import client_provider
-from ..utils import async_cli, print_namespace_table
+from ..utils import async_cli, print_table_generic
 
 app = Typer(help="SimBricks admin commands.")
 
@@ -34,7 +34,7 @@ async def ns_ls():
     """List all available namespaces."""
     client = client_provider.admin_client
     namespaces = await client.get_all_ns()
-    print_namespace_table(namespaces)
+    print_table_generic("Namespaces", namespaces, "id", "name", "parent_id")
 
 
 @app.command()
@@ -43,7 +43,7 @@ async def ns_ls_id(ident: int):
     """List namespace with given id ident."""
     client = client_provider.admin_client
     namespace = await client.get_ns(ns_id=ident)
-    print_namespace_table([namespace])
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
 
 
 @app.command()
@@ -52,9 +52,8 @@ async def ns_create(name: str, parent_id: Annotated[int, Option(help="optional p
     """Create a new namespace."""
     client = client_provider.admin_client
     namespace = await client.create_ns(parent_id=parent_id, name=name)
-    ns_id = namespace["id"]
-    print(f"Creating namespace {name} in {client_provider.namespace}. New namespace: {ns_id}")
-
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
+    
 
 @app.command()
 @async_cli()

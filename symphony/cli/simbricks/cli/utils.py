@@ -41,12 +41,13 @@ def async_cli():
 
     return decorator_async_cli
 
+
 def print_table_generic(title: str, to_print, *args):
     table = Table(title=title)
 
     for key in args:
         table.add_column(key)
-    
+
     for val in to_print:
         row = [str(val[key]) for key in args]
         table.add_row(*row)
@@ -54,63 +55,6 @@ def print_table_generic(title: str, to_print, *args):
     console = Console()
     console.print(table)
 
-def print_namespace_table(namespaces) -> None:
-    table = Table()
-    table.add_column("Id")
-    table.add_column("name")
-    table.add_column("parent")
-    for ns in namespaces:
-        table.add_row(str(ns["id"]), str(ns["name"]), str(ns["parent_id"]))
-
-    console = Console()
-    console.print(table)
-
-
-def print_systems_table(systems):
-    table = Table()
-    table.add_column("Id")
-    for sys in systems:
-        table.add_row(str(sys["id"]))
-
-    console = Console()
-    console.print(table)
-
-
-def print_simulations_table(instantiations):
-    table = Table()
-    table.add_column("Id")
-    table.add_column("SystemId")
-    for sys in instantiations:
-        table.add_row(str(sys["id"]), str(sys["system_id"]))
-
-    console = Console()
-    console.print(table)
-
-
-def print_instantiations_table(instantiations):
-    table = Table()
-    table.add_column("Id")
-    table.add_column("SimulationId")
-    for sys in instantiations:
-        table.add_row(str(sys["id"]), str(sys["simulation_id"]))
-
-    console = Console()
-    console.print(table)
-
-
-def print_runner_table(runners):
-    table = Table()
-    table.add_column("Id")
-    table.add_column("Label")
-    table.add_column("Tags")
-    for r in runners:
-        ts = []
-        for t in r["tags"]:
-            ts.append(t["label"])
-        table.add_row(str(r["id"]), str(r["label"]), ",".join(ts))
-
-    console = Console()
-    console.print(table)
 
 def print_members_table(members: dict[str, list[dict]]):
     table = Table()
@@ -120,6 +64,6 @@ def print_members_table(members: dict[str, list[dict]]):
     table.add_column("Last")
     for r, ms in members.items():
         for m in ms:
-            table.add_row(r, m['username'], m['first_name'], m['last_name'])
+            table.add_row(r, m["username"], m["first_name"], m["last_name"])
     console = Console()
     console.print(table)
