@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from typer import Typer
-from ..state import state
+from simbricks.client.provider import client_provider
 from ..utils import async_cli
 from ..utils import print_instantiations_table
 
@@ -32,7 +32,7 @@ app = Typer(help="Managing SimBricks Instantiations.")
 @async_cli()
 async def ls():
     """List Instantiations."""
-    insts = await state.simbricks_client.get_instantiations()
+    insts = await client_provider.simbricks_client.get_instantiations()
     print_instantiations_table(insts)
 
 
@@ -40,7 +40,7 @@ async def ls():
 @async_cli()
 async def show(inst_id: int):
     """Show individual Instantiation."""
-    inst = await state.simbricks_client.get_instantiation(instantiation_id=inst_id)
+    inst = await client_provider.simbricks_client.get_instantiation(instantiation_id=inst_id)
     print_instantiations_table([inst])
 
 
@@ -48,5 +48,5 @@ async def show(inst_id: int):
 @async_cli()
 async def delete(inst_id: int):
     """Delete an individual Instantiation."""
-    client = state.simbricks_client
+    client = client_provider.simbricks_client
     await client.delete_instantiation(inst_id=inst_id)
