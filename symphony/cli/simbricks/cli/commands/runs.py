@@ -117,6 +117,14 @@ async def submit_script(
     input: Annotated[
         str | None, Option("--input", "-i", help="Specify a tarball file of inputs needed for running the simulation.")
     ] = None,
+    start: Annotated[
+        bool,
+        Option(
+            "--start",
+            "-s",
+            help="Immediately create a start event and schedule the run to be executed on the specified runner.",
+        ),
+    ] = False,
 ):
     """Submit a SimBricks python simulation script to run."""
 
@@ -132,16 +140,10 @@ async def submit_script(
     system = await system_client.create_system(sb_system)
     system_id = int(system["id"])
     system = await system_client.get_system(system_id)
-    # print(system)
-    systems = await system_client.get_systems()
-    # print(systems)
 
     simulation = await system_client.create_simulation(system_id, sb_simulation)
     sim_id = int(simulation["id"])
     simulation = await system_client.get_simulation(sim_id)
-    # print(simulation)
-    simulations = await system_client.get_simulations()
-    # print(simulations)
 
     instantiation = await system_client.create_instantiation(sim_id, None)
     inst_id = int(instantiation["id"])
@@ -150,9 +152,9 @@ async def submit_script(
     run_id = run["id"]
     if input:
         await system_client.set_run_input(run_id, input)
-    await system_client.update_run(run_id, {"state": "pending", "output": ""})
 
-    print(run)
+    if start:
+        await state.runner_client.create_runner_event(action="start_run", run_id=run_id)
 
     if follow:
         await system_client.follow_run(run_id)

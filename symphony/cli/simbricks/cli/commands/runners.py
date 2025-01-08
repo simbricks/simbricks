@@ -63,22 +63,27 @@ async def create(label: str, tags: list[str]):
 @app.command()
 @async_cli()
 async def create_event(
-    runner_id: int,
     action: str,
     run_id: Annotated[int | None, Option("--run", "-r", help="Set event for specific run.")] = None,
 ):
-    """Send a run related event to a runner (Available actions: kill, heartbeat, simulation_status)."""
-    event = await state.runner_client.create_runner_event(runner_id=runner_id, action=action, run_id=run_id)
-    print_table_generic([event], "id", "runner_id", "action", "run_id", "event_status")
+    """Send a run related event to a runner (Available actions: kill, heartbeat, simulation_status, start_run)."""
+    event = await state.runner_client.create_runner_event(action=action, run_id=run_id)
+    print_table_generic("Event", [event], "id", "runner_id", "action", "run_id", "event_status")
+
+
+@app.command()
+@async_cli()
+async def delete_event(event_id: int):
+    """Delete a runner event."""
+    await state.runner_client.delete_runner_event(event_id=event_id)
 
 
 @app.command()
 @async_cli()
 async def update_event(
-    runner_id: int,
     event_id: int,
     action: Annotated[
-        str | None, Option("--action", "-a", help="Action to set (kill, heartbeat, simulation_status).")
+        str | None, Option("--action", "-a", help="Action to set (kill, heartbeat, simulation_status, start_run).")
     ] = None,
     event_status: Annotated[
         str | None, Option("--status", "-s", help="Status to set (pending, completed, cancelled).")
@@ -87,22 +92,19 @@ async def update_event(
 ):
     """Update a runner event."""
     event = await state.runner_client.update_runner_event(
-        runner_id=runner_id, event_id=event_id, action=action, event_status=event_status, run_id=run_id
+        event_id=event_id, action=action, event_status=event_status, run_id=run_id
     )
-    print_table_generic([event], "id", "runner_id", "action", "run_id", "event_status")
+    print_table_generic("Event", [event], "id", "runner_id", "action", "run_id", "event_status")
 
 
 @app.command()
 @async_cli()
 async def ls_events(
-    runner_id: int,
     action: Annotated[str | None, Option("--action", "-a", help="Filter for action.")] = None,
     event_status: Annotated[str | None, Option("--status", "-s", help="Filter for status.")] = None,
     run_id: Annotated[int | None, Option("--run", "-r", help="Filter for run.")] = None,
     limit: Annotated[int | None, Option("--limit", "-l", help="Limit results.")] = None,
 ):
     """List runner related events"""
-    events = await state.runner_client.get_events(
-        runner_id=runner_id, action=action, run_id=run_id, event_status=event_status, limit=limit
-    )
-    print_table_generic(events, "id", "runner_id", "action", "run_id", "event_status")
+    events = await state.runner_client.get_events(action=action, run_id=run_id, event_status=event_status, limit=limit)
+    print_table_generic("Events", events, "id", "runner_id", "action", "run_id", "event_status")
