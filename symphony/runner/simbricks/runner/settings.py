@@ -30,7 +30,9 @@ class RunnerSettings(BaseSettings):
     auth_dev_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
 
     namespace: str = "foo/bar/baz"
-    runner_id: int = 42
+    runner_id: int = 1
+
+    verbose: bool = True
 
 
 @lru_cache
