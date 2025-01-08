@@ -41,8 +41,8 @@ def async_cli():
 
     return decorator_async_cli
 
-def print_table_generic(to_print, *args):
-    table = Table()
+def print_table_generic(title: str, to_print, *args):
+    table = Table(title=title)
 
     for key in args:
         table.add_column(key)
