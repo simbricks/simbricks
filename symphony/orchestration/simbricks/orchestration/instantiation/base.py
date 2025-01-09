@@ -35,6 +35,7 @@ from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system.host import disk_images
 from simbricks.orchestration.instantiation import socket as inst_socket
+from simbricks.orchestration.instantiation import fragment as inst_fragment
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
@@ -72,6 +73,13 @@ class Instantiation():
     ):
         self._id = next(self.__id_iter)
         self.simulation: sim_base.Simulation = sim
+        self.simulation_fragments: set[inst_fragment.Fragment] = set()
+        self.fragment_runner_map: dict[inst_fragment.Fragment, str] = dict()
+        """Map simulation fragment to runner label."""
+        self.runner_label: str | None = None
+        """Label of runner we are executing on. Set by runner when fetching
+        run."""
+        self._simulation_fragment: inst_fragment.Fragment | None = None
         self.env: InstantiationEnvironment | None = None
         self.artifact_name: str = f"simbricks-artifact-{str(uuid.uuid4())}.zip"
         self.artifact_paths: list[str] = []
@@ -97,7 +105,7 @@ class Instantiation():
         if self._executor is None:
             raise Exception("you must set an executor")
         return self._executor
-    
+
     @property
     def create_artifact(self) -> bool:
         return len(self.artifact_paths) > 0
@@ -325,6 +333,27 @@ class Instantiation():
             not self._create_checkpoint and not self._restore_checkpoint
         )
         self._restore_checkpoint = restore_checkpoint
+
+    @property
+    def fragment(self) -> inst_fragment.Fragment:
+        if self._simulation_fragment is not None:
+            return self._simulation_fragment
+
+        if self.runner_label is None or not self.simulation_fragments:
+            # Experiment does not define any simulation fragments, so
+            # implicitly, we create one fragment that spans the whole simulation
+            self._simulation_fragment = inst_fragment.Fragment()
+            self._simulation_fragment.add_simulators(
+                self.simulation.all_simulators()
+            )
+        else:
+            fragments = [
+                fragment
+                for fragment, runner_label in self.fragment_runner_map.items()
+                if runner_label == self.runner_label
+            ]
+            self._simulation_fragment = inst_fragment.Fragment.merged(fragments)
+        return self._simulation_fragment
 
     # TODO: this needs fixing...
     def copy(self) -> Instantiation:
