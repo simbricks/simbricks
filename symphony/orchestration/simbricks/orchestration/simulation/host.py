@@ -180,7 +180,7 @@ class Gem5Sim(HostSim):
             interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
         )
         for inf in pci_interfaces:
-            socket = inst.get_socket(interface=inf)
+            socket = inst.update_get_socket(interface=inf)
             if socket is None:
                 continue
             assert socket._type == inst_socket.SockType.CONNECT
@@ -197,7 +197,7 @@ class Gem5Sim(HostSim):
             interfaces=fsh_interfaces, ty=sys_mem.MemHostInterface
         )
         for inf in mem_interfaces:
-            socket = inst.get_socket(interface=inf)
+            socket = inst.update_get_socket(interface=inf)
             if socket is None:
                 continue
             assert socket._type == inst_socket.SockType.CONNECT
@@ -335,7 +335,7 @@ class QemuSim(HostSim):
             interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
         )
         for inf in pci_interfaces:
-            socket = inst.get_socket(interface=inf)
+            socket = inst.update_get_socket(interface=inf)
             if socket is None:
                 continue
             assert socket._type is inst_socket.SockType.CONNECT

@@ -232,7 +232,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
             raise Exception("comp must be a simulators component")
         sockets = []
         for interface in comp.interfaces():
-            socket = inst.get_socket(interface=interface)
+            socket = inst.update_get_socket(interface=interface)
             if socket:
                 sockets.append(socket)
         return sockets
