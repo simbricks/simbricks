@@ -186,19 +186,19 @@ class Instantiation():
         new_socket = inst_socket.Socket(path=new_path, ty=new_ty)
         return new_socket
 
-    def get_socket(self, interface: sys_base.Interface) -> inst_socket.Socket | None:
+    def update_get_socket(self, interface: sys_base.Interface) -> inst_socket.Socket | None:
         socket = self._get_socket_by_interface(interface=interface)
         if socket:
             return socket
         return None
 
-    def _get_socket(
+    def _update_get_socket(
         self, interface: sys_base.Interface, socket_type: inst_socket.SockType
     ) -> inst_socket.Socket:
 
         if self._opposing_interface_within_same_sim(interface=interface):
             raise Exception(
-                "we do not create a socket for interfacces taht both beloing to the same simulator"
+                "we do not create a socket for channels where both interfaces belong to the same simulator"
             )
 
         # check if already a socket is associated with this interface
