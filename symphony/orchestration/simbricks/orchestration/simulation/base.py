@@ -284,7 +284,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
     def supported_socket_types(
         self, interface: sys_conf.Interface
     ) -> set[inst_socket.SockType]:
-        return {}
+        return set()
 
     # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument
