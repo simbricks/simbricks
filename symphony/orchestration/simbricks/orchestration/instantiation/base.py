@@ -23,7 +23,6 @@
 from __future__ import annotations
 
 import pathlib
-import shutil
 import typing
 import itertools
 import copy
@@ -39,10 +38,11 @@ from simbricks.orchestration.instantiation import (
     fragment as inst_fragment,
     dependency_topology as inst_dep_topo,
 )
+from simbricks.utils import file as util_file
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
-    from simbricks.runtime import command_executor
+    from simbricks.runtime import command_executor as cmd_exec
 
 
 class InstantiationEnvironment(util_base.IdObj):
@@ -82,7 +82,6 @@ class Instantiation:
         self.env: InstantiationEnvironment | None = None
         self.artifact_name: str = f"simbricks-artifact-{str(uuid.uuid4())}.zip"
         self.artifact_paths: list[str] = []
-        self._executor: command_executor.Executor | None = None
         self._create_checkpoint: bool = False
         self._restore_checkpoint: bool = False
         self._preserve_checkpoints: bool = True
@@ -91,6 +90,7 @@ class Instantiation:
         self._socket_per_interface: dict[sys_base.Interface, inst_socket.Socket] = {}
         # NOTE: temporary data structure
         self._sim_dependency: dict[sim_base.Simulator, set[sim_base.Simulator]] | None = None
+        self._cmd_executor: cmd_exec.CommandExecutorFactory | None = None
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
@@ -98,18 +98,14 @@ class Instantiation:
         return path.is_absolute() and path.is_file()
 
     @property
-    def executor(self):
-        if self._executor is None:
-            raise Exception("you must set an executor")
-        return self._executor
-
-    @property
     def create_artifact(self) -> bool:
         return len(self.artifact_paths) > 0
 
-    @executor.setter
-    def executor(self, executor: command_executor.Executor):
-        self._executor = executor
+    @property
+    def command_executor(self) -> cmd_exec.CommandExecutorFactory:
+        if self._cmd_executor is None:
+            raise RuntimeError(f"{type(self).__name__}._cmd_executor should be set")
+        return self._cmd_executor
 
     def _get_opposing_interface(self, interface: sys_base.Interface) -> sys_base.Interface:
         opposing_inf = interface.get_opposing_interface()
@@ -221,13 +217,6 @@ class Instantiation:
         self._sim_dependency = inst_dep_topo.build_simulation_topology(self)
         return self._sim_dependency
 
-    async def wait_for_sockets(
-        self,
-        sockets: list[inst_socket.Socket] = [],
-    ) -> None:
-        wait_socks = list(map(lambda sock: sock._path, sockets))
-        await self.executor.await_files(wait_socks, verbose=True)
-
     @property
     def create_checkpoint(self) -> bool:
         """
@@ -318,11 +307,8 @@ class Instantiation:
         if not self.create_checkpoint and not self.restore_checkpoint:
             to_prepare.append(self.cpdir())
         for tp in to_prepare:
-            shutil.rmtree(tp, ignore_errors=True)
-            await self.executor.rmtree(tp)
-
-            pathlib.Path(tp).mkdir(parents=True, exist_ok=True)
-            await self.executor.mkdir(tp)
+            util_file.rmtree(tp)
+            util_file.mkdir(tp)
 
         await self.simulation.prepare(inst=self)
 
@@ -333,8 +319,7 @@ class Instantiation:
         if not self._preserve_checkpoints:
             to_delete.append(self.cpdir())
         for td in to_delete:
-            shutil.rmtree(td, ignore_errors=True)
-            await self.executor.rmtree(td)
+            util_file.rmtree(td)
 
     def _join_paths(self, base: str = "", relative_path: str = "", enforce_existence=False) -> str:
         if relative_path.startswith("/"):

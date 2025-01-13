@@ -25,45 +25,48 @@ from __future__ import annotations
 import asyncio
 import shlex
 import traceback
-import abc
+import typing
 
 from simbricks.runtime import output
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.instantiation import socket as inst_socket
-from simbricks.runtime import command_executor
+from simbricks.runtime import command_executor as cmd_exec
 from simbricks.utils import graphlib
 
+if typing.TYPE_CHECKING:
+    from simbricks.runtime import simulation_executor_callbacks
 
-class SimulationBaseRunner(abc.ABC):
+
+class SimulationBaseRunner():
+    # TODO (Jonas) Rename this to InstantiationExecutor
 
     def __init__(
         self,
         instantiation: inst_base.Instantiation,
+        callbacks: simulation_executor_callbacks.ExecutorCallbacks,
         verbose: bool,
     ) -> None:
         self._instantiation: inst_base.Instantiation = instantiation
+        self._callbacks = callbacks
         self._verbose: bool = verbose
         self._profile_int: int | None = None
         self._out: output.SimulationOutput = output.SimulationOutput(self._instantiation.simulation)
-        self._out_listener: dict[sim_base.Simulator, command_executor.OutputListener] = {}
-        self._running: list[tuple[sim_base.Simulator, command_executor.SimpleComponent]] = []
+        self._out_listener: dict[sim_base.Simulator, cmd_exec.OutputListener] = {}
+        self._running: list[tuple[sim_base.Simulator, cmd_exec.CommandExecutor]] = []
         self._sockets: list[inst_socket.Socket] = []
-        self._wait_sims: list[command_executor.Component] = []
+        self._wait_sims: list[cmd_exec.CommandExecutor] = []
+        self._cmd_executor = cmd_exec.CommandExecutorFactory()
 
-    @abc.abstractmethod
-    def sim_executor(self, simulator: sim_base.Simulator) -> command_executor.Executor:
-        pass
-
-    def sim_listener(self, sim: sim_base.Simulator) -> command_executor.OutputListener:
+    def sim_listener(self, sim: sim_base.Simulator) -> cmd_exec.OutputListener:
         if sim not in self._out_listener:
             raise Exception(f"no listener specified for simulator {sim.id()}")
         return self._out_listener[sim]
 
-    def add_listener(self, sim: sim_base.Simulator, listener: command_executor.OutputListener) -> None:
+    def add_listener(self, sim: sim_base.Simulator, listener: cmd_exec.OutputListener) -> None:
         self._out_listener[sim] = listener
         self._out.add_mapping(sim, listener)
-
+    
     async def start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
 
@@ -78,13 +81,12 @@ class SimulationBaseRunner(abc.ABC):
             return
 
         # run simulator
-        executor = self._instantiation.executor  # TODO: this should be a function or something
         cmds = shlex.split(run_cmd)
-        sc = executor.create_component(name, cmds, verbose=self._verbose, canfail=True)
+        cmd_exec = cmd_exec.CommandExecutor(cmds, name, self._verbose, True)
         if listener := self.sim_listener(sim=sim):
-            sc.subscribe(listener=listener)
-        await sc.start()
-        self._running.append((sim, sc))
+            cmd_exec.subscribe(listener=listener)
+        await cmd_exec.start()
+        self._running.append((sim, cmd_exec))
 
         # add sockets for cleanup
         for sock in sim.sockets_cleanup(inst=self._instantiation):
@@ -95,7 +97,8 @@ class SimulationBaseRunner(abc.ABC):
         if len(wait_socks) > 0:
             if self._verbose:
                 print(f"{self._instantiation.simulation.name}: waiting for sockets {name}")
-            await self._instantiation.wait_for_sockets(sockets=wait_socks)
+            for sock in wait_socks:
+                await sock.wait()
             if self._verbose:
                 print(f"{self._instantiation.simulation.name}: waited successfully for sockets {name}")
 
@@ -105,24 +108,13 @@ class SimulationBaseRunner(abc.ABC):
             await asyncio.sleep(delay)
 
         if sim.wait_terminate:
-            self._wait_sims.append(sc)
+            self._wait_sims.append(cmd_exec)
 
         if self._verbose:
             print(f"{self._instantiation.simulation.name}: started {name}")
 
-    async def before_wait(self) -> None:
-        pass
-
-    async def before_cleanup(self) -> None:
-        pass
-
-    async def after_cleanup(self) -> None:
-        pass
-
     async def prepare(self) -> None:
-        # TODO: FIXME
-        executor = command_executor.LocalExecutor()
-        self._instantiation.executor = executor
+        self._instantiation._cmd_executor = self._cmd_executor
         await self._instantiation.prepare()
 
     async def wait_for_sims(self) -> None:
@@ -138,8 +130,6 @@ class SimulationBaseRunner(abc.ABC):
         if self._verbose:
             print(f"{self._instantiation.simulation.name}: cleaning up")
 
-        await self.before_cleanup()
-
         # "interrupt, terminate, kill" all processes
         scs = []
         for _, sc in self._running:
@@ -150,7 +140,6 @@ class SimulationBaseRunner(abc.ABC):
         for _, sc in self._running:
             await sc.wait()
 
-        await self.after_cleanup()
         return self._out
 
     async def sigusr1(self) -> None:
@@ -188,7 +177,6 @@ class SimulationBaseRunner(abc.ABC):
 
             if self._profile_int:
                 profiler_task = asyncio.create_task(self.profiler())
-            await self.before_wait()
             await self.wait_for_sims()
         except asyncio.CancelledError:
             if self._verbose:
@@ -217,40 +205,3 @@ class SimulationBaseRunner(abc.ABC):
 
     async def cleanup(self) -> None:
         await self._instantiation.cleanup()
-
-
-class SimulationSimpleRunner(SimulationBaseRunner):
-    """Simple experiment runner with just one executor."""
-
-    def __init__(self, executor: command_executor.Executor, *args, **kwargs) -> None:
-        self._executor = executor
-        super().__init__(*args, **kwargs)
-
-    def sim_executor(self, sim: sim_base.Simulator) -> command_executor.Executor:
-        return self._executor
-
-
-# class ExperimentDistributedRunner(ExperimentBaseRunner):
-#     """Simple experiment runner with just one executor."""
-
-#     # TODO: FIXME
-#     def __init__(self, execs, exp: DistributedExperiment, *args, **kwargs) -> None:
-#         self.execs = execs
-#         super().__init__(exp, *args, **kwargs)
-#         self.exp = exp  # overrides the type in the base class
-#         assert self.exp.num_hosts <= len(execs)
-
-#     def sim_executor(self, sim) -> command_executor.Executor:
-#         h_id = self.exp.host_mapping[sim]
-#         return self.execs[h_id]
-
-#     async def prepare(self) -> None:
-#         # make sure all simulators are assigned to an executor
-#         assert self.exp.all_sims_assigned()
-
-#         # set IP addresses for proxies based on assigned executors
-#         for p in itertools.chain(self.exp.proxies_listen, self.exp.proxies_connect):
-#             executor = self.sim_executor(p)
-#             p.ip = executor.ip
-
-#         await super().prepare()

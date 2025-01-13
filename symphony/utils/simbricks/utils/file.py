@@ -1,4 +1,4 @@
-# Copyright 2022 Max Planck Institute for Software Systems, and
+# Copyright 2025 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -19,28 +19,31 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""Utility functions for operations on files and directories."""
 
-import enum
-from simbricks.utils import base as util_base
-from simbricks.utils import file as util_file
-
-
-class SockType(enum.Enum):
-    LISTEN = enum.auto()
-    CONNECT = enum.auto()
+import os
+import asyncio
+import pathlib
+import shutil
 
 
-class Socket(util_base.IdObj):
+async def await_file(path: str, delay=0.05, verbose=False, timeout=30) -> None:
+    if verbose:
+        print(f"await_file({path})")
+    t = 0
+    while not os.path.exists(path):
+        if t >= timeout:
+            raise TimeoutError()
+        await asyncio.sleep(delay)
+        t += delay
 
-    def __init__(self, path: str = "", ty: SockType = SockType.LISTEN):
-        super().__init__()
-        self._path = path
-        self._type = ty
 
-    @property
-    def type(self) -> SockType:
-        return self._type
+def mkdir(path: str) -> None:
+    pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
-    async def wait(self):
-        """Wait for socket to become available."""
-        await util_file.await_file(self._path)
+
+def rmtree(path: str) -> None:
+    if os.path.isdir(path):
+        shutil.rmtree(path, ignore_errors=True)
+    elif os.path.exists(path):
+        os.unlink(path)

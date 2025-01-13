@@ -24,13 +24,14 @@ from __future__ import annotations
 
 import abc
 import asyncio
-import os
-import pathlib
-import shlex
-import shutil
 import signal
-import typing as tp
+import typing
+import shlex
+import collections
 from asyncio.subprocess import Process
+
+if typing.TYPE_CHECKING:
+    from simbricks.orchestration.simulation import base as sim_base
 
 
 class OutputListener:
@@ -85,15 +86,17 @@ class LegacyOutputListener(OutputListener):
         return json_obj
 
 
-class Component(object):
+class CommandExecutor:
 
-    def __init__(self, cmd_parts: tp.List[str], with_stdin=False):
+    def __init__(self, cmd_parts: list[str], label: str, canfail=False):
         self.is_ready = False
         self.stdout_buf = bytearray()
         self.stderr_buf = bytearray()
         self.cmd_parts: list[str] = cmd_parts
         self._output_handler: list[OutputListener] = []
-        self.with_stdin: bool = with_stdin
+        self.label = label
+        self.canfail = canfail
+        self.cmd_parts = cmd_parts
 
         self._proc: Process
         self._terminate_future: asyncio.Task
@@ -102,7 +105,7 @@ class Component(object):
         listener.cmd_parts = self.cmd_parts
         self._output_handler.append(listener)
 
-    def _parse_buf(self, buf: bytearray, data: bytes) -> tp.List[str]:
+    def _parse_buf(self, buf: bytearray, data: bytes) -> list[str]:
         if data is not None:
             buf.extend(data)
         lines = []
@@ -144,8 +147,12 @@ class Component(object):
                 return
 
     async def _waiter(self) -> None:
-        stdout_handler = asyncio.create_task(self._read_stream(self._proc.stdout, self._consume_out))
-        stderr_handler = asyncio.create_task(self._read_stream(self._proc.stderr, self._consume_err))
+        stdout_handler = asyncio.create_task(
+            self._read_stream(self._proc.stdout, self._consume_out)
+        )
+        stderr_handler = asyncio.create_task(
+            self._read_stream(self._proc.stderr, self._consume_err)
+        )
         rc = await self._proc.wait()
         await asyncio.gather(stdout_handler, stderr_handler)
         await self.terminated(rc)
@@ -156,19 +163,13 @@ class Component(object):
             self._proc.stdin.close()
 
     async def start(self) -> None:
-        if self.with_stdin:
-            stdin = asyncio.subprocess.PIPE
-        else:
-            stdin = asyncio.subprocess.DEVNULL
-
         self._proc = await asyncio.create_subprocess_exec(
             *self.cmd_parts,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            stdin=stdin,
+            stdin=asyncio.subprocess.DEVNULL,
         )
         self._terminate_future = asyncio.create_task(self._waiter())
-        await self.started()
 
     async def wait(self) -> None:
         """
@@ -203,14 +204,20 @@ class Component(object):
             return
         # before Python 3.11, asyncio.wait_for() throws asyncio.TimeoutError -_-
         except (TimeoutError, asyncio.TimeoutError):
-            print(f"terminating component {self.cmd_parts[0]} " f"pid {self._proc.pid}", flush=True)
+            print(
+                f"terminating component {self.cmd_parts[0]} pid" f" {self._proc.pid}",
+                flush=True,
+            )
             await self.terminate()
 
         try:
             await asyncio.wait_for(self._proc.wait(), delay)
             return
         except (TimeoutError, asyncio.TimeoutError):
-            print(f"killing component {self.cmd_parts[0]} " f"pid {self._proc.pid}", flush=True)
+            print(
+                f"killing component {self.cmd_parts[0]} pid {self._proc.pid}",
+                flush=True,
+            )
             await self.kill()
         await self._proc.wait()
 
@@ -219,111 +226,40 @@ class Component(object):
         if self._proc.returncode is None:
             self._proc.send_signal(signal.SIGUSR1)
 
-    async def started(self) -> None:
+    async def process_out(self, lines: list[str], eof: bool) -> None:
+        # TODO
         pass
 
-    async def terminated(self, rc) -> None:
+    async def process_err(self, lines: list[str], eof: bool) -> None:
+        # TODO
         pass
-
-    async def process_out(self, lines: tp.List[str], eof: bool) -> None:
-        pass
-
-    async def process_err(self, lines: tp.List[str], eof: bool) -> None:
-        pass
-
-
-class SimpleComponent(Component):
-
-    def __init__(self, label: str, cmd_parts: tp.List[str], *args, verbose=True, canfail=False, **kwargs) -> None:
-        self.label = label
-        self.verbose = verbose
-        self.canfail = canfail
-        self.cmd_parts = cmd_parts
-        super().__init__(cmd_parts, *args, **kwargs)
-
-    async def process_out(self, lines: tp.List[str], eof: bool) -> None:
-        if self.verbose:
-            for _ in lines:
-                print(self.label, "OUT:", lines, flush=True)
-
-    async def process_err(self, lines: tp.List[str], eof: bool) -> None:
-        if self.verbose:
-            for _ in lines:
-                print(self.label, "ERR:", lines, flush=True)
 
     async def terminated(self, rc: int) -> None:
-        if self.verbose:
-            print(self.label, "TERMINATED:", rc, flush=True)
+        # TODO
         if not self.canfail and rc != 0:
             raise RuntimeError("Command Failed: " + str(self.cmd_parts))
 
 
-class Executor(abc.ABC):
+class CommandExecutorFactory:
 
-    def __init__(self) -> None:
-        self.ip = None
+    def __init__(self):
+        self._sim_executors: collections.defaultdict[sim_base.Simulator, set[CommandExecutor]] = (
+            collections.defaultdict(set)
+        )
+        self._generic_prepare_executors: set[CommandExecutor] = set()
 
-    @abc.abstractmethod
-    def create_component(self, label: str, parts: tp.List[str], **kwargs) -> SimpleComponent:
-        pass
-
-    @abc.abstractmethod
-    async def await_file(self, path: str, delay=0.05, verbose=False) -> None:
-        pass
-
-    @abc.abstractmethod
-    async def send_file(self, path: str, verbose=False) -> None:
-        pass
-
-    @abc.abstractmethod
-    async def mkdir(self, path: str, verbose=False) -> None:
-        pass
-
-    @abc.abstractmethod
-    async def rmtree(self, path: str, verbose=False) -> None:
-        pass
-
-    # runs the list of commands as strings sequentially
-    async def run_cmdlist(self, label: str, cmds: tp.List[str], verbose=True) -> None:
-        i = 0
+    async def generic_prepare_run_cmds(self, cmds: list[str]) -> None:
         for cmd in cmds:
-            cmd_c = self.create_component(label + "." + str(i), shlex.split(cmd), verbose=verbose)
-            await cmd_c.start()
-            await cmd_c.wait()
+            executor = CommandExecutor(shlex.split(cmd), "prepare")
+            self._generic_prepare_executors.add(executor)
+            await executor.start()
+            await executor.wait()
+            self._generic_prepare_executors.remove(executor)
 
-    async def await_files(self, paths: tp.List[str], *args, **kwargs) -> None:
-        xs = []
-        for p in paths:
-            waiter = asyncio.create_task(self.await_file(p, *args, **kwargs))
-            xs.append(waiter)
-
-        await asyncio.gather(*xs)
-
-
-class LocalExecutor(Executor):
-
-    def create_component(self, label: str, parts: list[str], **kwargs) -> SimpleComponent:
-        return SimpleComponent(label, parts, **kwargs)
-
-    async def await_file(self, path: str, delay=0.05, verbose=False, timeout=30) -> None:
-        if verbose:
-            print(f"await_file({path})")
-        t = 0
-        while not os.path.exists(path):
-            if t >= timeout:
-                raise TimeoutError()
-            await asyncio.sleep(delay)
-            t += delay
-
-    async def send_file(self, path: str, verbose=False) -> None:
-        # locally we do not need to do anything
-        pass
-
-    async def mkdir(self, path: str, verbose=False) -> None:
-        pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-
-    async def rmtree(self, path: str, verbose=False) -> None:
-        if os.path.isdir(path):
-            shutil.rmtree(path, ignore_errors=True)
-        elif os.path.exists(path):
-            os.unlink(path)
+    async def simulator_prepare_run_cmds(self, sim: sim_base.Simulator, cmds: list[str]) -> None:
+        for cmd in cmds:
+            executor = CommandExecutor(shlex.split(cmd), sim.full_name())
+            self._sim_executors[sim].add(executor)
+            await executor.start()
+            await executor.wait()
+            self._sim_executors[sim].remove(executor)
