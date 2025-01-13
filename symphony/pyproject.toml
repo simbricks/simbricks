@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 [tool.black]
-line-length = 120
+line-length = 100
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
