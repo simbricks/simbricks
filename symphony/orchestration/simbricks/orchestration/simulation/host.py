@@ -23,14 +23,13 @@
 from __future__ import annotations
 
 import math
-import asyncio
 import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.system as system
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.system import host as sys_host
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
-from simbricks.utils import base as utils_base
+from simbricks.utils import base as utils_base, file as util_file
 from simbricks.orchestration.instantiation import socket as inst_socket
 
 
@@ -117,12 +116,7 @@ class Gem5Sim(HostSim):
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
-
-        prep_cmds = [f"mkdir -p {inst.cpdir_subdir(sim=self)}"]
-        task = asyncio.create_task(
-            inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
-        )
-        await task
+        util_file.mkdir(inst.cpdir_subdir(sim=self))
 
     def checkpoint_commands(self) -> list[str]:
         return ["m5 checkpoint"]
@@ -276,6 +270,7 @@ class QemuSim(HostSim):
             copy_path = await disk.make_qcow_copy(
                 inst=inst,
                 format=format,
+                sim=self
             )
             assert copy_path is not None
             d.append((copy_path, format))

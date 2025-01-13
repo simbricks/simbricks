@@ -33,6 +33,7 @@ from simbricks.orchestration.system import base as sys_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import host as sys_host
+    from simbricks.orchestration.simulation import base as sim_base
 
 
 class DiskImage(utils_base.IdObj):
@@ -49,7 +50,12 @@ class DiskImage(utils_base.IdObj):
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         raise Exception("must be overwritten")
 
-    async def make_qcow_copy(self, inst: inst_base.Instantiation, format: str) -> str:
+    async def make_qcow_copy(
+        self,
+        inst: inst_base.Instantiation,
+        format: str,
+        sim: sim_base.Simulator
+    ) -> str:
         disk_path = pathlib.Path(self.path(inst=inst, format=format))
         copy_path = inst.join_imgs_path(relative_path=f"hdcopy.{self._id}")
         prep_cmds = [
@@ -59,7 +65,7 @@ class DiskImage(utils_base.IdObj):
                 f"{copy_path}"
             )
         ]
-        await inst.executor.run_cmdlist(label="prepare", cmds=prep_cmds, verbose=True)
+        await inst._cmd_executor.simulator_prepare_run_cmds(sim, prep_cmds)
         return copy_path
 
     @staticmethod
