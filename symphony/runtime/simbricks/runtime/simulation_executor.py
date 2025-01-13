@@ -153,12 +153,15 @@ class SimulationBaseRunner(abc.ABC):
         await self.after_cleanup()
         return self._out
 
+    async def sigusr1(self) -> None:
+        for _, sc in self._running:
+            await sc.sigusr1()
+
     async def profiler(self):
         assert self._profile_int
         while True:
             await asyncio.sleep(self._profile_int)
-            for _, sc in self._running:
-                await sc.sigusr1()
+            await self.sigusr1()
 
     async def run(self) -> output.SimulationOutput:
         profiler_task = None
@@ -189,7 +192,7 @@ class SimulationBaseRunner(abc.ABC):
             await self.wait_for_sims()
         except asyncio.CancelledError:
             if self._verbose:
-                print(f"{self._simulation.name}: interrupted")
+                print(f"{self._instantiation.simulation.name}: interrupted")
             self._out.set_interrupted()
         except:  # pylint: disable=bare-except
             self._out.set_failed()
