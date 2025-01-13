@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
+import rich
 from pathlib import Path
 import simbricks.utils.load_mod as load_mod
 from typer import Typer, Argument, Option
@@ -65,6 +66,17 @@ async def show(run_id: int):
 async def follow(run_id: int):
     """Follow individual run as it executes."""
     await opus_base.follow_run(run_id=run_id)
+
+
+@app.command()
+@async_cli()
+async def run_console(run_id: int):
+    """Print a runs console completely."""
+    console = rich.console.Console()
+    output = await client_provider.simbricks_client.get_run_console(rid=run_id)
+    with console.status(f"[bold green]Waiting for run {run_id} to finish...") as _:
+        for line in output:
+            console.log(line["simulator"] + ":" + line["output"])
 
 
 @app.command()
