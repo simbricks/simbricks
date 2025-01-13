@@ -23,6 +23,7 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 
+
 class RunnerSettings(BaseSettings):
     base_url: str = "https://app.simbricks.io/api"
     auth_client_id: str = "api.auth.simbricks.io"
@@ -33,6 +34,7 @@ class RunnerSettings(BaseSettings):
     runner_id: int = 1
 
     verbose: bool = True
+    log_level: str = "DEBUG"
 
 
 @lru_cache
