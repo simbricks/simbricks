@@ -368,6 +368,25 @@ class SimBricksClient:
             return await resp.json()
 
 
+class ResourceGroupClient:
+
+    def __init__(self, ns_client) -> None:
+        self._ns_client: NSClient = ns_client
+
+    async def create_rg(self, label: str, available_cores: int, available_memory: int) -> dict:
+        obj = {"label": label, "available_cores": available_cores, "available_memory": available_memory}
+        async with self._ns_client.post(url="/resource_group", json=obj) as resp:
+            return await resp.json()
+
+    async def get_rg(self, rg_id: int) -> dict:
+        async with self._ns_client.get(url=f"/resource_group/{rg_id}") as resp:
+            return await resp.json()
+
+    async def filter_get_rg(self) -> dict:  # TODO: add filtering object...
+        async with self._ns_client.get(url=f"/resource_group") as resp:
+            return await resp.json()
+
+
 class RunnerClient:
 
     def __init__(self, ns_client, id: int) -> None:

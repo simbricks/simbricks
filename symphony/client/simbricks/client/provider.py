@@ -20,7 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from .client import BaseClient, AdminClient, NSClient, SimBricksClient, RunnerClient
+from .client import BaseClient, AdminClient, NSClient, SimBricksClient, RunnerClient, ResourceGroupClient
 from .settings import client_settings
 
 
@@ -33,36 +33,43 @@ class ClientProvider:
         self._ns_client: NSClient | None = None
         self._simbricks_client: SimBricksClient | None = None
         self._runner_client: RunnerClient | None = None
+        self._resource_group_client: ResourceGroupClient | None = None
 
     @property
-    def base_client(self):
+    def base_client(self) -> BaseClient:
         if self._base_client is None:
             self._base_client = BaseClient()
         return self._base_client
 
     @property
-    def admin_client(self):
+    def admin_client(self) -> AdminClient:
         if self._admin_client is None:
             self._admin_client = AdminClient(base_client=self.base_client)
         return self._admin_client
 
     @property
-    def ns_client(self):
+    def ns_client(self) -> NSClient:
         if self._ns_client is None:
             self._ns_client = NSClient(base_client=self.base_client, namespace=self.namespace)
         return self._ns_client
 
     @property
-    def simbricks_client(self):
+    def simbricks_client(self) -> SimBricksClient:
         if self._simbricks_client is None:
             self._simbricks_client = SimBricksClient(self.ns_client)
         return self._simbricks_client
 
     @property
-    def runner_client(self):
+    def runner_client(self) -> RunnerClient:
         if self._runner_client is None:
             self._runner_client = RunnerClient(self.ns_client, id=self.runner_id)
         return self._runner_client
+
+    @property
+    def resource_group_client(self) -> ResourceGroupClient:
+        if self._resource_group_client is None:
+            self._resource_group_client = ResourceGroupClient(self.ns_client)
+        return self._resource_group_client
 
 
 client_provider = ClientProvider()
