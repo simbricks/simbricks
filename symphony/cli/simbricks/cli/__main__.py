@@ -22,7 +22,17 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
-from simbricks.cli.commands import audit, admin, namespaces, runs, systems, simulations, instantiations, runners
+from simbricks.cli.commands import (
+    audit,
+    admin,
+    namespaces,
+    resource_groups,
+    runs,
+    systems,
+    simulations,
+    instantiations,
+    runners,
+)
 from simbricks.client.provider import client_provider
 from simbricks.cli.utils import async_cli
 
@@ -35,6 +45,7 @@ app.add_typer(systems.app, name="systems")
 app.add_typer(simulations.app, name="sims")
 app.add_typer(instantiations.app, name="insts")
 app.add_typer(runners.app, name="runners")
+app.add_typer(resource_groups.app, name="resource_groups")
 
 
 @app.callback()
