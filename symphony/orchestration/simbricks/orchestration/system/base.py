@@ -122,7 +122,7 @@ class Component(util_base.IdObj):
         super().__init__()
         self.system = s
         self.ifs: list[Interface] = []
-        s.parameters = {}
+        self.parameters: dict[tp.Any, tp.Any] = {}
         s._add_component(self)
         self.name: str | None = None
 
@@ -145,6 +145,7 @@ class Component(util_base.IdObj):
         json_obj["module"] = self.__class__.__module__
         json_obj["system"] = self.system.id()
         json_obj["name"] = self.name
+        json_obj["parameters"] = util_base.dict_to_json(self.parameters)
 
         interfaces_json = []
         for inf in self.interfaces():
@@ -158,6 +159,9 @@ class Component(util_base.IdObj):
     def fromJSON(cls, system: System, json_obj: dict) -> Component:
         instance = super().fromJSON(json_obj)
         instance.name = util_base.get_json_attr_top_or_none(json_obj, "name")
+        instance.parameters = util_base.json_to_dict(
+            util_base.get_json_attr_top(json_obj, "parameters")
+        )
         instance.system = system
         system._add_component(instance)
 
@@ -243,6 +247,7 @@ class Channel(util_base.IdObj):
         self.a.connect(self)
         self.b: Interface = b
         self.b.connect(self)
+        self.parameters: dict[tp.Any, tp.Any] = {}
         a.component.system._add_channel(self)
 
     def interfaces(self) -> list[Interface]:
@@ -270,12 +275,16 @@ class Channel(util_base.IdObj):
         json_obj["latency"] = self.latency
         json_obj["interface_a"] = self.a.id()
         json_obj["interface_b"] = self.b.id()
+        json_obj["parameters"] = util_base.dict_to_json(self.parameters)
         return json_obj
 
     @classmethod
     def fromJSON(cls, system: System, json_obj: dict) -> Channel:
         instance = super().fromJSON(json_obj)
         instance.latency = int(util_base.get_json_attr_top(json_obj, "latency"))
+        instance.parameters = util_base.json_to_dict(
+            util_base.get_json_attr_top(json_obj, "parameters")
+        )
 
         inf_id_a = int(util_base.get_json_attr_top(json_obj, "interface_a"))
         inf_id_b = int(util_base.get_json_attr_top(json_obj, "interface_b"))
