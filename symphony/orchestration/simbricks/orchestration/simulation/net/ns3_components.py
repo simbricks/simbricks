@@ -146,6 +146,8 @@ class NS3Base(utils_base.IdObj):
     @classmethod
     def fromJSON(cls, json_obj):
         instance = super().fromJSON(json_obj)
+        # NOTE MM: we set components to an empty list for now, so that the attribute is set
+        instance.components = []
         instance.category = utils_base.get_json_attr_top(json_obj, 'category')
         instance.mapping = utils_base.json_to_dict(
             utils_base.get_json_attr_top(json_obj, 'mapping')
