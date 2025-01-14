@@ -34,7 +34,7 @@ app = Typer(help="Managing SimBricks runners.")
 async def ls():
     """List runners."""
     runners = await client_provider.runner_client.list_runners()
-    print_table_generic("Runners", runners, "id", "label", "tags")
+    print_table_generic("Runners", runners, "id", "label", "tags", "resource_group_id")
 
 
 @app.command()
@@ -42,7 +42,7 @@ async def ls():
 async def show(runner_id: int):
     """Show individual runner."""
     runner = await client_provider.runner_client.get_runner(runner_id=runner_id)
-    print_table_generic("Runners", [runner], "id", "label", "tags")
+    print_table_generic("Runners", [runner], "id", "label", "tags", "resource_group_id")
 
 
 @app.command()
@@ -54,10 +54,12 @@ async def delete(runner_id: int):
 
 @app.command()
 @async_cli()
-async def create(label: str, tags: list[str]):
+async def create(resource_group_id: int, label: str, tags: list[str]):
     """Update a runner with the the given label and tags."""
-    runner = await client_provider.runner_client.create_runner(label=label, tags=tags)
-    print_table_generic("Runner", [runner], "id", "label", "tags")
+    runner = await client_provider.runner_client.create_runner(
+        resource_group_id=resource_group_id, label=label, tags=tags
+    )
+    print_table_generic("Runner", [runner], "id", "label", "tags", "resource_group_id")
 
 
 @app.command()
