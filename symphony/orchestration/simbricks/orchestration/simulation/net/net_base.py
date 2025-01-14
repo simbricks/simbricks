@@ -22,9 +22,11 @@
 
 from __future__ import annotations
 
+from simbricks.orchestration import system
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.simulation.net import ns3_components as ns3_comps
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.utils import base as base_utils
@@ -343,5 +345,150 @@ class NS3BridgeNet(SimpleNS3Sim):
 
         if self.opt is not None:
             cmd += f"{self.opt}"
+
+        return cmd
+
+
+class NS3Net(SimpleNS3Sim):
+
+    def __init__(self, simulation: sim_base.Simulation):
+        super().__init__(simulation, ns3_run_script="e2e-cc-example")
+        self.name = f"NS3Net-{self._id}"
+        self.use_file = True
+        self.global_conf = ns3_comps.NS3GlobalConfig()
+        self.logging = ns3_comps.NS3Logging()
+
+    def add(self, comp: sys_base.Component):
+        super().add(comp)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["use_file"] = self.use_file
+        json_obj["global_conf"] = self.global_conf.toJSON()
+        json_obj["logging"] = self.logging.toJSON()
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls,
+                 simulation: sim_base.Simulation,
+                 json_obj: dict) -> NS3Net:
+        instance = super().fromJSON(simulation, json_obj)
+        instance.use_file = base_utils.get_json_attr_top(json_obj, "use_file")
+        instance.global_conf = ns3_comps.NS3GlobalConfig.fromJSON(
+            base_utils.get_json_attr_top(json_obj, "global_conf")
+        )
+        instance.logging = ns3_comps.NS3Logging.fromJSON(
+            base_utils.get_json_attr_top(json_obj, "logging")
+        )
+        return instance
+
+    def supported_socket_types(
+        self, interface: sys_base.Interface
+    ) -> set[inst_socket.SockType]:
+        return [inst_socket.SockType.CONNECT, inst_socket.SockType.LISTEN]
+
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        cmd = super().run_cmd(inst=inst)
+
+        ns3_components: map[sys_base.Component, ns3_comps.NS3Component] = {}
+        ns3c: set[ns3_comps.NS3Component] = set()
+
+        # TODO: with the current abstraction we connect hosts directly to
+        # switches in ns-3 without specifying any NICs explicitly. We should
+        # change this in the future.
+
+        # create the ns3 components
+        for comp in self.components():
+            if isinstance(comp, sys_eth.EthSwitch):
+                ns3_switch = ns3_comps.NS3SwitchNode(comp)
+                ns3_components[comp] = ns3_switch
+                ns3c.add(ns3_switch)
+            elif isinstance(comp, system.Host):
+                ns3_host = ns3_comps.NS3SimpleHost(comp)
+                ns3_components[comp] = ns3_host
+                for app in comp.applications:
+                    ns3_app = ns3_comps.NS3GenericApplication(app)
+                    ns3_components[app] = ns3_app
+                    ns3_host.add_component(ns3_app)
+
+        def get_opposing_component(chan: sys_base.Channel,
+                                   comp: sys_base.Component
+                                   ) -> sys_base.Component:
+            if chan.a.component == comp:
+                return chan.b.component
+            assert(chan.b.component == comp)
+            return chan.a.component
+
+        def get_component_interface(chan: sys_base.Channel,
+                                    comp: sys_base.Component
+                                    ) -> sys_base.Interface:
+            if chan.a.component == comp:
+                return chan.a
+            else:
+                return chan.b
+
+        # create the correct channels, i.e. iterate over all channels and figure
+        # out for each of them how to realize them in ns-3
+        channels: set[sys_base.Channel] = set()
+
+        for comp in self.components():
+            for chan in comp.channels():
+                if chan in channels:
+                    continue
+
+                assert(isinstance(chan, sys_eth.EthChannel))
+                other = get_opposing_component(chan, comp)
+
+                if isinstance(comp, system.Host):
+                    # connect host to switch
+                    assert(isinstance(other, sys_eth.EthSwitch))
+                    ns3_components[other].add_component(ns3_components[comp])
+                    channels.add(chan)
+                elif isinstance(comp, sys_eth.EthSwitch):
+                    if other not in self.components():
+                        # the component is in a different simulator instance
+                        sim_chan = self._simulation.retrieve_or_create_channel(chan)
+                        socket = inst.get_socket(get_component_interface(chan, comp))
+                        assert(socket)
+                        ns3_sb_chan = ns3_comps.NS3NetworkSimbricks(other, sim_chan, socket)
+                        ns3_components[comp].add_component(ns3_sb_chan)
+                        channels.add(chan)
+                    else:
+                        if isinstance(other, system.Host):
+                            # we handle this case when we see the host
+                            continue
+                        # two switches in this ns-3 instance
+                        assert(isinstance(other, sys_eth.EthSwitch))
+                        ns3_chan = ns3_comps.NS3SimpleChannel(chan)
+                        ns3_chan.left_node = ns3_components[comp]
+                        ns3_chan.right_node = ns3_components[other]
+                        ns3c.add(ns3_chan)
+                else:
+                    raise ValueError("Cannot add component to ns-3")
+
+        for component in ns3c:
+            component.resolve_paths()
+
+        params: list[str] = []
+        params.append(self.global_conf.ns3_config())
+        params.append(self.logging.ns3_config())
+        for component in ns3c:
+            params.append(component.ns3_config())
+
+        #params.append(" ".join([f"--{k}={v}" for k,v in self.opts.items()]))
+        if self.opt:
+            params.append(self.opt)
+
+        params_str = "\n".join(params)
+
+        if self.use_file:
+            # TODO: change this to a more sensible file path?
+            file_path = inst._join_paths(inst.out_base_dir(), f"{self.name}_params", False)
+            with open(file_path, 'w', encoding="utf-8") as f:
+                f.write(params_str)
+            cmd += f"--ConfigFile={file_path}"
+        else:
+            cmd += params_str
 
         return cmd
