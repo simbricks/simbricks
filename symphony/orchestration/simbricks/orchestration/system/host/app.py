@@ -37,12 +37,14 @@ class Application(utils_base.IdObj):
     def __init__(self, h: sys_host.Host) -> None:
         super().__init__()
         self.host: sys_host.Host = h
+        self.parameters: dict[tp.Any, tp.Any] = {}
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["type"] = self.__class__.__name__
         json_obj["module"] = self.__class__.__module__
         json_obj["host"] = self.host.id()
+        json_obj["parameters"] = utils_base.dict_to_json(self.parameters)
         return json_obj
 
     @classmethod
@@ -50,6 +52,9 @@ class Application(utils_base.IdObj):
         instance = super().fromJSON(json_obj)
         host_id = utils_base.get_json_attr_top(json_obj, "host")
         instance.host = system.get_comp(host_id)
+        instance.parameters = utils_base.json_to_dict(
+            utils_base.get_json_attr_top(json_obj, "parameters")
+        )
         return instance
 
 
