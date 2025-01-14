@@ -91,10 +91,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
         host_comps = self.filter_components_by_type(ty=sys_conf.Host)
         for host in host_comps:
             for app in host.applications:
-                if not isinstance(app, sys_conf.BaseLinuxApplication):
-                    continue
-                lin_app: sys_conf.BaseLinuxApplication = app
-                if lin_app.wait:
+                if app.wait:
                     return True
         return False
 
