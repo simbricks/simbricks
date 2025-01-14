@@ -425,8 +425,9 @@ class RunnerClient:
         async with self._ns_client.get(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
             yield resp
 
-    async def create_runner(self, label: str, tags: list[str]) -> dict:
-        obj = {"label": label, "tags": list(map(lambda t: {"label": t, "runner_id": None}, tags))}
+    async def create_runner(self, resource_group_id: int, label: str, tags: list[str]) -> dict:
+        tags_obj = list(map(lambda t: {"label": t}, tags))
+        obj = {"resource_group_id": resource_group_id, "label": label, "tags": tags_obj}
         async with self._ns_client.post(url=f"/runners", json=obj) as resp:
             return await resp.json()
 
