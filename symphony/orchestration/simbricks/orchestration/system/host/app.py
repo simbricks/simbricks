@@ -37,6 +37,7 @@ class Application(utils_base.IdObj):
     def __init__(self, h: sys_host.Host) -> None:
         super().__init__()
         self.host: sys_host.Host = h
+        self.wait: bool = False
         self.parameters: dict[tp.Any, tp.Any] = {}
 
     def toJSON(self) -> dict:
@@ -65,7 +66,6 @@ class BaseLinuxApplication(Application):
         super().__init__(h)
         self.start_delay: float | None = None
         self.end_delay: float | None = None
-        self.wait: bool = False
 
     @abc.abstractmethod
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
