@@ -378,6 +378,27 @@ class ResourceGroupClient:
         async with self._ns_client.post(url="/resource_group", json=obj) as resp:
             return await resp.json()
 
+    async def update_rg(
+        self,
+        rg_id: int,
+        label: str | None = None,
+        available_cores: int | None = None,
+        available_memory: int | None = None,
+        cores_left: int | None = None,
+        memory_left: int | None = None,
+    ) -> dict:
+        obj = {
+            "id": rg_id,
+            "label": label,
+            "available_cores": available_cores,
+            "available_memory": available_memory,
+            "cores_left": cores_left,
+            "memory_left": memory_left,
+        }
+        obj = utils_base.filter_None_dict(to_filter=obj)
+        async with self._ns_client.put(url=f"/resource_group/{rg_id}", json=obj) as resp:
+            return await resp.json()
+
     async def get_rg(self, rg_id: int) -> dict:
         async with self._ns_client.get(url=f"/resource_group/{rg_id}") as resp:
             return await resp.json()
