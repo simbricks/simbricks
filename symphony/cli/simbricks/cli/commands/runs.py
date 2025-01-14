@@ -128,14 +128,6 @@ async def submit_script(
     input: Annotated[
         str | None, Option("--input", "-i", help="Specify a tarball file of inputs needed for running the simulation.")
     ] = None,
-    start: Annotated[
-        bool,
-        Option(
-            "--start",
-            "-s",
-            help="Immediately create a start event and schedule the run to be executed on the specified runner.",
-        ),
-    ] = False,
 ):
     """Submit a SimBricks python simulation script to run."""
 
@@ -148,9 +140,6 @@ async def submit_script(
     run_id = await opus_base.create_run(instantiation=sb_inst)
     if input:
         await system_client.set_run_input(run_id, input)
-
-    if start:
-        await client_provider.runner_client.create_runner_event(action="start_run", run_id=run_id)
 
     if follow:
         await opus_base.follow_run(run_id=run_id)
