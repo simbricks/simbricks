@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import pathlib
 from simbricks.orchestration import system
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import eth as sys_eth
@@ -484,7 +485,9 @@ class NS3Net(SimpleNS3Sim):
 
         if self.use_file:
             # TODO: change this to a more sensible file path?
-            file_path = inst._join_paths(inst.out_base_dir(), f"{self.name}_params", False)
+            sim_out = inst.get_simmulator_output_dir(self)
+            pathlib.Path(sim_out).mkdir(parents=True, exist_ok=True)
+            file_path = inst._join_paths(sim_out, f"{self.name}_params")
             with open(file_path, 'w', encoding="utf-8") as f:
                 f.write(params_str)
             cmd += f"--ConfigFile={file_path}"
