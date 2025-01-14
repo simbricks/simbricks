@@ -26,7 +26,9 @@ from simbricks.client.provider import client_provider
 from ..utils import async_cli, print_table_generic
 
 
-app = Typer(help="Managing SimBricks runners.")
+app = Typer(
+    help="Managing SimBricks runners. (NOTE: some commands like listing events are relative to a specific runner. To use them properly use either the simbricks-cli commands --runner-ident parameter or a environment variable.)"
+)
 
 
 @app.command()
@@ -68,7 +70,9 @@ async def create_event(
     action: str,
     run_id: Annotated[int | None, Option("--run", "-r", help="Set event for specific run.")] = None,
 ):
-    """Send a run related event to a runner (Available actions: kill, heartbeat, simulation_status, start_run)."""
+    """Send a run related event to a runner (Available actions: kill (reuires a run id that shall be killed), heartbeat, simulation_status)."""
+    if action == "kill" and not run_id:
+        raise Exception("when trying to create a kill action you must specify a run id")
     event = await client_provider.runner_client.create_runner_event(action=action, run_id=run_id)
     print_table_generic("Event", [event], "id", "runner_id", "action", "run_id", "event_status")
 
