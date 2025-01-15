@@ -35,3 +35,7 @@ class Socket(util_base.IdObj):
         super().__init__()
         self._path = path
         self._type = ty
+
+    @property
+    def type(self) -> SockType:
+        return self._type
