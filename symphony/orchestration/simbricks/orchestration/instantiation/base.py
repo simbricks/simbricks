@@ -34,8 +34,11 @@ from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system.host import disk_images
-from simbricks.orchestration.instantiation import socket as inst_socket
-from simbricks.orchestration.instantiation import fragment as inst_fragment
+from simbricks.orchestration.instantiation import (
+    socket as inst_socket,
+    fragment as inst_fragment,
+    dependency_topology as inst_dep_topo,
+)
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
@@ -223,73 +226,10 @@ class Instantiation():
         print(f"created socket: {new_socket._path}")
         return new_socket
 
-    def _build_simulation_topology(self) -> None:
-
-        sim_dependency: dict[sim_base.Simulator, set[sim_base.Simulator]] = {}
-
-        def insert_dependency(
-            sim_a: sim_base.Simulator, depends_on: sim_base.Simulator
-        ):
-            if depends_on in sim_dependency:
-                if sim_a in sim_dependency[depends_on]:
-                    # TODO: FIXME
-                    raise Exception(
-                        "detected cylic dependency, this is currently not supported"
-                    )
-
-            a_dependencies = set()
-            if sim_a in sim_dependency:
-                a_dependencies = sim_dependency[sim_a]
-
-            a_dependencies.add(depends_on)
-            sim_dependency[sim_a] = a_dependencies
-
-        def update_a_depends_on_b(inf_a: sys_base.Interface, inf_b: sys_base.Interface):
-            sim_a = self.find_sim_by_interface(interface=inf_a)
-            sim_b = self.find_sim_by_interface(interface=inf_b)
-            a_sock: set[inst_socket.SockType] = sim_a.supported_socket_types(interface=inf_a)
-            b_sock: set[inst_socket.SockType] = sim_b.supported_socket_types(interface=inf_b)
-
-            if a_sock != b_sock:
-                if len(a_sock) == 0 or len(b_sock) == 0:
-                    raise Exception(
-                        "cannot create socket and resolve dependency if no socket type is supported for an interface"
-                    )
-                if inst_socket.SockType.CONNECT in a_sock:
-                    assert inst_socket.SockType.LISTEN in b_sock
-                    insert_dependency(sim_a, depends_on=sim_b)
-                    self._get_socket(interface=inf_a, socket_type=inst_socket.SockType.CONNECT)
-                    self._get_socket(interface=inf_b, socket_type=inst_socket.SockType.LISTEN)
-                else:
-                    assert inst_socket.SockType.CONNECT in b_sock
-                    insert_dependency(sim_b, depends_on=sim_a)
-                    self._get_socket(interface=inf_b, socket_type=inst_socket.SockType.CONNECT)
-                    self._get_socket(interface=inf_a, socket_type=inst_socket.SockType.LISTEN)
-            else:
-                # deadlock?
-                if len(a_sock) != 2 or len(b_sock) != 2:
-                    raise Exception("cannot solve deadlock")
-                # both support both we just pick an order
-                insert_dependency(sim_a, depends_on=sim_b)
-                self._get_socket(interface=sim_a, socket_type=inst_socket.SockType.CONNECT)
-                self._get_socket(interface=sim_b, socket_type=inst_socket.SockType.LISTEN)
-
-        # build dependency graph
-        for sim in self.simulation.all_simulators():
-            for comp in sim._components:
-                for sim_inf in comp.interfaces():
-                    if self._opposing_interface_within_same_sim(interface=sim_inf):
-                        continue
-                    opposing_inf = self._get_opposing_interface(interface=sim_inf)
-                    update_a_depends_on_b(inf_a=sim_inf, inf_b=opposing_inf)
-
-        self._sim_dependency = sim_dependency
-
     def sim_dependencies(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
         if self._sim_dependency is not None:
             return self._sim_dependency
-        self._build_simulation_topology()
-        assert self._sim_dependency is not None
+        self._sim_dependency = inst_dep_topo.build_simulation_topology(self)
         return self._sim_dependency
 
     async def wait_for_sockets(
