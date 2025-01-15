@@ -23,6 +23,11 @@
 [tool.black]
 line-length = 100
 
+[tool.isort]
+line_length = 100
+multi_line_output=5
+known_first_party=["simbricks"]
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
