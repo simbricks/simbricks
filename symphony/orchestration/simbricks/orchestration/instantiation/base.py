@@ -49,8 +49,8 @@ class InstantiationEnvironment(util_base.IdObj):
 
     def __init__(
         self,
-        workdir: pathlib.Path = pathlib.Path.cwd() / pathlib.Path('simbricks-workdir'),
-        simbricksdir: pathlib.Path = pathlib.Path('/simbricks'),
+        workdir: pathlib.Path = pathlib.Path.cwd() / pathlib.Path("simbricks-workdir"),
+        simbricksdir: pathlib.Path = pathlib.Path("/simbricks"),
     ):
         super().__init__()
         self._simbricksdir: str = simbricksdir.resolve()
@@ -58,15 +58,11 @@ class InstantiationEnvironment(util_base.IdObj):
         self._output_base: str = pathlib.Path(f"{self._workdir}/output").resolve()
         self._tmp_simulation_files: str = pathlib.Path(f"{self._workdir}/tmp").resolve()
         self._imgdir: str = pathlib.Path(f"{self._tmp_simulation_files}/imgs").resolve()
-        self._cpdir: str = pathlib.Path(
-            f"{self._tmp_simulation_files}/checkpoints"
-        ).resolve()
-        self._shm_base: str = pathlib.Path(
-            f"{self._tmp_simulation_files}/shm"
-        ).resolve()
+        self._cpdir: str = pathlib.Path(f"{self._tmp_simulation_files}/checkpoints").resolve()
+        self._shm_base: str = pathlib.Path(f"{self._tmp_simulation_files}/shm").resolve()
 
 
-class Instantiation():
+class Instantiation:
 
     __id_iter = itertools.count()
 
@@ -94,9 +90,7 @@ class Instantiation():
         # NOTE: temporary data structure
         self._socket_per_interface: dict[sys_base.Interface, inst_socket.Socket] = {}
         # NOTE: temporary data structure
-        self._sim_dependency: (
-            dict[sim_base.Simulator, set[sim_base.Simulator]] | None
-        ) = None
+        self._sim_dependency: dict[sim_base.Simulator, set[sim_base.Simulator]] | None = None
 
     @staticmethod
     def is_absolute_exists(path: str) -> bool:
@@ -117,15 +111,11 @@ class Instantiation():
     def executor(self, executor: command_executor.Executor):
         self._executor = executor
 
-    def _get_opposing_interface(
-        self, interface: sys_base.Interface
-    ) -> sys_base.Interface:
+    def _get_opposing_interface(self, interface: sys_base.Interface) -> sys_base.Interface:
         opposing_inf = interface.get_opposing_interface()
         return opposing_inf
 
-    def _opposing_interface_within_same_sim(
-        self, interface: sys_base.Interface
-    ) -> bool:
+    def _opposing_interface_within_same_sim(self, interface: sys_base.Interface) -> bool:
         opposing_interface = self._get_opposing_interface(interface=interface)
         component = interface.component
         opposing_component = opposing_interface.component
@@ -177,9 +167,13 @@ class Instantiation():
             enforce_existence=False,
         )
 
-    def _create_opposing_socket(self, socket: inst_socket.Socket, socket_type: inst_socket.SockType) -> inst_socket.Socket:
+    def _create_opposing_socket(
+        self, socket: inst_socket.Socket, socket_type: inst_socket.SockType
+    ) -> inst_socket.Socket:
         new_ty = (
-            inst_socket.SockType.LISTEN if socket._type == inst_socket.SockType.CONNECT else inst_socket.SockType.CONNECT
+            inst_socket.SockType.LISTEN
+            if socket._type == inst_socket.SockType.CONNECT
+            else inst_socket.SockType.CONNECT
         )
         if new_ty != socket_type:
             raise Exception(
@@ -212,9 +206,7 @@ class Instantiation():
         # Check if other side already created a socket, and create an opposing one
         socket = self._get_opposing_socket_by_interface(interface=interface)
         if socket is not None:
-            new_socket = self._create_opposing_socket(
-                socket=socket, socket_type=socket_type
-            )
+            new_socket = self._create_opposing_socket(socket=socket, socket_type=socket_type)
             self._updated_tracker_mapping(interface=interface, socket=new_socket)
             print(f"created socket: {new_socket._path}")
             return new_socket
@@ -283,9 +275,7 @@ class Instantiation():
             # Experiment does not define any simulation fragments, so
             # implicitly, we create one fragment that spans the whole simulation
             self._simulation_fragment = inst_fragment.Fragment()
-            self._simulation_fragment.add_simulators(
-                self.simulation.all_simulators()
-            )
+            self._simulation_fragment.add_simulators(self.simulation.all_simulators())
         else:
             fragments = [
                 fragment
@@ -298,41 +288,33 @@ class Instantiation():
     # TODO: this needs fixing...
     def copy(self) -> Instantiation:
         cop = Instantiation(sim=self.simulation)
-        cop.simulation = copy.deepcopy(self.simulation) # maybe there is a smarter way of achieving this...
+        cop.simulation = copy.deepcopy(
+            self.simulation
+        )  # maybe there is a smarter way of achieving this...
         cop.artifact_name = self.artifact_name
         cop.artifact_paths = self.artifact_paths
-        cop._create_checkpoint = self._create_checkpoint 
-        cop._restore_checkpoint = self._restore_checkpoint 
-        cop._preserve_checkpoints = self._preserve_checkpoints 
-        cop.preserve_tmp_folder = self.preserve_tmp_folder 
+        cop._create_checkpoint = self._create_checkpoint
+        cop._restore_checkpoint = self._restore_checkpoint
+        cop._preserve_checkpoints = self._preserve_checkpoints
+        cop.preserve_tmp_folder = self.preserve_tmp_folder
         cop._socket_per_interface = {}
         cop._sim_dependency = None
         return cop
 
     def out_base_dir(self) -> str:
-        return pathlib.Path(
-            f"{self.env._output_base}/{self.simulation.name}/{self._id}"
-        ).resolve()
+        return pathlib.Path(f"{self.env._output_base}/{self.simulation.name}/{self._id}").resolve()
 
     def shm_base_dir(self) -> str:
-        return pathlib.Path(
-            f"{self.env._shm_base}/{self.simulation.name}/{self._id}"
-        ).resolve()
+        return pathlib.Path(f"{self.env._shm_base}/{self.simulation.name}/{self._id}").resolve()
 
     def imgs_dir(self) -> str:
-        return pathlib.Path(
-            f"{self.env._imgdir}/{self.simulation.name}/{self._id}"
-        ).resolve()
+        return pathlib.Path(f"{self.env._imgdir}/{self.simulation.name}/{self._id}").resolve()
 
     def cpdir(self) -> str:
-        return pathlib.Path(
-            f"{self.env._cpdir}/{self.simulation.name}" # /{self._id}"
-        ).resolve()
+        return pathlib.Path(f"{self.env._cpdir}/{self.simulation.name}").resolve()  # /{self._id}"
 
     def wrkdir(self) -> str:
-        return pathlib.Path(
-            f"{self.env._workdir}/{self.simulation.name}" # /{self._id}"
-        ).resolve()
+        return pathlib.Path(f"{self.env._workdir}/{self.simulation.name}").resolve()  # /{self._id}"
 
     async def prepare(self) -> None:
         to_prepare = [self.shm_base_dir(), self.imgs_dir()]
@@ -357,9 +339,7 @@ class Instantiation():
             shutil.rmtree(td, ignore_errors=True)
             await self.executor.rmtree(td)
 
-    def _join_paths(
-        self, base: str = "", relative_path: str = "", enforce_existence=False
-    ) -> str:
+    def _join_paths(self, base: str = "", relative_path: str = "", enforce_existence=False) -> str:
         if relative_path.startswith("/"):
             raise Exception(
                 f"cannot join with base={base} because relative_path={relative_path} starts with '/'"
@@ -423,9 +403,7 @@ class Instantiation():
 
     def cpdir_subdir(self, sim: sim_base.Simulator) -> str:
         dir_path = f"checkpoint.{sim.full_name()}-{sim._id}"
-        return self._join_paths(
-            base=self.cpdir(), relative_path=dir_path, enforce_existence=False
-        )
+        return self._join_paths(base=self.cpdir(), relative_path=dir_path, enforce_existence=False)
 
     def get_simmulator_output_dir(self, sim: sim_base.Simulator) -> str:
         dir_path = f"output.{sim.full_name()}-{sim._id}"
@@ -443,9 +421,7 @@ class Instantiation():
             relative_path=f"out.json",
         )
 
-    def find_sim_by_interface(
-        self, interface: sys_base.Interface
-    ) -> sim_base.Simulator:
+    def find_sim_by_interface(self, interface: sys_base.Interface) -> sim_base.Simulator:
         return self.find_sim_by_spec(spec=interface.component)
 
     def find_sim_by_spec(self, spec: sys_base.Component) -> sim_base.Simulator:
