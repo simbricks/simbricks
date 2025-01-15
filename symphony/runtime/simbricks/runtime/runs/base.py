@@ -47,9 +47,7 @@ class Run:
         self._run_nr = next(self.__run_nr)
         self._output: output.SimulationOutput | None = output
         self._prereq: Run | None = prereq
-        self._job_id: int | None = job_id
         self.checkpoint: bool = cp
-        """Slurm job id."""
 
     def name(self) -> str:
         return self.instantiation.simulation.name + "." + str(self._run_nr)
