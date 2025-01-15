@@ -490,7 +490,7 @@ class Simulation(utils_base.IdObj):
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         promises = []
-        for sim in self._sim_list:
+        for sim in inst.fragment.all_simulators():
             promises.append(sim.prepare(inst=inst))
         await asyncio.gather(*promises)
 
