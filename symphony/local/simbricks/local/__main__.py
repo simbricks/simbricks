@@ -20,25 +20,22 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """This is the top-level module of the SimBricks orchestration framework that
-users interact with."""
+users interact with for running simulations locally."""
 
 import argparse
 import asyncio
 import fnmatch
 import importlib
 import importlib.util
-import json
 import os
+import pathlib
 import signal
 import sys
 
-
-from simbricks.runtime import output as sim_out
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.runtime.runs import base as runs_base
+from simbricks.runtime import output as sim_out
 from simbricks.runtime.runs import base as runs_base
 from simbricks.runtime.runs import local as rt_local
-from simbricks.runtime import command_executor
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,22 +63,13 @@ def parse_args() -> argparse.Namespace:
         help="Only run experiments matching the given Unix shell style patterns",
     )
     parser.add_argument(
-        "--pickled",
-        action="store_const",
-        const=True,
-        default=False,
-        help="Interpret experiment modules as pickled runs instead of .py files",
-    )
-    parser.add_argument(
         "--runs",
         metavar="N",
         type=int,
         default=1,
         help="Number of repetition of each experiment",
     )
-    parser.add_argument(
-        "--firstrun", metavar="N", type=int, default=1, help="ID for first run"
-    )
+    parser.add_argument("--firstrun", metavar="N", type=int, default=1, help="ID for first run")
     parser.add_argument(
         "--force",
         action="store_const",
@@ -116,44 +104,16 @@ def parse_args() -> argparse.Namespace:
     g_env.add_argument(
         "--repo",
         metavar="DIR",
-        type=str,
-        default=os.path.dirname(__file__) + "/..",
+        type=pathlib.Path,
+        default=pathlib.Path("/simbricks"),
         help="SimBricks repository directory",
     )
     g_env.add_argument(
         "--workdir",
         metavar="DIR",
-        type=str,
-        default="./out/",
+        type=pathlib.Path,
+        default=pathlib.Path("./out/"),
         help="Work directory base",
-    )
-    g_env.add_argument(
-        "--outdir",
-        metavar="DIR",
-        type=str,
-        default="./out/",
-        help="Output directory base",
-    )
-    g_env.add_argument(
-        "--cpdir",
-        metavar="DIR",
-        type=str,
-        default="./out/",
-        help="Checkpoint directory base",
-    )
-    g_env.add_argument(
-        "--hosts",
-        metavar="JSON_FILE",
-        type=str,
-        default=None,
-        help="List of hosts to use (json)",
-    )
-    g_env.add_argument(
-        "--shmdir",
-        metavar="DIR",
-        type=str,
-        default=None,
-        help="Shared memory directory base (workdir if not set)",
     )
 
     # arguments for the parallel runtime
@@ -181,89 +141,17 @@ def parse_args() -> argparse.Namespace:
         help="Memory limit for parallel runs (in MB)",
     )
 
-    # arguments for the slurm runtime
-    g_slurm = parser.add_argument_group("Slurm Runtime")
-    g_slurm.add_argument(
-        "--slurm",
-        dest="runtime",
-        action="store_const",
-        const="slurm",
-        default="sequential",
-        help="Use slurm instead of sequential runtime",
-    )
-    g_slurm.add_argument(
-        "--slurmdir",
-        metavar="DIR",
-        type=str,
-        default="./slurm/",
-        help="Slurm communication directory",
-    )
-
-    # arguments for the distributed runtime
-    g_dist = parser.add_argument_group("Distributed Runtime")
-    g_dist.add_argument(
-        "--dist",
-        dest="runtime",
-        action="store_const",
-        const="dist",
-        default="sequential",
-        help="Use sequential distributed runtime instead of local",
-    )
-    g_dist.add_argument(
-        "--auto-dist",
-        action="store_const",
-        const=True,
-        default=False,
-        help="Automatically distribute non-distributed experiments",
-    )
-    g_dist.add_argument(
-        "--proxy-type",
-        metavar="TYPE",
-        type=str,
-        default="sockets",
-        help="Proxy type to use (sockets,rdma) for auto distribution",
-    )
-
     return parser.parse_args()
-
-
-def load_executors(path: str) -> list[command_executor.Executor]:
-    """Load hosts list from json file and return list of executors."""
-    with open(path, "r", encoding="utf-8") as f:
-        hosts = json.load(f)
-
-        exs = []
-        for h in hosts:
-            if h["type"] == "local":
-                ex = command_executor.LocalExecutor()
-            elif h["type"] == "remote":
-                ex = command_executor.RemoteExecutor(h["host"], h["workdir"])
-                if "ssh_args" in h:
-                    ex.ssh_extra_args += h["ssh_args"]
-                if "scp_args" in h:
-                    ex.scp_extra_args += h["scp_args"]
-            else:
-                raise RuntimeError('invalid host type "' + h["type"] + '"')
-            ex.ip = h["ip"]
-            exs.append(ex)
-    return exs
-
-
-def warn_multi_exec(executors: list[command_executor.Executor]):
-    if len(executors) > 1:
-        print(
-            "Warning: multiple hosts specified, only using first one for now",
-            file=sys.stderr,
-        )
 
 
 def add_exp(
     instantiation: inst_base.Instantiation,
     prereq: runs_base.Run | None,
     rt: runs_base.Runtime,
+    args: argparse.Namespace,
 ) -> runs_base.Run:
 
-    env = inst_base.InstantiationEnvironment() # TODO: set from args
+    env = inst_base.InstantiationEnvironment(args.workdir, args.repo)
     instantiation.env = env
 
     output = sim_out.SimulationOutput(instantiation.simulation)
@@ -274,90 +162,71 @@ def add_exp(
 
 def main():
     args = parse_args()
-    if args.hosts is None:
-        executors = [command_executor.LocalExecutor()]
-    else:
-        executors = load_executors(args.hosts)
 
     # initialize runtime
     if args.runtime == "parallel":
-        warn_multi_exec(executors)
-        rt = rt_local.LocalParallelRuntime(
-            cores=args.cores, mem=args.mem, verbose=args.verbose, executor=executors[0]
-        )
-    # elif args.runtime == "slurm":
-    #     rt = runs.SlurmRuntime(args.slurmdir, args, verbose=args.verbose)
-    # elif args.runtime == "dist":
-    #     rt = runs.DistributedSimpleRuntime(executors, verbose=args.verbose)
+        rt = rt_local.LocalParallelRuntime(cores=args.cores, mem=args.mem, verbose=args.verbose)
     else:
-        warn_multi_exec(executors)
-        rt = rt_local.LocalSimpleRuntime(verbose=args.verbose, executor=executors[0])
+        rt = rt_local.LocalSimpleRuntime(verbose=args.verbose)
 
     if args.profile_int:
         rt.enable_profiler(args.profile_int)
 
-    # load experiments
-    if not args.pickled:
-        # default: load python modules with experiments
-        instantiations: list[inst_base.Instantiation] = []
-        for path in args.experiments:
-            modname, _ = os.path.splitext(os.path.basename(path))
+    # load python modules with experiments
+    instantiations: list[inst_base.Instantiation] = []
+    for path in args.experiments:
+        modname, _ = os.path.splitext(os.path.basename(path))
 
-            class ExperimentModuleLoadError(Exception):
-                pass
+        class ExperimentModuleLoadError(Exception):
+            pass
 
-            spec = importlib.util.spec_from_file_location(modname, path)
-            if spec is None:
-                raise ExperimentModuleLoadError("spec is None")
-            mod = importlib.util.module_from_spec(spec)
-            if spec.loader is None:
-                raise ExperimentModuleLoadError("spec.loader is None")
-            spec.loader.exec_module(mod)
-            instantiations += mod.instantiations
+        spec = importlib.util.spec_from_file_location(modname, path)
+        if spec is None:
+            raise ExperimentModuleLoadError("spec is None")
+        mod = importlib.util.module_from_spec(spec)
+        if spec.loader is None:
+            raise ExperimentModuleLoadError("spec.loader is None")
+        spec.loader.exec_module(mod)
+        instantiations += mod.instantiations
 
-        if args.list:
-            for inst in instantiations:
-                print(inst.simulation.name)
-            sys.exit(0)
-
+    if args.list:
         for inst in instantiations:
-            # if args.auto_dist and not isinstance(sim, sim_base.DistributedExperiment):
-            #     sim = runs_base.auto_dist(sim, executors, args.proxy_type)
+            print(inst.simulation.name)
+        sys.exit(0)
 
-            # apply filter if any specified
-            if (args.filter) and (len(args.filter) > 0):
-                match = False
-                for f in args.filter:
-                    match = fnmatch.fnmatch(inst.simulation.name, f)
-                    if match:
-                        break
+    for inst in instantiations:
+        # if args.auto_dist and not isinstance(sim, sim_base.DistributedExperiment):
+        #     sim = runs_base.auto_dist(sim, executors, args.proxy_type)
 
-                if not match:
-                    continue
+        # apply filter if any specified
+        if (args.filter) and (len(args.filter) > 0):
+            match = False
+            for f in args.filter:
+                match = fnmatch.fnmatch(inst.simulation.name, f)
+                if match:
+                    break
 
-            # if this is an experiment with a checkpoint we might have to create
-            # it
-            prereq = None
-            if inst.create_checkpoint and inst.simulation.any_supports_checkpointing():
-                checkpointing_inst = inst.copy()
-                checkpointing_inst.restore_checkpoint = False
-                checkpointing_inst.create_checkpoint = True
-                inst.create_checkpoint = False
-                inst.restore_checkpoint = True
+            if not match:
+                continue
 
-                prereq = add_exp(instantiation=checkpointing_inst, rt=rt, prereq=None)
+        # if this is an experiment with a checkpoint we might have to create
+        # it
+        prereq = None
+        if inst.create_checkpoint and inst.simulation.any_supports_checkpointing():
+            checkpointing_inst = inst.copy()
+            checkpointing_inst.restore_checkpoint = False
+            checkpointing_inst.create_checkpoint = True
+            inst.create_checkpoint = False
+            inst.restore_checkpoint = True
 
-            for index in range(args.firstrun, args.firstrun + args.runs):
-                inst_copy = inst.copy()
-                inst_copy.preserve_tmp_folder = False
-                if index == args.firstrun + args.runs - 1:
-                    inst_copy._preserve_checkpoints = False
-                add_exp(instantiation=inst_copy, rt=rt, prereq=prereq)
-    # else:
-    #     # otherwise load pickled run object
-    #     for path in args.experiments:
-    #         with open(path, "rb") as f:
-    #             rt.add_run(pickle.load(f))
+            prereq = add_exp(instantiation=checkpointing_inst, rt=rt, prereq=None, args=args)
+
+        for index in range(args.firstrun, args.firstrun + args.runs):
+            inst_copy = inst.copy()
+            inst_copy.preserve_tmp_folder = False
+            if index == args.firstrun + args.runs - 1:
+                inst_copy._preserve_checkpoints = False
+            add_exp(instantiation=inst_copy, rt=rt, prereq=prereq, args=args)
 
     # register interrupt handler
     signal.signal(signal.SIGINT, lambda *_: rt.interrupt())
