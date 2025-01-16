@@ -33,8 +33,6 @@ if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import proxy as inst_proxy
     from simbricks.orchestration.simulation import base as sim_base
 
-# TODO (Jonas) generic prepare
-
 
 class SimulationExitState(enum.Enum):
     SUCCESS = 0
@@ -167,10 +165,7 @@ class SimulationOutput:
             json_obj_out_list = []
             for proc_out in proc_list:
                 json_obj_out_list.append(proc_out.toJSON())
-            json_obj[proxy.name] = {
-                "class": proxy.__class__.__name__,
-                "output": json_obj_out_list
-            }
+            json_obj[proxy.name] = {"class": proxy.__class__.__name__, "output": json_obj_out_list}
 
         return json_obj
 
