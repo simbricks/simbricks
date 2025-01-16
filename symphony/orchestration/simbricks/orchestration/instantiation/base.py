@@ -272,7 +272,7 @@ class Instantiation:
             # Experiment does not define any simulation fragments, so
             # implicitly, we create one fragment that spans the whole simulation
             self._simulation_fragment = inst_fragment.Fragment()
-            self._simulation_fragment.add_simulators(self.simulation.all_simulators())
+            self._simulation_fragment.add_simulators(*self.simulation.all_simulators())
         else:
             fragments = [
                 fragment
