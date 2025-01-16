@@ -94,7 +94,6 @@ class NICSim(PCIDevSim):
         if self.extra_args is not None:
             cmd += " " + self.extra_args
 
-        print(cmd)
         return cmd
 
 

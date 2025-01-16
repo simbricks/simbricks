@@ -348,5 +348,4 @@ class QemuSim(HostSim):
                 cmd += ",sync=off"
             cmd += " "
 
-        print(cmd)
         return cmd
