@@ -22,6 +22,7 @@
 
 
 import aiohttp
+import datetime
 import typing
 import contextlib
 import json
@@ -547,21 +548,81 @@ class RunnerClient:
         async with self.put(url=f"/update_run/{run_id}", json=obj) as resp:
             await resp.json()
 
-    async def send_out(
+    async def update_state_simulator(
+        self, run_id: int, sim_id: int, sim_name: str, state: str, cmd: str
+    ) -> None:
+        obj = {
+            "run_id": run_id,
+            "simulator_id": sim_id,
+            "simulator_name": sim_name,
+            "state": state,
+            "command": cmd,
+        }
+        async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/state", json=obj) as resp:
+            await resp.json()
+
+    async def update_proxy(self, run_id: int, proxy_id: int, state: str, cmd: str) -> None:
+        obj = {"run_id": run_id, "proxy_id": proxy_id, "state": state, "cmd": cmd}
+        async with self.put(url=f"/{run_id}/proxy/{proxy_id}/state", json=obj) as resp:
+            await resp.json()
+
+    async def send_out_simulation(
         self,
         run_id: int,
-        simulator: str,
-        stderr: bool,
+        cmd: int,
+        is_stderr: bool,
         output: list[str],
     ) -> None:
         objs = []
         for line in output:
             obj = {
                 "run_id": run_id,
-                "simulator": simulator,
-                "stderr": stderr,
+                "cmd": cmd,
+                "is_stderr": is_stderr,
                 "output": line,
             }
             objs.append(obj)
-        async with self.post(url=f"/{run_id}/console", json=objs) as resp:
-            ret = await resp.json()
+        async with self.post(url=f"/{run_id}/simulation/console", json=objs) as resp:
+            _ = await resp.json()
+
+    async def send_out_simulator(
+        self,
+        run_id: int,
+        sim_id: int,
+        sim_name: str,
+        is_stderr: bool,
+        output: list[str],
+        created_at: datetime.datetime,
+    ) -> None:
+        objs = []
+        for line in output:
+            obj = {
+                "run_id": run_id,
+                "simulator_id": sim_id,
+                "simulator_name": sim_name,
+                "is_stderr": is_stderr,
+                "output": line,
+                "created_at": str(created_at),
+            }
+            objs.append(obj)
+        async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/console", json=objs) as resp:
+            _ = await resp.json()
+
+    async def send_out_proxy(
+        self,
+        run_id: int,
+        proxy_id: int,
+        is_stderr: bool,
+        output: list[str],
+    ) -> None:
+        objs = []
+        for line in output:
+            obj = {
+                "run_id": run_id,
+                "proxy_id": proxy_id,
+                "is_stderr": is_stderr,
+                "output": line,
+            }
+            objs.append(obj)
+        async with self.post(url=f"/{run_id}/proxy/{proxy_id}/console", json=objs) as resp:
+            _ = await resp.json()
