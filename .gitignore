@@ -43,6 +43,7 @@ experiments/build
 experiments/out
 experiments/local-config.sh
 experiments/slurm
+experiments/simbricks-workdir
 dist/rdma/net_rdma
 dist/sockets/net_sockets
 trace/process
