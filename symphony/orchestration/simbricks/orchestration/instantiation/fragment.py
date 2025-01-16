@@ -22,7 +22,8 @@
 from __future__ import annotations
 
 import typing
-
+import functools
+from simbricks.utils import base as util_base
 from simbricks.orchestration.instantiation import proxy
 from simbricks.utils import base as util_base
 
@@ -39,8 +40,40 @@ class Fragment(util_base.IdObj):
         self._proxies: set[proxy.Proxy] = set()
         self._simulators: set[sim_base.Simulator] = set()
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+
+        proxy_json = []
+        for prox in self._proxies:
+            util_base.has_attribute(prox, "toJSON")
+            proxy_json.append(prox.toJSON())
+        json_obj["proxies"] = proxy_json
+
+        json_obj["simulators"] = list(map(lambda sim: sim.id(), self._simulators))
+        json_obj["cores_required"] = self.cores_required
+        json_obj["memory_required"] = self.memory_required
+        return json_obj
+
+    @property
+    def cores_required(self) -> int:
+        req_cores_per_sim = map(lambda sim: sim.resreq_cores(), self._simulators)
+        req_cores = functools.reduce(lambda x, y: x + y, req_cores_per_sim)
+        return req_cores
+
+    @property
+    def memory_required(self) -> int:
+        req_mem_per_sim = map(lambda sim: sim.resreq_mem(), self._simulators)
+        req_mem = functools.reduce(lambda x, y: x + y, req_mem_per_sim)
+        return req_mem
+
+    @classmethod
+    def fromJSON(cls, json_obj: dict) -> Fragment:
+        instance = super().fromJSON(json_obj)
+        # TODO: FIXME implement proper reconstruction from json
+        return instance
+
     @staticmethod
-    def merged(*fragments: "Fragment"):
+    def merged(*fragments: Fragment):
         merged_fragment = Fragment()
         proxies = set()
         simulators = set()
