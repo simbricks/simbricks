@@ -25,7 +25,7 @@ import json
 import logging
 import pathlib
 import sys
-
+import uuid
 from simbricks import client
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
@@ -77,6 +77,11 @@ class Runner:
         run_obj = run_obj_list[0]
 
         run_workdir = self._workdir / f"run-{run_id}"
+        if run_workdir.exists():
+            LOGGER.warning(
+                f"the directory {run_workdir} already exists, will create a new one using a uuid"
+            )
+            run_workdir = self._workdir / f"run-{run_id}-{str(uuid.uuid4())}"
         run_workdir.mkdir(parents=True)
 
         inst_obj = await self._sb_client.get_instantiation(run_obj["instantiation_id"])
@@ -85,13 +90,14 @@ class Runner:
 
         system = sys_base.System.fromJSON(json.loads(sys_obj["sb_json"]))
         simulation = sim_base.Simulation.fromJSON(system, json.loads(sim_obj["sb_json"]))
+        tmp_inst = inst_base.Instantiation.fromJSON(simulation, json.loads(inst_obj["sb_json"]))
         env = inst_base.InstantiationEnvironment(workdir=run_workdir)  # TODO
         inst = inst_base.Instantiation(sim=simulation)
         inst.env = env
         inst.preserve_tmp_folder = False
         inst.create_checkpoint = True
-        # inst.artifact_paths = [f"{run_workdir}/output"] # create an artifact
-        inst.artifact_paths = []  # create NO artifact
+        inst.artifact_name = tmp_inst.artifact_name
+        inst.artifact_paths = tmp_inst.artifact_paths
         return inst
 
     async def _prepare_run(self, run_id: int) -> Run:
