@@ -30,34 +30,10 @@ from simbricks import client
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
-from simbricks.runtime import command_executor, simulation_executor
+from simbricks.runtime import simulation_executor
 from simbricks.utils import artifatcs as art
 
 from .settings import runner_settings as runset
-
-
-class ConsoleLineListener(command_executor.OutputListener):
-
-    def __init__(self, rc: client.RunnerClient, run_id: int, prefix: str = ""):
-        super().__init__()
-        self._prefix: str = prefix
-        self._rc: client.RunnerClient = rc
-        self._run_id: int = run_id
-
-    async def handel_out(self, lines: list[str]) -> None:
-        if len(lines) < 1:
-            return
-        await self._rc.send_out(self._run_id, self._prefix, False, lines)
-
-    async def handel_err(self, lines: list[str]) -> None:
-        if len(lines) < 1:
-            return
-        await self._rc.send_out(self._run_id, self._prefix, True, lines)
-
-    def toJSON(self) -> dict:
-        json_obj = super().toJSON()
-        json_obj.update({"prefix": self._prefix})
-        return json_obj
 
 
 class Run:
@@ -65,12 +41,12 @@ class Run:
         self,
         run_id: int,
         inst: inst_base.Instantiation,
-        runner: simulation_executor.SimulationSimpleRunner,
+        runner: simulation_executor.SimulationExecutor,
     ):
         self.run_id: int = run_id
         self.inst: inst_base.Instantiation = inst
         self.cancelled: bool = False
-        self.runner: simulation_executor.SimulationSimpleRunner = runner
+        self.runner: simulation_executor.SimulationExecutor = runner
         self.exec_task: asyncio.Task | None = None
 
 
@@ -123,13 +99,9 @@ class Runner:
 
         inst = await self._fetch_assemble_inst(run_id=run_id)
 
-        executor = command_executor.LocalExecutor()
-        runner = simulation_executor.SimulationSimpleRunner(executor, inst, runset().verbose)
+        callbacks = simulation_executor.SimulationExecutorCallbacks(inst)
+        runner = simulation_executor.SimulationExecutor(inst, callbacks, runset().verbose)
         await runner.prepare()
-
-        for sim in inst.simulation.all_simulators():
-            listener = ConsoleLineListener(rc=self._rc, run_id=run_id)
-            runner.add_listener(sim, listener)
 
         run = Run(run_id=run_id, inst=inst, runner=runner)
         return run
