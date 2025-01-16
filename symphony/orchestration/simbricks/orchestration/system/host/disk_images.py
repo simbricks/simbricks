@@ -65,7 +65,7 @@ class DiskImage(utils_base.IdObj):
                 f"{copy_path}"
             )
         ]
-        await inst._cmd_executor.simulator_prepare_run_cmds(sim, prep_cmds)
+        await inst._cmd_executor.exec_simulator_prepare_cmds(sim, prep_cmds)
         return copy_path
 
     @staticmethod
@@ -199,7 +199,9 @@ class LinuxConfigDiskImage(DynamicDiskImage):
     def available_formats(self) -> list[str]:
         return ["raw"]
 
-    async def make_qcow_copy(self, inst: inst_base.Instantiation, format: str) -> str:
+    async def make_qcow_copy(
+        self, inst: inst_base.Instantiation, format: str, sim: sim_base.Simulator
+    ) -> str:
         return self.path(inst=inst, format=format)
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
