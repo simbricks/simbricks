@@ -88,14 +88,19 @@ async def submit_system(system: system.System) -> int:
 
 
 async def submit_simulation(system_id: int, simulation: simulation.Simulation) -> int:
-    simulation = await provider.client_provider.simbricks_client.create_simulation(system_id, simulation)
+    simulation = await provider.client_provider.simbricks_client.create_simulation(
+        system_id, simulation
+    )
     sim_id = int(simulation["id"])
     return sim_id
 
 
-async def submit_instantiation(simulation_id: int, instantiation: instantiation.Instantiation) -> int:
-    # TODO: the instantiation itself is currently not used as this is not yet supported
-    instantiation = await provider.client_provider.simbricks_client.create_instantiation(simulation_id, None)
+async def submit_instantiation(
+    simulation_id: int, instantiation: instantiation.Instantiation
+) -> int:
+    instantiation = await provider.client_provider.simbricks_client.create_instantiation(
+        simulation_id, instantiation
+    )
     inst_id = int(instantiation["id"])
     return inst_id
 

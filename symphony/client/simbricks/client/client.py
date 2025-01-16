@@ -24,14 +24,13 @@
 import aiohttp
 import typing
 import contextlib
-import asyncio
 import json
 from simbricks.utils import base as utils_base
-from rich.console import Console
 from .auth import TokenProvider
 from .settings import client_settings
 from simbricks.orchestration import system
 from simbricks.orchestration import simulation
+from simbricks.orchestration import instantiation
 
 
 class BaseClient:
@@ -85,6 +84,9 @@ class BaseClient:
                         await self._token_provider.resource_token(ticket)
                         async with self.request(meth, url, data, False, **kwargs) as resp:
                             yield resp
+                elif resp.status in [400, 402]:
+                    msg = await resp.json()
+                    raise Exception(f"Error sending request: {msg}")
                 else:
                     resp.raise_for_status()  # TODO: handel gracefully
                     yield resp
@@ -296,8 +298,8 @@ class SimBricksClient:
         async with self._ns_client.get(url="/simulations") as resp:
             return await resp.json()
 
-    async def create_instantiation(self, sim_db_id: int, instantiation: simulation.Simulation) -> simulation.Simulation:
-        inst_json = json.dumps({})  # FIXME
+    async def create_instantiation(self, sim_db_id: int, instantiation: instantiation.Instantiation) -> dict:
+        inst_json = json.dumps(instantiation.toJSON())
         json_obj = {"simulation_id": sim_db_id, "sb_json": inst_json}
         async with self._ns_client.post(url="/instantiations", json=json_obj) as resp:
             return await resp.json()
@@ -539,8 +541,9 @@ class RunnerClient:
             "state": state,
             "output": output,
             "id": run_id,
-            "instantiation_id": 42,
+            "instantiation_id": None, # TODO: FIXME
         }
+        obj = utils_base.filter_None_dict(to_filter=obj)
         async with self.put(url=f"/update_run/{run_id}", json=obj) as resp:
             await resp.json()
 
