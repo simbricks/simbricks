@@ -15,7 +15,7 @@ async def create(label: str, available_cores: int, available_memory: int):
         label=label, available_cores=available_cores, available_memory=available_memory
     )
     print_table_generic(
-        "Resource Group", [rg], "id", "label", "available_cores", "available_memory", "cores_left", "memory_left"
+        "Resource Group", [rg], "id", "label", "namespace_id", "available_cores", "available_memory", "cores_left", "memory_left"
     )
 
 
@@ -39,7 +39,7 @@ async def update(
         memory_left=memory_left,
     )
     print_table_generic(
-        "Resource Group", [rg], "id", "label", "available_cores", "available_memory", "cores_left", "memory_left"
+        "Resource Group", [rg], "id", "label", "namespace_id", "available_cores", "available_memory", "cores_left", "memory_left"
     )
 
 
@@ -49,7 +49,7 @@ async def ls_rg(rg_id: int):
     """List a resource group."""
     rg = await client_provider.resource_group_client.get_rg(rg_id=rg_id)
     print_table_generic(
-        "Resource Group", [rg], "id", "label", "available_cores", "available_memory", "cores_left", "memory_left"
+        "Resource Group", [rg], "id", "label", "namespace_id", "available_cores", "available_memory", "cores_left", "memory_left"
     )
 
 
@@ -59,5 +59,5 @@ async def ls():
     """List available resource groups."""
     rgs = await client_provider.resource_group_client.filter_get_rg()
     print_table_generic(
-        "Resource Group", rgs, "id", "label", "available_cores", "available_memory", "cores_left", "memory_left"
+        "Resource Group", rgs, "id", "label", "namespace_id", "available_cores", "available_memory", "cores_left", "memory_left"
     )

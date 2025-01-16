@@ -28,7 +28,7 @@ from typer import Typer, Argument, Option
 from typing_extensions import Annotated
 from simbricks.client.provider import client_provider
 from simbricks.client.opus import base as opus_base
-from ..utils import async_cli
+from ..utils import async_cli, print_table_generic
 
 from rich.console import Console
 from rich.table import Table
@@ -41,16 +41,7 @@ app = Typer(help="Managing SimBricks runs.")
 async def ls():
     """List runs."""
     runs = await client_provider.simbricks_client.get_runs()
-
-    table = Table()
-    table.add_column("Id")
-    table.add_column("Instantiation")
-    table.add_column("State")
-    for r in runs:
-        table.add_row(str(r["id"]), str(r["instantiation_id"]), r["state"])
-
-    console = Console()
-    console.print(table)
+    print_table_generic("Runs", runs, "id", "instantiation_id", "state")
 
 
 @app.command()
@@ -58,7 +49,7 @@ async def ls():
 async def show(run_id: int):
     """Show individual run."""
     run = await client_provider.simbricks_client.get_run(run_id)
-    print(run)
+    print_table_generic("Run", [run], "id", "instantiation_id", "state")
 
 
 @app.command()
@@ -138,6 +129,8 @@ async def submit_script(
     sb_inst = instantiations[0]
 
     run_id = await opus_base.create_run(instantiation=sb_inst)
+    run = await client_provider.simbricks_client.get_run(run_id=run_id)
+    print_table_generic("Run", [run], "id", "instantiation_id", "state")
     if input:
         await system_client.set_run_input(run_id, input)
 
