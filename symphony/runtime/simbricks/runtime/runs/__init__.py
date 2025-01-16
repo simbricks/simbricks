@@ -21,10 +21,6 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from simbricks.runtime.runs.base import Run, Runtime
-from simbricks.runtime.runs.distributed import (
-    DistributedSimpleRuntime, auto_dist
-)
 from simbricks.runtime.runs.local import (
     LocalParallelRuntime, LocalSimpleRuntime
 )
-from simbricks.runtime.runs.slurm import SlurmRuntime

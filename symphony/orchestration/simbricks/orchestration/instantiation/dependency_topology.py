@@ -24,19 +24,21 @@ instantiated components like simulators that determines the order to start them
 in."""
 from __future__ import annotations
 
-import typing
 import enum
+import typing
+
+from simbricks.orchestration.instantiation import proxy as inst_proxy
+from simbricks.orchestration.instantiation import socket as inst_socket
+from simbricks.orchestration.simulation import base as sim_base
 
 if typing.TYPE_CHECKING:
-    from simbricks.orchestration.simulation import base as sim_base
     from simbricks.orchestration.instantiation import base as inst_base
     from simbricks.orchestration.system import base as sys_base
-    from simbricks.orchestration.instantiation import socket as inst_socket
-    from simbricks.orchestration.instantiation import proxy as inst_proxy
 
-    class TopologyComponentType(enum.Enum):
-        SIMULATOR = enum.auto()
-        PROXY = enum.auto()
+
+class TopologyComponentType(enum.Enum):
+    SIMULATOR = enum.auto()
+    PROXY = enum.auto()
 
 
 class TopologyComponent:
@@ -48,6 +50,25 @@ class TopologyComponent:
     ) -> None:
         self.type = type
         self.value = value
+
+    def get_simulator(self) -> sim_base.Simulator:
+        if self.type != TopologyComponentType.SIMULATOR:
+            raise RuntimeError("Value stored is not a simulator")
+        return typing.cast(sim_base.Simulator, self.value)
+
+    def get_proxy(self) -> inst_proxy.Proxy:
+        if self.type != TopologyComponentType.PROXY:
+            raise RuntimeError("Value stored is not a proxy")
+        return typing.cast(inst_proxy.Proxy, self.value)
+
+    def __repr__(self) -> str:
+        match self.type:
+            case TopologyComponentType.SIMULATOR:
+                return str(("sim", self.get_simulator()))
+            case TopologyComponentType.PROXY:
+                return str(("proxy", self.get_proxy()))
+            case _:
+                raise RuntimeError("Unhandles type")
 
 
 SimulationDependencyTopology = typing.NewType(
@@ -66,7 +87,7 @@ def build_simulation_topology(
     # start first before simulator can start
     sim_dependencies: SimulationDependencyTopology = {}
 
-    def insert_dependency(topo_comp_a: TopologyComponent, depends_on: TopologyComponent):
+    def insert_dependency(topo_comp_a: TopologyComponent, depends_on: TopologyComponent) -> None:
         if depends_on in sim_dependencies:
             if topo_comp_a in sim_dependencies[depends_on]:
                 # TODO: FIXME
@@ -86,7 +107,7 @@ def build_simulation_topology(
         topo_comp_b: TopologyComponent,
     ) -> None:
         a_sock = topo_comp_a.value.supported_socket_types(interface=inf_a)
-        b_sock = topo_comp_a.value.supported_socket_types(interface=inf_b)
+        b_sock = topo_comp_b.value.supported_socket_types(interface=inf_b)
 
         if a_sock != b_sock:
             if len(a_sock) == 0 or len(b_sock) == 0:
@@ -126,6 +147,8 @@ def build_simulation_topology(
             )
 
     # build dependency graph
+    topo_comp_sims: dict[sim_base.Simulator, TopologyComponent] = {}
+    topo_comp_proxies: dict[inst_proxy.Proxy, TopologyComponent] = {}
     for sim in instantiation.fragment.all_simulators():
         for comp in sim.components():
             for sim_inf in comp.interfaces():
@@ -134,22 +157,35 @@ def build_simulation_topology(
                     # simulator
                     continue
 
-                topo_comp_a = TopologyComponent(
-                    TopologyComponentType.SIMULATOR, sim
+                topo_comp_a = topo_comp_sims.get(
+                    sim, TopologyComponent(TopologyComponentType.SIMULATOR, sim)
                 )
+                topo_comp_sims[sim] = topo_comp_a
+                
                 opposing_inf = instantiation._get_opposing_interface(interface=sim_inf)
-
                 if not instantiation.fragment.interface_handled_by_proxy(opposing_inf):
-                    topo_comp_b = TopologyComponent(
-                        TopologyComponentType.SIMULATOR,
-                        instantiation.find_sim_by_interface(opposing_inf),
+                    sim_b = instantiation.find_sim_by_interface(opposing_inf)
+                    topo_comp_b = topo_comp_sims.get(
+                        sim_b,
+                        TopologyComponent(
+                            TopologyComponentType.SIMULATOR,
+                            sim_b,
+                        ),
                     )
+                    topo_comp_sims[sim_b] = topo_comp_b
                 else:
-                    topo_comp_b = TopologyComponent(
-                        TopologyComponentType.PROXY,
-                        instantiation.fragment.get_proxy_by_interface(opposing_inf),
+                    proxy_b = instantiation.fragment.get_proxy_by_interface(opposing_inf)
+                    topo_comp_b = topo_comp_proxies.get(
+                        proxy_b,
+                        TopologyComponent(
+                            TopologyComponentType.PROXY,
+                            proxy_b,
+                        ),
                     )
+                    topo_comp_proxies[proxy_b] = topo_comp_b
 
                 update_a_depends_on_b(sim_inf, topo_comp_a, opposing_inf, topo_comp_b)
+
+    # TODO (Jonas) Add iteration over proxies
 
     return sim_dependencies

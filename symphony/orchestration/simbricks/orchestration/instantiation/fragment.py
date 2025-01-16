@@ -19,12 +19,14 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+from __future__ import annotations
 
-from simbricks.utils import base as util_base
+import typing
+
 from simbricks.orchestration.instantiation import proxy
-import typing as tp
+from simbricks.utils import base as util_base
 
-if tp.TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.orchestration.system import base as sys_base
 
@@ -34,8 +36,8 @@ class Fragment(util_base.IdObj):
     def __init__(self):
         super().__init__()
 
-        self._proxies: set[proxy.Proxy]
-        self._simulators: set[sim_base.Simulator]
+        self._proxies: set[proxy.Proxy] = set()
+        self._simulators: set[sim_base.Simulator] = set()
 
     @staticmethod
     def merged(*fragments: "Fragment"):
