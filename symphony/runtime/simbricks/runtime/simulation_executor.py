@@ -23,74 +23,131 @@
 from __future__ import annotations
 
 import asyncio
-import shlex
+import itertools
 import traceback
 import typing
 
-from simbricks.runtime import output
-from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.instantiation import dependency_topology as dep_topo
 from simbricks.orchestration.instantiation import socket as inst_socket
+from simbricks.orchestration.simulation import base as sim_base
 from simbricks.runtime import command_executor as cmd_exec
+from simbricks.runtime import output
 from simbricks.utils import graphlib
 
 if typing.TYPE_CHECKING:
-    from simbricks.runtime import simulation_executor_callbacks
+    from simbricks.orchestration.instantiation import proxy as inst_proxy
 
 
-class SimulationBaseRunner():
-    # TODO (Jonas) Rename this to InstantiationExecutor
+class SimulationExecutorCallbacks:
+
+    def __init__(self, instantiation: inst_base.Instantiation) -> None:
+        self._instantiation = instantiation
+        self._output: output.SimulationOutput = output.SimulationOutput(
+            self._instantiation.simulation
+        )
+
+    @property
+    def output(self) -> output.SimulationOutput:
+        return self._output
+
+    # ---------------------------------------
+    # Callbacks related to whole simulation -
+    # ---------------------------------------
+
+    async def simulation_started(self) -> None:
+        self._output.set_start()
+
+    async def simulation_prepare_cmd_start(self, cmd: str) -> None:
+        self._output.add_generic_prepare_cmd(cmd)
+
+    async def simulation_prepare_cmd_stdout(self, cmd: str, lines: list[str]) -> None:
+        self._output.generic_prepare_cmd_stdout(cmd, lines)
+
+    async def simulation_prepare_cmd_stderr(self, cmd: str, lines: list[str]) -> None:
+        self._output.generic_prepare_cmd_stderr(cmd, lines)
+
+    async def simulation_exited(self, state: output.SimulationExitState) -> None:
+        self._output.set_end(state)
+
+    # -----------------------------
+    # Simulator-related callbacks -
+    # -----------------------------
+
+    async def simulator_started(self, sim: sim_base.Simulator, cmd: str) -> None:
+        self._output.set_simulator_cmd(sim, cmd)
+
+    async def simulator_ready(self, sim: sim_base.Simulator) -> None:
+        pass
+
+    async def simulator_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
+        pass
+
+    async def simulator_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
+        self._output.append_simulator_stdout(sim, lines)
+
+    async def simulator_stderr(self, sim: sim_base.Simulator, lines: list[str]) -> None:
+        self._output.append_simulator_stderr(sim, lines)
+
+    # -------------------------
+    # Proxy-related callbacks -
+    # -------------------------
+
+    async def proxy_started(self, proxy: inst_proxy.Proxy, cmd: str) -> None:
+        self._output.set_proxy_cmd(proxy, cmd)
+
+    async def proxy_ready(self, proxy: inst_proxy.Proxy) -> None:
+        pass
+
+    async def proxy_exited(self, proxy: inst_proxy.Proxy, exit_code: int) -> None:
+        pass
+
+    async def proxy_stdout(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
+        self._output.append_proxy_stdout(proxy, lines)
+
+    async def proxy_stderr(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
+        self._output.append_proxy_stderr(proxy, lines)
+
+
+class SimulationExecutor:
 
     def __init__(
         self,
         instantiation: inst_base.Instantiation,
-        callbacks: simulation_executor_callbacks.ExecutorCallbacks,
+        callbacks: SimulationExecutorCallbacks,
         verbose: bool,
+        profile_int=None,
     ) -> None:
         self._instantiation: inst_base.Instantiation = instantiation
         self._callbacks = callbacks
         self._verbose: bool = verbose
-        self._profile_int: int | None = None
-        self._out: output.SimulationOutput = output.SimulationOutput(self._instantiation.simulation)
-        self._out_listener: dict[sim_base.Simulator, cmd_exec.OutputListener] = {}
-        self._running: list[tuple[sim_base.Simulator, cmd_exec.CommandExecutor]] = []
-        self._sockets: list[inst_socket.Socket] = []
+        self._profile_int: int | None = profile_int
+        self._running_sims: dict[sim_base.Simulator, cmd_exec.CommandExecutor] = {}
+        self._running_proxies: dict[inst_proxy.Proxy, cmd_exec.CommandExecutor] = {}
         self._wait_sims: list[cmd_exec.CommandExecutor] = []
-        self._cmd_executor = cmd_exec.CommandExecutorFactory()
+        self._cmd_executor = cmd_exec.CommandExecutorFactory(callbacks)
 
-    def sim_listener(self, sim: sim_base.Simulator) -> cmd_exec.OutputListener:
-        if sim not in self._out_listener:
-            raise Exception(f"no listener specified for simulator {sim.id()}")
-        return self._out_listener[sim]
+    async def _start_proxy(self, proxy: inst_proxy.Proxy) -> None:
+        """Start a proxy and wait for it to be ready."""
+        cmd_exec = await self._cmd_executor.start_simulator(proxy, proxy.run_cmd())
+        self._running_proxies[proxy] = cmd_exec
 
-    def add_listener(self, sim: sim_base.Simulator, listener: cmd_exec.OutputListener) -> None:
-        self._out_listener[sim] = listener
-        self._out.add_mapping(sim, listener)
-    
-    async def start_sim(self, sim: sim_base.Simulator) -> None:
+        # Wait till sockets exist
+        wait_socks = proxy.sockets_wait(inst=self._instantiation)
+        for sock in wait_socks:
+            await sock.wait()
+        self._callbacks.proxy_ready(proxy)
+
+    async def _start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
-
         name = sim.full_name()
-        if self._verbose:
-            print(f"{self._instantiation.simulation.name}: starting {name}")
+        cmd_exec = await self._cmd_executor.start_simulator(sim, sim.run_cmd(self._instantiation))
+        self._running_sims[sim] = cmd_exec
 
-        run_cmd = sim.run_cmd(self._instantiation)
-        if run_cmd is None:
-            if self._verbose:
-                print(f"{self._instantiation.simulation.name}: started dummy {name}")
-            return
-
-        # run simulator
-        cmds = shlex.split(run_cmd)
-        cmd_exec = cmd_exec.CommandExecutor(cmds, name, self._verbose, True)
-        if listener := self.sim_listener(sim=sim):
-            cmd_exec.subscribe(listener=listener)
-        await cmd_exec.start()
-        self._running.append((sim, cmd_exec))
-
-        # add sockets for cleanup
-        for sock in sim.sockets_cleanup(inst=self._instantiation):
-            self._sockets.append(sock)
+        # give simulator time to start if indicated
+        delay = sim.start_delay()
+        if delay > 0:
+            await asyncio.sleep(delay)
 
         # Wait till sockets exist
         wait_socks = sim.sockets_wait(inst=self._instantiation)
@@ -100,90 +157,87 @@ class SimulationBaseRunner():
             for sock in wait_socks:
                 await sock.wait()
             if self._verbose:
-                print(f"{self._instantiation.simulation.name}: waited successfully for sockets {name}")
-
-        # add time delay if required
-        delay = sim.start_delay()
-        if delay > 0:
-            await asyncio.sleep(delay)
+                print(
+                    f"{self._instantiation.simulation.name}: waited successfully for sockets {name}"
+                )
+        await self._callbacks.simulator_ready(sim)
 
         if sim.wait_terminate:
             self._wait_sims.append(cmd_exec)
-
-        if self._verbose:
-            print(f"{self._instantiation.simulation.name}: started {name}")
 
     async def prepare(self) -> None:
         self._instantiation._cmd_executor = self._cmd_executor
         await self._instantiation.prepare()
 
-    async def wait_for_sims(self) -> None:
-        """Wait for simulators to terminate (the ones marked to wait on)."""
-        if self._verbose:
-            print(f"{self._instantiation.simulation.name}: waiting for hosts to terminate")
-        for sc in self._wait_sims:
-            await sc.wait()
-
-    async def terminate_collect_sims(self) -> output.SimulationOutput:
+    async def terminate_collect_sims(self) -> None:
         """Terminates all simulators and collects output."""
-        self._out.set_end()
         if self._verbose:
             print(f"{self._instantiation.simulation.name}: cleaning up")
 
-        # "interrupt, terminate, kill" all processes
+        # Interrupt, then terminate, then kill all processes. Do this in parallel so user does not
+        # have to wait unnecessaryily long.
         scs = []
-        for _, sc in self._running:
-            scs.append(asyncio.create_task(sc.int_term_kill()))
+        for exec in itertools.chain(self._running_sims.values(), self._running_proxies.values()):
+            scs.append(asyncio.create_task(exec.int_term_kill()))
         await asyncio.gather(*scs)
 
         # wait for all processes to terminate
-        for _, sc in self._running:
-            await sc.wait()
+        for exec in itertools.chain(self._running_sims.values(), self._running_proxies.values()):
+            await exec.wait()
 
-        return self._out
-
-    async def sigusr1(self) -> None:
-        for _, sc in self._running:
-            await sc.sigusr1()
-
-    async def profiler(self):
+    async def _profiler(self) -> None:
         assert self._profile_int
         while True:
             await asyncio.sleep(self._profile_int)
-            await self.sigusr1()
+            for sim, exec in self._running_sims.items():
+                await exec.sigusr1()
 
     async def run(self) -> output.SimulationOutput:
         profiler_task = None
 
         try:
-            self._out.set_start()
+            await self._callbacks.simulation_started()
             graph = self._instantiation.sim_dependencies()
-            print(graph)
             ts = graphlib.TopologicalSorter(graph)
             ts.prepare()
             while ts.is_active():
                 # start ready simulators in parallel
                 starting = []
-                sims = []
-                for sim in ts.get_ready():
-                    starting.append(asyncio.create_task(self.start_sim(sim)))
-                    sims.append(sim)
+                topo_comps = []
+                for comp in ts.get_ready():
+                    comp: dep_topo.TopologyComponent
+                    match comp.type:
+                        case dep_topo.TopologyComponentType.SIMULATOR:
+                            starting.append(
+                                asyncio.create_task(self._start_sim(comp.get_simulator()))
+                            )
+                        case dep_topo.TopologyComponentType.PROXY:
+                            starting.append(
+                                asyncio.create_task(self._start_proxy(comp.get_proxy()))
+                            )
+                        case _:
+                            raise RuntimeError("Unhandled topology component type")
+                    topo_comps.append(comp)
 
                 # wait for starts to complete
                 await asyncio.gather(*starting)
 
-                for sim in sims:
-                    ts.done(sim)
+                for comp in topo_comps:
+                    ts.done(comp)
 
             if self._profile_int:
-                profiler_task = asyncio.create_task(self.profiler())
-            await self.wait_for_sims()
+                profiler_task = asyncio.create_task(self._profiler())
+
+            # wait until all simulators indicated to be awaited exit
+            for sc in self._wait_sims:
+                await sc.wait()
+            await self._callbacks.simulation_exited(output.SimulationExitState.SUCCESS)
         except asyncio.CancelledError:
             if self._verbose:
                 print(f"{self._instantiation.simulation.name}: interrupted")
-            self._out.set_interrupted()
+            await self._callbacks.simulation_exited(output.SimulationExitState.INTERRUPTED)
         except:  # pylint: disable=bare-except
-            self._out.set_failed()
+            await self._callbacks.simulation_exited(output.SimulationExitState.FAILED)
             traceback.print_exc()
 
         if profiler_task:
@@ -191,6 +245,7 @@ class SimulationBaseRunner():
                 profiler_task.cancel()
             except asyncio.CancelledError:
                 pass
+
         # The bare except above guarantees that we always execute the following
         # code, which terminates all simulators and produces a proper output
         # file.
@@ -198,10 +253,10 @@ class SimulationBaseRunner():
         # prevent terminate_collect_task from being cancelled
         while True:
             try:
-                return await asyncio.shield(terminate_collect_task)
+                await asyncio.shield(terminate_collect_task)
+                return self._callbacks.output
             except asyncio.CancelledError as e:
                 print(e)
-                pass
 
     async def cleanup(self) -> None:
         await self._instantiation.cleanup()

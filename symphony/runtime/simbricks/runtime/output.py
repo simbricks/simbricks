@@ -22,27 +22,66 @@
 
 from __future__ import annotations
 
+import collections
+import enum
 import json
-import time
 import pathlib
+import time
 import typing
-from simbricks.runtime import command_executor
 
 if typing.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import proxy as inst_proxy
     from simbricks.orchestration.simulation import base as sim_base
+
+# TODO (Jonas) generic prepare
+
+
+class SimulationExitState(enum.Enum):
+    SUCCESS = 0
+    FAILED = 1
+    INTERRUPTED = 2
+
+
+class ProcessOutput:
+
+    def __init__(self, cmd: str):
+        self.cmd = cmd
+        self.stdout: list[str] = []
+        self.stderr: list[str] = []
+        self.merged: list[str] = []
+
+    def append_stdout(self, lines: list[str]) -> None:
+        self.stdout.extend(lines)
+        self.merged.extend(lines)
+
+    def append_stderr(self, lines: list[str]) -> None:
+        self.stderr.extend(lines)
+        self.merged.extend(lines)
+
+    def toJSON(self) -> dict:
+        return {
+            "cmd": self.cmd,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "merged_output": self.merged,
+        }
 
 
 class SimulationOutput:
     """Manages an experiment's output."""
 
     def __init__(self, sim: sim_base.Simulation) -> None:
-        self._sim_name: str = sim.name
+        self._simulation_name: str = sim.name
         self._start_time: float | None = None
         self._end_time: float | None = None
         self._success: bool = True
         self._interrupted: bool = False
         self._metadata = sim.metadata
-        self._sims: dict[sim_base.Simulator, command_executor.OutputListener] = {}
+        self._generic_prepare_output: dict[str, ProcessOutput] = {}
+        self._simulator_output: collections.defaultdict[sim_base.Simulator, list[ProcessOutput]] = (
+            collections.defaultdict(list)
+        )
+        self._proxy_output: collections.defaultdict[inst_proxy.Proxy, list[ProcessOutput]] = {}
 
     def is_ended(self) -> bool:
         return self._end_time or self._interrupted
@@ -50,51 +89,93 @@ class SimulationOutput:
     def set_start(self) -> None:
         self._start_time = time.time()
 
-    def set_end(self) -> None:
+    def set_end(self, exit_state: SimulationExitState) -> None:
         self._end_time = time.time()
-
-    def set_failed(self) -> None:
-        self._success = False
+        match exit_state:
+            case SimulationExitState.SUCCESS:
+                self._success = True
+            case SimulationExitState.FAILED:
+                self._success = False
+            case SimulationExitState.INTERRUPTED:
+                self._success = False
+                self._interrupted = True
+            case _:
+                raise RuntimeError("Unknown simulation exit state")
 
     def failed(self) -> bool:
         return not self._success
-        
-    def set_interrupted(self) -> None:
-        self._success = False
-        self._interrupted = True
 
-    def add_mapping(self, sim: sim_base.Simulator, output_handel: command_executor.OutputListener) -> None:
-        assert sim not in self._sims
-        self._sims[sim] = output_handel
+    # generic prepare command execution
+    def add_generic_prepare_cmd(self, cmd: str) -> None:
+        self._generic_prepare_output[cmd] = ProcessOutput(cmd)
 
-    def get_output_listener(self, sim: sim_base.Simulator) -> command_executor.OutputListener:
-        if sim not in self._sims:
-            raise Exception("not output handel for simulator found")
-        return self._sims[sim]
+    def generic_prepare_cmd_stdout(self, cmd: str, lines: list[str]) -> None:
+        assert cmd in self._generic_prepare_output
+        self._generic_prepare_output[cmd].append_stdout(lines)
 
-    def get_all_listeners(self) -> list[command_executor.OutputListener]:
-        return list(self._sims.values())
+    def generic_prepare_cmd_stderr(self, cmd: str, lines: list[str]) -> None:
+        assert cmd in self._generic_prepare_output
+        self._generic_prepare_output[cmd].append_stderr(lines)
+
+    # simulator execution
+    def set_simulator_cmd(self, sim: sim_base.Simulator, cmd: str) -> None:
+        self._simulator_output[sim].append(ProcessOutput(cmd))
+
+    def append_simulator_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
+        assert sim in self._simulator_output
+        assert self._simulator_output[sim]
+        self._simulator_output[sim][-1].append_stdout(lines)
+
+    def append_simulator_stderr(self, sim: sim_base.Simulator, lines: list[str]) -> None:
+        assert sim in self._simulator_output
+        assert self._simulator_output[sim]
+        self._simulator_output[sim][-1].append_stderr(lines)
+
+    def set_proxy_cmd(self, proxy: inst_proxy.Proxy, cmd: str) -> None:
+        self._proxy_output[proxy].append(ProcessOutput(cmd))
+
+    def append_proxy_stdout(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
+        assert proxy in self._proxy_output
+        self._proxy_output[proxy][-1].append_stdout(lines)
+
+    def append_proxy_stderr(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
+        assert proxy in self._proxy_output
+        self._proxy_output[proxy][-1].append_stderr(lines)
 
     def toJSON(self) -> dict:
         json_obj = {}
-        json_obj["_sim_name"] = self._sim_name
+        json_obj["_sim_name"] = self._simulation_name
         json_obj["_start_time"] = self._start_time
         json_obj["_end_time"] = self._end_time
         json_obj["_success"] = self._success
         json_obj["_interrupted"] = self._interrupted
         json_obj["_metadata"] = self._metadata
-        for sim, out in self._sims.items():
-            json_obj[sim.full_name()] = out.toJSON()
-            json_obj["class"] = sim.__class__.__name__
+        # TODO (Jonas) Change backend to reflect multiple commands executed
+        json_obj_out_list = []
+        for _, proc_out in self._generic_prepare_output.items():
+            json_obj_out_list.append(proc_out.toJSON())
+        json_obj["generic_prepare"] = json_obj_out_list
+        for sim, proc_list in self._simulator_output.items():
+            json_obj_out_list = []
+            for proc_out in proc_list:
+                json_obj_out_list.append(proc_out.toJSON())
+            json_obj[sim.full_name()] = {
+                "class": sim.__class__.__name__,
+                "output": json_obj_out_list,
+            }
+        for proxy, proc_list in self._proxy_output.items():
+            json_obj_out_list = []
+            for proc_out in proc_list:
+                json_obj_out_list.append(proc_out.toJSON())
+            json_obj[proxy.name] = {
+                "class": proxy.__class__.__name__,
+                "output": json_obj_out_list
+            }
+
         return json_obj
 
     def dump(self, outpath: str) -> None:
         json_obj = self.toJSON()
         pathlib.Path(outpath).parent.mkdir(parents=True, exist_ok=True)
         with open(outpath, "w", encoding="utf-8") as file:
-            json.dump(json_obj, file, indent=4)
-
-    # def load(self, file: str) -> None:
-    #     with open(file, "r", encoding="utf-8") as fp:
-    #         for k, v in json.load(fp).items():
-    #             self.__dict__[k] = v
+            json.dump(json_obj, file, indent=2)
