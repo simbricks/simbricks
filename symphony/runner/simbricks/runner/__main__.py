@@ -20,19 +20,20 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
 import asyncio
 import json
-import pathlib
 import logging
-from simbricks.runtime import simulation_executor
-from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.system import base as sys_base
-from simbricks.orchestration.simulation import base as sim_base
-from simbricks.runtime import command_executor
+import pathlib
+import sys
+
 from simbricks import client
-from .settings import runner_settings as runset
+from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.system import base as sys_base
+from simbricks.runtime import command_executor, simulation_executor
 from simbricks.utils import artifatcs as art
+
+from .settings import runner_settings as runset
 
 
 class ConsoleLineListener(command_executor.OutputListener):
@@ -60,7 +61,12 @@ class ConsoleLineListener(command_executor.OutputListener):
 
 
 class Run:
-    def __init__(self, run_id: int, inst: inst_base.Instantiation, runner: simulation_executor.SimulationSimpleRunner):
+    def __init__(
+        self,
+        run_id: int,
+        inst: inst_base.Instantiation,
+        runner: simulation_executor.SimulationSimpleRunner,
+    ):
         self.run_id: int = run_id
         self.inst: inst_base.Instantiation = inst
         self.cancelled: bool = False
@@ -181,7 +187,11 @@ class Runner:
         try:
             while True:
                 # fetch all events not handeled yet
-                events = list(await self._rc.get_events(run_id=None, action=None, limit=None, event_status="pending"))
+                events = list(
+                    await self._rc.get_events(
+                        run_id=None, action=None, limit=None, event_status="pending"
+                    )
+                )
                 for run_id in list(self._run_map.keys()):
                     run = self._run_map[run_id]
                     # check if run finished and cleanup map
@@ -225,7 +235,9 @@ class Runner:
                             LOGGER.debug(f"send heartbeat")
                         case "start_run":
                             if not run_id or run_id in self._run_map:
-                                LOGGER.debug(f"cannot start run, no run id or run with given id is being executed")
+                                LOGGER.debug(
+                                    f"cannot start run, no run id or run with given id is being executed"
+                                )
                                 event_status = "cancelled"
                             else:
                                 run = await self._prepare_run(run_id=run_id)
@@ -291,7 +303,9 @@ async def amain():
 
 def setup_logger() -> logging.Logger:
     level = runset().log_level
-    logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(
+        level=level, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
     logger = logging.getLogger(__name__)
     return logger
 
