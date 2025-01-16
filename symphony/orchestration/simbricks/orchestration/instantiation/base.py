@@ -62,15 +62,13 @@ class InstantiationEnvironment(util_base.IdObj):
         self._shm_base: str = pathlib.Path(f"{self._tmp_simulation_files}/shm").resolve()
 
 
-class Instantiation:
-
-    __id_iter = itertools.count()
+class Instantiation(util_base.IdObj):
 
     def __init__(
         self,
         sim: sim_base.Simulation,
     ):
-        self._id = next(self.__id_iter)
+        super().__init__()
         self.simulation: sim_base.Simulation = sim
         self.simulation_fragments: set[inst_fragment.Fragment] = set()
         self.fragment_runner_map: dict[inst_fragment.Fragment, str] = dict()
@@ -89,7 +87,7 @@ class Instantiation:
         # NOTE: temporary data structure
         self._socket_per_interface: dict[sys_base.Interface, inst_socket.Socket] = {}
         # NOTE: temporary data structure
-        self._sim_dependency: dict[sim_base.Simulator, set[sim_base.Simulator]] | None = None
+        self._sim_dependency: inst_dep_topo.SimulationDependencyTopology | None = None
         self._cmd_executor: cmd_exec.CommandExecutorFactory | None = None
 
     @staticmethod
@@ -106,6 +104,50 @@ class Instantiation:
         if self._cmd_executor is None:
             raise RuntimeError(f"{type(self).__name__}._cmd_executor should be set")
         return self._cmd_executor
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+
+        json_obj["simulation"] = self.simulation.id()
+
+        fragments_json = []
+        if len(self.simulation_fragments) < 1:
+            fragment = self.fragment
+            util_base.has_attribute(fragment, "toJSON")
+            fragments_json.append(fragment.toJSON())
+        else:
+            for fragment in self.simulation_fragments:
+                util_base.has_attribute(fragment, "toJSON")
+                fragments_json.append(fragment.toJSON())
+        json_obj["simulation_fragments"] = fragments_json
+
+        json_obj["artifact_name"] = self.artifact_name
+        json_obj["artifact_paths"] = self.artifact_paths
+
+        # TODO: serialize other fields etc. of interest
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, sim: sim_base.Simulation, json_obj: dict) -> Instantiation:
+        instance = super().fromJSON(json_obj)
+
+        simulation_id = int(util_base.get_json_attr_top(json_obj, "simulation"))
+        assert simulation_id == sim.id()
+        instance.simulation = sim
+
+        instance.simulation_fragments = set()
+        fragments_json = util_base.get_json_attr_top(json_obj, "simulation_fragments")
+        for frag_json in fragments_json:
+            frag_class = util_base.get_cls_by_json(frag_json)
+            util_base.has_attribute(frag_class, "fromJSON")
+            frag = frag_class.fromJSON(frag_json)
+            instance.simulation_fragments.add(frag)
+
+        instance.artifact_name = util_base.get_json_attr_top(json_obj, "artifact_name")
+        instance.artifact_paths = util_base.get_json_attr_top(json_obj, "artifact_paths")
+
+        # TODO: deserialize other fields etc. of interest
+        return instance
 
     def _get_opposing_interface(self, interface: sys_base.Interface) -> sys_base.Interface:
         opposing_inf = interface.get_opposing_interface()
@@ -211,7 +253,7 @@ class Instantiation:
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
         return new_socket
 
-    def sim_dependencies(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:
+    def sim_dependencies(self) -> inst_dep_topo.SimulationDependencyTopology:
         if self._sim_dependency is not None:
             return self._sim_dependency
         self._sim_dependency = inst_dep_topo.build_simulation_topology(self)

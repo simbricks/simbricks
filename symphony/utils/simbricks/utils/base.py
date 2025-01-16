@@ -37,6 +37,8 @@ class IdObj(abc.ABC):
 
     def toJSON(self):
         json_obj = {}
+        json_obj["type"] = self.__class__.__name__
+        json_obj["module"] = self.__class__.__module__
         json_obj["id"] = self._id
         return json_obj
 
