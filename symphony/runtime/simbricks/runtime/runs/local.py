@@ -67,6 +67,29 @@ class LocalSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     # Simulator-related callbacks -
     # -----------------------------
 
+    async def simulator_prepare_started(self, sim: sim_base.Simulator, cmd: str) -> None:
+        await super().simulator_prepare_started(sim, cmd)
+        self._output.set_simulator_cmd(sim, cmd)
+        if self._verbose:
+            print(f"+ [{sim.full_name()}] {cmd}")
+
+    async def simulator_prepare_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
+        await super().simulator_prepare_exited(sim, exit_code)
+        if self._verbose:
+            print(f"- [{sim.full_name()}] exited with code {exit_code}")
+
+    async def simulator_prepare_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
+        await super().simulator_prepare_stdout(sim, lines)
+        if self._verbose:
+            for line in lines:
+                print(f"[{sim.full_name()}] {line}")
+
+    async def simulator_prepare_stderr(self, sim: sim_base.Simulator, lines: list[str]) -> None:
+        await super().simulator_prepare_stderr(sim, lines)
+        if self._verbose:
+            for line in lines:
+                print(f"[{sim.full_name()}] {line}")
+
     async def simulator_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         await super().simulator_started(sim, cmd)
         if self._verbose:

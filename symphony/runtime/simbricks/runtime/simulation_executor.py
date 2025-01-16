@@ -74,6 +74,18 @@ class SimulationExecutorCallbacks:
     # Simulator-related callbacks -
     # -----------------------------
 
+    async def simulator_prepare_started(self, sim: sim_base.Simulator, cmd: str) -> None:
+        self._output.set_simulator_cmd(sim, cmd)
+
+    async def simulator_prepare_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
+        pass
+
+    async def simulator_prepare_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
+        self._output.append_simulator_stdout(sim, lines)
+
+    async def simulator_prepare_stderr(self, sim: sim_base.Simulator, lines: list[str]) -> None:
+        self._output.append_simulator_stderr(sim, lines)
+
     async def simulator_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         self._output.set_simulator_cmd(sim, cmd)
 
