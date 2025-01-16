@@ -160,7 +160,6 @@ class Instantiation:
                 raise Exception("cannot create socket path for given interface type")
 
         assert queue_type is not None
-        print(f"_interface_to_sock_path: self.env._shm_base={self.shm_base_dir()}")
         return self._join_paths(
             base=self.shm_base_dir(),
             relative_path=f"{queue_type}-{queue_ident}",
@@ -208,14 +207,12 @@ class Instantiation:
         if socket is not None:
             new_socket = self._create_opposing_socket(socket=socket, socket_type=socket_type)
             self._updated_tracker_mapping(interface=interface, socket=new_socket)
-            print(f"created socket: {new_socket._path}")
             return new_socket
 
         # create socket if opposing socket was not created yet
         sock_path = self._interface_to_sock_path(interface=interface)
         new_socket = inst_socket.Socket(path=sock_path, ty=socket_type)
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
-        print(f"created socket: {new_socket._path}")
         return new_socket
 
     def sim_dependencies(self) -> dict[sim_base.Simulator, set[sim_base.Simulator]]:

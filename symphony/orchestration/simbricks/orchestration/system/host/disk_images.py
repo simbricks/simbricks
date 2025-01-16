@@ -198,7 +198,6 @@ class LinuxConfigDiskImage(DynamicDiskImage):
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         path = self.path(inst, format)
-        print(path)
         with tarfile.open(path, "w:") as tar:
             # add main run script
             cfg_i = tarfile.TarInfo("guest/run.sh")
