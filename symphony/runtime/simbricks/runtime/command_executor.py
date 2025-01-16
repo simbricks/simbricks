@@ -207,7 +207,23 @@ class CommandExecutorFactory:
 
     async def exec_simulator_prepare_cmds(self, sim: sim_base.Simulator, cmds: list[str]) -> None:
         for cmd in cmds:
-            executor = await self.start_simulator(sim, cmd)
+
+            async def started_cb() -> None:
+                await self._sim_exec_cbs.simulator_prepare_started(sim, cmd)
+
+            async def exited_cb(exit_code: int) -> None:
+                await self._sim_exec_cbs.simulator_prepare_exited(sim, exit_code)
+
+            async def stdout_cb(lines: list[str]) -> None:
+                await self._sim_exec_cbs.simulator_prepare_stdout(sim, lines)
+
+            async def stderr_cb(lines: list[str]) -> None:
+                await self._sim_exec_cbs.simulator_prepare_stderr(sim, lines)
+
+            executor = CommandExecutor(
+                cmd, sim.full_name(), started_cb, exited_cb, stdout_cb, stderr_cb
+            )
+            await executor.start()
             await executor.wait()
 
     async def start_simulator(self, sim: sim_base.Simulator, cmd) -> CommandExecutor:
