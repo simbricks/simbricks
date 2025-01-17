@@ -36,7 +36,7 @@ app = Typer(
 async def ls():
     """List runners."""
     runners = await client_provider.runner_client.list_runners()
-    print_table_generic("Runners", runners, "id", "label", "tags", "resource_group_id")
+    print_table_generic("Runners", runners, "id", "label", "tags", "namespace_id", "resource_group_id")
 
 
 @app.command()
@@ -44,7 +44,7 @@ async def ls():
 async def show(runner_id: int):
     """Show individual runner."""
     runner = await client_provider.runner_client.get_runner(runner_id=runner_id)
-    print_table_generic("Runners", [runner], "id", "label", "tags", "resource_group_id")
+    print_table_generic("Runners", [runner], "id", "label", "tags", "namespace_id", "resource_group_id")
 
 
 @app.command()
@@ -61,7 +61,7 @@ async def create(resource_group_id: int, label: str, tags: list[str]):
     runner = await client_provider.runner_client.create_runner(
         resource_group_id=resource_group_id, label=label, tags=tags
     )
-    print_table_generic("Runner", [runner], "id", "label", "tags", "resource_group_id")
+    print_table_generic("Runner", [runner], "id", "label", "tags", "namespace_id", "resource_group_id")
 
 
 @app.command()

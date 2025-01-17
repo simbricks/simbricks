@@ -39,7 +39,7 @@ async def ls():
 
 @app.command()
 @async_cli()
-async def ls_id(ident: int):
+async def show(ident: int):
     """List namespace with given id ident."""
     client = client_provider.ns_client
 
@@ -49,7 +49,7 @@ async def ls_id(ident: int):
 
 @app.command()
 @async_cli()
-async def ls_cur():
+async def cur():
     """List current namespace."""
     client = client_provider.ns_client
 

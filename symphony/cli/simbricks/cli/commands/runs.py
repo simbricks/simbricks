@@ -61,7 +61,7 @@ async def follow(run_id: int):
 
 @app.command()
 @async_cli()
-async def run_console(run_id: int):
+async def run_con(run_id: int):
     """Print a runs console completely."""
     console = rich.console.Console()
     output = await client_provider.simbricks_client.get_run_console(rid=run_id)
@@ -80,7 +80,7 @@ async def delete(run_id: int):
 
 @app.command()
 @async_cli()
-async def set_input_tarball(run_id: int, source_file: str):
+async def set_in_tar(run_id: int, source_file: str):
     """Set the tarball input for an individual run."""
     client = client_provider.simbricks_client
     await client.set_run_input(run_id, source_file)
@@ -88,7 +88,7 @@ async def set_input_tarball(run_id: int, source_file: str):
 
 @app.command()
 @async_cli()
-async def set_output_artifact(run_id: int, source_file: str):
+async def set_art(run_id: int, source_file: str):
     """Set the tarball input for an individual run."""
     client = client_provider.simbricks_client
     await client.set_run_artifact(run_id, source_file)
@@ -96,7 +96,7 @@ async def set_output_artifact(run_id: int, source_file: str):
 
 @app.command()
 @async_cli()
-async def get_output_artifact(run_id: int, destination_file: str):
+async def get_art(run_id: int, destination_file: str):
     """Follow individual run as it executes."""
     client = client_provider.simbricks_client
     await client.get_run_artifact(run_id, destination_file)
@@ -104,7 +104,7 @@ async def get_output_artifact(run_id: int, destination_file: str):
 
 @app.command()
 @async_cli()
-async def update_run(run_id: int, updates: str):
+async def update(run_id: int, updates: str):
     """Update run with the 'updates' json string."""
     client = client_provider.simbricks_client
     json_updates = json.loads(updates)
@@ -113,7 +113,7 @@ async def update_run(run_id: int, updates: str):
 
 @app.command()
 @async_cli()
-async def submit_script(
+async def submit(
     path: Annotated[Path, Argument(help="Python simulation script to submit.")],
     follow: Annotated[bool, Option("--follow", "-f", help="Wait for run to terminate and show output live.")] = False,
     input: Annotated[
