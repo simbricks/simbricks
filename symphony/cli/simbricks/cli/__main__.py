@@ -26,7 +26,7 @@ from simbricks.cli.commands import (
     audit,
     admin,
     namespaces,
-    resource_groups,
+    rg,
     runs,
     systems,
     simulations,
@@ -45,7 +45,7 @@ app.add_typer(systems.app, name="systems")
 app.add_typer(simulations.app, name="sims")
 app.add_typer(instantiations.app, name="insts")
 app.add_typer(runners.app, name="runners")
-app.add_typer(resource_groups.app, name="resource_groups")
+app.add_typer(rg.app, name="rg")
 
 
 @app.callback()
