@@ -30,11 +30,11 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "simbricks-cli"
 version = "0.0.3"
-description = "simbricks cli tool"
-authors = [
-  "Jakob Görgen <jakob@simbricks.io>",
-  "Antoine Kaufmann <antoine@simbricks.io>",
+description = "simbricks cli tool for communication with the SimBricks cloud"
+authors  = [
+  "Team SimBricks <team@simbricks.io>"
 ]
+homepage = "https://www.simbricks.io/"
 packages = [
   { include = "simbricks" }
 ]

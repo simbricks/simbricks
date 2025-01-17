@@ -35,11 +35,11 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "simbricks-symphony"
 version = "0.0.1"
-description = "Mycorp's fancy library"
-authors = [
-  "Jakob Görgen <jakob@simbricks.io>",
-  "Antoine Kaufmann <antoine@simbricks.io>",
+description = "SimBricks open source packages to specify and simulate virtual prototypes"
+authors  = [
+  "Team SimBricks <team@simbricks.io>"
 ]
+homepage = "https://www.simbricks.io/"
 packages = [
   { include = "simbricks" }
 ]
