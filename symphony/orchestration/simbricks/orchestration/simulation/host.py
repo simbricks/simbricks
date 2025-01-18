@@ -84,7 +84,7 @@ class Gem5Sim(HostSim):
         return 1
 
     def resreq_mem(self) -> int:
-        return 4096
+        return 1024
 
     def supported_image_formats(self) -> list[str]:
         return ["raw"]
@@ -239,7 +239,7 @@ class QemuSim(HostSim):
         return 1
 
     def resreq_mem(self) -> int:
-        return 8192
+        return 1024
 
     def supported_image_formats(self) -> list[str]:
         return ["raw", "qcow"]
