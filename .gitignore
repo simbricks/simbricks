@@ -46,6 +46,7 @@ experiments/slurm
 experiments/simbricks-workdir
 dist/rdma/net_rdma
 dist/sockets/net_sockets
+runner-work
 trace/process
 mk/local.mk
 compile_commands.json
