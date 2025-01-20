@@ -1,8 +1,9 @@
 ARG REGISTRY=
 ARG TAG=:latest
 FROM ${REGISTRY}simbricks/simbricks-build${TAG}
-COPY . /simbricks
+COPY --chown=simbricks . /simbricks
 WORKDIR /simbricks
+USER simbricks
 RUN make -j `nproc` ENABLE_VERILATOR=y
 RUN git submodule update --init sims/external/qemu \
  && make -j `nproc` sims/external/qemu/ready \
