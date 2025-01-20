@@ -64,10 +64,12 @@ async def follow(run_id: int):
 async def run_con(run_id: int):
     """Print a runs console completely."""
     console = rich.console.Console()
-    output = await client_provider.simbricks_client.get_run_console(rid=run_id)
-    with console.status(f"[bold green]Waiting for run {run_id} to finish...") as _:
-        for line in output:
-            console.log(line["simulator"] + ":" + line["output"])
+    pretty_printer = opus_base.ComponentOutputPrettyPrinter(console)
+    with console.status(f"[bold green]Waiting for console output of run {run_id} ..."):
+        async for prefix, line in opus_base.ConsoleLineGenerator(
+            run_id=run_id, follow=False
+        ).generate_lines():
+            pretty_printer.print_line(prefix, line)
 
 
 @app.command()

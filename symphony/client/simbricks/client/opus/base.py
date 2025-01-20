@@ -20,13 +20,20 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import typing
 import asyncio
+import datetime
+import itertools
+import random
+import typing
+
 import rich
+import rich.color
+import rich.style
+import rich.text
+
+from simbricks.orchestration import instantiation, simulation, system
+
 from .. import client, provider
-from simbricks.orchestration import system
-from simbricks.orchestration import simulation
-from simbricks.orchestration import instantiation
 
 
 async def still_running(run_id: int) -> bool:
@@ -35,48 +42,70 @@ async def still_running(run_id: int) -> bool:
 
 
 class ConsoleLineGenerator:
-    def __init__(self, run_id: int):
+    def __init__(self, run_id: int, follow: bool):
         self._sb_client: client.SimBricksClient = provider.client_provider.simbricks_client
         self._run_id: int = run_id
-        self._line_buffer: list[dict] = []
-        self._read_index: int = 0
-        self._prev_len: int = 0
-        self._index = 0
+        self._simulators_seen_until: dict[int, datetime.datetime] = {}
+        self._follow = follow
 
-    def _data_left(self) -> bool:
-        return self._read_index < len(self._line_buffer)
+    async def _fetch_next_output(self) -> list[str, str]:
+        output = await self._sb_client.get_run_console(
+            self._run_id, simulators_seen_until=self._simulators_seen_until
+        )
 
-    async def _fetch_output(self) -> None:
-        while await still_running(run_id=self._run_id):
-            output = await self._sb_client.get_run_console(self._run_id)
-            if len(output) != self._prev_len:
-                extend = output[self._prev_len :]
-                self._line_buffer = extend
-                self._prev_len = len(output)
-                self._read_index = 0
+        lines = []
+        for simulator_id, simulator in output["simulators"].items():
+            for command_str, output_lines in simulator["commands"].items():
+                for output_line in output_lines:
+                    lines.append((simulator["name"], output_line["output"]))
+                    self._simulators_seen_until[simulator_id] = datetime.datetime.fromisoformat(
+                        output_line["created_at"]
+                    )
+
+        return lines
+
+    async def generate_lines(self) -> typing.AsyncGenerator[tuple[str, str], None]:
+        stop_after_next = not self._follow or not await still_running(self._run_id)
+        while True:
+            sleep_until = datetime.datetime.now() + datetime.timedelta(seconds=3)
+            for prefix, line in await self._fetch_next_output():
+                yield prefix, line
+            if stop_after_next:
                 break
+            sleep_for = sleep_until - datetime.datetime.now()
+            if sleep_for > datetime.timedelta(seconds=0):
+                await asyncio.sleep(sleep_for.total_seconds())
+            if not await still_running(self._run_id):
+                # One more iteration to make sure we receive all output
+                stop_after_next = True
 
-            await asyncio.sleep(3)
 
-    async def _has_more(self) -> bool:
-        if not self._data_left():
-            await self._fetch_output()
-        return self._data_left()
+class ComponentOutputPrettyPrinter:
+    def __init__(self, console: rich.console.Console):
+        self._console: rich.console.Console = console
+        self._color_palette = [rich.color.Color.parse(f"color({i})") for i in range(1, 256, 4)]
+        random.shuffle(self._color_palette)
+        self._color_cycle = itertools.cycle(self._color_palette)
+        self._prefix_colors = {}
 
-    async def generate_lines(self) -> typing.AsyncGenerator[dict, None]:
-        while await self._has_more():
-            line = self._line_buffer[self._read_index]
-            self._read_index += 1
-            yield line
+    def print_line(self, prefix: str, line: str):
+        if prefix not in self._prefix_colors:
+            self._prefix_colors[prefix] = next(self._color_cycle)
+        prefix_pretty = rich.text.Text(
+            f"[{prefix}]", style=rich.style.Style(color=self._prefix_colors[prefix])
+        )
+        line_pretty = rich.text.Text(line)
+        self._console.print(prefix_pretty, line_pretty)
 
 
 async def follow_run(run_id: int) -> None:
-    line_gen = ConsoleLineGenerator(run_id=run_id)
+    line_gen = ConsoleLineGenerator(run_id=run_id, follow=True)
     console = rich.console.Console()
+    pretty_printer = ComponentOutputPrettyPrinter(console)
 
     with console.status(f"[bold green]Waiting for run {run_id} to finish...") as status:
-        async for line in line_gen.generate_lines():
-            console.log(line["simulator"] + ":" + line["output"])
+        async for prefix, line in line_gen.generate_lines():
+            pretty_printer.print_line(prefix, line)
 
         console.log(f"Run {run_id} finished")
 

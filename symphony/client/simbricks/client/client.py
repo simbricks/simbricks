@@ -366,8 +366,14 @@ class SimBricksClient:
             with open(store_path, "wb") as f:
                 f.write(content)
 
-    async def get_run_console(self, rid: int) -> list[dict]:
-        async with self._ns_client.get(url=f"/runs/{rid}/console") as resp:
+    async def get_run_console(
+        self, rid: int, simulators_seen_until: dict[int, datetime.datetime] = {}
+    ) -> list[dict]:
+        simulators = {}
+        for simulator_id, until in simulators_seen_until.items():
+            simulators[simulator_id] = until.isoformat()
+        obj = {"simulators": simulators}
+        async with self._ns_client.get(url=f"/runs/{rid}/console", json=obj) as resp:
             return await resp.json()
 
 
@@ -602,7 +608,7 @@ class RunnerClient:
                 "simulator_name": sim_name,
                 "is_stderr": is_stderr,
                 "output": line,
-                "created_at": str(created_at),
+                "created_at": created_at.isoformat(),
             }
             objs.append(obj)
         async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/console", json=objs) as resp:
