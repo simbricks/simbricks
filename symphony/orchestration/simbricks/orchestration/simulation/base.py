@@ -72,9 +72,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
         return list(filter(pred, self._components))
 
     def filter_components_by_type(self, ty: type[T]) -> list[T]:
-        return self.filter_components_by_pred(
-            pred=lambda comp: isinstance(comp, ty), ty=ty
-        )
+        return self.filter_components_by_pred(pred=lambda comp: isinstance(comp, ty), ty=ty)
 
     @property
     def extra_args(self) -> str:
@@ -136,9 +134,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
 
         instance._wait = bool(utils_base.get_json_attr_top(json_obj, "wait"))
         instance._start_tick = int(utils_base.get_json_attr_top(json_obj, "start_tick"))
-        instance._extra_args = utils_base.get_json_attr_top_or_none(
-            json_obj, "extra_args"
-        )
+        instance._extra_args = utils_base.get_json_attr_top_or_none(json_obj, "extra_args")
 
         return instance
 
@@ -154,9 +150,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
     def split_sockets_by_type(
         sockets: list[inst_socket.Socket],
     ) -> tuple[list[inst_socket.Socket], list[inst_socket.Socket]]:
-        listen = Simulator.filter_sockets(
-            sockets=sockets, filter_type=inst_socket.SockType.LISTEN
-        )
+        listen = Simulator.filter_sockets(sockets=sockets, filter_type=inst_socket.SockType.LISTEN)
         connect = Simulator.filter_sockets(
             sockets=sockets, filter_type=inst_socket.SockType.CONNECT
         )
@@ -174,9 +168,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
         run_sync = False
         for channel in channels:
             sync_period = (
-                min(sync_period, channel.sync_period)
-                if sync_period
-                else channel.sync_period
+                min(sync_period, channel.sync_period) if sync_period else channel.sync_period
             )
             run_sync = run_sync or channel._synchronized
             latency = (
@@ -218,10 +210,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
         self._simulation.add_spec_sim_map(comp, self)
 
     def _chan_needs_instance(self, chan: sys_conf.Channel) -> bool:
-        if (
-            chan.a.component in self._components
-            and chan.b.component in self._components
-        ):
+        if chan.a.component in self._components and chan.b.component in self._components:
             return False
         return True
 
@@ -237,9 +226,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
                 sockets.append(socket)
         return sockets
 
-    def _get_socks_by_all_comp(
-        self, inst: inst_base.Instantiation
-    ) -> list[inst_socket.Socket]:
+    def _get_socks_by_all_comp(self, inst: inst_base.Instantiation) -> list[inst_socket.Socket]:
         sockets = []
         for comp in self._components:
             sockets.extend(self._get_socks_by_comp(inst=inst, comp=comp))
@@ -281,24 +268,18 @@ class Simulator(utils_base.IdObj, abc.ABC):
         return []
 
     @abc.abstractmethod
-    def supported_socket_types(
-        self, interface: sys_conf.Interface
-    ) -> set[inst_socket.SockType]:
+    def supported_socket_types(self, interface: sys_conf.Interface) -> set[inst_socket.SockType]:
         return set()
 
     # Sockets to be cleaned up: always the CONNECTING sockets
     # pylint: disable=unused-argument
     def sockets_cleanup(self, inst: inst_base.Instantiation) -> list[inst_socket.Socket]:
-        return self._get_all_sockets_by_type(
-            inst=inst, sock_type=inst_socket.SockType.LISTEN
-        )
+        return self._get_all_sockets_by_type(inst=inst, sock_type=inst_socket.SockType.LISTEN)
 
     # sockets to wait for indicating the simulator is ready
     # pylint: disable=unused-argument
     def sockets_wait(self, inst: inst_base.Instantiation) -> list[inst_socket.Socket]:
-        return self._get_all_sockets_by_type(
-            inst=inst, sock_type=inst_socket.SockType.LISTEN
-        )
+        return self._get_all_sockets_by_type(inst=inst, sock_type=inst_socket.SockType.LISTEN)
 
     def start_delay(self) -> int:
         return 5
@@ -467,6 +448,14 @@ class Simulation(utils_base.IdObj):
             all_channels.extend(channels)
         return all_channels
 
+    def enable_synchronization(
+        self, amount: int | None = None, ratio: utils_base.Time | None = None
+    ) -> None:
+        for chan in self.get_all_channels():
+            chan._synchronized = True
+            if amount and ratio:
+                chan.set_sync_period(amount=amount, ratio=ratio)
+
     def resreq_mem(self) -> int:
         """Memory required to run all simulators in this experiment."""
         mem = 0
@@ -495,9 +484,6 @@ class Simulation(utils_base.IdObj):
         await asyncio.gather(*promises)
 
     def any_supports_checkpointing(self) -> bool:
-        if (
-            len(list(filter(lambda sim: sim.supports_checkpointing(), self._sim_list)))
-            > 0
-        ):
+        if len(list(filter(lambda sim: sim.supports_checkpointing(), self._sim_list))) > 0:
             return True
         return False
