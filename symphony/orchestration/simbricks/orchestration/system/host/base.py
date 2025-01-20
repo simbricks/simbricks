@@ -70,16 +70,17 @@ class Host(base.Component):
 
         return instance
 
-    def connect_pcie_dev(self, dev: pcie.PCIeSimpleDevice):
+    def connect_pcie_dev(self, dev: pcie.PCIeSimpleDevice) -> pcie.PCIeChannel:
         pcie_if = pcie.PCIeHostInterface(self)
         self.add_if(pcie_if)
         pcichannel0 = pcie.PCIeChannel(pcie_if, dev._pci_if)
+        return pcichannel0
 
 
 class FullSystemHost(Host):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-        self.memory: int = 512
+        self.memory: int = 2048
         self.cores: int = 1
         self.cpu_freq: str = "3GHz"
         self.disks: list[disk_images.DiskImage] = []
