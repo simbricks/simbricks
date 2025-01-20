@@ -178,11 +178,13 @@ class TokenClient:
                     "ticket": ticket,
                 },
             ) as resp:
-                resp.raise_for_status()  # TODO: handel gracefully
+                if resp.status in [401, 403]:
+                    json_resp = await resp.json()
+                    if "error" in json_resp:
+                        raise Exception(f"error refreshing token: {json_resp}")
+                else:
+                    resp.raise_for_status()
                 json_resp = await resp.json()
-                if "error" in json_resp:
-                    raise Exception(f"error refreshing token: {json_resp}")
-
                 token = self._create_token_from_resp(json_obj=json_resp)
 
         assert token
