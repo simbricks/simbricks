@@ -120,9 +120,7 @@ class BaseLinuxApplication(Application):
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict):
         instance = super().fromJSON(system, json_obj)
-        instance.start_delay = utils_base.get_json_attr_top_or_none(
-            json_obj, "start_delay"
-        )
+        instance.start_delay = utils_base.get_json_attr_top_or_none(json_obj, "start_delay")
         instance.end_delay = utils_base.get_json_attr_top_or_none(json_obj, "end_delay")
         instance.wait = utils_base.get_json_attr_top(json_obj, "wait")
         return instance
@@ -149,9 +147,7 @@ class PingClient(BaseLinuxApplication):
 
 
 class Sleep(BaseLinuxApplication):
-    def __init__(
-        self, h: sys_host.LinuxHost, delay: float = 10, infinite: bool = False
-    ) -> None:
+    def __init__(self, h: sys_host.LinuxHost, delay: float = 10, infinite: bool = False) -> None:
         super().__init__(h)
         self.infinite: bool = infinite
         self.delay: float = delay
@@ -216,10 +212,6 @@ class NetperfClient(BaseLinuxApplication):
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfClient:
         instance = super().fromJSON(system, json_obj)
         instance.server_ip = utils_base.get_json_attr_top(json_obj, "server_ip")
-        instance.duration_tp = int(
-            utils_base.get_json_attr_top(json_obj, "duration_tp")
-        )
-        instance.duration_lat = int(
-            utils_base.get_json_attr_top(json_obj, "duration_lat")
-        )
+        instance.duration_tp = int(utils_base.get_json_attr_top(json_obj, "duration_tp"))
+        instance.duration_lat = int(utils_base.get_json_attr_top(json_obj, "duration_lat"))
         return instance
