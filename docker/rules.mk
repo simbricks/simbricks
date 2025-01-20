@@ -61,11 +61,17 @@ docker-images: $(REQUIREMENTS_TXT)
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.min docker
+# The simbricks-dist-worker should be obsolete now and can be removed
+#	docker build -t \
+#		$(DOCKER_REGISTRY)simbricks/simbricks-dist-worker$(DOCKER_TAG) \
+#		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+#		--build-arg="TAG=$(DOCKER_TAG)" \
+#		-f docker/Dockerfile.dist-worker docker
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-dist-worker$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-runner$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.dist-worker docker
+		-f docker/Dockerfile.runner docker
 
 docker-images-debug:
 	docker build -t \
