@@ -89,7 +89,7 @@ class CommandExecutor:
         self, stream: asyncio.StreamReader, consume_fn: typing.Callable[[bytes], None]
     ) -> None:
         while True:
-            bs = await stream.readline()
+            bs = await stream.read(4096)
             if bs:
                 await consume_fn(bs)
             else:
