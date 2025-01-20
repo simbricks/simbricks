@@ -22,7 +22,6 @@
 
 from __future__ import annotations
 
-import abc
 import typing as tp
 from simbricks.utils import base as util_base
 
@@ -71,6 +70,20 @@ class System(util_base.IdObj):
             raise Exception(f"system does not store channel with id {ident}")
 
         return self._all_channels[ident]
+
+    @staticmethod
+    def set_latencies(channels: list[Channel], amount: int, ratio: util_base.Time) -> None:
+        for chan in channels:
+            chan.set_latency(amount, ratio)
+
+    def latencies(self, amount: int, ratio: util_base.Time, channel_type: tp.Any) -> None:
+        relevant_channels = list(
+            filter(
+                lambda chan: util_base.check_type(chan, channel_type),
+                self._all_channels.values(),
+            )
+        )
+        System.set_latencies(relevant_channels, amount, ratio)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -242,7 +255,7 @@ class Interface(util_base.IdObj):
 class Channel(util_base.IdObj):
     def __init__(self, a: Interface, b: Interface) -> None:
         super().__init__()
-        self.latency = 500
+        self.latency = 500  # nanoseconds
         self.a: Interface = a
         self.a.connect(self)
         self.b: Interface = b
@@ -267,6 +280,10 @@ class Channel(util_base.IdObj):
         opposing = self.a if interface is self.b else self.b
         assert opposing != interface
         return opposing
+
+    def set_latency(self, amount: int, ratio: util_base.Time = util_base.Time.Nanoseconds) -> None:
+        util_base.has_expected_type(obj=ratio, expected_type=util_base.Time)
+        self.latency = amount * ratio
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
