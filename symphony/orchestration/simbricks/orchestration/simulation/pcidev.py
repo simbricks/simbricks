@@ -34,26 +34,20 @@ from simbricks.orchestration.simulation import base as sim_base
 class PCIDevSim(sim_base.Simulator):
     """Base class for PCIe device simulators."""
 
-    def __init__(
-        self, simulation: sim_base.Simulation, executable: str, name: str
-    ) -> None:
+    def __init__(self, simulation: sim_base.Simulation, executable: str, name: str) -> None:
         super().__init__(simulation=simulation, executable=executable, name=name)
 
     def full_name(self) -> str:
         return "dev." + self.name
 
-    def supported_socket_types(
-        self, interface: sys_base.Interface
-    ) -> set[inst_socket.SockType]:
+    def supported_socket_types(self, interface: sys_base.Interface) -> set[inst_socket.SockType]:
         return {inst_socket.SockType.LISTEN}
 
 
 class NICSim(PCIDevSim):
     """Base class for NIC simulators."""
 
-    def __init__(
-        self, simulation: sim_base.Simulation, executable: str, name: str = ""
-    ) -> None:
+    def __init__(self, simulation: sim_base.Simulation, executable: str, name: str = "") -> None:
         super().__init__(simulation=simulation, executable=executable, name=name)
 
     def full_name(self) -> str:
@@ -65,9 +59,25 @@ class NICSim(PCIDevSim):
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         channels = self.get_channels()
-        latency, sync_period, run_sync = (
-            sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
+
+        pci_channels = sim_base.Simulator.filter_channels_by_sys_type(
+            channels, sys_pcie.PCIeChannel
         )
+        pci_latency, pci_sync_period, pci_run_sync = (
+            sim_base.Simulator.get_unique_latency_period_sync(pci_channels)
+        )
+
+        eth_channels = sim_base.Simulator.filter_channels_by_sys_type(channels, sys_eth.EthChannel)
+        eth_latency, eth_sync_period, eth_run_sync = (
+            sim_base.Simulator.get_unique_latency_period_sync(eth_channels)
+        )
+
+        if eth_run_sync != pci_run_sync:
+            raise Exception(
+                "currently using different synchronization values for pci and eth is not supported"
+            )
+        run_sync = eth_run_sync
+        sync_period = min(pci_sync_period, eth_sync_period)
 
         cmd = f"{inst.join_repo_base(relative_path=self._executable)} "
 
@@ -85,7 +95,7 @@ class NICSim(PCIDevSim):
 
         cmd += (
             f" {inst.get_simulator_shm_pool_path(sim=self)} {int(run_sync)} {self._start_tick}"
-            f" {sync_period} {latency} {latency}"
+            f" {sync_period} {pci_latency} {eth_latency}"
         )
 
         # if self.mac is not None:  # TODO: FIXME
@@ -131,9 +141,7 @@ class CorundumBMNICSim(NICSim):
         return json_obj
 
     @classmethod
-    def fromJSON(
-        cls, simulation: sim_base.Simulation, json_obj: dict
-    ) -> CorundumBMNICSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> CorundumBMNICSim:
         return super().fromJSON(simulation, json_obj)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
@@ -161,9 +169,7 @@ class CorundumVerilatorNICSim(NICSim):
         return json_obj
 
     @classmethod
-    def fromJSON(
-        cls, simulation: sim_base.Simulation, json_obj: dict
-    ) -> CorundumVerilatorNICSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> CorundumVerilatorNICSim:
         return super().fromJSON(simulation, json_obj)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
