@@ -107,6 +107,8 @@ class Instantiation(util_base.IdObj):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
+        if self.runner_label:
+            json_obj["runner_label"] = self.runner_label
 
         json_obj["simulation"] = self.simulation.id()
 
@@ -124,12 +126,19 @@ class Instantiation(util_base.IdObj):
         json_obj["artifact_name"] = self.artifact_name
         json_obj["artifact_paths"] = self.artifact_paths
 
+        json_obj["create_checkpoint"] = self._create_checkpoint
+        json_obj["restore_checkpoint"] = self._restore_checkpoint
+        json_obj["preserve_checkpoints"] = self._preserve_checkpoints
+        json_obj["preserve_tmp_folder"] = self.preserve_tmp_folder
+
         # TODO: serialize other fields etc. of interest
         return json_obj
 
     @classmethod
     def fromJSON(cls, sim: sim_base.Simulation, json_obj: dict) -> Instantiation:
         instance = super().fromJSON(json_obj)
+
+        instance.runner_label = util_base.get_json_attr_top_or_none(json_obj, "runner_label")
 
         simulation_id = int(util_base.get_json_attr_top(json_obj, "simulation"))
         assert simulation_id == sim.id()
@@ -146,6 +155,18 @@ class Instantiation(util_base.IdObj):
         instance.artifact_name = util_base.get_json_attr_top(json_obj, "artifact_name")
         instance.artifact_paths = util_base.get_json_attr_top(json_obj, "artifact_paths")
 
+        instance._create_checkpoint = bool(
+            util_base.get_json_attr_top(json_obj, "create_checkpoint")
+        )
+        instance._restore_checkpoint = bool(
+            util_base.get_json_attr_top(json_obj, "restore_checkpoint")
+        )
+        instance._preserve_checkpoints = bool(
+            util_base.get_json_attr_top(json_obj, "preserve_checkpoints")
+        )
+        instance.preserve_tmp_folder = bool(
+            util_base.get_json_attr_top(json_obj, "preserve_tmp_folder")
+        )
         # TODO: deserialize other fields etc. of interest
         return instance
 
