@@ -253,6 +253,11 @@ class Simulator(utils_base.IdObj, abc.ABC):
                 channels.append(channel)
         return channels
 
+    @staticmethod
+    def filter_channels_by_sys_type(channels: list[sim_chan.Channel], ty: type[T]) -> list[T]:
+        filtered = list(filter(lambda chan: isinstance(chan.sys_channel, ty), channels))
+        return filtered
+
     # pylint: disable=unused-argument
     @abc.abstractmethod
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
