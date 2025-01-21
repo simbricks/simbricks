@@ -32,6 +32,7 @@ class ClientSettings(BaseSettings):
 
     namespace: str = ""
     runner_id: int = -1
+    timeout_sec: int = 20
 
 @lru_cache
 def client_settings() -> ClientSettings:

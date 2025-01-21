@@ -30,6 +30,7 @@ import rich
 import rich.color
 import rich.style
 import rich.text
+import rich.console
 
 from simbricks.orchestration import instantiation, simulation, system
 

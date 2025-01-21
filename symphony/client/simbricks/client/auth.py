@@ -83,7 +83,8 @@ class TokenClient:
 
         token = None
 
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=client_settings().timeout_sec)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
 
             # get device_code, interval, verification_uri, user_code
             device_code = None
@@ -143,7 +144,8 @@ class TokenClient:
         assert old_token.is_refresh_valid()
 
         token = None
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=client_settings().timeout_sec)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
 
             # get device_code, interval, verification_uri, user_code
             async with session.post(
@@ -168,7 +170,8 @@ class TokenClient:
 
     async def resource_token(self, token: Token, ticket: str) -> Token:
         assert token.is_access_valid()
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=client_settings().timeout_sec)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 url=self._token_url,
                 headers={"Authorization": f"Bearer {token.access_token}"},
