@@ -232,8 +232,8 @@ class Runner:
         env = inst_base.InstantiationEnvironment(workdir=run_workdir)  # TODO
         inst = inst_base.Instantiation(sim=simulation)
         inst.env = env
-        inst.preserve_tmp_folder = False
-        inst.create_checkpoint = True
+        inst.preserve_tmp_folder = tmp_inst.preserve_tmp_folder
+        inst.create_checkpoint = tmp_inst.create_checkpoint
         inst.artifact_name = tmp_inst.artifact_name
         inst.artifact_paths = tmp_inst.artifact_paths
         return inst
@@ -255,11 +255,13 @@ class Runner:
             LOGGER.info(f"start run {run.run_id}")
 
             await self._rc.update_run(run.run_id, "running", "")
+
+            # TODO: allow for proper checkpointing run
             sim_task = asyncio.create_task(run.runner.run())
             res = await sim_task
 
             output_path = run.inst.get_simulation_output_path()
-            res.dump(outpath=output_path)
+            res.dump(outpath=output_path)  # TODO: FIXME
             if run.inst.create_artifact:
                 art.create_artifact(
                     artifact_name=run.inst.artifact_name,
@@ -267,7 +269,7 @@ class Runner:
                 )
                 await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)
 
-            status = "error" if res.failed() else "completed"
+            status = "error" if res.failed() else "completed"  # TODO: FIXME
             await self._rc.update_run(run.run_id, status, output="")
 
             await run.runner.cleanup()
@@ -355,7 +357,12 @@ class Runner:
                                 )
                                 event_status = "cancelled"
                             else:
-                                run = await self._prepare_run(run_id=run_id)
+                                try:
+                                    run = await self._prepare_run(run_id=run_id)
+                                except Exception as err:
+                                    LOGGER.error(f"could not prepare run {run_id}: {err}")
+                                    event_status = "cancelled"
+                                    break
                                 run.exec_task = asyncio.create_task(self._start_run(run=run))
                                 self._run_map[run_id] = run
                                 LOGGER.debug(f"started execution of run {run_id}")
@@ -388,19 +395,11 @@ class Runner:
             f" runner params: base_url={self._base_url}, workdir={self._workdir}, namespace={self._namespace}, _ident={self._ident}"
         )
 
-        # execute_runs_task = asyncio.create_task(self._execute_run())
-        # handel_events_task = asyncio.create_task(self._handel_events())
         try:
             await self._handel_events()
-            # _, pending = await asyncio.wait(
-            #     [execute_runs_task, handel_events_task], return_when=asyncio.FIRST_COMPLETED
-            # )
-            # map(lambda t: t.cancel(), pending)
         except Exception as exc:
             LOGGER.error(f"fatal error {exc}")
             sys.exit(1)
-            # execute_runs_task.cancel()
-            # handel_events_task.cancel()
 
         LOGGER.info("TERMINATED RUNNER")
 
