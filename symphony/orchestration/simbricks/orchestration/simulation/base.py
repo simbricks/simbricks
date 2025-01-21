@@ -99,8 +99,6 @@ class Simulator(utils_base.IdObj, abc.ABC):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["type"] = self.__class__.__name__
-        json_obj["module"] = self.__class__.__module__
         json_obj["name"] = self.name
         json_obj["executable"] = self._executable
         json_obj["simulation"] = self._simulation.id()
@@ -322,8 +320,6 @@ class Simulation(utils_base.IdObj):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["type"] = self.__class__.__name__
-        json_obj["module"] = self.__class__.__module__
 
         json_obj["name"] = self.name
         json_obj["metadata"] = self.metadata
