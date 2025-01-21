@@ -117,9 +117,21 @@ async def update(run_id: int, updates: str):
 @async_cli()
 async def submit(
     path: Annotated[Path, Argument(help="Python simulation script to submit.")],
-    follow: Annotated[bool, Option("--follow", "-f", help="Wait for run to terminate and show output live.")] = False,
+    follow: Annotated[
+        bool,
+        Option(
+            "--follow",
+            "-f",
+            help="Wait for run to terminate and show output live. This only works in case a single instantiation is defined in your experiment scripts instantiations list.",
+        ),
+    ] = False,
     input: Annotated[
-        str | None, Option("--input", "-i", help="Specify a tarball file of inputs needed for running the simulation.")
+        str | None,
+        Option(
+            "--input",
+            "-i",
+            help="Specify a tarball file of inputs needed for running the simulation.",
+        ),
     ] = None,
 ):
     """Submit a SimBricks python simulation script to run."""
@@ -128,13 +140,16 @@ async def submit(
 
     experiment_mod = load_mod.load_module(module_path=path)
     instantiations = experiment_mod.instantiations
-    sb_inst = instantiations[0]
 
-    run_id = await opus_base.create_run(instantiation=sb_inst)
-    run = await client_provider.simbricks_client.get_run(run_id=run_id)
-    print_table_generic("Run", [run], "id", "instantiation_id", "state")
-    if input:
-        await system_client.set_run_input(run_id, input)
+    run_id = None
+    for sb_inst in instantiations:
+        run_id = await opus_base.create_run(instantiation=sb_inst)
+        run = await client_provider.simbricks_client.get_run(run_id=run_id)
+        print_table_generic("Run", [run], "id", "instantiation_id", "state")
+        if input:
+            await system_client.set_run_input(run_id, input)
 
-    if follow:
+    if follow and len(instantiations) > 1:
+        print("Won't follow execution as more than one run was submitted.")
+    elif follow and run_id:
         await opus_base.follow_run(run_id=run_id)
