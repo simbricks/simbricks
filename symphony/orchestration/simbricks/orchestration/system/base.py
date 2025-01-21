@@ -76,13 +76,17 @@ class System(util_base.IdObj):
         for chan in channels:
             chan.set_latency(amount, ratio)
 
-    def latencies(self, amount: int, ratio: util_base.Time, channel_type: tp.Any) -> None:
-        relevant_channels = list(
-            filter(
-                lambda chan: util_base.check_type(chan, channel_type),
-                self._all_channels.values(),
+    def latencies(
+        self, amount: int, ratio: util_base.Time, channel_type: tp.Any | None = None
+    ) -> None:
+        relevant_channels = self._all_channels
+        if channel_type:
+            relevant_channels = list(
+                filter(
+                    lambda chan: util_base.check_type(chan, channel_type),
+                    self._all_channels.values(),
+                )
             )
-        )
         System.set_latencies(relevant_channels, amount, ratio)
 
     def toJSON(self) -> dict:
