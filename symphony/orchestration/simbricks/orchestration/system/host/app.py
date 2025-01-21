@@ -213,3 +213,89 @@ class NetperfClient(BaseLinuxApplication):
         instance.duration_tp = int(utils_base.get_json_attr_top(json_obj, "duration_tp"))
         instance.duration_lat = int(utils_base.get_json_attr_top(json_obj, "duration_lat"))
         return instance
+
+
+class IperfTCPServer(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost) -> None:
+        super().__init__(h)
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return ["iperf -s -l 32M -w 32M"]
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+        return super().fromJSON(system, json_obj)
+
+
+class IperfUDPServer(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost) -> None:
+        super().__init__(h)
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return ["iperf -s -u"]
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+        return super().fromJSON(system, json_obj)
+
+
+class IperfTCPClient(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost, server_ip: str = "10.0.0.1", procs: int = 1) -> None:
+        super().__init__(h)
+        self.server_ip: str = server_ip
+        self.procs: int = procs
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        cmds = [f"iperf -l 32M -w 32M  -c {self.server_ip} -i 1 -P {self.procs}"]
+        return cmds
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["server_ip"] = self.server_ip
+        json_obj["procs"] = self.procs
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+        instance = super().fromJSON(system, json_obj)
+        instance.server_ip = utils_base.get_json_attr_top(json_obj, "server_ip")
+        instance.procs = utils_base.get_json_attr_top(json_obj, "procs")
+        return instance
+
+
+class IperfUDPClient(BaseLinuxApplication):
+
+    def __init__(
+        self, h: sys_host.LinuxHost, server_ip: str = "10.0.0.1", rate: str = "150m"
+    ) -> None:
+        super().__init__(h)
+        self.server_ip: str = server_ip
+        self.rate: str = rate
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        cmds = [f"iperf -c {self.server_ip} -i 1 -u -b {self.rate}"]
+        return cmds
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["server_ip"] = self.server_ip
+        json_obj["rate"] = self.rate
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+        instance = super().fromJSON(system, json_obj)
+        instance.server_ip = utils_base.get_json_attr_top(json_obj, "server_ip")
+        instance.rate = utils_base.get_json_attr_top(json_obj, "rate")
+        return instance
