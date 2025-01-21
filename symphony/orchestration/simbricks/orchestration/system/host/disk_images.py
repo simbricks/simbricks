@@ -93,8 +93,6 @@ class DiskImage(utils_base.IdObj):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["type"] = self.__class__.__name__
-        json_obj["module"] = self.__class__.__module__
         json_obj["host"] = self.host.id()
         json_obj["qemu_img_exec"] = self._qemu_img_exec
         return json_obj

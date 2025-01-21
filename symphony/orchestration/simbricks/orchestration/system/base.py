@@ -87,8 +87,6 @@ class System(util_base.IdObj):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["type"] = self.__class__.__name__
-        json_obj["module"] = self.__class__.__module__
 
         components_json = []
         for _, comp in self._all_components.items():
@@ -154,8 +152,6 @@ class Component(util_base.IdObj):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["type"] = self.__class__.__name__
-        json_obj["module"] = self.__class__.__module__
         json_obj["system"] = self.system.id()
         json_obj["name"] = self.name
         json_obj["parameters"] = util_base.dict_to_json(self.parameters)
@@ -234,8 +230,6 @@ class Interface(util_base.IdObj):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["type"] = self.__class__.__name__
-        json_obj["module"] = self.__class__.__module__
         json_obj["component"] = self.component.id()
         json_obj["channel"] = self.channel.id()
         return json_obj
@@ -287,8 +281,6 @@ class Channel(util_base.IdObj):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["type"] = self.__class__.__name__
-        json_obj["module"] = self.__class__.__module__
         json_obj["latency"] = self.latency
         json_obj["interface_a"] = self.a.id()
         json_obj["interface_b"] = self.b.id()
