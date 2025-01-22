@@ -35,6 +35,7 @@ from simbricks.cli.commands import (
     runners,
 )
 from simbricks.client.provider import client_provider
+from simbricks.client.settings import client_settings
 from simbricks.cli.utils import async_cli
 
 app = Typer()
@@ -53,11 +54,9 @@ app.add_typer(rg.app, name="rg")
 @app.callback()
 @async_cli()
 async def amain(
-    ns: Annotated[str, Option(help="Namespace to operate in.")] = "foo/bar/baz",
-    runner_ident: Annotated[int, Option(help="Runner ident to operate on.")] = -1,
+    ns: Annotated[str, Option(help="Namespace to operate in.")] = client_settings().namespace,
 ):
     client_provider.namespace = ns
-    client_provider.runner_id = runner_ident
 
 
 def main():

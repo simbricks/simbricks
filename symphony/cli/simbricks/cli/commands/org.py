@@ -1,20 +1,23 @@
 from typer import Typer, Option
 from typing import Annotated
 from simbricks.client.provider import client_provider
+from simbricks.client.settings import client_settings
 from ..utils import async_cli, print_table_generic
 
 
 app = Typer(help="Managing SimBricks organizations.")
 
-organization = ''
+organization = ""
+
 
 @app.callback()
 @async_cli()
 async def amain(
-    org: Annotated[str, Option(help="Organization to operate in.")] = "SimBricks",
+    org: Annotated[str, Option(help="Organization to operate in.")] = client_settings().organization,
 ):
     global organization
     organization = org
+
 
 @app.command()
 @async_cli()
@@ -22,9 +25,7 @@ async def members():
     """List organization members."""
     members = await client_provider.org_client.get_members(organization)
 
-    print_table_generic(
-        "Members", members, "username", "first_name", "last_name"
-    )
+    print_table_generic("Members", members, "username", "first_name", "last_name")
 
 
 @app.command()
