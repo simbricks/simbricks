@@ -37,6 +37,19 @@ async def invite(email: str, first_name: str, last_name: str):
 @app.command()
 @async_cli()
 async def guest(email: str, first_name: str, last_name: str):
-    """Invite a new user."""
-    url = await client_provider.org_client.create_guest(organization, email, first_name, last_name)
-    print("Guest login link: {url}")
+    """Create a new guest user."""
+    await client_provider.org_client.create_guest(organization, email, first_name, last_name)
+
+@app.command()
+@async_cli()
+async def guest_token(email: str, filename: str):
+    """Generate token for guest account."""
+    tok = await client_provider.org_client.guest_token(organization, email)
+    tok.store_token(filename)
+
+@app.command()
+@async_cli()
+async def guest_link(email: str, filename: str):
+    """Generate magic login link for guest account."""
+    link = await client_provider.org_client.guest_magic_link(organization, email)
+    print(link)
