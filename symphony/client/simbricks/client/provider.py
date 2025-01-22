@@ -20,20 +20,26 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from .client import BaseClient, AdminClient, OrgClient, NSClient, SimBricksClient, RunnerClient, ResourceGroupClient
+from .client import (
+    BaseClient,
+    AdminClient,
+    OrgClient,
+    NSClient,
+    SimBricksClient,
+    RunnerClient,
+    ResourceGroupClient,
+)
 from .settings import client_settings
 
 
 class ClientProvider:
-    def __init__(self, namespace: str = client_settings().namespace, runner_id: int = client_settings().runner_id):
+    def __init__(self, namespace: str = client_settings().namespace):
         self.namespace = namespace
-        self.runner_id: int = runner_id
         self._base_client: BaseClient | None = None
         self._admin_client: AdminClient = None
         self._org_client: OrgClient = None
         self._ns_client: NSClient | None = None
         self._simbricks_client: SimBricksClient | None = None
-        self._runner_client: RunnerClient | None = None
         self._resource_group_client: ResourceGroupClient | None = None
 
     @property
@@ -66,11 +72,8 @@ class ClientProvider:
             self._simbricks_client = SimBricksClient(self.ns_client)
         return self._simbricks_client
 
-    @property
-    def runner_client(self) -> RunnerClient:
-        if self._runner_client is None:
-            self._runner_client = RunnerClient(self.ns_client, id=self.runner_id)
-        return self._runner_client
+    def runner_client(self, runner_id: int) -> RunnerClient:
+        return RunnerClient(self.ns_client, id=runner_id)
 
     @property
     def resource_group_client(self) -> ResourceGroupClient:
