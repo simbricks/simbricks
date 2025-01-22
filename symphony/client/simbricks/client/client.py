@@ -27,7 +27,7 @@ import typing
 import contextlib
 import json
 from simbricks.utils import base as utils_base
-from .auth import TokenProvider
+from .auth import Token, TokenProvider
 from .settings import client_settings
 from simbricks.orchestration import system
 from simbricks.orchestration import simulation
@@ -198,10 +198,22 @@ class OrgClient:
         }
         async with self._base_client.post(url=self._prefix(org, "/create-guest"),
                 json=namespace_json) as resp:
-            j = await resp.json()
-            print(j)
-            return await j["magic_link"]
+            await resp.json()
 
+    async def guest_token(self, org: str, email: str) -> Token:
+        j = {
+            "email": email,
+        }
+        async with self._base_client.post(url=self._prefix(org, "/guest-token"), json=j) as resp:
+            tok = await resp.json()
+            return Token.parse_from_resp(tok)
+
+    async def guest_magic_link(self, org: str, email: str) -> str:
+        j = {
+            "email": email,
+        }
+        async with self._base_client.post(url=self._prefix(org, "/guest-magic-link"), json=j) as resp:
+            return (await resp.json())['magic_link']
 
 class NSClient:
     def __init__(self, base_client: BaseClient = BaseClient(), namespace: str = ""):
