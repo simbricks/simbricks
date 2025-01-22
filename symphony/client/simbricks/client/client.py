@@ -168,6 +168,41 @@ class AdminClient:
             return await resp.json()
 
 
+class OrgClient:
+
+    def __init__(self, base_client: BaseClient = BaseClient()):
+        self._base_client = base_client
+
+    def _prefix(self, org: str, url: str) -> str:
+        return f"/org/{org}{url}"
+
+    async def get_members(self, org: str):
+        async with self._base_client.get(url=self._prefix(org, f"/members")) as resp:
+            return await resp.json()
+
+    async def invite_member(self, org: str, email: str, first_name: str, last_name: str):
+        namespace_json = {
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+        }
+        async with self._base_client.post(url=self._prefix(org, "/invite-member"),
+                json=namespace_json) as resp:
+            await resp.json()
+
+    async def create_guest(self, org: str, email: str, first_name: str, last_name: str):
+        namespace_json = {
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+        }
+        async with self._base_client.post(url=self._prefix(org, "/create-guest"),
+                json=namespace_json) as resp:
+            j = await resp.json()
+            print(j)
+            return await j["magic_link"]
+
+
 class NSClient:
     def __init__(self, base_client: BaseClient = BaseClient(), namespace: str = ""):
         self._base_client: BaseClient = base_client

@@ -20,7 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from .client import BaseClient, AdminClient, NSClient, SimBricksClient, RunnerClient, ResourceGroupClient
+from .client import BaseClient, AdminClient, OrgClient, NSClient, SimBricksClient, RunnerClient, ResourceGroupClient
 from .settings import client_settings
 
 
@@ -30,6 +30,7 @@ class ClientProvider:
         self.runner_id: int = runner_id
         self._base_client: BaseClient | None = None
         self._admin_client: AdminClient = None
+        self._org_client: OrgClient = None
         self._ns_client: NSClient | None = None
         self._simbricks_client: SimBricksClient | None = None
         self._runner_client: RunnerClient | None = None
@@ -46,6 +47,12 @@ class ClientProvider:
         if self._admin_client is None:
             self._admin_client = AdminClient(base_client=self.base_client)
         return self._admin_client
+
+    @property
+    def org_client(self) -> OrgClient:
+        if self._org_client is None:
+            self._org_client = OrgClient(base_client=self.base_client)
+        return self._org_client
 
     @property
     def ns_client(self) -> NSClient:
