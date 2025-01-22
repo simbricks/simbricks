@@ -27,7 +27,6 @@ from simbricks.orchestration import system
 from simbricks.orchestration import simulation as sim
 from simbricks.orchestration import instantiation as inst
 from simbricks.utils import base as utils_base
-from simbricks.client import provider
 from simbricks.client.opus import base as opus_base
 
 """
@@ -163,11 +162,10 @@ for rate in iperf_udp_rates:
 
 if __name__ == "__main__":
     """
-    Simple method to submit and run yboves instantiations via a python script.
+    Simple method to submit and run aboves instantiations via a python script.
     This is a simple demonsttration of how one could parse immediately parse the
     experiment output to create e.g. a plot.
     """
-    provider.client_provider.namespace = "Akhetonics/Customer"
 
     async def submit_and_plot():
         averages = []
