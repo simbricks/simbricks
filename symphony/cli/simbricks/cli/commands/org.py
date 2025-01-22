@@ -36,9 +36,17 @@ async def invite(email: str, first_name: str, last_name: str):
 
 @app.command()
 @async_cli()
-async def guest(email: str, first_name: str, last_name: str):
+async def guest(
+    email: str,
+    first_name: str,
+    last_name: str,
+    generate_token: Annotated[str, Option(help='File name to store an auth token into, if specified.', show_default=False)] = ''
+    ):
     """Create a new guest user."""
     await client_provider.org_client.create_guest(organization, email, first_name, last_name)
+    if generate_token:
+        tok = await client_provider.org_client.guest_token(organization, email)
+        tok.store_token(generate_token)
 
 @app.command()
 @async_cli()
