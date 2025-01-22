@@ -30,8 +30,6 @@ from simbricks.client.provider import client_provider
 from simbricks.client.opus import base as opus_base
 from ..utils import async_cli, print_table_generic
 
-from rich.console import Console
-from rich.table import Table
 
 app = Typer(help="Managing SimBricks runs.")
 
