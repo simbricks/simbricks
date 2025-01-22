@@ -24,7 +24,7 @@ import json
 import aiohttp
 import time
 import os
-from typing import Self
+from typing_extensions import Self
 from .settings import client_settings
 
 
