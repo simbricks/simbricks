@@ -24,6 +24,7 @@ import json
 import aiohttp
 import time
 import os
+from typing import Self
 from .settings import client_settings
 
 
@@ -52,20 +53,26 @@ class Token:
     def is_refresh_valid(self) -> bool:
         return self.refresh_valid_until > int(time.time())
 
+    def store_token(self, filename: str) -> None:
+        with open(filename, "w") as fh:
+            json.dump(self.toJSON(), fh)
 
-class TokenClient:
+    @staticmethod
+    def load_token(filename: str) -> Self | None:
+        if os.path.isfile(filename):
+            with open(filename) as fh:
+                json_token = json.load(fh)
+                return Token(
+                    access_token=json_token["access_token"],
+                    refresh_token=json_token["refresh_token"],
+                    session_state=json_token["session_state"],
+                    access_valid_until=int(json_token["access_valid_until"]),
+                    refresh_valid_until=int(json_token["refresh_valid_until"]),
+                )
+        return None
 
-    def __init__(
-        self,
-        device_auth_url: str = client_settings().auth_dev_url,
-        token_url: str = client_settings().auth_token_url,
-        client_id: str = client_settings().auth_client_id,
-    ):
-        self._device_auth_url: str = device_auth_url
-        self._token_url: str = token_url
-        self._client_id: str = client_id
-
-    def _create_token_from_resp(self, json_obj) -> Token:
+    @staticmethod
+    def parse_from_resp(json_obj) -> Self:
         access_valid_until = int(time.time()) - 10 + int(json_obj["expires_in"])
         refresh_valid_until = (
             int(time.time()) - 10 + int(json_obj["refresh_expires_in"])
@@ -78,6 +85,20 @@ class TokenClient:
             access_valid_until=access_valid_until,
             refresh_valid_until=refresh_valid_until,
         )
+
+
+
+class TokenClient:
+
+    def __init__(
+        self,
+        device_auth_url: str = client_settings().auth_dev_url,
+        token_url: str = client_settings().auth_token_url,
+        client_id: str = client_settings().auth_client_id,
+    ):
+        self._device_auth_url: str = device_auth_url
+        self._token_url: str = token_url
+        self._client_id: str = client_id
 
     async def retrieve_token(self) -> Token:
 
@@ -133,7 +154,7 @@ class TokenClient:
                             f"error retrievening retrieving token: {json_resp}"
                         )
                     elif "error" not in json_resp:
-                        token = self._create_token_from_resp(json_obj=json_resp)
+                        token = Token.parse_from_resp(json_obj=json_resp)
                         break
 
         assert token
@@ -163,7 +184,7 @@ class TokenClient:
                 if "error" in json_resp:
                     raise Exception(f"error refreshing token: {json_resp}")
 
-                token = self._create_token_from_resp(json_obj=json_resp)
+                token = Token.parse_from_resp(json_obj=json_resp)
 
         assert token
         return token
@@ -188,7 +209,7 @@ class TokenClient:
                 else:
                     resp.raise_for_status()
                 json_resp = await resp.json()
-                token = self._create_token_from_resp(json_obj=json_resp)
+                token = Token.parse_from_resp(json_obj=json_resp)
 
         assert token
         return token
@@ -198,28 +219,8 @@ class TokenProvider:
 
     def __init__(self) -> None:
         self._toke_filepath: str = "auth.json"
-        self._token: Token | None = self._load_token()
+        self._token: Token | None = Token.load_token(self._toke_filepath)
         self._toke_client = TokenClient()
-
-    def _load_token(self) -> Token | None:
-        if os.path.isfile(self._toke_filepath):
-            with open(self._toke_filepath) as fh:
-                json_token = json.load(fh)
-                return Token(
-                    access_token=json_token["access_token"],
-                    refresh_token=json_token["refresh_token"],
-                    session_state=json_token["session_state"],
-                    access_valid_until=int(json_token["access_valid_until"]),
-                    refresh_valid_until=int(json_token["refresh_valid_until"]),
-                )
-        return None
-
-    def _store_token(self) -> None:
-        if self._token is None:
-            return
-
-        with open(self._toke_filepath, "w") as fh:
-            json.dump(self._token.toJSON(), fh)
 
     def _access_valid(self) -> bool:
         return self._token and self._token.is_access_valid()
@@ -238,7 +239,7 @@ class TokenProvider:
             self._token = await self._toke_client.retrieve_token()
 
         assert self._token
-        self._store_token()
+        self._token.store_token(self._toke_filepath)
 
     async def access_token(self) -> str:
         await self._refresh_token()
@@ -248,4 +249,4 @@ class TokenProvider:
     async def resource_token(self, ticket):
         await self._refresh_token()
         self._token = await self._toke_client.resource_token(self._token, ticket)
-        self._store_token()
+        self._token.store_token(self._toke_filepath)
