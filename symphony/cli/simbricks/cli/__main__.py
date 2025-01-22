@@ -25,6 +25,7 @@ from typing_extensions import Annotated
 from simbricks.cli.commands import (
     audit,
     admin,
+    org,
     namespaces,
     rg,
     runs,
@@ -41,6 +42,7 @@ app.add_typer(namespaces.app, name="ns")
 app.add_typer(runs.app, name="runs")
 app.add_typer(audit.app, name="audit")
 app.add_typer(admin.app, name="admin")
+app.add_typer(org.app, name="org")
 app.add_typer(systems.app, name="systems")
 app.add_typer(simulations.app, name="sims")
 app.add_typer(instantiations.app, name="insts")
