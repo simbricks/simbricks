@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 class ClientSettings(BaseSettings):
     base_url: str = "https://app.simbricks.io/api"
@@ -30,10 +30,10 @@ class ClientSettings(BaseSettings):
     auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
     auth_dev_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
 
-    namespace: str = ""
-    runner_id: int = -1
+    organization: str = "SimBricks"
+    namespace: str = "Demo"
     timeout_sec: int = 20
 
 @lru_cache
 def client_settings() -> ClientSettings:
-    return ClientSettings(_env_file="internal.env", _env_file_encoding="utf-8")
+    return ClientSettings(_env_file="simbricks-client.env", _env_file_encoding="utf-8")
