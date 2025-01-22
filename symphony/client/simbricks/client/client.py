@@ -544,12 +544,12 @@ class RunnerClient:
         async with self.post(url="", json=updates) as resp:
             return await resp.json()
 
-    async def delete_runner(self, runner_id: int) -> dict:
-        async with self._ns_client.delete(url=f"/runners/{runner_id}") as resp:
+    async def delete_runner(self) -> dict:
+        async with self.delete(url="") as resp:
             return await resp.json()
 
-    async def get_runner(self, runner_id: int) -> dict:
-        async with self._ns_client.get(url=f"/runners/{runner_id}") as resp:
+    async def get_runner(self) -> dict:
+        async with self.get(url=f"") as resp:
             return await resp.json()
 
     async def list_runners(self) -> dict:
