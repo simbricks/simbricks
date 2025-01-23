@@ -43,7 +43,11 @@ symphony-publish:
 		poetry publish -r $(SYMPHONY_PUBLICATION_REPO)); \
 	done
 
-.PHONY: symphony-dev symphony-build symphony-publish
+TO_CLEAN := $(addsuffix /dist, $(addprefix $(SYMPHONY_DIR), $(SYMPHONY_MODS)))
+symphony-clean:
+	rm -rf $(TO_CLEAN)
 
-CLEAN := $(addsuffix /dist, $(addprefix $(SYMPHONY_DIR), $(SYMPHONY_MODS)))
+.PHONY: symphony-dev symphony-build symphony-publish symphony-clean
+
+CLEAN := $(TO_CLEAN)
 include mk/subdir_post.mk
