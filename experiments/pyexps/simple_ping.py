@@ -1,77 +1,64 @@
-# Copyright 2022 Max Planck Institute for Software Systems, and
-# National University of Singapore
-#
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and associated documentation files (the
-# "Software"), to deal in the Software without restriction, including
-# without limitation the rights to use, copy, modify, merge, publish,
-# distribute, sublicense, and/or sell copies of the Software, and to
-# permit persons to whom the Software is furnished to do so, subject to
-# the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+import simbricks.orchestration.experiments as exp
+import simbricks.splitsim.specification as spec
+import simbricks.splitsim.impl as impl
+
 """
-Simple example experiment, which sets up a client and a server host connected
-through a switch.
+Simple Ping Example:
+Host 0 pings Host1
 
-The client pings the server.
+HOST0 -- NIC0 ------ SWITCH ------ NIC1 -- HOST1
+
 """
+system = spec.System()
 
-from simbricks.orchestration.experiments import Experiment
-from simbricks.orchestration.nodeconfig import (
-    I40eLinuxNode, IdleHost, PingClient
-)
-from simbricks.orchestration.simulators import Gem5Host, I40eNIC, SwitchNet
+# create a host instance and a NIC instance then install the NIC on the host
+host0 = spec.LinuxHost(system)
+nic0 = spec.i40eNIC(system)
+host0.nic_driver = ['i40e']
+host0.ip = '10.0.0.1'
+pcichannel0 = spec.PCI(system)
+pcichannel0.install(host0, nic0)
 
-e = Experiment(name='simple_ping')
-e.checkpoint = True  # use checkpoint and restore to speed up simulation
+host1 = spec.LinuxHost(system)
+nic1 = spec.i40eNIC(system)
+host1.nic_driver = ['i40e']
+host1.ip = '10.0.0.2'
+pcichannel1 = spec.PCI(system)
+pcichannel1.install(host1, nic1)
 
-# create client
-client_config = I40eLinuxNode()  # boot Linux with i40e NIC driver
-client_config.ip = '10.0.0.1'
-client_config.app = PingClient(server_ip='10.0.0.2')
-client = Gem5Host(client_config)
-client.name = 'client'
-client.wait = True  # wait for client simulator to finish execution
-e.add_host(client)
+port0 = spec.NetDev()
+port1 = spec.NetDev()
+switch = spec.Switch(system)
+switch.install_netdev(port0)
+switch.install_netdev(port1)
 
-# attach client's NIC
-client_nic = I40eNIC()
-e.add_nic(client_nic)
-client.add_nic(client_nic)
+ethchannel0 = spec.Eth(system)
+ethchannel0.install(nic0, port0)
+ethchannel1 = spec.Eth(system)
+ethchannel1.install(nic1, port1)
 
-# create server
-server_config = I40eLinuxNode()  # boot Linux with i40e NIC driver
-server_config.ip = '10.0.0.2'
-server_config.app = IdleHost()
-server = Gem5Host(server_config)
-server.name = 'server'
-e.add_host(server)
+# configure the software to run on the host
+host0.app = spec.PingClient('10.0.0.2')
+host1.app = spec.Sleep()
 
-# attach server's NIC
-server_nic = I40eNIC()
-e.add_nic(server_nic)
-server.add_nic(server_nic)
+"""
+Execution Config
+"""
+experiments = []
 
-# connect NICs over network
-network = SwitchNet()
-e.add_network(network)
-client_nic.set_network(network)
-server_nic.set_network(network)
+e = exp.Experiment('simple_ping_sysconf')
+host_inst0 = impl.Gem5Sim(e)
+host_inst0.add(host0)
 
-# set more interesting link latencies than default
-eth_latency = 500 * 10**3  # 500 us
-network.eth_latency = eth_latency
-client_nic.eth_latency = eth_latency
-server_nic.eth_latency = eth_latency
+host_inst1 = impl.Gem5Sim(e)
+host_inst1.add(host1)
 
-experiments = [e]
+nic_inst0 = impl.I40eNicSim(e)
+nic_inst0.add(nic0)
+nic_inst1 = impl.I40eNicSim(e)
+nic_inst1.add(nic1)
+
+net_inst = impl.SwitchBMSim(e)
+net_inst.add(switch)
+
+experiments.append(e)
