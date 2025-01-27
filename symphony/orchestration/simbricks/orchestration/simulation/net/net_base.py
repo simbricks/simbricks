@@ -445,16 +445,14 @@ class NS3Net(SimpleNS3Sim):
                     # connect host to switch
                     assert(isinstance(other, sys_eth.EthSwitch))
                     ns3_components[other].add_component(ns3_components[comp])
-                    channels.add(chan)
                 elif isinstance(comp, sys_eth.EthSwitch):
                     if other not in self.components():
                         # the component is in a different simulator instance
                         sim_chan = self._simulation.retrieve_or_create_channel(chan)
-                        socket = inst.get_socket(get_component_interface(chan, comp))
+                        socket = inst.update_get_socket(get_component_interface(chan, comp))
                         assert(socket)
                         ns3_sb_chan = ns3_comps.NS3NetworkSimbricks(other, sim_chan, socket)
                         ns3_components[comp].add_component(ns3_sb_chan)
-                        channels.add(chan)
                     else:
                         if isinstance(other, system.Host):
                             # we handle this case when we see the host
@@ -467,6 +465,8 @@ class NS3Net(SimpleNS3Sim):
                         ns3c.add(ns3_chan)
                 else:
                     raise ValueError("Cannot add component to ns-3")
+                
+                channels.add(chan)
 
         for component in ns3c:
             component.resolve_paths()
