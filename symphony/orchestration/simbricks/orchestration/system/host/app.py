@@ -44,6 +44,7 @@ class Application(utils_base.IdObj):
         json_obj = super().toJSON()
         json_obj["host"] = self.host.id()
         json_obj["parameters"] = utils_base.dict_to_json(self.parameters)
+        json_obj["wait"] = self.wait
         return json_obj
 
     @classmethod
@@ -54,6 +55,7 @@ class Application(utils_base.IdObj):
         instance.parameters = utils_base.json_to_dict(
             utils_base.get_json_attr_top(json_obj, "parameters")
         )
+        instance.wait = bool(utils_base.get_json_attr_top(json_obj, "wait"))
         return instance
 
 
@@ -112,7 +114,6 @@ class BaseLinuxApplication(Application):
         json_obj = super().toJSON()
         json_obj["start_delay"] = self.start_delay
         json_obj["end_delay"] = self.end_delay
-        json_obj["wait"] = self.wait
         return json_obj
 
     @classmethod
@@ -120,7 +121,6 @@ class BaseLinuxApplication(Application):
         instance = super().fromJSON(system, json_obj)
         instance.start_delay = utils_base.get_json_attr_top_or_none(json_obj, "start_delay")
         instance.end_delay = utils_base.get_json_attr_top_or_none(json_obj, "end_delay")
-        instance.wait = utils_base.get_json_attr_top(json_obj, "wait")
         return instance
 
 
