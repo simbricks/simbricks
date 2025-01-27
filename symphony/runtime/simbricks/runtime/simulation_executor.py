@@ -152,30 +152,36 @@ class SimulationExecutor:
 
     async def _start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
-        name = sim.full_name()
-        cmd_exec = await self._cmd_executor.start_simulator(sim, sim.run_cmd(self._instantiation))
-        self._running_sims[sim] = cmd_exec
+        try:
+            name = sim.full_name()
+            cmd_exec = await self._cmd_executor.start_simulator(
+                sim, sim.run_cmd(self._instantiation)
+            )
+            self._running_sims[sim] = cmd_exec
 
-        # give simulator time to start if indicated
-        delay = sim.start_delay()
-        if delay > 0:
-            await asyncio.sleep(delay)
+            # give simulator time to start if indicated
+            delay = sim.start_delay()
+            if delay > 0:
+                await asyncio.sleep(delay)
 
-        # Wait till sockets exist
-        wait_socks = sim.sockets_wait(inst=self._instantiation)
-        if len(wait_socks) > 0:
-            if self._verbose:
-                print(f"{self._instantiation.simulation.name}: waiting for sockets {name}")
-            for sock in wait_socks:
-                await sock.wait()
-            if self._verbose:
-                print(
-                    f"{self._instantiation.simulation.name}: waited successfully for sockets {name}"
-                )
-        await self._callbacks.simulator_ready(sim)
+            # Wait till sockets exist
+            wait_socks = sim.sockets_wait(inst=self._instantiation)
+            if len(wait_socks) > 0:
+                if self._verbose:
+                    print(f"{self._instantiation.simulation.name}: waiting for sockets {name}")
+                for sock in wait_socks:
+                    await sock.wait()
+                if self._verbose:
+                    print(
+                        f"{self._instantiation.simulation.name}: waited successfully for sockets {name}"
+                    )
+            await self._callbacks.simulator_ready(sim)
 
-        if sim.wait_terminate:
-            self._wait_sims.append(cmd_exec)
+            if sim.wait_terminate:
+                self._wait_sims.append(cmd_exec)
+
+        except asyncio.CancelledError:
+            pass
 
     async def prepare(self) -> None:
         self._instantiation._cmd_executor = self._cmd_executor
@@ -197,16 +203,20 @@ class SimulationExecutor:
         for exec in itertools.chain(self._running_sims.values(), self._running_proxies.values()):
             await exec.wait()
 
+    async def sigusr1(self) -> None:
+        for exec in self._running_sims.values():
+            await exec.sigusr1()
+
     async def _profiler(self) -> None:
         assert self._profile_int
         while True:
             await asyncio.sleep(self._profile_int)
-            for sim, exec in self._running_sims.items():
-                await exec.sigusr1()
+            await self.sigusr1()
 
     async def run(self) -> output.SimulationOutput:
         profiler_task = None
 
+        starting: list[asyncio.Task] = []
         try:
             await self._callbacks.simulation_started()
             graph = self._instantiation.sim_dependencies()
@@ -214,7 +224,6 @@ class SimulationExecutor:
             ts.prepare()
             while ts.is_active():
                 # start ready simulators in parallel
-                starting = []
                 topo_comps = []
                 for comp in ts.get_ready():
                     comp: dep_topo.TopologyComponent
@@ -257,6 +266,11 @@ class SimulationExecutor:
                 profiler_task.cancel()
             except asyncio.CancelledError:
                 pass
+
+        for task in starting:
+            if not task.done():
+                task.cancel()
+                await task
 
         # The bare except above guarantees that we always execute the following
         # code, which terminates all simulators and produces a proper output
