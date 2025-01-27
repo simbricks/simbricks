@@ -26,7 +26,7 @@ import datetime
 import json
 import logging
 import pathlib
-import sys
+import traceback
 import typing
 import uuid
 
@@ -116,6 +116,12 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
 
     async def simulator_ready(self, sim: sim_base.Simulator) -> None:
         LOGGER.debug(f"[{sim.full_name()}] has started successfully")
+        # NOTE: this can happen due to coroutine scheduling and the termination of simulators
+        if sim not in self._active_simulator_cmd:
+            LOGGER.warning(
+                f"cannot mark simulator as ready as it was already removed: {sim.full_name()}"
+            )
+            return
         await self._client.update_state_simulator(
             self._run_id, sim.id(), sim.full_name(), "running", self._active_simulator_cmd[sim]
         )
@@ -190,9 +196,12 @@ class Run:
 
 class Runner:
 
-    def __init__(self, base_url: str, workdir: str, namespace: str, ident: int):
+    def __init__(
+        self, base_url: str, workdir: str, namespace: str, ident: int, polling_delay_sec: int
+    ):
         self._base_url: str = base_url
         self._workdir: pathlib.Path = pathlib.Path(workdir).resolve()
+        self._polling_delay_sec: int = polling_delay_sec
         self._namespace: str = namespace
         self._ident: int = ident
         self._base_client = client.BaseClient(base_url=base_url)
@@ -282,15 +291,13 @@ class Runner:
                 sim_task.cancel()
             await self._rc.update_run(run.run_id, state="cancelled", output="")
             LOGGER.info(f"cancelled execution of run {run.run_id}")
-            raise
 
         except Exception as ex:
-            LOGGER.debug("_start_sim handel fatal error")
+            LOGGER.debug("_start_sim handel error")
             if sim_task:
                 sim_task.cancel()
             await self._rc.update_run(run_id=run.run_id, state="error", output="")
             LOGGER.error(f"error while executing run {run.run_id}: {ex}")
-            raise ex
 
     async def _cancel_all_tasks(self) -> None:
         for _, run in self._run_map.items():
@@ -312,9 +319,8 @@ class Runner:
                 for run_id in list(self._run_map.keys()):
                     run = self._run_map[run_id]
                     # check if run finished and cleanup map
-                    if run.exec_task.done():
+                    if run.exec_task and run.exec_task.done():
                         run = self._run_map.pop(run_id)
-                        await run.exec_task
                         LOGGER.debug(f"removed run {run_id} from run_map")
                         assert run_id not in self._run_map
                         continue
@@ -359,13 +365,13 @@ class Runner:
                             else:
                                 try:
                                     run = await self._prepare_run(run_id=run_id)
+                                    run.exec_task = asyncio.create_task(self._start_run(run=run))
+                                    self._run_map[run_id] = run
+                                    LOGGER.debug(f"started execution of run {run_id}")
                                 except Exception as err:
                                     LOGGER.error(f"could not prepare run {run_id}: {err}")
+                                    await self._rc.update_run(run_id, "error", "")
                                     event_status = "cancelled"
-                                    break
-                                run.exec_task = asyncio.create_task(self._start_run(run=run))
-                                self._run_map[run_id] = run
-                                LOGGER.debug(f"started execution of run {run_id}")
                         case "simulation_status":
                             if not run_id or not run_id in self._run_map:
                                 event_status = "cancelled"
@@ -379,37 +385,39 @@ class Runner:
                     )
                     LOGGER.info(f"handeled event {event_id}")
 
-                await asyncio.sleep(3)
+                await asyncio.sleep(self._polling_delay_sec)
 
         except asyncio.CancelledError:
+            LOGGER.error(f"cancelled event handling loop")
             await self._cancel_all_tasks()
 
-        except Exception as exc:
+        except Exception:
             await self._cancel_all_tasks()
-            LOGGER.error(f"an error occured while running: {exc}")
-            raise exc
+            trace = traceback.format_exc()
+            LOGGER.error(f"an error occured while running: {trace}")
 
     async def run(self) -> None:
         LOGGER.info("STARTED RUNNER")
         LOGGER.debug(
-            f" runner params: base_url={self._base_url}, workdir={self._workdir}, namespace={self._namespace}, _ident={self._ident}"
+            f" runner params: base_url={self._base_url}, workdir={self._workdir}, namespace={self._namespace}, ident={self._ident}, polling_delay_sec={self._polling_delay_sec}"
         )
 
         try:
             await self._handel_events()
         except Exception as exc:
             LOGGER.error(f"fatal error {exc}")
-            sys.exit(1)
+            raise exc
 
         LOGGER.info("TERMINATED RUNNER")
 
 
 async def amain():
     runner = Runner(
-        base_url=settings.RunnerSettings().base_url,
+        base_url=settings.runner_settings().base_url,
         workdir=pathlib.Path("./runner-work").resolve(),
-        namespace=settings.RunnerSettings().namespace,
-        ident=settings.RunnerSettings().runner_id,
+        namespace=settings.runner_settings().namespace,
+        ident=settings.runner_settings().runner_id,
+        polling_delay_sec=settings.runner_settings().polling_delay_sec,
     )
 
     await runner.run()
