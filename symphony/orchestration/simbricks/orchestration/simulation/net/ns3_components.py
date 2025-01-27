@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import typing as tp
+import uuid
 from abc import ABC, abstractmethod
 from enum import Enum
 from simbricks.orchestration import system
@@ -233,14 +234,14 @@ class NS3Component(NS3Base):
     def __init__(self, idd: str) -> None:
         super().__init__()
         self.name = idd
-        self.id = idd
+        self.idd = idd
         self.has_path = False
         self.type = ''
 
     def ns3_config(self) -> str:
-        if self.id == '' or self.type == '':
+        if self.idd == '' or self.type == '':
             raise AttributeError('Id or Type cannot be empty')
-        self.mapping.update({'Id': self.id, 'Type': self.type})
+        self.mapping.update({'Id': self.idd, 'Type': self.type})
 
         return super().ns3_config()
 
@@ -250,14 +251,14 @@ class NS3Component(NS3Base):
     def resolve_paths(self) -> None:
         self.has_path = True
         for component in self.components:
-            path = f'{self.id}/{component.id}'
+            path = f'{self.idd}/{component.idd}'
             if component.has_path:
                 raise AttributeError(
-                    f'Component {component.id} was already '
+                    f'Component {component.idd} was already '
                     f'added to another component (while trying '
                     f'to assign {path}).'
                 )
-            component.id = path
+            component.idd = path
             component.resolve_paths()
 
     def toJSON(self):
@@ -302,8 +303,8 @@ class NS3TopologyChannel(NS3Component):
 class NS3SimpleChannel(NS3TopologyChannel):
 
     def __init__(self, channel: sys_eth.EthChannel) -> None:
-        name = channel.name if channel.name else ''
-        super().__init__(f'{name}-{channel.id()}')
+        name = f"sys_eth.EthChannel-{channel.a.id()}-{channel.id()}-{channel.b.id()}"
+        super().__init__(name)
         self.type = 'Simple'
         self.data_rate = self.get_parameter(channel, 'data_rate')
         self.queue_type = self.get_parameter(channel, 'queue_type',
@@ -319,15 +320,15 @@ class NS3SimpleChannel(NS3TopologyChannel):
 
     def ns3_config(self) -> str:
         if self.left_node is None or self.right_node is None:
-            raise AttributeError(f'Not all nodes for channel {self.id} given')
+            raise AttributeError(f'Not all nodes for channel {self.idd} given')
         self.mapping.update({
             'Device-DataRate': self.data_rate,
             'QueueType': self.queue_type,
             'Queue-MaxSize': self.queue_size,
             'ChannelType': self.channel_type,
             'Channel-Delay': self.delay,
-            'LeftNode': self.left_node.id,
-            'RightNode': self.right_node.id,
+            'LeftNode': self.left_node.idd,
+            'RightNode': self.right_node.idd,
         })
         return super().ns3_config()
 
@@ -358,7 +359,7 @@ class NS3NetworkSimbricks(NS3Network):
 
     def __init__(self, comp: sys_base.Component,
                  chan: sim_chan.Channel,
-                 socket: inst_base.Socket) -> None:
+                 socket: inst_socket.Socket) -> None:
         name = comp.name if comp.name else ''
         super().__init__(f'{name}-{comp.id()}')
         self.type = 'Simbricks'
