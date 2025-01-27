@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from functools import lru_cache
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -28,13 +29,16 @@ class RunnerSettings(BaseSettings):
     base_url: str = "https://app.simbricks.io/api"
     auth_client_id: str = "api.auth.simbricks.io"
     auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
-    auth_dev_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
+    auth_dev_url: str = (
+        "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
+    )
 
     namespace: str = "foo/bar/baz"
     runner_id: int = 1
 
     verbose: bool = True
     log_level: str = "DEBUG"
+    polling_delay_sec: int = Field(default=10, gt=5, lt=60)
 
 
 @lru_cache
