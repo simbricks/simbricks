@@ -1,13 +1,25 @@
 import datetime
 import enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
+
+
+class ApiNamespace(BaseModel):
+    id: int | None = None
+    parent_id: int | None = None
+    name: str
+
+
+ApiNamespaceList_A = TypeAdapter(list[ApiNamespace])
 
 
 class ApiSystem(BaseModel):
     id: int | None = None
     sb_json: str | dict | None = None
     namespace_id: int | None = None
+
+
+ApiSystemList_A = TypeAdapter(list[ApiSystem])
 
 
 class ApiSystemQuery(BaseModel):
@@ -20,6 +32,9 @@ class ApiSimulation(BaseModel):
     namespace_id: int = None
     system_id: int = None
     sb_json: str | dict | None = None
+
+
+ApiSimulationList_A = TypeAdapter(list[ApiSimulation])
 
 
 class ApiSimulationQuery(BaseModel):
@@ -49,6 +64,9 @@ class ApiInstantiation(BaseModel):
     fragments: list[ApiFragment] = []
 
 
+ApiInstantiationList_A = TypeAdapter(list[ApiInstantiation])
+
+
 class ApiInstantiationQuery(BaseModel):
     id: int | None = None
     simulation_id: int | None = None
@@ -56,7 +74,7 @@ class ApiInstantiationQuery(BaseModel):
     limit: int | None = None
 
 
-class RunState(enum.Enum):
+class RunState(str, enum.Enum):
     SPAWNED = "spawned"
     PENDING = "pending"
     RUNNING = "running"
@@ -66,11 +84,14 @@ class RunState(enum.Enum):
 
 
 class ApiRun(BaseModel):
-    id: int | None
+    id: int | None = None
     namespace_id: int | None = None
     instantiation_id: int | None = None
     state: RunState | None = None
     output: str | None = None
+
+
+ApiRunList_A = TypeAdapter(list[ApiRun])
 
 
 class ApiRunQuery(BaseModel):
@@ -91,6 +112,9 @@ class ApiResourceGroup(BaseModel):
     memory_left: int | None = None
 
 
+ApiResourceGroupList_A = TypeAdapter(list[ApiResourceGroup])
+
+
 class ApiRunnerTag(BaseModel):
     label: str
 
@@ -103,14 +127,17 @@ class ApiRunner(BaseModel):
     tags: list[ApiRunnerTag] = []
 
 
-class RunnerEventAction(enum.Enum):
+ApiRunnerList_A = TypeAdapter(list[ApiRunner])
+
+
+class RunnerEventAction(str, enum.Enum):
     KILL = "kill"
     HEARTBEAT = "heartbeat"
     SIMULATION_STATUS = "simulation_status"
     START_RUN = "start_run"
 
 
-class RunnerEventStatus(enum.Enum):
+class RunnerEventStatus(str, enum.Enum):
     PENDING = "pending"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
@@ -122,6 +149,9 @@ class ApiRunnerEvent(BaseModel):
     run_id: int | None = None
     runner_id: int
     event_status: RunnerEventStatus | None = None
+
+
+ApiRunnerEventList_A = TypeAdapter(list[ApiRunnerEvent])
 
 
 class UpdateApiRunnerEvent(BaseModel):
@@ -140,7 +170,7 @@ class ApiRunnerEventQuery(BaseModel):
     limit: int | None = None
 
 
-class RunSimulatorState(enum.Enum):
+class RunSimulatorState(str, enum.Enum):
     UNKNOWN = "unknown"
     PREPARING = "preparing"
     STARTING = "starting"
