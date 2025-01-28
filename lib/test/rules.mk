@@ -1,4 +1,4 @@
-# Copyright 2021 Max Planck Institute for Software Systems, and
+# Copyright 2025 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -22,9 +22,20 @@
 
 include mk/subdir_pre.mk
 
-lib_dir := $(d)
+dir := $(d)
 
-$(eval $(call subdir,simbricks))
-$(eval $(call subdir,test))
+OBJS := $(d)parser_test.o
 
+bin_tests := $(d)parser_test
+
+$(d)parser_test: $(d)parser_test.o $(lib_parser)
+
+.PHONY: lib-tests run-lib-tests
+
+lib-tests: $(bin_tests)
+
+run-lib-tests: lib-tests
+	$(dir)run_tests.sh $(bin_tests)
+
+CLEAN := $(bin_tests) $(OBJS)
 include mk/subdir_post.mk
