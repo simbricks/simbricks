@@ -1,7 +1,7 @@
-from simbricks.orchestration import system
 from simbricks.orchestration import simulation as sim
-from simbricks.orchestration.helpers import simulation as sim_helpers
+from simbricks.orchestration import system
 from simbricks.orchestration.helpers import instantiation as inst_helpers
+from simbricks.orchestration.helpers import simulation as sim_helpers
 
 sys = system.System()
 
@@ -37,11 +37,12 @@ host0.add_app(ping_client_app)
 host1.add_app(system.Sleep(host1, infinite=True))
 
 simulation = sim_helpers.simple_simulation(
-  sys,
-  compmap={
-      system.FullSystemHost: sim.QemuSim,
-      system.IntelI40eNIC: sim.I40eNicSim,
-      system.EthSwitch: sim.SwitchNet,
-  })
+    sys,
+    compmap={
+        system.FullSystemHost: sim.QemuSim,
+        system.IntelI40eNIC: sim.I40eNicSim,
+        system.EthSwitch: sim.SwitchNet,
+    },
+)
 
 instantiations = [inst_helpers.simple_instantiation(simulation)]
