@@ -33,13 +33,14 @@ import rich.text
 import rich.console
 
 from simbricks.orchestration import instantiation, simulation, system
+from simbricks.schemas import base as schemas
 
 from .. import client, provider
 
 
 async def still_running(run_id: int) -> bool:
     run = await provider.client_provider.simbricks_client.get_run(run_id)
-    return run["state"] == "pending" or run["state"] == "running"
+    return run.state == schemas.RunState.PENDING or run.state == schemas.RunState.RUNNING
 
 
 class ConsoleLineGenerator:
@@ -55,12 +56,12 @@ class ConsoleLineGenerator:
         )
 
         lines = []
-        for simulator_id, simulator in output["simulators"].items():
-            for command_str, output_lines in simulator["commands"].items():
+        for simulator_id, simulator in output.simulators.items():
+            for _, output_lines in simulator.commands.items():
                 for output_line in output_lines:
-                    lines.append((simulator["name"], output_line["output"]))
+                    lines.append((simulator.name, output_line.output))
                     self._simulators_seen_until[simulator_id] = datetime.datetime.fromisoformat(
-                        output_line["created_at"]
+                        output_line.created_at
                     )
 
         return lines
@@ -112,33 +113,33 @@ async def follow_run(run_id: int) -> None:
 
 
 async def submit_system(system: system.System) -> int:
-    system = await provider.client_provider.simbricks_client.create_system(system)
-    system_id = int(system["id"])
-    return system_id
+    sys = await provider.client_provider.simbricks_client.create_system(system)
+    assert sys.id
+    return sys.id
 
 
 async def submit_simulation(system_id: int, simulation: simulation.Simulation) -> int:
-    simulation = await provider.client_provider.simbricks_client.create_simulation(
+    sim = await provider.client_provider.simbricks_client.create_simulation(
         system_id, simulation
     )
-    sim_id = int(simulation["id"])
-    return sim_id
+    assert sim.id
+    return sim.id
 
 
 async def submit_instantiation(
     simulation_id: int, instantiation: instantiation.Instantiation
 ) -> int:
-    instantiation = await provider.client_provider.simbricks_client.create_instantiation(
+    inst = await provider.client_provider.simbricks_client.create_instantiation(
         simulation_id, instantiation
     )
-    inst_id = int(instantiation["id"])
-    return inst_id
+    assert inst.id
+    return inst.id
 
 
 async def submit_run(instantiation_id: int) -> int:
     run = await provider.client_provider.simbricks_client.create_run(instantiation_id)
-    run_id = int(run["id"])
-    return run_id
+    assert run.id
+    return run.id
 
 
 async def create_run(instantiation: instantiation.Instantiation) -> int:

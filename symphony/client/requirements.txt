@@ -27,3 +27,4 @@ rich==13.9.4
 
 # local dependencies
 -e ../orchestration
+-e ../schemas
