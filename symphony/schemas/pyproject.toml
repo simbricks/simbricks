@@ -20,34 +20,24 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-include mk/subdir_pre.mk
+[tool.black]
+line-length = 100
 
-SYMPHONY_DIR := $(d)/
-SYMPHONY_MODS := utils orchestration client cli runtime runner local schemas
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
-SYMPHONY_PUBLICATION_REPO ?= testpypi
+[tool.poetry]
+name = "simbricks-schemas"
+version = "0.0.1"
+description = "SimBricks public schemas used to interact with the SimBricks backend and for inter runner communication"
+authors  = [
+  "Team SimBricks <team@simbricks.io>"
+]
+homepage = "https://www.simbricks.io/"
+packages = [
+  { include = "simbricks" }
+]
 
-symphony-dev:
-	pip install -r $(base_dir)requirements.txt
-	cd $(SYMPHONY_DIR); pip install -r requirements.txt
-
-symphony-build:
-	for m in $(SYMPHONY_MODS); do \
-		(cd $(SYMPHONY_DIR)$$m && \
-		poetry build); \
-	done
-
-symphony-publish:
-	for m in $(SYMPHONY_MODS); do \
-		(cd $(SYMPHONY_DIR)$$m && \
-		poetry publish -r $(SYMPHONY_PUBLICATION_REPO)); \
-	done
-
-TO_CLEAN := $(addsuffix /dist, $(addprefix $(SYMPHONY_DIR), $(SYMPHONY_MODS)))
-symphony-clean:
-	rm -rf $(TO_CLEAN)
-
-.PHONY: symphony-dev symphony-build symphony-publish symphony-clean
-
-CLEAN := $(TO_CLEAN)
-include mk/subdir_post.mk
+[tool.poetry.dependencies]
+pydantic = "2.10.6"

@@ -32,3 +32,4 @@ isort==5.13.2
 -e ./runtime
 -e ./local
 -e ./utils
+-e ./schemas
