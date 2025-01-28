@@ -21,3 +21,5 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from simbricks.orchestration.instantiation.base import *
+from simbricks.orchestration.instantiation.fragment import *
+from simbricks.orchestration.instantiation.proxy import *

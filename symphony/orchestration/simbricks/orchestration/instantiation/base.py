@@ -22,22 +22,21 @@
 
 from __future__ import annotations
 
+import copy
 import pathlib
 import typing
-import itertools
-import copy
 import uuid
-from simbricks.utils import base as util_base
+
+from simbricks.orchestration.instantiation import dependency_graph as inst_dep_graph
+from simbricks.orchestration.instantiation import fragment as inst_fragment
+from simbricks.orchestration.instantiation import proxy as inst_proxy
+from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.orchestration.system import base as sys_base
-from simbricks.orchestration.system import pcie as sys_pcie
-from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import eth as sys_eth
+from simbricks.orchestration.system import mem as sys_mem
+from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system.host import disk_images
-from simbricks.orchestration.instantiation import (
-    socket as inst_socket,
-    fragment as inst_fragment,
-    dependency_topology as inst_dep_topo,
-)
+from simbricks.utils import base as util_base
 from simbricks.utils import file as util_file
 
 if typing.TYPE_CHECKING:
@@ -70,13 +69,10 @@ class Instantiation(util_base.IdObj):
     ):
         super().__init__()
         self.simulation: sim_base.Simulation = sim
-        self.simulation_fragments: set[inst_fragment.Fragment] = set()
-        self.fragment_runner_map: dict[inst_fragment.Fragment, str] = dict()
-        """Map simulation fragment to runner label."""
-        self.runner_label: str | None = None
-        """Label of runner we are executing on. Set by runner when fetching
-        run."""
-        self._simulation_fragment: inst_fragment.Fragment | None = None
+        self._fragments: list[inst_fragment.Fragment] | None = None
+        self._assigned_fragment: inst_fragment.Fragment | None = None
+        """The fragment that is actually executed. This is set by the runner and can also be a
+        merged fragment."""
         self.env: InstantiationEnvironment | None = None
         self.artifact_name: str = f"simbricks-artifact-{str(uuid.uuid4())}.zip"
         self.artifact_paths: list[str] = []
@@ -87,7 +83,7 @@ class Instantiation(util_base.IdObj):
         # NOTE: temporary data structure
         self._socket_per_interface: dict[sys_base.Interface, inst_socket.Socket] = {}
         # NOTE: temporary data structure
-        self._sim_dependency: inst_dep_topo.SimulationDependencyTopology | None = None
+        self._sim_dependency: inst_dep_graph.SimulationDependencyGraph | None = None
         self._cmd_executor: cmd_exec.CommandExecutorFactory | None = None
 
     @staticmethod
@@ -105,20 +101,52 @@ class Instantiation(util_base.IdObj):
             raise RuntimeError(f"{type(self).__name__}._cmd_executor should be set")
         return self._cmd_executor
 
+    @property
+    def fragments(self) -> list[inst_fragment.Fragment]:
+        if self._fragments is None:
+            # Default fragment contains all simulators
+            fragment = inst_fragment.Fragment()
+            fragment.add_simulators(*self.simulation.all_simulators())
+            return fragment
+        return self._fragments
+
+    @fragments.setter
+    def fragments(self, new_val: list[inst_fragment.Fragment]) -> None:
+        if not new_val:
+            raise RuntimeError("List of fragments cannot be empty")
+
+        # Check that fragments do not overlap
+        sims_seen = set()
+        sims_ambiguous = set()
+        for fragment in new_val:
+            sims_ambiguous.update(sims_seen.intersection(fragment.all_simulators()))
+            sims_seen.update(fragment.all_simulators())
+        if sims_ambiguous:
+            raise RuntimeError(
+                f"Fragments must not overlap. The following simulators appear in multiple fragments: {sims_ambiguous}"
+            )
+
+        # Check that all simulators occur in some fragment
+        sims_missing = set(self.simulation.all_simulators()).difference(sims_seen)
+        if sims_missing:
+            raise RuntimeError(
+                f"Fragments must be complete. The following simulators do not appear in any fragment: {sims_missing}"
+            )
+
+        self._fragments = new_val
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        if self.runner_label:
-            json_obj["runner_label"] = self.runner_label
 
         json_obj["simulation"] = self.simulation.id()
 
         fragments_json = []
-        if len(self.simulation_fragments) < 1:
-            fragment = self.fragment
+        if len(self.fragments) < 1:
+            fragment = self.assigned_fragment
             util_base.has_attribute(fragment, "toJSON")
             fragments_json.append(fragment.toJSON())
         else:
-            for fragment in self.simulation_fragments:
+            for fragment in self.fragments:
                 util_base.has_attribute(fragment, "toJSON")
                 fragments_json.append(fragment.toJSON())
         json_obj["simulation_fragments"] = fragments_json
@@ -138,19 +166,17 @@ class Instantiation(util_base.IdObj):
     def fromJSON(cls, sim: sim_base.Simulation, json_obj: dict) -> Instantiation:
         instance = super().fromJSON(json_obj)
 
-        instance.runner_label = util_base.get_json_attr_top_or_none(json_obj, "runner_label")
-
         simulation_id = int(util_base.get_json_attr_top(json_obj, "simulation"))
         assert simulation_id == sim.id()
         instance.simulation = sim
 
-        instance.simulation_fragments = set()
+        instance.fragments = set()
         fragments_json = util_base.get_json_attr_top(json_obj, "simulation_fragments")
         for frag_json in fragments_json:
             frag_class = util_base.get_cls_by_json(frag_json)
             util_base.has_attribute(frag_class, "fromJSON")
             frag = frag_class.fromJSON(frag_json)
-            instance.simulation_fragments.add(frag)
+            instance.fragments.add(frag)
 
         instance.artifact_name = util_base.get_json_attr_top(json_obj, "artifact_name")
         instance.artifact_paths = util_base.get_json_attr_top(json_obj, "artifact_paths")
@@ -274,10 +300,10 @@ class Instantiation(util_base.IdObj):
         self._updated_tracker_mapping(interface=interface, socket=new_socket)
         return new_socket
 
-    def sim_dependencies(self) -> inst_dep_topo.SimulationDependencyTopology:
+    def sim_dependencies(self) -> inst_dep_graph.SimulationDependencyGraph:
         if self._sim_dependency is not None:
             return self._sim_dependency
-        self._sim_dependency = inst_dep_topo.build_simulation_topology(self)
+        self._sim_dependency = inst_dep_graph.build_simulation_dependency_graph(self)
         return self._sim_dependency
 
     @property
@@ -316,23 +342,18 @@ class Instantiation(util_base.IdObj):
         self._restore_checkpoint = restore_checkpoint
 
     @property
-    def fragment(self) -> inst_fragment.Fragment:
-        if self._simulation_fragment is not None:
-            return self._simulation_fragment
+    def assigned_fragment(self) -> inst_fragment.Fragment:
+        if self._assigned_fragment is not None:
+            return self._assigned_fragment
 
-        if self.runner_label is None or not self.simulation_fragments:
+        if not self.fragments:
             # Experiment does not define any simulation fragments, so
             # implicitly, we create one fragment that spans the whole simulation
-            self._simulation_fragment = inst_fragment.Fragment()
-            self._simulation_fragment.add_simulators(*self.simulation.all_simulators())
+            self._assigned_fragment = inst_fragment.Fragment()
+            self._assigned_fragment.add_simulators(*self.simulation.all_simulators())
         else:
-            fragments = [
-                fragment
-                for fragment, runner_label in self.fragment_runner_map.items()
-                if runner_label == self.runner_label
-            ]
-            self._simulation_fragment = inst_fragment.Fragment.merged(fragments)
-        return self._simulation_fragment
+            assert self._assigned_fragment is not None, "Runner must set assigned fragment"
+        return self._assigned_fragment
 
     # TODO: this needs fixing...
     def copy(self) -> Instantiation:
@@ -472,3 +493,14 @@ class Instantiation(util_base.IdObj):
     def find_sim_by_spec(self, spec: sys_base.Component) -> sim_base.Simulator:
         util_base.has_expected_type(spec, sys_base.Component)
         return self.simulation.find_sim(spec)
+
+    def create_proxy_pair(
+        self,
+        ProxyClass: type[inst_proxy.Proxy],
+        fragment_a: inst_fragment.Fragment,
+        fragment_b: inst_fragment.Fragment,
+    ) -> inst_proxy.ProxyPair:
+        """Create a pair of proxies for connecting two fragments. Can be invoked multiple times with
+        the same two fragments to create multiple proxy connections between them."""
+        # TODO (Jonas) Implement this.
+        pass
