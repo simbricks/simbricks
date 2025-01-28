@@ -66,10 +66,9 @@ async def create(name: str):
 
     # create namespace relative to current namespace
     cur_ns = await client.get_cur()
-    cur_ns_id = int(cur_ns["id"])
-
+    assert cur_ns.id
     # create the actual namespace
-    namespace = await client.create(parent_id=cur_ns_id, name=name)
+    namespace = await client.create(parent_id=cur_ns.id, name=name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
 
 

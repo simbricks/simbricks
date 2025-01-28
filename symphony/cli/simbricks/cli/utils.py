@@ -49,7 +49,11 @@ def print_table_generic(title: str, to_print, *args):
         table.add_column(key)
 
     for val in to_print:
-        row = [str(val[key]) for key in args]
+        row = []
+        if hasattr(val, "__getitem__"):
+            row = [str(val[key]) for key in args]
+        else:
+            row = [str(getattr(val, key)) for key in args]
         table.add_row(*row)
 
     console = Console()
