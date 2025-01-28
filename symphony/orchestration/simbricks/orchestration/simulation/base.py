@@ -178,6 +178,39 @@ class Simulator(utils_base.IdObj, abc.ABC):
             raise Exception("could not determine eth_latency and sync_period")
         return latency, sync_period, run_sync
 
+    def get_parameters_url(
+        self,
+        inst: inst_base.Instantiation,
+        socket: inst_socket.Socket,
+        channel: sim_chan.Channel | None = None,
+        sync: bool | None = None,
+        latency: int | None = None,
+        sync_period: int | None = None
+    ) -> str:
+        if not channel and not (sync and latency and sync_period):
+            raise ValueError("Cannot generate parameters url if channel and at least one of sync, "
+                             "latency, sync_period are None")
+        if channel:
+            if not sync:
+                sync = channel._synchronized
+            if not latency:
+                latency = channel.sys_channel.latency
+            if not sync_period:
+                sync_period = channel.sync_period
+
+        sync_str = "true" if sync else "false"
+
+        if socket._type == inst_socket.SockType.CONNECT:
+            return (
+                f"connect:{socket._path}:sync={sync_str}:latency={latency}"
+                f":sync_interval={sync_period}"
+            )
+        else:
+            return (
+                f"listen:{socket._path}:{inst.get_simulator_shm_pool_path(self)}:sync={sync_str}"
+                f":latency={latency}:sync_interval={sync_period}"
+            )
+
     def components(self) -> set[sys_conf.Component]:
         return self._components
 
