@@ -231,13 +231,17 @@ class Runner:
             run_workdir = self._workdir / f"run-{run_id}-{str(uuid.uuid4())}"
         run_workdir.mkdir(parents=True)
 
-        inst_obj = await self._sb_client.get_instantiation(run_obj["instantiation_id"])
-        sim_obj = await self._sb_client.get_simulation(inst_obj["simulation_id"])
-        sys_obj = await self._sb_client.get_system(sim_obj["system_id"])
+        assert run_obj.instantiation_id
+        inst_obj = await self._sb_client.get_instantiation(run_obj.instantiation_id)
+        assert inst_obj.simulation_id
+        sim_obj = await self._sb_client.get_simulation(inst_obj.simulation_id)
+        assert sim_obj.system_id
+        sys_obj = await self._sb_client.get_system(sim_obj.system_id)
 
-        system = sys_base.System.fromJSON(json.loads(sys_obj["sb_json"]))
-        simulation = sim_base.Simulation.fromJSON(system, json.loads(sim_obj["sb_json"]))
-        tmp_inst = inst_base.Instantiation.fromJSON(simulation, json.loads(inst_obj["sb_json"]))
+        system = sys_base.System.fromJSON(json.loads(sys_obj.sb_json))
+        simulation = sim_base.Simulation.fromJSON(system, json.loads(sim_obj.sb_json))
+        tmp_inst = inst_base.Instantiation.fromJSON(simulation, json.loads(inst_obj.sb_json))
+
         env = inst_base.InstantiationEnvironment(workdir=run_workdir)  # TODO
         inst = inst_base.Instantiation(sim=simulation)
         inst.env = env
@@ -339,8 +343,8 @@ class Runner:
 
                 # handel the fetched events
                 for event in events:
-                    event_id = event["id"]
-                    run_id = event["run_id"] if event["run_id"] else None
+                    event_id = event.id
+                    run_id = event.run_id if event.run_id else None
                     LOGGER.debug(f"try to handel event {event}")
 
                     event_status = "completed"
