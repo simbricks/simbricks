@@ -32,6 +32,7 @@ from .settings import client_settings
 from simbricks.orchestration import system
 from simbricks.orchestration import simulation
 from simbricks.orchestration import instantiation
+from simbricks.schemas import base as schemas
 
 
 class BaseClient:
@@ -86,7 +87,7 @@ class BaseClient:
                         await self._token_provider.resource_token(ticket)
                         async with self.request(meth, url, data, False, **kwargs) as resp:
                             yield resp
-                elif resp.status in [400, 402]:
+                elif resp.status in [400, 402, 422]:
                     msg = await resp.json()
                     raise Exception(f"Error sending request: {msg}")
                 else:
@@ -131,7 +132,9 @@ class BaseClient:
             yield resp
 
     @contextlib.asynccontextmanager
-    async def delete(self, url: str, **kwargs: typing.Any) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+    async def delete(
+        self, url: str, **kwargs: typing.Any
+    ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
         async with self.request(meth=aiohttp.hdrs.METH_DELETE, url=url, **kwargs) as resp:
             yield resp
 
@@ -148,24 +151,27 @@ class AdminClient:
     def _prefix(self, url: str) -> str:
         return f"/admin{url}"
 
-    async def get_ns(self, ns_id: int):
+    async def get_ns(self, ns_id: int) -> schemas.ApiNamespace:
         async with self._base_client.get(url=self._prefix(f"/{ns_id}")) as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiNamespace.model_validate(raw_json)
 
-    async def get_all_ns(self):
+    async def get_all_ns(self) -> list[schemas.ApiNamespace]:
         async with self._base_client.get(url=self._prefix("/")) as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiNamespaceList_A.validate_python(raw_json)
 
-    async def create_ns(self, parent_id: int | None, name: str):
-        namespace_json = {"name": name}
-        if parent_id:
-            namespace_json["parent_id"] = parent_id
-        async with self._base_client.post(url=self._prefix("/"), json=namespace_json) as resp:
-            return await resp.json()
+    async def create_ns(self, parent_id: int | None, name: str) -> schemas.ApiNamespace:
+        ns = schemas.ApiNamespace.model_validate({"name": name, "parent_id": parent_id})
+        async with self._base_client.post(
+            url=self._prefix("/"), json=ns.model_dump(exclude_none=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiNamespace.model_validate(raw_json)
 
-    async def delete(self, ns_id: int):
-        async with self._base_client.delete(url=self._prefix(f"/{ns_id}")) as resp:
-            return await resp.json()
+    async def delete(self, ns_id: int) -> None:
+        async with self._base_client.delete(url=self._prefix(f"/{ns_id}")) as _:
+            pass
 
 
 class OrgClient:
@@ -186,8 +192,9 @@ class OrgClient:
             "first_name": first_name,
             "last_name": last_name,
         }
-        async with self._base_client.post(url=self._prefix(org, "/invite-member"),
-                json=namespace_json) as resp:
+        async with self._base_client.post(
+            url=self._prefix(org, "/invite-member"), json=namespace_json
+        ) as resp:
             await resp.json()
 
     async def create_guest(self, org: str, email: str, first_name: str, last_name: str):
@@ -196,8 +203,9 @@ class OrgClient:
             "first_name": first_name,
             "last_name": last_name,
         }
-        async with self._base_client.post(url=self._prefix(org, "/create-guest"),
-                json=namespace_json) as resp:
+        async with self._base_client.post(
+            url=self._prefix(org, "/create-guest"), json=namespace_json
+        ) as resp:
             await resp.json()
 
     async def guest_token(self, org: str, email: str) -> Token:
@@ -212,8 +220,11 @@ class OrgClient:
         j = {
             "email": email,
         }
-        async with self._base_client.post(url=self._prefix(org, "/guest-magic-link"), json=j) as resp:
-            return (await resp.json())['magic_link']
+        async with self._base_client.post(
+            url=self._prefix(org, "/guest-magic-link"), json=j
+        ) as resp:
+            return (await resp.json())["magic_link"]
+
 
 class NSClient:
     def __init__(self, base_client: BaseClient = BaseClient(), namespace: str = ""):
@@ -227,7 +238,9 @@ class NSClient:
     async def post(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._base_client.post(url=self._build_ns_prefix(url=url), data=data, **kwargs) as resp:
+        async with self._base_client.post(
+            url=self._build_ns_prefix(url=url), data=data, **kwargs
+        ) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
@@ -237,14 +250,18 @@ class NSClient:
         data: typing.Any = None,
         **kwargs: typing.Any,
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._base_client.put(url=self._build_ns_prefix(url=url), data=data, **kwargs) as resp:
+        async with self._base_client.put(
+            url=self._build_ns_prefix(url=url), data=data, **kwargs
+        ) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def patch(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._base_client.patch(url=self._build_ns_prefix(url=url), data=data, **kwargs) as resp:
+        async with self._base_client.patch(
+            url=self._build_ns_prefix(url=url), data=data, **kwargs
+        ) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
@@ -252,41 +269,45 @@ class NSClient:
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
 
-        async with self._base_client.get(url=self._build_ns_prefix(url=url), data=data, **kwargs) as resp:
+        async with self._base_client.get(
+            url=self._build_ns_prefix(url=url), data=data, **kwargs
+        ) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
-    async def delete(self, url: str, **kwargs: typing.Any) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+    async def delete(
+        self, url: str, **kwargs: typing.Any
+    ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
         async with self._base_client.delete(url=self._build_ns_prefix(url=url), **kwargs) as resp:
             yield resp
 
-    async def info(self):
-        async with self.get(url="/info") as resp:
-            return await resp.json()
+    async def create(self, parent_id: int, name: str) -> schemas.ApiNamespace:
+        ns = schemas.ApiNamespace.model_validate({"parent_id": parent_id, "name": name})
+        async with self.post(url="/", json=ns.model_dump(exclude_unset=True)) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiNamespace.model_validate(raw_json)
 
-    async def create(self, parent_id: int, name: str):
-        namespace_json = {"parent_id": parent_id, "name": name}
-        async with self.post(url="/", json=namespace_json) as resp:
-            return await resp.json()
-
-    async def delete_ns(self, ns_id: int):
+    async def delete_ns(self, ns_id: int) -> None:
         async with self.delete(url=self._build_ns_prefix(f"/{ns_id}")) as _:
-            return
+            pass
 
     # retrieve namespace ns_id, useful for retrieving a child the current namespace
-    async def get_ns(self, ns_id: int):
+    async def get_ns(self, ns_id: int) -> schemas.ApiNamespace:
         async with self.get(url=f"/one/{ns_id}") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiNamespace.model_validate(raw_json)
 
     # retrieve the current namespace
-    async def get_cur(self):
+    async def get_cur(self) -> schemas.ApiNamespace:
         async with self.get(url="/") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiNamespace.model_validate(raw_json)
 
     # recursively retrieve all namespaces beginning with the current including all children
-    async def get_all(self):
+    async def get_all(self) -> list[schemas.ApiNamespace]:
         async with self.get(url="/all") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiNamespaceList_A.validate_python(raw_json)
 
     async def get_members(self) -> dict[str, list[dict]]:
         async with self.get(url="/members") as resp:
@@ -307,108 +328,148 @@ class SimBricksClient:
     def __init__(self, ns_client: NSClient = NSClient()) -> None:
         self._ns_client: NSClient = ns_client
 
-    async def info(self):
-        async with self._ns_client.get("/systems/info") as resp:
-            return await resp.json()
-
-    async def create_system(self, system: system.System) -> dict:
+    async def create_system(self, system: system.System) -> schemas.ApiSystem:
         sys_json = json.dumps(system.toJSON())
-        json_obj = {"sb_json": sys_json}
-        async with self._ns_client.post(url="/systems", json=json_obj) as resp:
-            return await resp.json()
+        sys = schemas.ApiSystem.model_validate({"sb_json": sys_json})
+        async with self._ns_client.post(
+            url="/systems", json=sys.model_dump(exclude_unset=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiSystem.model_validate(raw_json)
 
-    async def delete_system(self, sys_id: int):
-        async with self._ns_client.delete(url=f"/systems/{sys_id}") as resp:
-            return await resp.json()
+    async def delete_system(self, sys_id: int) -> None:
+        async with self._ns_client.delete(url=f"/systems/{sys_id}") as _:
+            pass
 
-    async def get_systems(self) -> list[dict]:
+    async def get_systems(self) -> list[schemas.ApiSystem]:
         async with self._ns_client.get(url="/systems") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiSystemList_A.validate_python(raw_json)
 
-    async def get_system(self, system_id: int) -> dict:
+    async def get_system(self, system_id: int) -> schemas.ApiSystem:
         async with self._ns_client.get(url=f"/systems/{system_id}") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiSystem.model_validate(raw_json)
 
-    async def create_simulation(self, system_db_id: int, simulation: simulation.Simulation) -> simulation.Simulation:
+    async def create_simulation(
+        self, system_db_id: int, simulation: simulation.Simulation
+    ) -> schemas.ApiSimulation:
         sim_js = json.dumps(simulation.toJSON())
-        json_obj = {"system_id": system_db_id, "sb_json": sim_js}
-        async with self._ns_client.post(url="/simulations", json=json_obj) as resp:
-            return await resp.json()
+        sim = schemas.ApiSimulation.model_validate({"system_id": system_db_id, "sb_json": sim_js})
+        async with self._ns_client.post(
+            url="/simulations", json=sim.model_dump(exclude_unset=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiSimulation.model_validate(raw_json)
 
-    async def delete_simulation(self, sim_id: int):
-        async with self._ns_client.delete(url=f"/simulations/{sim_id}") as resp:
-            return await resp.json()
+    async def delete_simulation(self, sim_id: int) -> None:
+        async with self._ns_client.delete(url=f"/simulations/{sim_id}") as _:
+            pass
 
-    async def get_simulation(self, simulation_id: int) -> dict:
+    async def get_simulation(self, simulation_id: int) -> schemas.ApiSimulation:
         async with self._ns_client.get(url=f"/simulations/{simulation_id}") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiSimulation.model_validate(raw_json)
 
-    async def get_simulations(self) -> list[dict]:
+    async def get_simulations(self) -> list[schemas.ApiSimulation]:
         async with self._ns_client.get(url="/simulations") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiSimulationList_A.validate_python(raw_json)
 
-    async def create_instantiation(self, sim_db_id: int, instantiation: instantiation.Instantiation) -> dict:
+    async def create_instantiation(
+        self, sim_db_id: int, instantiation: instantiation.Instantiation
+    ) -> schemas.ApiInstantiation:
         inst_json = json.dumps(instantiation.toJSON())
-        json_obj = {"simulation_id": sim_db_id, "sb_json": inst_json}
-        async with self._ns_client.post(url="/instantiations", json=json_obj) as resp:
-            return await resp.json()
+        inst = schemas.ApiInstantiation.model_validate(
+            {"simulation_id": sim_db_id, "sb_json": inst_json}
+        )
+        async with self._ns_client.post(
+            url="/instantiations", json=inst.model_dump(exclude_unset=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiInstantiation.model_validate(raw_json)
 
-    async def delete_instantiation(self, inst_id: int):
-        async with self._ns_client.delete(url=f"/instantiations/{inst_id}") as resp:
-            return await resp.json()
+    async def delete_instantiation(self, inst_id: int) -> None:
+        async with self._ns_client.delete(url=f"/instantiations/{inst_id}") as _:
+            pass
 
-    async def get_instantiation(self, instantiation_id: int) -> dict:
+    async def get_instantiation(self, instantiation_id: int) -> schemas.ApiInstantiation:
         async with self._ns_client.get(url=f"/instantiations/{instantiation_id}") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiInstantiation.model_validate(raw_json)
 
-    async def get_instantiations(self) -> list[dict]:
+    async def get_instantiations(self) -> list[schemas.ApiInstantiation]:
         async with self._ns_client.get(url="/instantiations") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiInstantiationList_A.validate_python(raw_json)
 
-    async def create_run(self, inst_db_id: int) -> dict:
-        json_obj = {
-            "instantiation_id": inst_db_id,
-            "state": "pending",
-            "output": "",
-        }
-        async with self._ns_client.post(url="/runs", json=json_obj) as resp:
-            return await resp.json()
+    async def create_run(self, inst_db_id: int) -> schemas.ApiRun:
+        run = schemas.ApiRun.model_validate(
+            {
+                "instantiation_id": inst_db_id,
+                "state": schemas.RunState.PENDING,
+            }
+        )
+        print(run.model_dump(exclude_unset=True))
+        async with self._ns_client.post(
+            url="/runs", json=run.model_dump(exclude_unset=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiRun.model_validate(raw_json)
 
-    async def delete_run(self, rid: int):
-        async with self._ns_client.delete(url=f"/runs/{rid}") as resp:
-            return await resp.json()
+    async def delete_run(self, rid: int) -> None:
+        async with self._ns_client.delete(url=f"/runs/{rid}") as _:
+            pass
 
-    async def update_run(self, rid: int, updates: dict[str, typing.Any] = {"state": "pending"}) -> dict:
-        async with self._ns_client.patch(url=f"/runs/{rid}", json=updates) as resp:
-            return await resp.json()
+    async def update_run(
+        self,
+        rid: int,
+        instantiation_id: int | None = None,
+        state: schemas.RunState | None = None,
+        output: str | None = None,
+    ) -> schemas.ApiRun:
+        update = schemas.ApiRun.model_validate(
+            {
+                "instantiation_id": instantiation_id,
+                "state": state,
+                "output": output,
+            }
+        )
+        async with self._ns_client.patch(
+            url=f"/runs/{rid}", json=update.model_dump(exclude_unset=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiRun.model_validate(raw_json)
 
-    async def get_run(self, run_id: int) -> dict:
+    async def get_run(self, run_id: int) -> schemas.ApiRun:
         async with self._ns_client.get(url=f"/runs/{run_id}") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiRun.model_validate(raw_json)
 
-    async def get_runs(self) -> list[dict]:
+    async def get_runs(self) -> list[schemas.ApiRun]:
         async with self._ns_client.get(url=f"/runs") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiRunList_A.validate_python(raw_json)
 
-    async def set_run_input(self, rid: int, uploaded_input_file: str):
+    async def set_run_input(self, rid: int, uploaded_input_file: str) -> None:
         with open(uploaded_input_file, "rb") as f:
             file_data = {"file": f}
-            async with self._ns_client.put(url=f"/runs/input/{rid}", data=file_data) as resp:
-                return await resp.json()
+            async with self._ns_client.put(url=f"/runs/input/{rid}", data=file_data) as _:
+                pass
 
-    async def get_run_input(self, rid: int, store_path: str):
+    async def get_run_input(self, rid: int, store_path: str) -> None:
         async with self._ns_client.post(url=f"/runs/input/{rid}") as resp:
             content = await resp.read()
             with open(store_path, "wb") as f:
                 f.write(content)
 
-    async def set_run_artifact(self, rid: int, uploaded_output_file: str):
+    async def set_run_artifact(self, rid: int, uploaded_output_file: str) -> None:
         with open(uploaded_output_file, "rb") as f:
             file_data = {"file": f}
             async with self._ns_client.put(url=f"/runs/output/{rid}", data=file_data) as resp:
-                return await resp.json()
+                await resp.json()
 
-    async def get_run_artifact(self, rid: int, store_path: str):
+    async def get_run_artifact(self, rid: int, store_path: str) -> None:
         async with self._ns_client.post(url=f"/runs/output/{rid}") as resp:
             content = await resp.read()
             with open(store_path, "wb") as f:
@@ -416,13 +477,15 @@ class SimBricksClient:
 
     async def get_run_console(
         self, rid: int, simulators_seen_until: dict[int, datetime.datetime] = {}
-    ) -> list[dict]:
+    ) -> schemas.ApiRunOutput:
         simulators = {}
+        # TODO: use pydantic model...
         for simulator_id, until in simulators_seen_until.items():
             simulators[simulator_id] = until.isoformat()
         obj = {"simulators": simulators}
         async with self._ns_client.get(url=f"/runs/{rid}/console", json=obj) as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiRunOutput.model_validate(raw_json)
 
 
 class ResourceGroupClient:
@@ -430,10 +493,21 @@ class ResourceGroupClient:
     def __init__(self, ns_client) -> None:
         self._ns_client: NSClient = ns_client
 
-    async def create_rg(self, label: str, available_cores: int, available_memory: int) -> dict:
-        obj = {"label": label, "available_cores": available_cores, "available_memory": available_memory}
-        async with self._ns_client.post(url="/resource_group", json=obj) as resp:
-            return await resp.json()
+    async def create_rg(
+        self, label: str, available_cores: int, available_memory: int
+    ) -> schemas.ApiResourceGroup:
+        to_create = schemas.ApiResourceGroup.model_validate(
+            {
+                "label": label,
+                "available_cores": available_cores,
+                "available_memory": available_memory,
+            }
+        )
+        async with self._ns_client.post(
+            url="/resource_group", json=to_create.model_dump()
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiResourceGroup.model_validate(raw_json)
 
     async def update_rg(
         self,
@@ -443,26 +517,34 @@ class ResourceGroupClient:
         available_memory: int | None = None,
         cores_left: int | None = None,
         memory_left: int | None = None,
-    ) -> dict:
-        obj = {
-            "id": rg_id,
-            "label": label,
-            "available_cores": available_cores,
-            "available_memory": available_memory,
-            "cores_left": cores_left,
-            "memory_left": memory_left,
-        }
-        obj = utils_base.filter_None_dict(to_filter=obj)
-        async with self._ns_client.put(url=f"/resource_group/{rg_id}", json=obj) as resp:
-            return await resp.json()
+    ) -> schemas.ApiResourceGroup:
+        update = schemas.ApiResourceGroup.model_validate(
+            {
+                "id": rg_id,
+                "label": label,
+                "available_cores": available_cores,
+                "available_memory": available_memory,
+                "cores_left": cores_left,
+                "memory_left": memory_left,
+            }
+        )
+        async with self._ns_client.put(
+            url=f"/resource_group/{rg_id}", json=update.model_dump(exclude_unset=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiResourceGroup.model_validate(raw_json)
 
-    async def get_rg(self, rg_id: int) -> dict:
+    async def get_rg(self, rg_id: int) -> schemas.ApiResourceGroup:
         async with self._ns_client.get(url=f"/resource_group/{rg_id}") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiResourceGroup.model_validate(raw_json)
 
-    async def filter_get_rg(self) -> dict:  # TODO: add filtering object...
+    async def filter_get_rg(
+        self,
+    ) -> list[schemas.ApiResourceGroup]:  # TODO: add filtering object...
         async with self._ns_client.get(url=f"/resource_group") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiResourceGroupList_A.validate_python(raw_json)
 
 
 class RunnerClient:
@@ -478,87 +560,121 @@ class RunnerClient:
     async def post(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._ns_client.post(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
+        async with self._ns_client.post(
+            url=self._build_prefix(url=url), data=data, **kwargs
+        ) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def delete(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._ns_client.delete(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
+        async with self._ns_client.delete(
+            url=self._build_prefix(url=url), data=data, **kwargs
+        ) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def put(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-        async with self._ns_client.put(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
+        async with self._ns_client.put(
+            url=self._build_prefix(url=url), data=data, **kwargs
+        ) as resp:
             yield resp
 
     @contextlib.asynccontextmanager
     async def get(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-
-        async with self._ns_client.get(url=self._build_prefix(url=url), data=data, **kwargs) as resp:
+        async with self._ns_client.get(
+            url=self._build_prefix(url=url), data=data, **kwargs
+        ) as resp:
             yield resp
 
-    async def create_runner(self, resource_group_id: int, label: str, tags: list[str]) -> dict:
+    async def create_runner(
+        self, resource_group_id: int, label: str, tags: list[str]
+    ) -> schemas.ApiRunner:
         tags_obj = list(map(lambda t: {"label": t}, tags))
-        obj = {"resource_group_id": resource_group_id, "label": label, "tags": tags_obj}
-        async with self._ns_client.post(url=f"/runners", json=obj) as resp:
-            return await resp.json()
+        runner = schemas.ApiRunner.model_validate(
+            {"resource_group_id": resource_group_id, "label": label, "tags": tags_obj}
+        )
+        async with self._ns_client.post(url=f"/runners", json=runner.model_dump()) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiRunner.model_validate(raw_json)
 
-    async def create_runner_event(self, action: str, run_id: int | None) -> dict:
-        obj = {"runner_id": self._runner_id, "action": action, "run_id": run_id}
-        async with self.post(url=f"/events", json=obj) as resp:
-            return await resp.json()
+    async def create_runner_event(self, action: str, run_id: int | None) -> schemas.ApiRunnerEvent:
+        event = schemas.ApiRunnerEvent.model_validate(
+            {"runner_id": self._runner_id, "action": action, "run_id": run_id}
+        )
+        async with self.post(url=f"/events", json=event.model_dump()) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiRunnerEvent.model_validate(raw_json)
 
     async def delete_runner_event(self, event_id: int) -> None:
-        async with self.delete(url=f"/events/{event_id}") as resp:
-            await resp.json()
+        async with self.delete(url=f"/events/{event_id}") as _:
+            pass
 
     async def update_runner_event(
         self, event_id: int, action: str | None, run_id: int | None, event_status: str | None
-    ) -> dict:
-        obj = {
-            "id": event_id,
-            "runner_id": self._runner_id,
-            "action": action,
-            "run_id": run_id,
-            "event_status": event_status,
-        }
-        obj = utils_base.filter_None_dict(to_filter=obj)
-        async with self.put(url=f"/events", json=obj) as resp:
-            return await resp.json()
+    ) -> schemas.ApiRunnerEvent:
+        event = schemas.ApiRunnerEvent.model_validate(
+            {
+                "id": event_id,
+                "runner_id": self._runner_id,
+                "action": action,
+                "run_id": run_id,
+                "event_status": event_status,
+            }
+        )
+        async with self.put(url=f"/events", json=event.model_dump(exclude_unset=True)) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiRunnerEvent.model_validate(raw_json)
 
     async def get_events(
         self, action: str | None, run_id: int | None, limit: int | None, event_status: str | None
-    ) -> dict:
+    ) -> list[schemas.ApiRunnerEvent]:
+        # TODO: introduce query object
         params = {"action": action, "run_id": run_id, "event_status": event_status, "limit": limit}
         params = utils_base.filter_None_dict(to_filter=params)
         async with self.get(url=f"/events", params=params) as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiRunnerEventList_A.validate_python(raw_json)
 
-    async def update_runner(self, updates: dict[str, typing.Any]) -> dict:
-        async with self.post(url="", json=updates) as resp:
-            return await resp.json()
+    async def update_runner(
+        self,
+        resource_group_id: int | None = None,
+        label: str | None = None,
+        tags: list[str] | None = None,
+    ) -> schemas.ApiRunner:
+        runner = schemas.ApiRunner.model_validate(
+            {
+                "resource_group_id": resource_group_id,
+                "label": label,
+                "tags": tags,
+            }
+        )
+        async with self.post(url="", json=runner.model_dump(exclude_unset=True)) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiRunner.model_validate(raw_json)
 
-    async def delete_runner(self) -> dict:
-        async with self.delete(url="") as resp:
-            return await resp.json()
+    async def delete_runner(self) -> None:
+        async with self.delete(url="") as _:
+            pass
 
-    async def get_runner(self) -> dict:
+    async def get_runner(self) -> schemas.ApiRunner:
         async with self.get(url=f"") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiRunner.model_validate(raw_json)
 
-    async def list_runners(self) -> dict:
+    async def list_runners(self) -> list[schemas.ApiRunner]:
         async with self._ns_client.get(url=f"/runners") as resp:
-            return await resp.json()
+            raw_json = await resp.json()
+            return schemas.ApiRunnerList_A.validate_python(raw_json)
 
     async def send_heartbeat(self) -> None:
-        async with self.put(url="/heartbeat") as resp:
-            await resp.json()
+        async with self.put(url="/heartbeat") as _:
+            pass
 
     async def filter_get_runs(
         self,
@@ -566,21 +682,26 @@ class RunnerClient:
         instantiation_id: int | None = None,
         state: str | None = None,
         limit: int | None = None,
-    ):
-        obj = {
-            "id": run_id,
-            "instantiation_id": instantiation_id,
-            "state": state,
-            "limit": limit,
-        }
-        utils_base.filter_None_dict(to_filter=obj)
-        async with self.post(url="/filter_get_run", json=obj) as resp:
-            return await resp.json()
+    ) -> list[schemas.ApiRun]:
+        query = schemas.ApiRunQuery.model_validate(
+            {
+                "id": run_id,
+                "instantiation_id": instantiation_id,
+                "state": state,
+                "limit": limit,
+            }
+        )
+        async with self.post(
+            url="/filter_get_run", json=query.model_dump(exclude_unset=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiRunList_A.validate_python(raw_json)
 
-    async def next_run(self) -> dict | None:
+    async def next_run(self) -> schemas.ApiRun | None:
         async with self.get(f"/next_run") as resp:
             if resp.status == 200:
-                return await resp.json()
+                raw_json = await resp.json()
+                return schemas.ApiRun.model_validate(raw_json)
             elif resp.status == 202:
                 return None
             else:
@@ -591,16 +712,19 @@ class RunnerClient:
         run_id: int,
         state: str,
         output: str,
-    ) -> None:
-        obj = {
-            "state": state,
-            "output": output,
-            "id": run_id,
-            "instantiation_id": None, # TODO: FIXME
-        }
-        obj = utils_base.filter_None_dict(to_filter=obj)
-        async with self.put(url=f"/update_run/{run_id}", json=obj) as resp:
-            await resp.json()
+    ) -> schemas.ApiRun:
+        run = schemas.ApiRun.model_validate(
+            {
+                "state": state,
+                "output": output,
+                "id": run_id,
+            }
+        )
+        async with self.put(
+            url=f"/update_run/{run_id}", json=run.model_dump(exclude_unset=True)
+        ) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiRun.model_validate(raw_json)
 
     async def update_state_simulator(
         self, run_id: int, sim_id: int, sim_name: str, state: str, cmd: str
@@ -612,13 +736,13 @@ class RunnerClient:
             "state": state,
             "command": cmd,
         }
-        async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/state", json=obj) as resp:
-            await resp.json()
+        async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/state", json=obj) as _:
+            pass
 
     async def update_proxy(self, run_id: int, proxy_id: int, state: str, cmd: str) -> None:
         obj = {"run_id": run_id, "proxy_id": proxy_id, "state": state, "cmd": cmd}
-        async with self.put(url=f"/{run_id}/proxy/{proxy_id}/state", json=obj) as resp:
-            await resp.json()
+        async with self.put(url=f"/{run_id}/proxy/{proxy_id}/state", json=obj) as _:
+            pass
 
     async def send_out_simulation(
         self,
@@ -636,8 +760,8 @@ class RunnerClient:
                 "output": line,
             }
             objs.append(obj)
-        async with self.post(url=f"/{run_id}/simulation/console", json=objs) as resp:
-            _ = await resp.json()
+        async with self.post(url=f"/{run_id}/simulation/console", json=objs) as _:
+            pass
 
     async def send_out_simulator(
         self,
@@ -659,8 +783,8 @@ class RunnerClient:
                 "created_at": created_at.isoformat(),
             }
             objs.append(obj)
-        async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/console", json=objs) as resp:
-            _ = await resp.json()
+        async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/console", json=objs) as _:
+            pass
 
     async def send_out_proxy(
         self,
@@ -678,5 +802,5 @@ class RunnerClient:
                 "output": line,
             }
             objs.append(obj)
-        async with self.post(url=f"/{run_id}/proxy/{proxy_id}/console", json=objs) as resp:
-            _ = await resp.json()
+        async with self.post(url=f"/{run_id}/proxy/{proxy_id}/console", json=objs) as _:
+            pass
