@@ -21,9 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
-import typing
 import functools
-from simbricks.utils import base as util_base
+import typing
+
 from simbricks.orchestration.instantiation import proxy
 from simbricks.utils import base as util_base
 
@@ -34,9 +34,11 @@ if typing.TYPE_CHECKING:
 
 class Fragment(util_base.IdObj):
 
-    def __init__(self):
+    def __init__(self, runner_label: str | None = None):
         super().__init__()
 
+        self.runner_label: str | None = runner_label
+        """If set, only execute this fragment on runner that has this label."""
         self._proxies: set[proxy.Proxy] = set()
         self._simulators: set[sim_base.Simulator] = set()
 
@@ -97,7 +99,7 @@ class Fragment(util_base.IdObj):
 
     def find_proxy_by_interface(self, interface: sys_base.Interface) -> proxy.Proxy | None:
         for proxy in self._proxies:
-            if interface in proxy.interfaces:
+            if interface in proxy._interfaces:
                 return proxy
         return None
 

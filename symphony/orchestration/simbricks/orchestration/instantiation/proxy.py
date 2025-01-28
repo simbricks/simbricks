@@ -22,39 +22,39 @@
 
 from __future__ import annotations
 
+import abc
 import typing
 
 import simbricks.utils.base as util_base
 from simbricks.orchestration.instantiation import socket as inst_socket
-import abc
-import typing
 
 if typing.TYPE_CHECKING:
-    from simbricks.orchestration.instantiation import base as inst_base
     import simbricks.orchestration.system.base as sys_base
+    from simbricks.orchestration.instantiation import base as inst_base
+    from simbricks.orchestration.simulation import base as sim_base
 
 
 class Proxy(util_base.IdObj, abc.ABC):
 
-    def __init__(self):
+    def __init__(self, connection_mode: inst_socket.SockType):
         super().__init__()
         self._interfaces: list[sys_base.Interface]
         """
-        The interfaces this proxy provides.
+        The interfaces this proxy handles.
         
         Order is important here because proxies forward messages for SimBricks
         sockets in the order these sockets are passed on the command-line. So
         for two connecting proxies executing on separate runners, this order
         must be the same.
         """
-        self.connection_mode: inst_socket.SockType = inst_socket.SockType.CONNECT
+        self._connection_mode: inst_socket.SockType = connection_mode
 
     @property
     def name(self) -> str:
         return f"proxy_{self.id()}"
 
     @abc.abstractmethod
-    def run_cmd() -> str:
+    def run_cmd(self) -> str:
         pass
 
     def sockets_wait(self, inst: inst_base.Instantiation) -> set[inst_socket.Socket]:
@@ -65,29 +65,37 @@ class Proxy(util_base.IdObj, abc.ABC):
                 wait_sockets.append(socket)
         return wait_sockets
 
-    def supported_socket_types(
-        interface: sys_base.Interface,
-    ) -> set[inst_socket.SockType]:
-        return {inst_socket.SockType.CONNECT, inst_socket.SockType.LISTEN}
+    def _find_opposing_proxy(self, instantiation: inst_base.Instantiation) -> Proxy:
+        # TODO (Jonas) Implement this
+        pass
 
 
 class DummyProxy(Proxy):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
 
 class TCPProxy(Proxy):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.ip: str
-        self.port: int
+        self._ip: str | None = None
+        """If this is a connecting proxy, the IP to connect to."""
+        self._port: int | None = None
+        """If this is a connecting proxy, the port to connect to."""
 
 
-class RDMAProxy(Proxy):
+class ProxyPair(util_base.IdObj):
 
-    def __init__(self):
-        super().__init__()
-        self.ip: str
-        self.port: int
+    def __init__(
+        self, instantiation: inst_base.Instantiation, proxy_a: Proxy, proxy_b: Proxy
+    ) -> None:
+        self._inst: inst_base.Instantiation = instantiation
+        self._channels: set[sim_base.Channel] = set()
+        self.proxy_a: Proxy = proxy_a
+        self.proxy_b: Proxy = proxy_b
+
+    def assign_sim_channel(channel: sim_base.Channel) -> None:
+        # TODO (Jonas) Implement this
+        pass
