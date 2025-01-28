@@ -1,4 +1,4 @@
-# Copyright 2021 Max Planck Institute for Software Systems, and
+# Copyright 2025 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -22,21 +22,13 @@
 
 include mk/subdir_pre.mk
 
-lib_simbricks := $(lib_dir)libsimbricks.a
+lib_parser := $(d)libparser.a
 
-libsimbricks_objs :=
+OBJS := $(addprefix $(d),parser.o)
 
-$(eval $(call subdir,base))
-$(eval $(call subdir,mem))
-$(eval $(call subdir,network))
-$(eval $(call subdir,pcie))
-$(eval $(call subdir,nicif))
-$(eval $(call subdir,nicbm))
-$(eval $(call subdir,parser))
+libsimbricks_objs += $(OBJS)
 
-$(lib_simbricks): $(libsimbricks_objs)
-	$(AR) rcs $@ $(libsimbricks_objs)
+$(lib_parser): $(OBJS)
 
-CLEAN := $(lib_simbricks)
-ALL := $(lib_simbricks)
+CLEAN := $(lib_parser) $(OBJS)
 include mk/subdir_post.mk
