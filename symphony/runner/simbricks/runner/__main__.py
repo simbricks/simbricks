@@ -37,6 +37,7 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import settings
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.utils import artifatcs as art
+from simbricks.schemas import base as schemas
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import proxy as inst_proxy
@@ -267,7 +268,7 @@ class Runner:
         try:
             LOGGER.info(f"start run {run.run_id}")
 
-            await self._rc.update_run(run.run_id, "running", "")
+            await self._rc.update_run(run.run_id, schemas.RunState.RUNNING, "")
 
             # TODO: allow for proper checkpointing run
             sim_task = asyncio.create_task(run.runner.run())
@@ -282,7 +283,7 @@ class Runner:
                 )
                 await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)
 
-            status = "error" if res.failed() else "completed"  # TODO: FIXME
+            status = schemas.RunState.ERROR if res.failed() else schemas.RunState.COMPLETED
             await self._rc.update_run(run.run_id, status, output="")
 
             await run.runner.cleanup()
@@ -293,14 +294,14 @@ class Runner:
             LOGGER.debug("_start_sim handel cancelled error")
             if sim_task:
                 sim_task.cancel()
-            await self._rc.update_run(run.run_id, state="cancelled", output="")
+            await self._rc.update_run(run.run_id, state=schemas.RunState.CANCELLED, output="")
             LOGGER.info(f"cancelled execution of run {run.run_id}")
 
         except Exception as ex:
             LOGGER.debug("_start_sim handel error")
             if sim_task:
                 sim_task.cancel()
-            await self._rc.update_run(run_id=run.run_id, state="error", output="")
+            await self._rc.update_run(run_id=run.run_id, state=schemas.RunState.ERROR, output="")
             LOGGER.error(f"error while executing run {run.run_id}: {ex}")
 
     async def _cancel_all_tasks(self) -> None:
@@ -313,11 +314,16 @@ class Runner:
 
     async def _handel_events(self) -> None:
         try:
+            await self._rc.runner_started()
+
             while True:
                 # fetch all events not handeled yet
                 events = list(
                     await self._rc.get_events(
-                        run_id=None, action=None, limit=None, event_status="pending"
+                        run_id=None,
+                        action=None,
+                        limit=None,
+                        event_status=schemas.RunnerEventStatus.PENDING,
                     )
                 )
                 for run_id in list(self._run_map.keys()):
@@ -334,7 +340,7 @@ class Runner:
                             run_id=run_id,
                             action=None,
                             limit=None,
-                            event_status="pending",
+                            event_status=schemas.RunnerEventStatus.PENDING,
                         )
                     )
                     events.extend(run_events)
@@ -347,25 +353,25 @@ class Runner:
                     run_id = event.run_id if event.run_id else None
                     LOGGER.debug(f"try to handel event {event}")
 
-                    event_status = "completed"
-                    match event["action"]:
-                        case "kill":
+                    event_status = schemas.RunnerEventStatus.COMPLETED
+                    match event.action:
+                        case schemas.RunnerEventAction.KILL:
                             if run_id and not run_id in self._run_map:
-                                event_status = "cancelled"
+                                event_status = schemas.RunnerEventStatus.CANCELLED
                             else:
                                 run = self._run_map[run_id]
                                 run.exec_task.cancel()
                                 await run.exec_task
                                 LOGGER.debug(f"executed kill to cancel execution of run {run_id}")
-                        case "heartbeat":
+                        case schemas.RunnerEventAction.HEARTBEAT:
                             await self._rc.send_heartbeat()
                             LOGGER.debug(f"send heartbeat")
-                        case "start_run":
+                        case schemas.RunnerEventAction.START_RUN:
                             if not run_id or run_id in self._run_map:
                                 LOGGER.debug(
                                     f"cannot start run, no run id or run with given id is being executed"
                                 )
-                                event_status = "cancelled"
+                                event_status = schemas.RunnerEventStatus.CANCELLED
                             else:
                                 try:
                                     run = await self._prepare_run(run_id=run_id)
@@ -374,11 +380,11 @@ class Runner:
                                     LOGGER.debug(f"started execution of run {run_id}")
                                 except Exception as err:
                                     LOGGER.error(f"could not prepare run {run_id}: {err}")
-                                    await self._rc.update_run(run_id, "error", "")
-                                    event_status = "cancelled"
-                        case "simulation_status":
+                                    await self._rc.update_run(run_id, schemas.RunState.ERROR, "")
+                                    event_status = schemas.RunnerEventStatus.CANCELLED
+                        case schemas.RunnerEventAction.SIMULATION_STATUS:
                             if not run_id or not run_id in self._run_map:
-                                event_status = "cancelled"
+                                event_status = schemas.RunnerEventStatus.CANCELLED
                             else:
                                 run = self._run_map[run_id]
                                 await run.runner.sigusr1()
