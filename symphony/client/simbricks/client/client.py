@@ -410,7 +410,6 @@ class SimBricksClient:
                 "state": schemas.RunState.PENDING,
             }
         )
-        print(run.model_dump(exclude_unset=True))
         async with self._ns_client.post(
             url="/runs", json=run.model_dump(exclude_unset=True)
         ) as resp:
@@ -503,9 +502,7 @@ class ResourceGroupClient:
                 "available_memory": available_memory,
             }
         )
-        async with self._ns_client.post(
-            url="/resource_group", json=to_create.model_dump()
-        ) as resp:
+        async with self._ns_client.post(url="/resource_group", json=to_create.model_dump()) as resp:
             raw_json = await resp.json()
             return schemas.ApiResourceGroup.model_validate(raw_json)
 
@@ -602,6 +599,10 @@ class RunnerClient:
         async with self._ns_client.post(url=f"/runners", json=runner.model_dump()) as resp:
             raw_json = await resp.json()
             return schemas.ApiRunner.model_validate(raw_json)
+        
+    async def runner_started(self) -> None:
+        async with self.post(url="/started") as _:
+            pass
 
     async def create_runner_event(self, action: str, run_id: int | None) -> schemas.ApiRunnerEvent:
         event = schemas.ApiRunnerEvent.model_validate(
@@ -616,7 +617,11 @@ class RunnerClient:
             pass
 
     async def update_runner_event(
-        self, event_id: int, action: str | None, run_id: int | None, event_status: str | None
+        self,
+        event_id: int,
+        action: str | None,
+        run_id: int | None,
+        event_status: schemas.RunnerEventStatus | None,
     ) -> schemas.ApiRunnerEvent:
         event = schemas.ApiRunnerEvent.model_validate(
             {
@@ -632,10 +637,14 @@ class RunnerClient:
             return schemas.ApiRunnerEvent.model_validate(raw_json)
 
     async def get_events(
-        self, action: str | None, run_id: int | None, limit: int | None, event_status: str | None
+        self,
+        action: str | None,
+        run_id: int | None,
+        limit: int | None,
+        event_status: schemas.RunnerEventStatus | None,
     ) -> list[schemas.ApiRunnerEvent]:
         # TODO: introduce query object
-        params = {"action": action, "run_id": run_id, "event_status": event_status, "limit": limit}
+        params = {"action": action, "run_id": run_id, "event_status": event_status.value, "limit": limit}
         params = utils_base.filter_None_dict(to_filter=params)
         async with self.get(url=f"/events", params=params) as resp:
             raw_json = await resp.json()
@@ -710,7 +719,7 @@ class RunnerClient:
     async def update_run(
         self,
         run_id: int,
-        state: str,
+        state: schemas.RunState,
         output: str,
     ) -> schemas.ApiRun:
         run = schemas.ApiRun.model_validate(
