@@ -599,7 +599,7 @@ class RunnerClient:
         async with self._ns_client.post(url=f"/runners", json=runner.model_dump()) as resp:
             raw_json = await resp.json()
             return schemas.ApiRunner.model_validate(raw_json)
-        
+
     async def runner_started(self) -> None:
         async with self.post(url="/started") as _:
             pass
@@ -644,7 +644,12 @@ class RunnerClient:
         event_status: schemas.RunnerEventStatus | None,
     ) -> list[schemas.ApiRunnerEvent]:
         # TODO: introduce query object
-        params = {"action": action, "run_id": run_id, "event_status": event_status.value, "limit": limit}
+        params = {
+            "action": action,
+            "run_id": run_id,
+            "event_status": event_status.value,
+            "limit": limit,
+        }
         params = utils_base.filter_None_dict(to_filter=params)
         async with self.get(url=f"/events", params=params) as resp:
             raw_json = await resp.json()
@@ -813,3 +818,15 @@ class RunnerClient:
             objs.append(obj)
         async with self.post(url=f"/{run_id}/proxy/{proxy_id}/console", json=objs) as _:
             pass
+
+    async def send_events(
+        self, event_bundle: schemas.ApiEventBundle
+    ) -> None:  # TODO: do we want this as interface?
+        # TODO: FIXME implemet
+        raise NotImplementedError()
+
+    async def fetch_events(
+        self, query: schemas.ApiEventQuery
+    ) -> schemas.ApiEventBundle:  # TODO: do we want this as interface?
+        # TODO: FIXME implemet
+        raise NotImplementedError()
