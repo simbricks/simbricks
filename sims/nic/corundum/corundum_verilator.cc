@@ -35,6 +35,7 @@
 #include <simbricks/base/cxxatomicfix.h>
 extern "C" {
 #include <simbricks/nicif/nicif.h>
+#include <simbricks/parser/parser.h>
 }
 
 #include "sims/nic/corundum/coord.h"
@@ -797,11 +798,20 @@ static void msi_step(Vinterface &top, PCICoordinator &coord) {
   }
 }
 
+static enum SimbricksBaseIfSyncMode GetSyncMode(bool sync) {
+  if (sync)
+    return kSimbricksBaseIfSyncRequired;
+  else
+    return kSimbricksBaseIfSyncDisabled;
+}
+
 int main(int argc, char *argv[]) {
   char *vargs[2] = {argv[0], NULL};
   Verilated::commandArgs(1, vargs);
   struct SimbricksBaseIfParams netParams;
   struct SimbricksBaseIfParams pcieParams;
+  struct SimbricksAdapterParams *pcieAdapterParams = nullptr;
+  struct SimbricksAdapterParams *netAdapterParams = nullptr;
 #ifdef TRACE_ENABLED
   Verilated::traceEverOn(true);
 #endif
@@ -809,24 +819,48 @@ int main(int argc, char *argv[]) {
   SimbricksNetIfDefaultParams(&netParams);
   SimbricksPcieIfDefaultParams(&pcieParams);
 
-  if (argc < 4 && argc > 10) {
+  if (argc < 3 || argc > 5) {
     fprintf(stderr,
-            "Usage: corundum_verilator PCI-SOCKET ETH-SOCKET "
-            "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
-            "[ETH-LATENCY] [CLOCK-FREQ-MHZ]\n");
+            "Usage: corundum_verilator PCI-PARAMS ETH-PARAMS "
+            "[START-TICK] [CLOCK-FREQ-MHZ]\n");
     return EXIT_FAILURE;
   }
-  if (argc >= 6)
-    main_time = strtoull(argv[5], NULL, 0);
-  if (argc >= 7)
-    netParams.sync_interval = pcieParams.sync_interval =
-        strtoull(argv[6], NULL, 0) * 1000ULL;
-  if (argc >= 8)
-    pcieParams.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
-  if (argc >= 9)
-    netParams.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
-  if (argc >= 10)
-    clock_period = 1000000ULL / strtoull(argv[9], NULL, 0);
+  if (argc >= 4)
+    main_time = strtoull(argv[3], NULL, 0);
+  if (argc >= 5)
+    clock_period = 1000000ULL / strtoull(argv[4], NULL, 0);
+
+  pcieAdapterParams = SimbricksParametersParse(argv[1]);
+  netAdapterParams = SimbricksParametersParse(argv[2]);
+
+  if (!(pcieAdapterParams && netAdapterParams)) {
+    fprintf(stderr, "Failed to parse PCIe or Ethernet parameters\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!(pcieAdapterParams->listen && netAdapterParams->listen)) {
+    fprintf(stderr, "Corundum Verilator currently only supports "
+                    "listening adapters\n");
+    return EXIT_FAILURE;
+  }
+
+  pcieParams.sock_path = pcieAdapterParams->socket_path;
+  netParams.sock_path = netAdapterParams->socket_path;
+  // Since the NIC interface uses a single shared memory pool for both pcie and
+  // net interface, we just take the shm path provided for the pcie adapter here
+  const char *shmPath = pcieAdapterParams->shm_path;
+
+  pcieParams.sync_mode = GetSyncMode(pcieAdapterParams->sync);
+  netParams.sync_mode = GetSyncMode(netAdapterParams->sync);
+
+  if (pcieAdapterParams->sync_interval_set)
+    pcieParams.sync_interval = pcieAdapterParams->sync_interval * 1000ULL;
+  if (netAdapterParams->sync_interval_set)
+    netParams.sync_interval = netAdapterParams->sync_interval * 1000ULL;
+  if (pcieAdapterParams->link_latency_set)
+    pcieParams.link_latency = pcieAdapterParams->link_latency * 1000ULL;
+  if (netAdapterParams->link_latency_set)
+    netParams.link_latency = netAdapterParams->link_latency * 1000ULL;
 
   struct SimbricksProtoPcieDevIntro di;
   memset(&di, 0, sizeof(di));
@@ -841,10 +875,7 @@ int main(int argc, char *argv[]) {
   di.pci_revision = 0x00;
   di.pci_msi_nvecs = 32;
 
-  pcieParams.sock_path = argv[1];
-  netParams.sock_path = argv[2];
-
-  if (SimbricksNicIfInit(&nicif, argv[3], &netParams, &pcieParams, &di)) {
+  if (SimbricksNicIfInit(&nicif, shmPath, &netParams, &pcieParams, &di)) {
     return EXIT_FAILURE;
   }
   int sync_pci = SimbricksBaseIfSyncEnabled(&nicif.pcie.base);
@@ -1019,5 +1050,7 @@ int main(int argc, char *argv[]) {
 #endif
   top->final();
   delete top;
+  SimbricksParametersFree(pcieAdapterParams);
+  SimbricksParametersFree(netAdapterParams);
   return 0;
 }
