@@ -187,7 +187,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
         latency: int | None = None,
         sync_period: int | None = None
     ) -> str:
-        if not channel and not (sync and latency and sync_period):
+        if not channel and (sync == None or latency == None or sync_period == None):
             raise ValueError("Cannot generate parameters url if channel and at least one of sync, "
                              "latency, sync_period are None")
         if channel:
