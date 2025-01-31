@@ -33,6 +33,7 @@
 #include <simbricks/base/cxxatomicfix.h>
 extern "C" {
 #include <simbricks/nicif/nicif.h>
+#include <simbricks/parser/parser.h>
 }
 
 #include "lib/utils/log.h"
@@ -138,6 +139,9 @@ class Runner {
   struct SimbricksNicIf nicif_;
   struct SimbricksProtoPcieDevIntro dintro_;
 
+  struct SimbricksAdapterParams *pcieAdapterParams_;
+  struct SimbricksAdapterParams *netAdapterParams_;
+
   sim_log::LogPtT log_ = sim_log::Log::createLog();
 
   volatile union SimbricksProtoPcieD2H *D2HAlloc();
@@ -164,6 +168,7 @@ class Runner {
 
  public:
   explicit Runner(Device &dev_);
+  virtual ~Runner();
 
   /** Parse command line arguments. */
   int ParseArgs(int argc, char *argv[]);
