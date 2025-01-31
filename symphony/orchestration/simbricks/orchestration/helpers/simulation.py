@@ -22,7 +22,6 @@
 
 from simbricks.orchestration import system
 from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.simulation import channel as sim_chan
 from simbricks.utils import base as utils_base
 
 
@@ -34,13 +33,13 @@ def add_specs(simulator: sim_base.Simulator, *specifications) -> None:
 
 
 def enable_sync_simulation(
-    simulation: sim_base.Simulation, amount: int | None = None, ratio: sim_chan.Time = None
+    simulation: sim_base.Simulation, amount: int | None = None, ratio: utils_base.Time = None
 ) -> None:
     utils_base.has_expected_type(obj=simulation, expected_type=sim_base.Simulation)
     set_period: bool = amount is not None and ratio is not None
     if set_period:
         utils_base.has_expected_type(obj=amount, expected_type=int)
-        utils_base.has_expected_type(obj=ratio, expected_type=sim_chan.Time)
+        utils_base.has_expected_type(obj=ratio, expected_type=utils_base.Time)
 
     for chan in simulation.get_all_channels():
         chan._synchronized = True
