@@ -23,7 +23,7 @@
 import abc
 import datetime
 import enum
-from typing import TypeVar, Generic, Literal, Annotated
+from typing import TypeVar, Generic, Literal, Annotated, get_args, get_origin
 from pydantic import BaseModel, TypeAdapter, Field
 
 
@@ -249,9 +249,9 @@ class ApiOrgGuestMagicLinkResp(BaseModel):
     magic_link: str
 
 
-"""
+""" ############################################################################
 Schema objects used in SimBricks 'Generic Event Handling Interface':
-"""
+"""  ############################################################################
 
 
 class ApiEventStatus(str, enum.Enum):
@@ -260,54 +260,96 @@ class ApiEventStatus(str, enum.Enum):
     ERROR = "ERROR"
 
 
-class ApiEventType(str, enum.Enum):
-    """
-    NOTE: DO NOT confuse this enum with belows union of the different event types.
-    """
-
-    ApiRunnerAssocEvent = "ApiRunnerAssocEvent"
-    ApiRunAssocEvent = "ApiRunAssocEvent"
-    ApiSimulatorAssocEvent = "ApiSimulatorAssocEvent"
-    ApiProxyAssocEvent = "ApiProxyAssocEvent"
-
-
 class AbstractApiEvent(BaseModel, abc.ABC):
-    id: int | None = None
+    id: int
     """
-    Generic identifier for an event.
+    Generic identifier for an event. Subclasses should OVEWRITE this explicitly IN CASE the id is OPTIONAL.
     """
-    event_type: Literal["AbstractApiEvent"] = "AbstractApiEvent"
+    event_discriminator: Literal["AbstractApiEvent"] = "AbstractApiEvent"
     """
-    The event type, can be used to reconstruct pydantic model. 
-    Must be OVERWRITTEN as Literal IN SUBCLASSES.
+    The event event_discriminator, is be used to reconstruct pydantic model. 
+    Must be OVERWRITTEN as Literal IN SUBCLASSES (see belows additional helper classes).
     """
     event_status: ApiEventStatus = ApiEventStatus.PENDING
     """
     The status of this specific event.
     """
-    event_metadata_json: dict | str | bytes | None = None
+    event_metadata_json: dict | str | bytes | None = (
+        None  # TODO: probably should make this a field with limited size
+    )
     """
     Optional event metadata that can be stored in this blob which is 
     'independent' of the schema.
     """
 
 
-class ApiRunnerAssocEvent(AbstractApiEvent):
+class ApiCreateEvent(AbstractApiEvent, abc.ABC):
+    id: None = None
+    """
+    overrides
+    """
+
+
+class ApiReadEvent(AbstractApiEvent, abc.ABC):
+    pass
+
+
+class ApiUpdateEvent(AbstractApiEvent, abc.ABC):
+    pass
+
+
+class ApiDeleteEvent(AbstractApiEvent, abc.ABC):
+    pass
+
+
+""" ############################################################################
+Runner related events
+"""  ############################################################################
+
+
+class RunnerEventType(str, enum.Enum):
+    heartbeat = "heartbeat"
+
+
+class AbstractApiRunnerEvent(AbstractApiEvent, abc.ABC):
     runner_id: int
     """
     the runner the event is associated with
     """
-    event_type: Literal[ApiEventType.ApiRunnerAssocEvent] = ApiEventType.ApiRunnerAssocEvent
+    runner_event_type: RunnerEventType = RunnerEventType.heartbeat
     """
-    override
+    The kind of runner specific event this is (e.g. heartbeat).  
     """
-    # TODO: FIXME add type etc and othe required fields...
 
 
-ApiRunnerAssocEvent_List_A = TypeAdapter(list[ApiRunnerAssocEvent])
+class ApiRunnerEventCreate(ApiCreateEvent, AbstractApiRunnerEvent):
+    event_discriminator: Literal["ApiRunnerEventCreate"] = "ApiRunnerEventCreate"
 
 
-class ApiRunAssocEvent(AbstractApiEvent):
+class ApiRunnerEventRead(ApiReadEvent, AbstractApiRunnerEvent):
+    event_discriminator: Literal["ApiRunnerEventRead"] = "ApiRunnerEventRead"
+
+
+class ApiRunnerEventUpdate(ApiUpdateEvent, AbstractApiRunnerEvent):
+    event_discriminator: Literal["ApiRunnerEventUpdate"] = "ApiRunnerEventUpdate"
+
+
+class ApiRunnerEventDelete(ApiDeleteEvent):
+    event_discriminator: Literal["ApiRunnerEventDelete"] = "ApiRunnerEventDelete"
+
+
+""" ############################################################################
+Run related events
+"""  ############################################################################
+
+
+class RunEventType(str, enum.Enum):
+    kill = "kill"
+    simulation_status = "simulation_status"
+    start_run = "start_run"
+
+
+class AbstracApiRunEvent(AbstractApiEvent, abc.ABC):
     runner_id: int
     """
     The runner the run is associated with.
@@ -316,17 +358,34 @@ class ApiRunAssocEvent(AbstractApiEvent):
     """
     The run associated with.
     """
-    event_type: Literal[ApiEventType.ApiRunAssocEvent] = ApiEventType.ApiRunAssocEvent
+    run_event_type: RunEventType
     """
-    override
+    The kind of runner specific event this is (e.g. heartbeat).  
     """
-    # TODO: FIXME add type etc and othe required fields...
 
 
-ApiRunAssocEvent_List_A = TypeAdapter(list[ApiRunAssocEvent])
+class ApiRunEventCreate(ApiCreateEvent, AbstracApiRunEvent):
+    event_discriminator: Literal["ApiRunEventCreate"] = "ApiRunEventCreate"
 
 
-class ApiSimulatorAssocEvent(AbstractApiEvent):
+class ApiRunEventRead(ApiReadEvent, AbstracApiRunEvent):
+    event_discriminator: Literal["ApiRunEventRead"] = "ApiRunEventRead"
+
+
+class ApiRunEventUpdate(ApiUpdateEvent, AbstracApiRunEvent):
+    event_discriminator: Literal["ApiRunEventUpdate"] = "ApiRunEventUpdate"
+
+
+class ApiRunEventDelete(ApiDeleteEvent):
+    event_discriminator: Literal["ApiRunEventDelete"] = "ApiRunEventDelete"
+
+
+""" ############################################################################
+Simulator related events
+"""  ############################################################################
+
+
+class AbstractApiSimulatorEvent(AbstractApiEvent, abc.ABC):
     runner_id: int
     """
     The runner a fragment is associated with.
@@ -339,17 +398,41 @@ class ApiSimulatorAssocEvent(AbstractApiEvent):
     """
     The simulation associated with.
     """
-    event_type: Literal[ApiEventType.ApiSimulatorAssocEvent] = ApiEventType.ApiSimulatorAssocEvent
+
+
+class AbstractApiOutputEvent(AbstractApiSimulatorEvent, abc.ABC):
+    output_generated_at: datetime.datetime = datetime.datetime.now()
     """
-    override
+    An indicator when the output was generated.
     """
-    # TODO: FIXME add type etc and othe required fields...
+    output: str
+    """
+    The actual output from the simulator process.
+    """
+    is_stderr: bool
+    """
+    Whether the output is from stdout or from stderr.
+    """
 
 
-ApiSimulatorAssocEvent_List_A = TypeAdapter(list[ApiSimulatorAssocEvent])
+class ApiSimulatorOutputEventCreate(ApiCreateEvent, AbstractApiOutputEvent):
+    event_discriminator: Literal["ApiSimulatorOutputEventCreate"] = "ApiSimulatorOutputEventCreate"
 
 
-class ApiProxyAssocEvent(AbstractApiEvent):
+class ApiSimulatorOutputEventRead(ApiReadEvent, AbstractApiOutputEvent):
+    event_discriminator: Literal["ApiSimulatorOutputEventRead"] = "ApiSimulatorOutputEventRead"
+
+
+class ApiSimulatorOutputEventDelete(ApiDeleteEvent):
+    event_discriminator: Literal["ApiSimulatorOutputEventDelete"] = "ApiSimulatorOutputEventDelete"
+
+
+"""
+Proxy related events
+"""
+
+
+class AbstractApiProxyEvent(AbstractApiEvent, abc.ABC):
     runner_id: int
     """
     The runner a fragment is associated with.
@@ -362,66 +445,86 @@ class ApiProxyAssocEvent(AbstractApiEvent):
     """
     the proxy id the event is associated with.
     """
-    event_type: Literal[ApiEventType.ApiProxyAssocEvent] = ApiEventType.ApiProxyAssocEvent
-    """
-    override
-    """
-    # TODO: FIXME add type etc and othe required fields...
 
 
-ApiProxyAssocEvent_List_A = TypeAdapter(list[ApiProxyAssocEvent])
+"""
+ApiEventBundle definitions.
+"""
 
-
-ApiEventTypes = Annotated[
-    ApiRunnerAssocEvent | ApiRunAssocEvent | ApiSimulatorAssocEvent | ApiProxyAssocEvent,
-    Field(discriminator="event_type"),
+ApiEventCreate_U = Annotated[
+    ApiRunnerEventCreate | ApiRunEventCreate | ApiSimulatorOutputEventCreate,
+    Field(discriminator="event_discriminator"),
 ]
-"""
-NOTE: DO NOT confuse this union with aboves enum.
-"""
 
 
-class ApiEventBundle(BaseModel):
-    events: dict[ApiEventType, list[ApiEventTypes]] = {}
+ApiEventRead_U = Annotated[
+    ApiRunnerEventRead | ApiRunEventRead | ApiSimulatorOutputEventRead,
+    Field(discriminator="event_discriminator"),
+]
+
+
+ApiEventUpdate_U = Annotated[
+    ApiRunnerEventUpdate | ApiRunEventUpdate, Field(discriminator="event_discriminator")
+]
+
+
+ApiEventDelete_U = Annotated[
+    ApiRunnerEventDelete | ApiRunEventDelete | ApiSimulatorOutputEventDelete,
+    Field(discriminator="event_discriminator"),
+]
+
+
+BundleEventUnion_T = TypeVar(
+    "BundleEventUnion_T",
+    bound=ApiEventCreate_U | ApiEventRead_U | ApiEventUpdate_U | ApiEventDelete_U,
+)
+
+
+class ApiEventBundle(BaseModel, Generic[BundleEventUnion_T]):
+    events: dict[str, list[BundleEventUnion_T]] = {}
     """
     A dict that bundles events of different types in a dict. Each type is 
     associated with a bundle of events of that specific type.
     """
 
-    def add_event(self, event: ApiEventTypes) -> None:
-        if event.event_type not in self.events:
-            self.events[event.event_type] = []
-        self.events[event.event_type].append(event)
+    def add_event(self, event: BundleEventUnion_T) -> None:
+        if event.event_discriminator not in self.events:
+            self.events[event.event_discriminator] = []
+        self.events[event.event_discriminator].append(event)
 
-    def add_events(self, events: list[ApiEventTypes]):
-        for event in events:
+    def add_events(self, *args: tuple[BundleEventUnion_T]):
+        for event in args:
             self.add_event(event)
 
 
 class ApiEventQuery(BaseModel):
-    id: int | None = None
-    runner_id: int | None = None
-    run_id: int | None = None
-    simulation_id: int | None = None
-    proxy_id: int | None = None
+    ids: set[int] | None = None
+    runner_ids: set[int] | None = None
+    run_ids: set[int] | None = None
+    simulation_ids: set[int] | None = None
+    proxy_ids: set[int] | None = None
     event_status: set[ApiEventStatus] | None = None
-    event_types: set[ApiEventType] | None = None
 
 
 if __name__ == "__main__":
-    bundle = ApiEventBundle()
-    bundle.add_event(ApiRunnerAssocEvent(runner_id=1))
-    bundle.add_event(ApiRunnerAssocEvent(runner_id=2))
-    bundle.add_event(ApiRunAssocEvent(runner_id=1, run_id=3))
-    bundle.add_event(ApiSimulatorAssocEvent(runner_id=1, run_id=2, fragment_id=1, simulation_id=33))
+    c_bundle = ApiEventBundle[ApiEventCreate_U]()
+    c1 = ApiRunnerEventCreate(runner_id=3)
+    c2 = ApiRunnerEventCreate(runner_id=2)
+    c3 = ApiRunnerEventCreate(runner_id=3)
+    cr1 = ApiRunEventCreate(runner_id=3, run_id=2, run_event_type=RunEventType.simulation_status)
+    c_bundle.add_events(c1, c2, c3)
+    c_bundle.add_event(cr1)
+    d = c_bundle.model_dump()
+    b = ApiEventBundle[ApiEventCreate_U].model_validate(d)
+    print(b)
 
-    json = bundle.model_dump()
-    print(json)
-
-    deserialized = ApiEventBundle.model_validate(json)
-    for type_lit, mod_list in deserialized.events.items():
-        match type_lit:
-            case ApiEventType.ApiRunAssocEvent:
-                print(mod_list)
-            case _:
-                continue
+    r_bundle = ApiEventBundle[ApiEventRead_U]()
+    r_bundle.add_event(
+        ApiSimulatorOutputEventRead(
+            id=4, runner_id=3, run_id=4, simulation_id=5, output="", is_stderr=False
+        )
+    )
+    d = r_bundle.model_dump()
+    b = ApiEventBundle[ApiEventRead_U].model_validate(d)
+    for ty, lis in b.events.items():
+        print(f"{ty} ==> {lis}")
