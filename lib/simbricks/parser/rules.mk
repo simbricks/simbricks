@@ -27,6 +27,7 @@ lib_parser := $(d)libparser.a
 OBJS := $(addprefix $(d),parser.o)
 
 libsimbricks_objs += $(OBJS)
+libparser_objs := $(OBJS)
 
 $(lib_parser): $(OBJS)
 

@@ -27,12 +27,12 @@ lib_simbricks := $(lib_dir)libsimbricks.a
 libsimbricks_objs :=
 
 $(eval $(call subdir,base))
+$(eval $(call subdir,parser))
 $(eval $(call subdir,mem))
 $(eval $(call subdir,network))
 $(eval $(call subdir,pcie))
 $(eval $(call subdir,nicif))
 $(eval $(call subdir,nicbm))
-$(eval $(call subdir,parser))
 
 $(lib_simbricks): $(libsimbricks_objs)
 	$(AR) rcs $@ $(libsimbricks_objs)
