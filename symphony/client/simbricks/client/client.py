@@ -24,8 +24,10 @@
 import aiohttp
 import datetime
 import typing
+import typing_extensions
 import contextlib
 import json
+import warnings
 from simbricks.utils import base as utils_base
 from .auth import Token, TokenProvider
 from .settings import client_settings
@@ -581,6 +583,15 @@ class RunnerClient:
             yield resp
 
     @contextlib.asynccontextmanager
+    async def patch(
+        self, url: str, data: typing.Any = None, **kwargs: typing.Any
+    ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+        async with self._ns_client.patch(
+            url=self._build_prefix(url=url), data=data, **kwargs
+        ) as resp:
+            yield resp
+
+    @contextlib.asynccontextmanager
     async def get(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
@@ -604,7 +615,13 @@ class RunnerClient:
         async with self.post(url="/started") as _:
             pass
 
+    @typing_extensions.deprecated(
+        "The `create_runner_event` method is deprectaed; use `create_events` instead."
+    )
     async def create_runner_event(self, action: str, run_id: int | None) -> schemas.ApiRunnerEvent:
+        warnings.warn(
+            "The `create_runner_event` method is deprectaed; use `create_events` instead."
+        )
         event = schemas.ApiRunnerEvent.model_validate(
             {"runner_id": self._runner_id, "action": action, "run_id": run_id}
         )
@@ -612,10 +629,19 @@ class RunnerClient:
             raw_json = await resp.json()
             return schemas.ApiRunnerEvent.model_validate(raw_json)
 
+    @typing_extensions.deprecated(
+        "The `delete_runner_event` method is deprectaed; use `delete_events` instead."
+    )
     async def delete_runner_event(self, event_id: int) -> None:
+        warnings.warn(
+            "The `delete_runner_event` method is deprectaed; use `delete_events` instead."
+        )
         async with self.delete(url=f"/events/{event_id}") as _:
             pass
 
+    @typing_extensions.deprecated(
+        "The `update_runner_event` method is deprecated; use `update_events` istead."
+    )
     async def update_runner_event(
         self,
         event_id: int,
@@ -623,6 +649,7 @@ class RunnerClient:
         run_id: int | None,
         event_status: schemas.RunnerEventStatus | None,
     ) -> schemas.ApiRunnerEvent:
+        warnings.warn("The `update_runner_event` method is deprecated; use `update_events` istead.")
         event = schemas.ApiRunnerEvent.model_validate(
             {
                 "id": event_id,
@@ -636,6 +663,9 @@ class RunnerClient:
             raw_json = await resp.json()
             return schemas.ApiRunnerEvent.model_validate(raw_json)
 
+    @typing_extensions.deprecated(
+        "The `get_events` method is deprecated; use `fetch_events` istead."
+    )
     async def get_events(
         self,
         action: str | None,
@@ -643,6 +673,7 @@ class RunnerClient:
         limit: int | None,
         event_status: schemas.RunnerEventStatus | None,
     ) -> list[schemas.ApiRunnerEvent]:
+        warnings.warn("The `get_events` method is deprecated; use `fetch_events` istead.")
         # TODO: introduce query object
         params = {
             "action": action,
@@ -740,9 +771,13 @@ class RunnerClient:
             raw_json = await resp.json()
             return schemas.ApiRun.model_validate(raw_json)
 
+    @typing_extensions.deprecated(
+        "The `update_events` method is deprecated; use `send_events` istead."
+    )
     async def update_state_simulator(
         self, run_id: int, sim_id: int, sim_name: str, state: str, cmd: str
     ) -> None:
+        warnings.warn("The `update_events` method is deprecated; use `send_events` istead.")
         obj = {
             "run_id": run_id,
             "simulator_id": sim_id,
@@ -753,11 +788,18 @@ class RunnerClient:
         async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/state", json=obj) as _:
             pass
 
+    @typing_extensions.deprecated(
+        "The `update_proxy` method is deprecated; use `send_events` istead."
+    )
     async def update_proxy(self, run_id: int, proxy_id: int, state: str, cmd: str) -> None:
+        warnings.warn("The `update_proxy` method is deprecated; use `send_events` istead.")
         obj = {"run_id": run_id, "proxy_id": proxy_id, "state": state, "cmd": cmd}
         async with self.put(url=f"/{run_id}/proxy/{proxy_id}/state", json=obj) as _:
             pass
 
+    @typing_extensions.deprecated(
+        "The `send_out_simulation` method is deprecated; use `create_events` istead."
+    )
     async def send_out_simulation(
         self,
         run_id: int,
@@ -765,6 +807,7 @@ class RunnerClient:
         is_stderr: bool,
         output: list[str],
     ) -> None:
+        warnings.warn("The `send_out_simulation` method is deprecated; use `create_events` istead.")
         objs = []
         for line in output:
             obj = {
@@ -777,6 +820,9 @@ class RunnerClient:
         async with self.post(url=f"/{run_id}/simulation/console", json=objs) as _:
             pass
 
+    @typing_extensions.deprecated(
+        "The `send_out_simulator` method is deprecated; use `create_events` istead."
+    )
     async def send_out_simulator(
         self,
         run_id: int,
@@ -786,6 +832,7 @@ class RunnerClient:
         output: list[str],
         created_at: datetime.datetime,
     ) -> None:
+        warnings.warn("The `send_out_simulator` method is deprecated; use `create_events` istead.")
         objs = []
         for line in output:
             obj = {
@@ -800,6 +847,9 @@ class RunnerClient:
         async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/console", json=objs) as _:
             pass
 
+    @typing_extensions.deprecated(
+        "The `send_out_proxy` method is deprecated; use `create_events` istead."
+    )
     async def send_out_proxy(
         self,
         run_id: int,
@@ -807,6 +857,7 @@ class RunnerClient:
         is_stderr: bool,
         output: list[str],
     ) -> None:
+        warnings.warn("The `send_out_proxy` method is deprecated; use `create_events` istead.")
         objs = []
         for line in output:
             obj = {
@@ -819,14 +870,54 @@ class RunnerClient:
         async with self.post(url=f"/{run_id}/proxy/{proxy_id}/console", json=objs) as _:
             pass
 
-    async def send_events(
-        self, event_bundle: schemas.ApiEventBundle
-    ) -> None:  # TODO: do we want this as interface?
-        # TODO: FIXME implemet
-        raise NotImplementedError()
+    async def create_event(self, event: schemas.ApiEventCreate_U) -> None:
+        to_create = schemas.EventCreate_A.validate_python(event)
+        async with self.post(url="/api/event", json=to_create.model_dump(exclude_unset=True)) as _:
+            pass
+
+    async def create_events(
+        self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventCreate_U]
+    ) -> None:
+        to_create = schemas.ApiEventBundle[schemas.ApiEventCreate_U].model_validate(event_bundle)
+        async with self.post(url="/api/events", json=to_create.model_dump(exclude_unset=True)) as _:
+            pass
 
     async def fetch_events(
-        self, query: schemas.ApiEventQuery
-    ) -> schemas.ApiEventBundle:  # TODO: do we want this as interface?
-        # TODO: FIXME implemet
-        raise NotImplementedError()
+        self, to_fetch: schemas.ApiEventQuery
+    ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
+        query = schemas.ApiEventQuery.model_validate(to_fetch)
+        async with self.get(url="/api/events", json=query.model_dump(exclude_unset=True)) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
+
+    async def update_event(self, event: schemas.ApiEventUpdate_U) -> None:
+        to_update = schemas.EventUpdate_A.validate_python(event)
+        async with self.patch(
+            url="/api/event", json=to_update.model_dump(exclude_unset=True)
+        ) as _:
+            pass
+
+    async def update_events(
+        self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventUpdate_U]
+    ) -> None:
+        to_update = schemas.ApiEventBundle[schemas.ApiEventUpdate_U].model_validate(event_bundle)
+        async with self.patch(
+            url="/api/events", json=to_update.model_dump(exclude_unset=True)
+        ) as _:
+            pass
+
+    async def delete_event(self, event: schemas.ApiEventDelete_U) -> None:
+        to_delete = schemas.EventDelete_A.validate_python(event)
+        async with self.delete(
+            url="/api/event", json=to_delete.model_dump(exclude_unset=True)
+        ) as _:
+            pass
+
+    async def delete_events(
+        self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventDelete_U]
+    ) -> None:
+        to_delete = schemas.ApiEventBundle[schemas.ApiEventDelete_U].model_validate(event_bundle)
+        async with self.delete(
+            url="/api/events", json=to_delete.model_dump(exclude_unset=True)
+        ) as _:
+            pass
