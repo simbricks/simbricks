@@ -456,6 +456,7 @@ ApiEventCreate_U = Annotated[
     Field(discriminator="event_discriminator"),
 ]
 
+EventCreate_A = TypeAdapter(ApiEventCreate_U)
 
 ApiEventRead_U = Annotated[
     ApiRunnerEventRead | ApiRunEventRead | ApiSimulatorOutputEventRead,
@@ -463,15 +464,20 @@ ApiEventRead_U = Annotated[
 ]
 
 
+EventRead_A = TypeAdapter(ApiEventRead_U)
+
 ApiEventUpdate_U = Annotated[
     ApiRunnerEventUpdate | ApiRunEventUpdate, Field(discriminator="event_discriminator")
 ]
 
+EventUpdate_A = TypeAdapter(ApiEventUpdate_U)
 
 ApiEventDelete_U = Annotated[
     ApiRunnerEventDelete | ApiRunEventDelete | ApiSimulatorOutputEventDelete,
     Field(discriminator="event_discriminator"),
 ]
+
+EventDelete_A = TypeAdapter(ApiEventDelete_U)
 
 
 BundleEventUnion_T = TypeVar(
