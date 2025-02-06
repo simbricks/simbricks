@@ -834,7 +834,7 @@ class RunnerClient:
         sim_name: str,
         is_stderr: bool,
         output: list[str],
-        created_at: datetime.datetime,
+        produced_at: datetime.datetime,
     ) -> None:
         warnings.warn("The `send_out_simulator` method is deprecated; use `create_events` istead.")
         objs = []
@@ -845,7 +845,7 @@ class RunnerClient:
                 "simulator_name": sim_name,
                 "is_stderr": is_stderr,
                 "output": line,
-                "created_at": created_at.isoformat(),
+                "produced_at": produced_at.isoformat(),
             }
             objs.append(obj)
         async with self.post(url=f"/run/{run_id}/simulator/{sim_id}/console", json=objs) as _:

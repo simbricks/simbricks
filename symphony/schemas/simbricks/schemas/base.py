@@ -206,7 +206,7 @@ class ApiSimulatorState(BaseModel):
 
 
 class ApiConsoleOutputLine(BaseModel):
-    created_at: datetime.datetime
+    produced_at: datetime.datetime
     output: str
     is_stderr: bool
 

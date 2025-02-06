@@ -61,7 +61,7 @@ class ConsoleLineGenerator:
             for _, output_lines in simulator.commands.items():
                 for output_line in output_lines:
                     lines.append((simulator.name, output_line.output))
-                    self._simulators_seen_until[simulator_id] = output_line.created_at
+                    self._simulators_seen_until[simulator_id] = output_line.produced_at
 
         return lines
 
