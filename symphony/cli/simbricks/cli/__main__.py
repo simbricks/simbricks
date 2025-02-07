@@ -38,7 +38,7 @@ from simbricks.client.provider import client_provider
 from simbricks.client.settings import client_settings
 from simbricks.cli.utils import async_cli
 
-app = Typer()
+app = Typer(pretty_exceptions_show_locals=False)
 app.add_typer(namespaces.app, name="ns")
 app.add_typer(runs.app, name="runs")
 app.add_typer(audit.app, name="audit")
