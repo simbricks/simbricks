@@ -481,14 +481,10 @@ class SimBricksClient:
                 f.write(content)
 
     async def get_run_console(
-        self, rid: int, simulators_seen_until: dict[int, datetime.datetime] = {}
+        self, run_id: int, filter: schemas.ApiRunOutputFilter
     ) -> schemas.ApiRunOutput:
-        simulators = {}
-        # TODO: use pydantic model...
-        for simulator_id, until in simulators_seen_until.items():
-            simulators[simulator_id] = until.isoformat()
-        obj = {"simulators": simulators}
-        async with self._ns_client.get(url=f"/runs/{rid}/console", json=obj) as resp:
+        filter = schemas.ApiRunOutputFilter.model_validate(filter)
+        async with self._ns_client.get(url=f"/runs/{run_id}/console", json=filter) as resp:
             raw_json = await resp.json()
             return schemas.ApiRunOutput.model_validate(raw_json)
 

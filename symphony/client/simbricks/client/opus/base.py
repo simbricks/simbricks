@@ -48,20 +48,24 @@ class ConsoleLineGenerator:
     def __init__(self, run_id: int, follow: bool):
         self._sb_client: client.SimBricksClient = provider.client_provider.simbricks_client
         self._run_id: int = run_id
-        self._simulators_seen_until: dict[int, datetime.datetime] = {}
+        self._simulators_seen_until_id: int | None = None
+        self._proxies_seen_until_id: int | None = None
         self._follow = follow
 
     async def _fetch_next_output(self) -> list[str, str]:
-        output = await self._sb_client.get_run_console(
-            self._run_id, simulators_seen_until=self._simulators_seen_until
+        filter = schemas.ApiRunOutputFilter(
+            self._simulators_seen_until_id, self._proxies_seen_until_id
         )
+        output = await self._sb_client.get_run_console(self._run_id, filter=filter)
 
         lines = []
         for simulator_id, simulator in output.simulators.items():
             for _, output_lines in simulator.commands.items():
                 for output_line in output_lines:
                     lines.append((simulator.name, output_line.output))
-                    self._simulators_seen_until[simulator_id] = output_line.produced_at
+                    self._simulators_seen_until_id = max(
+                        self._simulators_seen_until_id, output_line.id
+                    )
 
         return lines
 

@@ -206,6 +206,7 @@ class ApiSimulatorState(BaseModel):
 
 
 class ApiConsoleOutputLine(BaseModel):
+    id: int
     produced_at: datetime.datetime
     output: str
     is_stderr: bool
@@ -225,10 +226,12 @@ class ApiRunComponent(BaseModel):
 class ApiRunOutput(BaseModel):
     run_id: int
     simulators: dict[int, ApiRunComponent] = {}
+    proxies: dict[int, ApiRunComponent] = {}
 
 
-class ApiRunOutputSeenUntil(BaseModel):
-    simulators: dict[int, datetime.datetime] | None = None
+class ApiRunOutputFilter(BaseModel):
+    simulator_seen_until_line_id : int | None = None
+    proxy_seen_until_line_id : int | None = None
 
 
 class ApiOrgInvite(BaseModel):
