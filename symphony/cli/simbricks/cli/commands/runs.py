@@ -29,6 +29,7 @@ from typing_extensions import Annotated
 from simbricks.client.provider import client_provider
 from simbricks.client.opus import base as opus_base
 from ..utils import async_cli, print_table_generic
+from simbricks.schemas import base as schemas
 
 
 app = Typer(help="Managing SimBricks runs.")
@@ -152,3 +153,132 @@ async def submit(
         print("Won't follow execution as more than one run was submitted.")
     elif follow and run_id:
         await opus_base.follow_run(run_id=run_id)
+
+
+@app.command()
+@async_cli()
+async def create_event(
+    runner_id: int,
+    run_id: int,
+    run_event_type: Annotated[
+        schemas.RunEventType,
+        Argument(help="the event type to create (kill, simulation_status, start_run)."),
+    ],
+):
+    """Send a heartbeat event to a runner."""
+
+    to_create = schemas.ApiRunEventCreate(
+        runner_id=runner_id,
+        run_id=run_id,
+        event_status=schemas.ApiEventStatus.PENDING,
+        run_event_type=run_event_type,
+    )
+    bundle = schemas.ApiEventBundle[schemas.ApiEventCreate_U]()
+    bundle.add_events(to_create)
+
+    result_bundle = await client_provider.runner_client(runner_id).create_events(bundle)
+
+    print_table_generic(
+        "Event",
+        result_bundle.events["ApiRunEventRead"],
+        "id",
+        "run_id",
+        "runner_id",
+        "event_status",
+        "run_event_type",
+    )
+
+
+@app.command()
+@async_cli()
+async def delete_event(runner_id: int, run_id: int, event_id: int):
+    """Delete a runner event."""
+
+    to_delete = schemas.ApiRunEventDelete(id=event_id, runner_id=runner_id, run_id=run_id)
+    bundle = schemas.ApiEventBundle[schemas.ApiRunEventDelete]()
+    bundle.add_event(to_delete)
+
+    await client_provider.runner_client(runner_id).delete_events(bundle)
+
+
+@app.command()
+@async_cli()
+async def update_event(
+    event_id: int,
+    runner_id: int,
+    run_id: int,
+    run_event_type: Annotated[
+        schemas.RunEventType,
+        Argument(help="the event type to create (kill, simulation_status, start_run)."),
+    ],
+    event_status: Annotated[
+        schemas.ApiEventStatus | None,
+        Option("--status", "-s", help="Status to set (PENDING, COMPLETED, CANCELLED, ERROR)."),
+    ] = None,
+):
+    """Update a runner event."""
+
+    to_update = schemas.ApiRunEventUpdate(
+        id=event_id, runner_id=runner_id, run_id=run_id, run_event_type=run_event_type
+    )
+    if event_status:
+        to_update.event_status = event_status
+    bundle = schemas.ApiEventBundle[schemas.ApiRunEventUpdate]()
+    bundle.add_event(to_update)
+
+    event_bundle = await client_provider.runner_client(runner_id).update_events(bundle)
+
+    print_table_generic(
+        "Events",
+        event_bundle.events["ApiRunEventRead"],
+        "id",
+        "run_id",
+        "runner_id",
+        "event_status",
+        "run_event_type",
+    )
+
+
+@app.command()
+@async_cli()
+async def ls_events(
+    runner_id: int,
+    run_id: int,
+    id: Annotated[
+        int | None, Option("--ident", "-i", help="A specific event id to filter for.")
+    ] = None,
+    status: Annotated[
+        schemas.ApiEventStatus | None,
+        Option("--status", "-s", help="Filter for status (PENDING, CANCELLED, ERROR)."),
+    ] = None,
+    type: Annotated[
+        schemas.RunEventType | None,
+        Option(
+            "--type", "-t", help="the event type to create (kill, simulation_status, start_run)."
+        ),
+    ] = None,
+    limit: Annotated[int | None, Option("--limit", "-l", help="Limit results.")] = None,
+):
+    """List runner related events"""
+    query = schemas.ApiRunEventQuery(runner_ids=[runner_id], run_ids=[run_id])
+    if id:
+        query.ids = [id]
+    if status:
+        query.event_status = [status]
+    if type:
+        query.run_event_type = [type]
+    if limit:
+        query.limit = limit
+    bundle = schemas.ApiEventBundle[schemas.ApiRunEventQuery]()
+    bundle.add_event(query)
+
+    event_bundle = await client_provider.runner_client(runner_id).fetch_events(bundle)
+    print_table_generic(
+        "Events",
+        event_bundle.events["ApiRunEventRead"],
+        "id",
+        "run_id",
+        "runner_id",
+        "event_status",
+        "run_event_type",
+    )
