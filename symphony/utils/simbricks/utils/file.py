@@ -27,7 +27,7 @@ import pathlib
 import shutil
 
 
-async def await_file(path: str, delay=0.05, verbose=False, timeout=30) -> None:
+async def await_file(path: str, delay=0.1, verbose=False, timeout=600) -> None:
     if verbose:
         print(f"await_file({path})")
     t = 0
