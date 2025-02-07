@@ -647,7 +647,7 @@ class RunnerClient:
         event_id: int,
         action: str | None,
         run_id: int | None,
-        event_status: schemas.RunnerEventStatus | None,
+        event_status: schemas.ApiEventStatus | None,
     ) -> schemas.ApiRunnerEvent:
         warnings.warn("The `update_runner_event` method is deprecated; use `update_events` istead.")
         event = schemas.ApiRunnerEvent.model_validate(
@@ -671,7 +671,7 @@ class RunnerClient:
         action: str | None,
         run_id: int | None,
         limit: int | None,
-        event_status: schemas.RunnerEventStatus | None,
+        event_status: schemas.ApiEventStatus | None,
     ) -> list[schemas.ApiRunnerEvent]:
         warnings.warn("The `get_events` method is deprecated; use `fetch_events` istead.")
         # TODO: introduce query object
@@ -870,54 +870,37 @@ class RunnerClient:
         async with self.post(url=f"/{run_id}/proxy/{proxy_id}/console", json=objs) as _:
             pass
 
-    async def create_event(self, event: schemas.ApiEventCreate_U) -> None:
-        to_create = schemas.EventCreate_A.validate_python(event)
-        async with self.post(url="/api/event", json=to_create.model_dump(exclude_unset=True)) as _:
-            pass
+    """
+    GENERIC EVENT HANDLING INTERFACE
+    """
 
     async def create_events(
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventCreate_U]
-    ) -> None:
-        to_create = schemas.ApiEventBundle[schemas.ApiEventCreate_U].model_validate(event_bundle)
-        async with self.post(url="/api/events", json=to_create.model_dump(exclude_unset=True)) as _:
-            pass
-
-    async def fetch_events(
-        self, to_fetch: schemas.ApiEventQuery
     ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
-        query = schemas.ApiEventQuery.model_validate(to_fetch)
-        async with self.get(url="/api/events", json=query.model_dump(exclude_unset=True)) as resp:
+        to_create = schemas.ApiEventBundle[schemas.ApiEventCreate_U].model_validate(event_bundle)
+        async with self.post(url="/api/events", json=to_create.model_dump()) as resp:
             raw_json = await resp.json()
             return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
-    async def update_event(self, event: schemas.ApiEventUpdate_U) -> None:
-        to_update = schemas.EventUpdate_A.validate_python(event)
-        async with self.patch(
-            url="/api/event", json=to_update.model_dump(exclude_unset=True)
-        ) as _:
-            pass
+    async def fetch_events(
+        self, to_fetch: schemas.ApiEventBundle[schemas.ApiEventQuery_U]
+    ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
+        query = schemas.ApiEventBundle[schemas.ApiEventQuery_U].model_validate(to_fetch)
+        async with self.get(url="/api/events", json=query.model_dump()) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
     async def update_events(
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventUpdate_U]
-    ) -> None:
+    ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
         to_update = schemas.ApiEventBundle[schemas.ApiEventUpdate_U].model_validate(event_bundle)
-        async with self.patch(
-            url="/api/events", json=to_update.model_dump(exclude_unset=True)
-        ) as _:
-            pass
-
-    async def delete_event(self, event: schemas.ApiEventDelete_U) -> None:
-        to_delete = schemas.EventDelete_A.validate_python(event)
-        async with self.delete(
-            url="/api/event", json=to_delete.model_dump(exclude_unset=True)
-        ) as _:
-            pass
+        async with self.patch(url="/api/events", json=to_update.model_dump()) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
     async def delete_events(
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventDelete_U]
     ) -> None:
         to_delete = schemas.ApiEventBundle[schemas.ApiEventDelete_U].model_validate(event_bundle)
-        async with self.delete(
-            url="/api/events", json=to_delete.model_dump(exclude_unset=True)
-        ) as _:
+        async with self.delete(url="/api/events", json=to_delete.model_dump()) as _:
             pass
