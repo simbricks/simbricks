@@ -189,7 +189,7 @@ class ApiRunnerEventQuery(BaseModel):
     limit: int | None = None
 
 
-class RunSimulatorState(str, enum.Enum):
+class RunComponentState(str, enum.Enum):
     UNKNOWN = "unknown"
     PREPARING = "preparing"
     STARTING = "starting"
@@ -198,11 +198,21 @@ class RunSimulatorState(str, enum.Enum):
 
 
 class ApiSimulatorState(BaseModel):
-    run_id: int | None = None
-    simulator_id: int | None = None
+    run_id: int
+    simulator_id: int
     simulator_name: str | None = None
     command: str | None = None
-    state: RunSimulatorState | None = None
+    state: RunComponentState | None = None
+
+
+class ApiProxyState(BaseModel):
+    run_id: int
+    proxy_id: int
+    proxy_name: str | None = None
+    ip: str | None = None
+    port: int | None = None
+    command: str | None = None
+    state: RunComponentState | None = None
 
 
 class ApiConsoleOutputLine(BaseModel):
@@ -212,9 +222,14 @@ class ApiConsoleOutputLine(BaseModel):
     is_stderr: bool
 
 
-class ApiRunSimulatorOutput:
+class ApiRunSimulatorOutput(BaseModel):
     run_id: int
     simulator_id: int
+    output_lines: list[ApiConsoleOutputLine] = []
+
+class ApiRunProxyOutput(BaseModel):
+    run_id: int
+    proxy_id: int
     output_lines: list[ApiConsoleOutputLine] = []
 
 
@@ -230,8 +245,8 @@ class ApiRunOutput(BaseModel):
 
 
 class ApiRunOutputFilter(BaseModel):
-    simulator_seen_until_line_id : int | None = None
-    proxy_seen_until_line_id : int | None = None
+    simulator_seen_until_line_id: int | None = None
+    proxy_seen_until_line_id: int | None = None
 
 
 class ApiOrgInvite(BaseModel):
