@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import annotations
+
 import abc
 import datetime
 import enum
@@ -160,18 +162,12 @@ class RunnerEventAction(str, enum.Enum):
     START_RUN = "start_run"
 
 
-class RunnerEventStatus(str, enum.Enum):
-    PENDING = "pending"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-
-
 class ApiRunnerEvent(BaseModel):
     id: int | None = None
     action: RunnerEventAction | None = None
     run_id: int | None = None
     runner_id: int
-    event_status: RunnerEventStatus | None = None
+    event_status: ApiEventStatus | None = None
 
 
 ApiRunnerEventList_A = TypeAdapter(list[ApiRunnerEvent])
@@ -182,13 +178,13 @@ class UpdateApiRunnerEvent(BaseModel):
     action: RunnerEventAction | None = None
     run_id: int | None = None
     runner_id: int | None = None
-    event_status: RunnerEventStatus | None = None
+    event_status: ApiEventStatus | None = None
 
 
 class ApiRunnerEventQuery(BaseModel):
-    action: RunnerEventStatus | None = None
+    action: ApiEventStatus | None = None
     run_id: int | None = None
-    event_status: RunnerEventStatus | None = None
+    event_status: ApiEventStatus | None = None
     runner_id: int | None = None
     limit: int | None = None
 
@@ -256,6 +252,7 @@ Schema objects used in SimBricks 'Generic Event Handling Interface':
 
 class ApiEventStatus(str, enum.Enum):
     PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
     ERROR = "ERROR"
 
@@ -302,6 +299,26 @@ class ApiDeleteEvent(AbstractApiEvent, abc.ABC):
     pass
 
 
+class AbstractApiEventQuery(abc.ABC, BaseModel):
+    event_discriminator: Literal["AbstractApiEventQuery"] = "AbstractApiEventQuery"
+    """
+    The event event_discriminator, is be used to reconstruct pydantic model. 
+    Must be OVERWRITTEN as Literal IN SUBCLASSES (see belows additional helper classes).
+    """
+    limit: int | None = None
+    """
+    Limit the results size.
+    """
+    ids: list[int] | None = None
+    """
+    Allows to query for specific event ids.
+    """
+    event_status: list[ApiEventStatus] | None = None
+    """
+    Allows to query for events with specific status.
+    """
+
+
 """ ############################################################################
 Runner related events
 """  ############################################################################
@@ -336,6 +353,12 @@ class ApiRunnerEventUpdate(ApiUpdateEvent, AbstractApiRunnerEvent):
 
 class ApiRunnerEventDelete(ApiDeleteEvent):
     event_discriminator: Literal["ApiRunnerEventDelete"] = "ApiRunnerEventDelete"
+
+
+class ApiRunnerEventQuery(AbstractApiEventQuery):
+    event_discriminator: Literal["ApiRunnerEventQuery"] = "ApiRunnerEventQuery"
+    runner_ids: list[int] | None = None
+    runner_event_type: list[RunnerEventType] | None = None
 
 
 """ ############################################################################
@@ -380,6 +403,13 @@ class ApiRunEventDelete(ApiDeleteEvent):
     event_discriminator: Literal["ApiRunEventDelete"] = "ApiRunEventDelete"
 
 
+class ApiRunEventQuery(AbstractApiEventQuery):
+    event_discriminator: Literal["ApiRunEventQuery"] = "ApiRunEventQuery"
+    runner_ids: list[int] | None = None
+    run_ids: list[int] | None = None
+    run_event_type: list[RunEventType] | None = None
+
+
 """ ############################################################################
 Simulator related events
 """  ############################################################################
@@ -397,6 +427,10 @@ class AbstractApiSimulatorEvent(AbstractApiEvent, abc.ABC):
     simulation_id: int
     """
     The simulation associated with.
+    """
+    simulator_id: int
+    """
+    The runtime simulators id the event is associated with.
     """
 
 
@@ -456,33 +490,27 @@ ApiEventCreate_U = Annotated[
     Field(discriminator="event_discriminator"),
 ]
 
-EventCreate_A = TypeAdapter(ApiEventCreate_U)
-
 ApiEventRead_U = Annotated[
     ApiRunnerEventRead | ApiRunEventRead | ApiSimulatorOutputEventRead,
     Field(discriminator="event_discriminator"),
 ]
 
-
-EventRead_A = TypeAdapter(ApiEventRead_U)
-
 ApiEventUpdate_U = Annotated[
     ApiRunnerEventUpdate | ApiRunEventUpdate, Field(discriminator="event_discriminator")
 ]
-
-EventUpdate_A = TypeAdapter(ApiEventUpdate_U)
 
 ApiEventDelete_U = Annotated[
     ApiRunnerEventDelete | ApiRunEventDelete | ApiSimulatorOutputEventDelete,
     Field(discriminator="event_discriminator"),
 ]
 
-EventDelete_A = TypeAdapter(ApiEventDelete_U)
-
+ApiEventQuery_U = Annotated[
+    ApiRunnerEventQuery | ApiRunEventQuery, Field(discriminator="event_discriminator")
+]
 
 BundleEventUnion_T = TypeVar(
     "BundleEventUnion_T",
-    bound=ApiEventCreate_U | ApiEventRead_U | ApiEventUpdate_U | ApiEventDelete_U,
+    bound=ApiEventCreate_U | ApiEventRead_U | ApiEventUpdate_U | ApiEventDelete_U | ApiEventQuery_U,
 )
 
 
@@ -503,13 +531,49 @@ class ApiEventBundle(BaseModel, Generic[BundleEventUnion_T]):
             self.add_event(event)
 
 
+"""
+Type Adapters useful for validation etc. 
+"""
+EventCreate_A = TypeAdapter(ApiEventCreate_U)
+
+ApiRunnerEventCreate_List_A = TypeAdapter(list[ApiRunnerEventCreate])
+ApiRunEventCreate_List_A = TypeAdapter(list[ApiRunEventCreate])
+ApiSimulatorOutputEventCreate_List_A = TypeAdapter(list[ApiRunEventCreate])
+
+
+EventRead_A = TypeAdapter(ApiEventRead_U)
+ApiRunnerEventRead_List_A = TypeAdapter(list[ApiRunnerEventRead])
+ApiRunEventRead_List_A = TypeAdapter(list[ApiRunEventRead])
+ApiSimulatorOutputEventRead_List_A = TypeAdapter(list[ApiSimulatorOutputEventRead])
+
+
+EventUpdate_A = TypeAdapter(ApiEventUpdate_U)
+ApiRunnerEventUpdate_List_A = TypeAdapter(list[ApiRunnerEventUpdate])
+ApiRunEventUpdate_List_A = TypeAdapter(list[ApiRunEventUpdate])
+
+
+EventDelete_A = TypeAdapter(ApiEventDelete_U)
+ApiRunnerEventDelete_List_A = TypeAdapter(list[ApiRunnerEventDelete])
+ApiRunEventDelete_List_A = TypeAdapter(list[ApiRunEventDelete])
+ApiSimulatorOutputEventDelete_List_A = TypeAdapter(list[ApiSimulatorOutputEventDelete])
+
+
+ApiRunnerEventQuery_List_A = TypeAdapter(list[ApiRunnerEventQuery])
+ApiRunEventQuery_List_A = TypeAdapter(list[ApiRunEventQuery])
+
+
+# TODO: FIXME
 class ApiEventQuery(BaseModel):
-    ids: set[int] | None = None
-    runner_ids: set[int] | None = None
-    run_ids: set[int] | None = None
-    simulation_ids: set[int] | None = None
-    proxy_ids: set[int] | None = None
-    event_status: set[ApiEventStatus] | None = None
+    event_discriminator: str
+    ids: list[int] | None = None
+    runner_ids: list[int] | None = None
+    run_ids: list[int] | None = None
+    simulation_ids: list[int] | None = None
+    proxy_ids: list[int] | None = None
+    event_status: list[ApiEventStatus] | None = None
+    runner_event_type: list[RunnerEventType] | None = None
+    run_event_type: list[RunEventType] | None = None
+    limit: int | None = None
 
 
 if __name__ == "__main__":
@@ -527,10 +591,26 @@ if __name__ == "__main__":
     r_bundle = ApiEventBundle[ApiEventRead_U]()
     r_bundle.add_event(
         ApiSimulatorOutputEventRead(
-            id=4, runner_id=3, run_id=4, simulation_id=5, output="", is_stderr=False
+            id=4,
+            runner_id=3,
+            run_id=4,
+            simulation_id=5,
+            output="",
+            simulator_id=7324,
+            is_stderr=False,
         )
     )
     d = r_bundle.model_dump()
     b = ApiEventBundle[ApiEventRead_U].model_validate(d)
     for ty, lis in b.events.items():
         print(f"{ty} ==> {lis}")
+
+    oe = ApiSimulatorOutputEventCreate(
+        runner_id=3,
+        run_id=4,
+        simulation_id=23,
+        simulator_id=23,
+        output="kabfkjdsbfkdjb",
+        is_stderr=False,
+    )
+    col = ApiConsoleOutputLine.model_validate(oe)
