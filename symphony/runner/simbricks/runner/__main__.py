@@ -519,7 +519,7 @@ class Runner:
 
     async def _handle_events(self) -> None:
         try:
-            await self._rc.runner_started()
+            await self._rc.runner_started([])
 
             while True:
                 # fetch all events not handled yet

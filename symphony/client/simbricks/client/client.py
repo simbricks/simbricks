@@ -611,8 +611,11 @@ class RunnerClient:
             raw_json = await resp.json()
             return schemas.ApiRunner.model_validate(raw_json)
 
-    async def runner_started(self) -> None:
-        async with self.post(url="/started") as _:
+    async def runner_started(self, tags: list[schemas.ApiRunnerTag]) -> None:
+        ts = []
+        for t in tags:
+            ts.append(schemas.ApiRunnerTag.model_dump(t))
+        async with self.post(url="/started", json=ts) as _:
             pass
 
     @typing_extensions.deprecated(

@@ -151,6 +151,7 @@ class ApiRunner(BaseModel):
     namespace_id: int | None = None
     resource_group_id: int | None = None
     tags: list[ApiRunnerTag] = []
+    plugin_tags: list[ApiRunnerTag] = []
 
 
 ApiRunnerList_A = TypeAdapter(list[ApiRunner])
