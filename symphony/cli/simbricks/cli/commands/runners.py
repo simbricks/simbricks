@@ -36,7 +36,7 @@ async def ls():
     """List runners."""
     runners = await client_provider.runner_client(-1).list_runners()
     print_table_generic(
-        "Runners", runners, "id", "label", "tags", "namespace_id", "resource_group_id"
+        "Runners", runners, "id", "label", "tags", "plugin_tags", "namespace_id", "resource_group_id"
     )
 
 
