@@ -25,6 +25,7 @@ import datetime
 import itertools
 import random
 import typing
+import pydantic
 
 import rich
 import rich.color
@@ -117,9 +118,7 @@ async def submit_system(system: system.System) -> int:
 
 
 async def submit_simulation(system_id: int, simulation: simulation.Simulation) -> int:
-    sim = await provider.client_provider.simbricks_client.create_simulation(
-        system_id, simulation
-    )
+    sim = await provider.client_provider.simbricks_client.create_simulation(system_id, simulation)
     assert sim.id
     return sim.id
 
@@ -150,3 +149,29 @@ async def create_run(instantiation: instantiation.Instantiation) -> int:
 
     run_id = await submit_run(instantiation_id=inst_id)
     return run_id
+
+
+T = typing.TypeVar("T", bound=schemas.ApiEventRead_U)
+
+async def fetch_events(
+    rc: client.RunnerClient, query: schemas.ApiEventQuery_U, expected: T
+) -> list[T]:
+    query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
+    query_bundle.add_event(query)
+
+    result_read_bundle = await rc.fetch_events(query_bundle)
+
+    if result_read_bundle.empty():
+        return []
+
+    if "event_discriminator" not in expected.model_fields:
+        raise Exception("unable to determine 'event dirciminator'")
+    discr: str = expected.model_fields["event_discriminator"].default
+
+    if discr not in result_read_bundle.events:
+        raise Exception(f"could not fetch the required event type {discr} from {result_read_bundle}")
+    events = result_read_bundle.events[discr]
+
+    adapter = pydantic.TypeAdapter(list[T])
+    result_list = adapter.validate_python(events)
+    return result_list
