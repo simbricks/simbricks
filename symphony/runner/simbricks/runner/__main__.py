@@ -31,6 +31,7 @@ import typing
 import uuid
 
 from simbricks import client
+from simbricks.client.opus import base as opus
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
@@ -70,13 +71,15 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         super().simulation_prepare_cmd_stdout(cmd, lines)
         for line in lines:
             LOGGER.debug(f"[prepare] {line}")
-        await self._client.send_out_simulation(self._run_id, cmd, False, lines)
-
+        # TODO: FIXME
+        pass
+    
     async def simulation_prepare_cmd_stderr(self, cmd: str, lines: list[str]) -> None:
         super().simulation_prepare_cmd_stderr(cmd, lines)
         for line in lines:
             LOGGER.debug(f"[prepare] {line}")
-        await self._client.send_out_simulation(self._run_id, cmd, True, lines)
+        # TODO: FIXME
+        pass
 
     # -----------------------------
     # Simulator-related callbacks -
@@ -85,6 +88,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def simulator_prepare_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         self._active_simulator_cmd[sim] = cmd
         LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
+        # TODO: FIXME
         await self._client.update_state_simulator(
             self._run_id, sim.id(), sim.full_name(), "preparing", cmd
         )
@@ -94,23 +98,37 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         LOGGER.debug(f"- [{sim.full_name()}] exited with code {exit_code}")
         # TODO (Jonas) Report to backend if prepare command fails
 
+    async def _send_out_simulator_events(
+        self, simulator_id: int, lines: list[str], stderr: bool
+    ) -> None:
+        event_bundle = schemas.ApiEventBundle[schemas.ApiSimulatorOutputEventCreate]()
+        for line in lines:
+            event = schemas.ApiSimulatorOutputEventCreate(
+                run_id=self._run_id,
+                simulator_id=simulator_id,
+                output=line,
+                is_stderr=stderr,
+            )
+            event_bundle.add_event(event)
+
+        await self._client.create_events(event_bundle)
+
     async def simulator_prepare_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{sim.full_name()}] {line}")
-        await self._client.send_out_simulator(
-            self._run_id, sim.id(), sim.full_name(), False, lines, datetime.datetime.now()
-        )
+
+        await self._send_out_simulator_events(sim.id(), lines, False)
 
     async def simulator_prepare_stderr(self, sim: sim_base.Simulator, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{sim.full_name()}] {line}")
-        await self._client.send_out_simulator(
-            self._run_id, sim.id(), sim.full_name(), True, lines, datetime.datetime.now()
-        )
+
+        await self._send_out_simulator_events(sim.id(), lines, True)
 
     async def simulator_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         self._active_simulator_cmd[sim] = cmd
         LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
+        # TODO: FIXME
         await self._client.update_state_simulator(
             self._run_id, sim.id(), sim.full_name(), "starting", cmd
         )
@@ -123,6 +141,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
                 f"cannot mark simulator as ready as it was already removed: {sim.full_name()}"
             )
             return
+        # TODO: FIXME
         await self._client.update_state_simulator(
             self._run_id, sim.id(), sim.full_name(), "running", self._active_simulator_cmd[sim]
         )
@@ -130,6 +149,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def simulator_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
         cmd = self._active_simulator_cmd.pop(sim)
         LOGGER.debug(f"- [{sim.full_name()}] exited with code {exit_code}")
+        # TODO: FIXME
         await self._client.update_state_simulator(
             self._run_id, sim.id(), sim.full_name(), "terminated", cmd
         )
@@ -137,16 +157,14 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def simulator_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{sim.full_name()}] {line}")
-        await self._client.send_out_simulator(
-            self._run_id, sim.id(), sim.full_name(), False, lines, datetime.datetime.now()
-        )
+
+        await self._send_out_simulator_events(sim.id(), lines, False)
 
     async def simulator_stderr(self, sim: sim_base.Simulator, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{sim.full_name()}] {line}")
-        await self._client.send_out_simulator(
-            self._run_id, sim.id(), sim.full_name(), True, lines, datetime.datetime.now()
-        )
+        
+        await self._send_out_simulator_events(sim.id(), lines, True)
 
     # -------------------------
     # Proxy-related callbacks -
@@ -171,11 +189,13 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def proxy_stdout(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{proxy.name}] {line}")
+        # TODO: FIXME
         await self._client.send_out_proxy(self._run_id, proxy.id(), False, lines)
 
     async def proxy_stderr(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{proxy.name}] {line}")
+        # TODO: FIXME
         await self._client.send_out_proxy(self._run_id, proxy.id(), True, lines)
 
 
@@ -318,14 +338,20 @@ class Runner:
 
             while True:
                 # fetch all events not handeled yet
-                events = list(
-                    await self._rc.get_events(
-                        run_id=None,
-                        action=None,
-                        limit=None,
-                        event_status=schemas.RunnerEventStatus.PENDING,
-                    )
+                event_query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
+
+                runner_event_q = schemas.ApiRunnerEventQuery(
+                    runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
                 )
+                event_query_bundle.add_event(runner_event_q)
+
+                run_event_q = schemas.ApiRunEventQuery(
+                    runner_ids=[self._ident],
+                    # run_ids=[run_id],
+                    event_status=[schemas.ApiEventStatus.PENDING],
+                )
+                event_query_bundle.add_event(run_event_q)
+
                 for run_id in list(self._run_map.keys()):
                     run = self._run_map[run_id]
                     # check if run finished and cleanup map
@@ -334,66 +360,98 @@ class Runner:
                         LOGGER.debug(f"removed run {run_id} from run_map")
                         assert run_id not in self._run_map
                         continue
-                    # only fecth events in case run is not finished yet
-                    run_events = list(
-                        await self._rc.get_events(
-                            run_id=run_id,
-                            action=None,
-                            limit=None,
-                            event_status=schemas.RunnerEventStatus.PENDING,
-                        )
-                    )
-                    events.extend(run_events)
 
-                LOGGER.debug(f"events fetched ({len(events)}): {events}")
+                fetched_events_bundle = await self._rc.fetch_events(event_query_bundle)
 
-                # handel the fetched events
-                for event in events:
-                    event_id = event.id
-                    run_id = event.run_id if event.run_id else None
-                    LOGGER.debug(f"try to handel event {event}")
+                LOGGER.debug(
+                    f"events fetched ({len(fetched_events_bundle.events)}): {fetched_events_bundle.events}"
+                )
 
-                    event_status = schemas.RunnerEventStatus.COMPLETED
-                    match event.action:
-                        case schemas.RunnerEventAction.KILL:
-                            if run_id and not run_id in self._run_map:
-                                event_status = schemas.RunnerEventStatus.CANCELLED
-                            else:
-                                run = self._run_map[run_id]
-                                run.exec_task.cancel()
-                                await run.exec_task
-                                LOGGER.debug(f"executed kill to cancel execution of run {run_id}")
-                        case schemas.RunnerEventAction.HEARTBEAT:
-                            await self._rc.send_heartbeat()
-                            LOGGER.debug(f"send heartbeat")
-                        case schemas.RunnerEventAction.START_RUN:
-                            if not run_id or run_id in self._run_map:
-                                LOGGER.debug(
-                                    f"cannot start run, no run id or run with given id is being executed"
+                update_events_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
+                for key in fetched_events_bundle.events.keys():
+                    events = fetched_events_bundle.events[key]
+                    match key:
+                        # handel events that are just related to the runner itself, independent of any runs
+                        case "ApiRunnerEventRead":
+                            events = schemas.ApiRunnerEventRead_List_A.validate_python(events)
+                            for event in events:
+                                update = schemas.ApiRunnerEventUpdate(id=event.id, runner_id=self._ident)
+                                match event.runner_event_type:
+                                    case schemas.RunnerEventType.heartbeat:
+                                        await self._rc.send_heartbeat()
+                                        update.event_status = schemas.ApiEventStatus.COMPLETED
+                                        LOGGER.debug(f"send heartbeat")
+
+                                update_events_bundle.add_event(update)
+                                LOGGER.info(f"handeled runner related event {event.id}")
+                            break
+
+                        # handel events related to a run that is currently being executed
+                        case "ApiRunEventRead":
+                            events = schemas.ApiRunEventRead_List_A.validate_python(events)
+                            for event in events:
+                                update = schemas.ApiRunEventUpdate(
+                                    id=event.id, runner_id=self._ident, run_id=event.run_id
                                 )
-                                event_status = schemas.RunnerEventStatus.CANCELLED
-                            else:
-                                try:
-                                    run = await self._prepare_run(run_id=run_id)
-                                    run.exec_task = asyncio.create_task(self._start_run(run=run))
-                                    self._run_map[run_id] = run
-                                    LOGGER.debug(f"started execution of run {run_id}")
-                                except Exception as err:
-                                    LOGGER.error(f"could not prepare run {run_id}: {err}")
-                                    await self._rc.update_run(run_id, schemas.RunState.ERROR, "")
-                                    event_status = schemas.RunnerEventStatus.CANCELLED
-                        case schemas.RunnerEventAction.SIMULATION_STATUS:
-                            if not run_id or not run_id in self._run_map:
-                                event_status = schemas.RunnerEventStatus.CANCELLED
-                            else:
-                                run = self._run_map[run_id]
-                                await run.runner.sigusr1()
-                                LOGGER.debug(f"send sigusr1 to run {run_id}")
+                                run_id = event.run_id
+                                match event.run_event_type:
+                                    case schemas.RunEventType.KILL:
+                                        if run_id and not run_id in self._run_map:
+                                            update.event_status = schemas.ApiEventStatus.CANCELLED
+                                        else:
+                                            run = self._run_map[run_id]
+                                            run.exec_task.cancel()
+                                            await run.exec_task
+                                            update.event_status = schemas.ApiEventStatus.COMPLETED
+                                            LOGGER.debug(
+                                                f"executed kill to cancel execution of run {run_id}"
+                                            )
+                                        break
+                                    case schemas.RunEventType.SIMULATION_STATUS:
+                                        if not run_id or not run_id in self._run_map:
+                                            update.event_status = schemas.ApiEventStatus.CANCELLED
+                                        else:
+                                            run = self._run_map[run_id]
+                                            await run.runner.sigusr1()
+                                            update.event_status = schemas.ApiEventStatus.COMPLETED
+                                            LOGGER.debug(f"send sigusr1 to run {run_id}")
+                                        break
+                                    case schemas.RunEventType.START_RUN:
+                                        if not run_id or run_id in self._run_map:
+                                            LOGGER.debug(
+                                                f"cannot start run, no run id or run with given id is being executed"
+                                            )
+                                            update.event_status = schemas.ApiEventStatus.CANCELLED
+                                        else:
+                                            try:
+                                                run = await self._prepare_run(run_id=run_id)
+                                                run.exec_task = asyncio.create_task(
+                                                    self._start_run(run=run)
+                                                )
+                                                self._run_map[run_id] = run
+                                                update.event_status = (
+                                                    schemas.ApiEventStatus.COMPLETED
+                                                )
+                                                LOGGER.debug(f"started execution of run {run_id}")
+                                            except Exception:
+                                                trace = traceback.format_exc()
+                                                LOGGER.error(
+                                                    f"could not prepare run {run_id}: {trace}"
+                                                )
+                                                await self._rc.update_run(
+                                                    run_id, schemas.RunState.ERROR, ""
+                                                )
+                                                update.event_status = schemas.ApiEventStatus.ERROR
 
-                    await self._rc.update_runner_event(
-                        event_id=event_id, event_status=event_status, action=None, run_id=None
-                    )
-                    LOGGER.info(f"handeled event {event_id}")
+                                update_events_bundle.add_event(update)
+                                LOGGER.info(f"handeled run related event {event.id}")
+                            break
+
+                        case _:
+                            LOGGER.error(f"encountered not yet handeled event type {key}")
+
+                if not update_events_bundle.empty():
+                    await self._rc.update_events(update_events_bundle)
 
                 await asyncio.sleep(self._polling_delay_sec)
 
