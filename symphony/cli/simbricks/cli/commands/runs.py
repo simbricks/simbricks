@@ -243,7 +243,7 @@ async def update_event(
 @async_cli()
 async def ls_events(
     runner_id: int,
-    run_id: int,
+    run_id: Annotated[int | None, Option("--run", "-r", help="The run id the events belong to.")] = None,
     id: Annotated[
         int | None, Option("--ident", "-i", help="A specific event id to filter for.")
     ] = None,
@@ -260,22 +260,24 @@ async def ls_events(
     limit: Annotated[int | None, Option("--limit", "-l", help="Limit results.")] = None,
 ):
     """List runner related events"""
-    query = schemas.ApiRunEventQuery(runner_ids=[runner_id], run_ids=[run_id])
+    query = schemas.ApiRunEventQuery(runner_ids=[runner_id])
     if id:
         query.ids = [id]
+    if run_id:
+        query.run_ids = [run_id]
     if status:
         query.event_status = [status]
     if type:
         query.run_event_type = [type]
     if limit:
         query.limit = limit
-    bundle = schemas.ApiEventBundle[schemas.ApiRunEventQuery]()
-    bundle.add_event(query)
 
-    event_bundle = await client_provider.runner_client(runner_id).fetch_events(bundle)
+    rc = client_provider.runner_client(runner_id)
+    events = await opus_base.fetch_events(rc, query, schemas.ApiRunEventRead)
+
     print_table_generic(
         "Events",
-        event_bundle.events["ApiRunEventRead"],
+        events,
         "id",
         "run_id",
         "runner_id",

@@ -25,7 +25,7 @@ from typing_extensions import Annotated
 from simbricks.client.provider import client_provider
 from ..utils import async_cli, print_table_generic
 from simbricks.schemas import base as schemas
-
+from simbricks.client.opus import base as opus_base
 
 app = Typer(help="Managing SimBricks runners.")
 
@@ -159,13 +159,13 @@ async def ls_events(
         query.event_status = [status]
     if limit:
         query.limit = limit
-    bundle = schemas.ApiEventBundle[schemas.ApiRunnerEventQuery]()
-    bundle.add_event(query)
 
-    event_bundle = await client_provider.runner_client(runner_id).fetch_events(bundle)
+    rc = client_provider.runner_client(runner_id)
+    events = await opus_base.fetch_events(rc, query, schemas.ApiRunnerEventRead)
+
     print_table_generic(
         "Events",
-        event_bundle.events["ApiRunnerEventRead"],
+        events,
         "id",
         "runner_id",
         "event_status",
