@@ -878,7 +878,7 @@ class RunnerClient:
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventCreate_U]
     ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
         to_create = schemas.ApiEventBundle[schemas.ApiEventCreate_U].model_validate(event_bundle)
-        async with self.post(url="/api/events", json=to_create.model_dump()) as resp:
+        async with self.post(url="/api/events", json=to_create.model_dump(exclude_none=True)) as resp:
             raw_json = await resp.json()
             return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
@@ -886,7 +886,7 @@ class RunnerClient:
         self, to_fetch: schemas.ApiEventBundle[schemas.ApiEventQuery_U]
     ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
         query = schemas.ApiEventBundle[schemas.ApiEventQuery_U].model_validate(to_fetch)
-        async with self.get(url="/api/events", json=query.model_dump()) as resp:
+        async with self.post(url="/api/events/fetch", json=query.model_dump(exclude_none=True)) as resp:
             raw_json = await resp.json()
             return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
@@ -894,7 +894,7 @@ class RunnerClient:
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventUpdate_U]
     ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
         to_update = schemas.ApiEventBundle[schemas.ApiEventUpdate_U].model_validate(event_bundle)
-        async with self.patch(url="/api/events", json=to_update.model_dump()) as resp:
+        async with self.patch(url="/api/events", json=to_update.model_dump(exclude_none=True)) as resp:
             raw_json = await resp.json()
             return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
@@ -902,5 +902,5 @@ class RunnerClient:
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventDelete_U]
     ) -> None:
         to_delete = schemas.ApiEventBundle[schemas.ApiEventDelete_U].model_validate(event_bundle)
-        async with self.delete(url="/api/events", json=to_delete.model_dump()) as _:
+        async with self.delete(url="/api/events", json=to_delete.model_dump(exclude_none=True)) as _:
             pass
