@@ -26,7 +26,7 @@ import abc
 import datetime
 import enum
 from typing import TypeVar, Generic, Literal, Annotated, get_args, get_origin
-from pydantic import BaseModel, TypeAdapter, Field
+from pydantic import BaseModel, TypeAdapter, Field, field_serializer
 
 
 class ApiNamespace(BaseModel):
@@ -349,6 +349,7 @@ class ApiRunnerEventRead(ApiReadEvent, AbstractApiRunnerEvent):
 
 class ApiRunnerEventUpdate(ApiUpdateEvent, AbstractApiRunnerEvent):
     event_discriminator: Literal["ApiRunnerEventUpdate"] = "ApiRunnerEventUpdate"
+    runner_event_type: RunnerEventType | None = None
 
 
 class ApiRunnerEventDelete(ApiDeleteEvent):
@@ -367,9 +368,9 @@ Run related events
 
 
 class RunEventType(str, enum.Enum):
-    kill = "kill"
-    simulation_status = "simulation_status"
-    start_run = "start_run"
+    KILL = "KILL"
+    SIMULATION_STATUS = "SIMULATION_STATUS"
+    START_RUN = "START_RUN"
 
 
 class AbstracApiRunEvent(AbstractApiEvent, abc.ABC):
@@ -397,7 +398,7 @@ class ApiRunEventRead(ApiReadEvent, AbstracApiRunEvent):
 
 class ApiRunEventUpdate(ApiUpdateEvent, AbstracApiRunEvent):
     event_discriminator: Literal["ApiRunEventUpdate"] = "ApiRunEventUpdate"
-
+    run_event_type: RunEventType | None = None
 
 class ApiRunEventDelete(ApiDeleteEvent):
     event_discriminator: Literal["ApiRunEventDelete"] = "ApiRunEventDelete"
@@ -448,13 +449,23 @@ class AbstractApiOutputEvent(AbstractApiSimulatorEvent, abc.ABC):
     Whether the output is from stdout or from stderr.
     """
 
+    @field_serializer('output_generated_at')
+    def serialize_output_generated_at(self, dt: datetime.datetime, _info) -> str:
+        return dt.isoformat()
+
 
 class ApiSimulatorOutputEventCreate(ApiCreateEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiSimulatorOutputEventCreate"] = "ApiSimulatorOutputEventCreate"
+    runner_id: int | None = None
+    simulation_id: int | None = None
 
 
 class ApiSimulatorOutputEventRead(ApiReadEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiSimulatorOutputEventRead"] = "ApiSimulatorOutputEventRead"
+    runner_id: int | None = None
+    run_id: int | None = None
+    simulation_id: int | None = None
+    simulator_id: int | None = None
 
 
 class ApiSimulatorOutputEventDelete(ApiDeleteEvent):
@@ -521,6 +532,9 @@ class ApiEventBundle(BaseModel, Generic[BundleEventUnion_T]):
     associated with a bundle of events of that specific type.
     """
 
+    def empty(self) -> bool:
+        return len(self.events) == 0
+
     def add_event(self, event: BundleEventUnion_T) -> None:
         if event.event_discriminator not in self.events:
             self.events[event.event_discriminator] = []
@@ -538,7 +552,7 @@ EventCreate_A = TypeAdapter(ApiEventCreate_U)
 
 ApiRunnerEventCreate_List_A = TypeAdapter(list[ApiRunnerEventCreate])
 ApiRunEventCreate_List_A = TypeAdapter(list[ApiRunEventCreate])
-ApiSimulatorOutputEventCreate_List_A = TypeAdapter(list[ApiRunEventCreate])
+ApiSimulatorOutputEventCreate_List_A = TypeAdapter(list[ApiSimulatorOutputEventCreate])
 
 
 EventRead_A = TypeAdapter(ApiEventRead_U)
@@ -563,54 +577,54 @@ ApiRunEventQuery_List_A = TypeAdapter(list[ApiRunEventQuery])
 
 
 # TODO: FIXME
-class ApiEventQuery(BaseModel):
-    event_discriminator: str
-    ids: list[int] | None = None
-    runner_ids: list[int] | None = None
-    run_ids: list[int] | None = None
-    simulation_ids: list[int] | None = None
-    proxy_ids: list[int] | None = None
-    event_status: list[ApiEventStatus] | None = None
-    runner_event_type: list[RunnerEventType] | None = None
-    run_event_type: list[RunEventType] | None = None
-    limit: int | None = None
+# class ApiEventQuery(BaseModel):
+#     event_discriminator: str
+#     ids: list[int] | None = None
+#     runner_ids: list[int] | None = None
+#     run_ids: list[int] | None = None
+#     simulation_ids: list[int] | None = None
+#     proxy_ids: list[int] | None = None
+#     event_status: list[ApiEventStatus] | None = None
+#     runner_event_type: list[RunnerEventType] | None = None
+#     run_event_type: list[RunEventType] | None = None
+#     limit: int | None = None
 
 
-if __name__ == "__main__":
-    c_bundle = ApiEventBundle[ApiEventCreate_U]()
-    c1 = ApiRunnerEventCreate(runner_id=3)
-    c2 = ApiRunnerEventCreate(runner_id=2)
-    c3 = ApiRunnerEventCreate(runner_id=3)
-    cr1 = ApiRunEventCreate(runner_id=3, run_id=2, run_event_type=RunEventType.simulation_status)
-    c_bundle.add_events(c1, c2, c3)
-    c_bundle.add_event(cr1)
-    d = c_bundle.model_dump()
-    b = ApiEventBundle[ApiEventCreate_U].model_validate(d)
-    print(b)
+# if __name__ == "__main__":
+#     c_bundle = ApiEventBundle[ApiEventCreate_U]()
+#     c1 = ApiRunnerEventCreate(runner_id=3)
+#     c2 = ApiRunnerEventCreate(runner_id=2)
+#     c3 = ApiRunnerEventCreate(runner_id=3)
+#     cr1 = ApiRunEventCreate(runner_id=3, run_id=2, run_event_type=RunEventType.simulation_status)
+#     c_bundle.add_events(c1, c2, c3)
+#     c_bundle.add_event(cr1)
+#     d = c_bundle.model_dump()
+#     b = ApiEventBundle[ApiEventCreate_U].model_validate(d)
+#     print(b)
 
-    r_bundle = ApiEventBundle[ApiEventRead_U]()
-    r_bundle.add_event(
-        ApiSimulatorOutputEventRead(
-            id=4,
-            runner_id=3,
-            run_id=4,
-            simulation_id=5,
-            output="",
-            simulator_id=7324,
-            is_stderr=False,
-        )
-    )
-    d = r_bundle.model_dump()
-    b = ApiEventBundle[ApiEventRead_U].model_validate(d)
-    for ty, lis in b.events.items():
-        print(f"{ty} ==> {lis}")
+#     r_bundle = ApiEventBundle[ApiEventRead_U]()
+#     r_bundle.add_event(
+#         ApiSimulatorOutputEventRead(
+#             id=4,
+#             runner_id=3,
+#             run_id=4,
+#             simulation_id=5,
+#             output="",
+#             simulator_id=7324,
+#             is_stderr=False,
+#         )
+#     )
+#     d = r_bundle.model_dump()
+#     b = ApiEventBundle[ApiEventRead_U].model_validate(d)
+#     for ty, lis in b.events.items():
+#         print(f"{ty} ==> {lis}")
 
-    oe = ApiSimulatorOutputEventCreate(
-        runner_id=3,
-        run_id=4,
-        simulation_id=23,
-        simulator_id=23,
-        output="kabfkjdsbfkdjb",
-        is_stderr=False,
-    )
-    col = ApiConsoleOutputLine.model_validate(oe)
+#     oe = ApiSimulatorOutputEventCreate(
+#         runner_id=3,
+#         run_id=4,
+#         simulation_id=23,
+#         simulator_id=23,
+#         output="kabfkjdsbfkdjb",
+#         is_stderr=False,
+#     )
+#     col = ApiConsoleOutputLine.model_validate(oe)
