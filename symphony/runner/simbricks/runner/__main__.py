@@ -22,7 +22,6 @@
 from __future__ import annotations
 
 import asyncio
-import datetime
 import json
 import logging
 import pathlib
@@ -31,7 +30,7 @@ import typing
 import uuid
 
 from simbricks import client
-from simbricks.client.opus import base as opus
+from simbricks.client.opus import base as opus_base
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
@@ -73,7 +72,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             LOGGER.debug(f"[prepare] {line}")
         # TODO: FIXME
         pass
-    
+
     async def simulation_prepare_cmd_stderr(self, cmd: str, lines: list[str]) -> None:
         super().simulation_prepare_cmd_stderr(cmd, lines)
         for line in lines:
@@ -85,18 +84,18 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     # Simulator-related callbacks -
     # -----------------------------
 
-    async def simulator_prepare_started(self, sim: sim_base.Simulator, cmd: str) -> None:
-        self._active_simulator_cmd[sim] = cmd
-        LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
-        # TODO: FIXME
-        await self._client.update_state_simulator(
-            self._run_id, sim.id(), sim.full_name(), "preparing", cmd
+    async def _send_state_simulator_event(
+        self, simulator_id: int, sim_name: str, cmd: str, state: schemas.RunSimulatorState
+    ) -> None:
+        event = schemas.ApiSimulatorStateChangeEventCreate(
+            runner_id=self._client.runner_id,
+            run_id=self._run_id,
+            simulator_id=simulator_id,
+            simulator_state=state,
+            simulator_name=sim_name,
+            command=cmd,
         )
-
-    async def simulator_prepare_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
-        self._active_simulator_cmd.pop(sim)
-        LOGGER.debug(f"- [{sim.full_name()}] exited with code {exit_code}")
-        # TODO (Jonas) Report to backend if prepare command fails
+        await opus_base.create_event(self._client, event)
 
     async def _send_out_simulator_events(
         self, simulator_id: int, lines: list[str], stderr: bool
@@ -104,6 +103,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         event_bundle = schemas.ApiEventBundle[schemas.ApiSimulatorOutputEventCreate]()
         for line in lines:
             event = schemas.ApiSimulatorOutputEventCreate(
+                runner_id=self._client.runner_id,
                 run_id=self._run_id,
                 simulator_id=simulator_id,
                 output=line,
@@ -112,6 +112,19 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             event_bundle.add_event(event)
 
         await self._client.create_events(event_bundle)
+
+    async def simulator_prepare_started(self, sim: sim_base.Simulator, cmd: str) -> None:
+        self._active_simulator_cmd[sim] = cmd
+        LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
+
+        await self._send_state_simulator_event(
+            sim.id(), sim.full_name(), cmd, schemas.RunSimulatorState.PREPARING
+        )
+
+    async def simulator_prepare_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
+        self._active_simulator_cmd.pop(sim)
+        LOGGER.debug(f"- [{sim.full_name()}] exited with code {exit_code}")
+        # TODO (Jonas) Report to backend if prepare command fails
 
     async def simulator_prepare_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
         for line in lines:
@@ -128,9 +141,9 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def simulator_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         self._active_simulator_cmd[sim] = cmd
         LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
-        # TODO: FIXME
-        await self._client.update_state_simulator(
-            self._run_id, sim.id(), sim.full_name(), "starting", cmd
+
+        await self._send_state_simulator_event(
+            sim.id(), sim.full_name(), cmd, schemas.RunSimulatorState.STARTING
         )
 
     async def simulator_ready(self, sim: sim_base.Simulator) -> None:
@@ -141,17 +154,18 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
                 f"cannot mark simulator as ready as it was already removed: {sim.full_name()}"
             )
             return
-        # TODO: FIXME
-        await self._client.update_state_simulator(
-            self._run_id, sim.id(), sim.full_name(), "running", self._active_simulator_cmd[sim]
+        cmd = self._active_simulator_cmd[sim]
+
+        await self._send_state_simulator_event(
+            sim.id(), sim.full_name(), cmd, schemas.RunSimulatorState.RUNNING
         )
 
     async def simulator_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
         cmd = self._active_simulator_cmd.pop(sim)
         LOGGER.debug(f"- [{sim.full_name()}] exited with code {exit_code}")
-        # TODO: FIXME
-        await self._client.update_state_simulator(
-            self._run_id, sim.id(), sim.full_name(), "terminated", cmd
+
+        await self._send_state_simulator_event(
+            sim.id(), sim.full_name(), cmd, schemas.RunSimulatorState.TERMINATED
         )
 
     async def simulator_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
@@ -163,28 +177,42 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def simulator_stderr(self, sim: sim_base.Simulator, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{sim.full_name()}] {line}")
-        
+
         await self._send_out_simulator_events(sim.id(), lines, True)
 
     # -------------------------
     # Proxy-related callbacks -
     # -------------------------
 
+    async def _send_state_proxy_event(
+        self, proxy_id: int, state: schemas.RunSimulatorState
+    ) -> None:
+        event = schemas.ApiProxyStateChangeEventCreate(
+            runner_id=self._client.runner_id,
+            run_id=self._run_id,
+            proxy_id=proxy_id,
+            simulator_state=state,
+        )
+        await opus_base.create_event(self._client, event)
+
     async def proxy_started(self, proxy: inst_proxy.Proxy, cmd: str) -> None:
         self._active_proxy_cmd[proxy] = cmd
         LOGGER.debug(f"+ [{proxy.name}] {cmd}")
-        await self._client.update_state_proxy(self._run_id, proxy.id(), "starting", cmd)
+
+        # TODO: FIXME
+        # await self._send_state_proxy_event(proxy.id(), schemas.RunSimulatorState.STARTING)
 
     async def proxy_ready(self, proxy: inst_proxy.Proxy) -> None:
         LOGGER.debug(f"[{proxy.name}] has started successfully")
-        await self._client.update_state_proxy(
-            self._run_id, proxy.id(), "running", self._active_proxy_cmd[proxy]
-        )
+
+        # await self._send_state_proxy_event(proxy.id(), schemas.RunSimulatorState.RUNNING)
 
     async def proxy_exited(self, proxy: inst_proxy.Proxy, exit_code: int) -> None:
         cmd = self._active_proxy_cmd.pop(proxy)
         LOGGER.debug(f"- [{proxy.name}] exited with code {exit_code}")
-        await self._client.update_state_proxy(self._run_id, proxy.id(), "terminated", cmd)
+
+        # TODO: FIXME
+        # await self._send_state_proxy_event(proxy.id(), schemas.RunSimulatorState.TERMINATED)
 
     async def proxy_stdout(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
         for line in lines:
@@ -375,7 +403,9 @@ class Runner:
                         case "ApiRunnerEventRead":
                             events = schemas.ApiRunnerEventRead_List_A.validate_python(events)
                             for event in events:
-                                update = schemas.ApiRunnerEventUpdate(id=event.id, runner_id=self._ident)
+                                update = schemas.ApiRunnerEventUpdate(
+                                    id=event.id, runner_id=self._ident
+                                )
                                 match event.runner_event_type:
                                     case schemas.RunnerEventType.heartbeat:
                                         await self._rc.send_heartbeat()
