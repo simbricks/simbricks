@@ -46,6 +46,9 @@ size_t shm_size = 256 * 1024 * 1024ULL;  // 256MB
 bool mode_listen = false;
 struct sockaddr_in addr;
 
+char *listen_info_file_path = NULL;
+char *listen_ready_file_path = NULL;
+
 int epfd = -1;
 
 const char *ib_devname = NULL;
@@ -55,7 +58,7 @@ int ib_sgid_idx = -1;
 
 static void PrintUsage() {
   fprintf(stderr,
-          "Usage: net_rdma [OPTIONS] IP PORT\n"
+          "Usage: net_rdma [OPTIONS] IP PORT LISTEN-INFO-FILE LISTEN-READY-FILE\n"
           "    -l: Listen instead of connecting\n"
           "    -L LISTEN-SOCKET: listening socket for a simulator\n"
           "    -C CONN-SOCKET: connecting socket for a simulator\n"
@@ -116,7 +119,7 @@ static int ParseArgs(int argc, char *argv[]) {
     }
   }
 
-  if (optind + 2 != argc) {
+  if (optind + 4 != argc) {
     PrintUsage();
     return 1;
   }
@@ -127,6 +130,9 @@ static int ParseArgs(int argc, char *argv[]) {
     PrintUsage();
     return 1;
   }
+
+  listen_info_file_path = argv[optind + 2];
+  listen_ready_file_path = argv[optind + 3];
 
   return 0;
 }
