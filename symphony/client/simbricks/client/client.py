@@ -175,6 +175,10 @@ class AdminClient:
         async with self._base_client.delete(url=self._prefix(f"/{ns_id}")) as _:
             pass
 
+    async def schedule_ns(self, ns_id: int) -> None:
+        async with self._base_client.post(url=self._prefix(f"/{ns_id}/schedule")) as _:
+            pass
+
 
 class OrgClient:
 
@@ -550,10 +554,10 @@ class RunnerClient:
 
     def __init__(self, ns_client, id: int) -> None:
         self._ns_client: NSClient = ns_client
-        self._runner_id = id
+        self.runner_id = id
 
     def _build_prefix(self, url: str) -> str:
-        return f"/runners/{self._runner_id}{url}"
+        return f"/runners/{self.runner_id}{url}"
 
     @contextlib.asynccontextmanager
     async def post(
@@ -623,7 +627,7 @@ class RunnerClient:
             "The `create_runner_event` method is deprectaed; use `create_events` instead."
         )
         event = schemas.ApiRunnerEvent.model_validate(
-            {"runner_id": self._runner_id, "action": action, "run_id": run_id}
+            {"runner_id": self.runner_id, "action": action, "run_id": run_id}
         )
         async with self.post(url=f"/events", json=event.model_dump()) as resp:
             raw_json = await resp.json()
@@ -653,7 +657,7 @@ class RunnerClient:
         event = schemas.ApiRunnerEvent.model_validate(
             {
                 "id": event_id,
-                "runner_id": self._runner_id,
+                "runner_id": self.runner_id,
                 "action": action,
                 "run_id": run_id,
                 "event_status": event_status,
