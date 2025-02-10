@@ -134,7 +134,7 @@ class Gem5Sim(HostSim):
             raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
         host_spec = full_sys_hosts[0]
 
-        cmd = f"{inst.join_repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.get_simmulator_output_dir(sim=self)} "
+        cmd = f"{inst.join_repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.get_simulator_output_dir(sim=self)} "
         cmd += " ".join(self.extra_main_args)
         cmd += (
             f" {inst.join_repo_base('sims/external/gem5/configs/simbricks/simbricks.py')} --caches --l2cache "
