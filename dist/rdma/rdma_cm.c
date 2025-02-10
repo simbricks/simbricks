@@ -55,6 +55,29 @@ int RdmaCMListen(struct sockaddr_in *addr) {
     return 1;
   }
 
+  addr->sin_port = rdma_get_src_port(listen_id);
+  if (addr->sin_port == 0) {
+    perror("RdmaListen: rdma_get_src_port failes");
+    return 1;
+  }
+
+  // write port number to file
+  FILE *info_file = fopen(listen_info_file_path, "w");
+  if (!info_file) {
+    perror("RdmaListen: opening info_file failed");
+    return 1;
+  }
+  fprintf(info_file, "%d\n", ntohs(addr->sin_port));
+  fclose(info_file);
+
+  // create another file to indicate ready
+  FILE *ready_file = fopen(listen_ready_file_path, "w");
+  if (!ready_file) {
+    perror("RdmaListen: opening ready_file failed");
+    return 1;
+  }
+  fclose(ready_file);
+
 #ifdef RDMA_DEBUG
   fprintf(stderr, "RdmaListen: listen done\n");
 #endif
