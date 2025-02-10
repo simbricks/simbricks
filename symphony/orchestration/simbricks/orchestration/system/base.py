@@ -23,13 +23,13 @@
 from __future__ import annotations
 
 import typing as tp
-from simbricks.utils import base as util_base
+from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
 
 
-class System(util_base.IdObj):
+class System(utils_base.IdObj):
     """Defines System configuration of the whole simulation"""
 
     def __init__(self) -> None:
@@ -72,18 +72,18 @@ class System(util_base.IdObj):
         return self._all_channels[ident]
 
     @staticmethod
-    def set_latencies(channels: list[Channel], amount: int, ratio: util_base.Time) -> None:
+    def set_latencies(channels: list[Channel], amount: int, ratio: utils_base.Time) -> None:
         for chan in channels:
             chan.set_latency(amount, ratio)
 
     def latencies(
-        self, amount: int, ratio: util_base.Time, channel_type: tp.Any | None = None
+        self, amount: int, ratio: utils_base.Time, channel_type: tp.Any | None = None
     ) -> None:
         relevant_channels = self._all_channels
         if channel_type:
             relevant_channels = list(
                 filter(
-                    lambda chan: util_base.check_type(chan, channel_type),
+                    lambda chan: utils_base.check_type(chan, channel_type),
                     self._all_channels.values(),
                 )
             )
@@ -94,7 +94,7 @@ class System(util_base.IdObj):
 
         components_json = []
         for _, comp in self._all_components.items():
-            util_base.has_attribute(comp, "toJSON")
+            utils_base.has_attribute(comp, "toJSON")
             comp_json = comp.toJSON()
             components_json.append(comp_json)
 
@@ -102,7 +102,7 @@ class System(util_base.IdObj):
 
         channels_json = []
         for _, chan in self._all_channels.items():
-            util_base.has_attribute(chan, "toJSON")
+            utils_base.has_attribute(chan, "toJSON")
             channels_json.append(chan.toJSON())
 
         json_obj["channels"] = channels_json
@@ -116,22 +116,22 @@ class System(util_base.IdObj):
         instance._all_interfaces = {}
         instance._all_channels = {}
 
-        components_json = util_base.get_json_attr_top(json_obj, "all_components")
+        components_json = utils_base.get_json_attr_top(json_obj, "all_components")
         for comp_json in components_json:
-            comp_class = util_base.get_cls_by_json(comp_json)
-            util_base.has_attribute(comp_class, "fromJSON")
+            comp_class = utils_base.get_cls_by_json(comp_json)
+            utils_base.has_attribute(comp_class, "fromJSON")
             comp = comp_class.fromJSON(instance, comp_json)
 
-        channels_json = util_base.get_json_attr_top(json_obj, "channels")
+        channels_json = utils_base.get_json_attr_top(json_obj, "channels")
         for chan_json in channels_json:
-            chan_class = util_base.get_cls_by_json(chan_json)
-            util_base.has_attribute(chan_class, "fromJSON")
+            chan_class = utils_base.get_cls_by_json(chan_json)
+            utils_base.has_attribute(chan_class, "fromJSON")
             chan = chan_class.fromJSON(instance, chan_json)
 
         return instance
 
 
-class Component(util_base.IdObj):
+class Component(utils_base.IdObj):
 
     def __init__(self, s: System) -> None:
         super().__init__()
@@ -158,11 +158,11 @@ class Component(util_base.IdObj):
         json_obj = super().toJSON()
         json_obj["system"] = self.system.id()
         json_obj["name"] = self.name
-        json_obj["parameters"] = util_base.dict_to_json(self.parameters)
+        json_obj["parameters"] = utils_base.dict_to_json(self.parameters)
 
         interfaces_json = []
         for inf in self.interfaces():
-            util_base.has_attribute(inf, "toJSON")
+            utils_base.has_attribute(inf, "toJSON")
             interfaces_json.append(inf.toJSON())
         json_obj["interfaces"] = interfaces_json
 
@@ -171,25 +171,25 @@ class Component(util_base.IdObj):
     @classmethod
     def fromJSON(cls, system: System, json_obj: dict) -> Component:
         instance = super().fromJSON(json_obj)
-        instance.name = util_base.get_json_attr_top_or_none(json_obj, "name")
-        instance.parameters = util_base.json_to_dict(
-            util_base.get_json_attr_top(json_obj, "parameters")
+        instance.name = utils_base.get_json_attr_top_or_none(json_obj, "name")
+        instance.parameters = utils_base.json_to_dict(
+            utils_base.get_json_attr_top(json_obj, "parameters")
         )
         instance.system = system
         system._add_component(instance)
 
         instance.ifs = []
-        interfaces_json = util_base.get_json_attr_top(json_obj, "interfaces")
+        interfaces_json = utils_base.get_json_attr_top(json_obj, "interfaces")
         for inf_json in interfaces_json:
-            inf_class = util_base.get_cls_by_json(inf_json)
-            util_base.has_attribute(inf_class, "fromJSON")
+            inf_class = utils_base.get_cls_by_json(inf_json)
+            utils_base.has_attribute(inf_class, "fromJSON")
             # NOTE: this will add the interface to the system map for retrieval in sub-classes
             inf = inf_class.fromJSON(system, inf_json)
 
         return instance
 
 
-class Interface(util_base.IdObj):
+class Interface(utils_base.IdObj):
     def __init__(self, c: Component) -> None:
         super().__init__()
         self.component = c
@@ -241,7 +241,7 @@ class Interface(util_base.IdObj):
     @classmethod
     def fromJSON(cls, system: System, json_obj: dict) -> Interface:
         instance = super().fromJSON(json_obj)
-        comp_id = util_base.get_json_attr_top(json_obj, "component")
+        comp_id = utils_base.get_json_attr_top(json_obj, "component")
         comp = system.get_comp(comp_id)
         instance.component = comp
         comp.add_if(instance)
@@ -250,7 +250,7 @@ class Interface(util_base.IdObj):
         return instance
 
 
-class Channel(util_base.IdObj):
+class Channel(utils_base.IdObj):
     def __init__(self, a: Interface, b: Interface) -> None:
         super().__init__()
         self.latency = 500  # nanoseconds
@@ -279,8 +279,8 @@ class Channel(util_base.IdObj):
         assert opposing != interface
         return opposing
 
-    def set_latency(self, amount: int, ratio: util_base.Time = util_base.Time.Nanoseconds) -> None:
-        util_base.has_expected_type(obj=ratio, expected_type=util_base.Time)
+    def set_latency(self, amount: int, ratio: utils_base.Time = utils_base.Time.Nanoseconds) -> None:
+        utils_base.has_expected_type(obj=ratio, expected_type=utils_base.Time)
         self.latency = amount * ratio
 
     def toJSON(self) -> dict:
@@ -288,19 +288,19 @@ class Channel(util_base.IdObj):
         json_obj["latency"] = self.latency
         json_obj["interface_a"] = self.a.id()
         json_obj["interface_b"] = self.b.id()
-        json_obj["parameters"] = util_base.dict_to_json(self.parameters)
+        json_obj["parameters"] = utils_base.dict_to_json(self.parameters)
         return json_obj
 
     @classmethod
     def fromJSON(cls, system: System, json_obj: dict) -> Channel:
         instance = super().fromJSON(json_obj)
-        instance.latency = int(util_base.get_json_attr_top(json_obj, "latency"))
-        instance.parameters = util_base.json_to_dict(
-            util_base.get_json_attr_top(json_obj, "parameters")
+        instance.latency = int(utils_base.get_json_attr_top(json_obj, "latency"))
+        instance.parameters = utils_base.json_to_dict(
+            utils_base.get_json_attr_top(json_obj, "parameters")
         )
 
-        inf_id_a = int(util_base.get_json_attr_top(json_obj, "interface_a"))
-        inf_id_b = int(util_base.get_json_attr_top(json_obj, "interface_b"))
+        inf_id_a = int(utils_base.get_json_attr_top(json_obj, "interface_a"))
+        inf_id_b = int(utils_base.get_json_attr_top(json_obj, "interface_b"))
         inf_a = system.get_inf(ident=inf_id_a)
         inf_b = system.get_inf(ident=inf_id_b)
         instance.a = inf_a

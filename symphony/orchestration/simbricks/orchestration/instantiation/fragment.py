@@ -25,14 +25,14 @@ import functools
 import typing
 
 from simbricks.orchestration.instantiation import proxy
-from simbricks.utils import base as util_base
+from simbricks.utils import base as utils_base
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.orchestration.system import base as sys_base
 
 
-class Fragment(util_base.IdObj):
+class Fragment(utils_base.IdObj):
 
     def __init__(self, runner_label: str | None = None):
         super().__init__()
@@ -47,7 +47,7 @@ class Fragment(util_base.IdObj):
 
         proxy_json = []
         for prox in self._proxies:
-            util_base.has_attribute(prox, "toJSON")
+            utils_base.has_attribute(prox, "toJSON")
             proxy_json.append(prox.toJSON())
         json_obj["proxies"] = proxy_json
 

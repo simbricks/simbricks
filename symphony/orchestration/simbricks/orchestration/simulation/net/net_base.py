@@ -23,14 +23,16 @@
 from __future__ import annotations
 
 import pathlib
+
 from simbricks.orchestration import system
-from simbricks.orchestration.system import base as sys_base
-from simbricks.orchestration.system import eth as sys_eth
-from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.simulation.net import ns3_components as ns3_comps
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.instantiation import socket as inst_socket
-from simbricks.utils import base as base_utils
+from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.simulation.net import ns3_components as ns3_comps
+from simbricks.orchestration.system import base as sys_base
+from simbricks.orchestration.system import eth as sys_eth
+from simbricks.utils import base as utils_base
+from simbricks.utils import file as utils_file
 
 
 class NetSim(sim_base.Simulator):
@@ -77,7 +79,7 @@ class WireNet(NetSim):
         self._relative_pcap_file_path: str | None = relative_pcap_filepath
 
     def add(self, wire: sys_eth.EthWire):
-        base_utils.has_expected_type(wire, sys_eth.EthWire)
+        utils_base.has_expected_type(wire, sys_eth.EthWire)
         if len(self._components) > 1:
             raise Exception(
                 "can only add a single wire component to the WireNet simulator"
@@ -92,7 +94,7 @@ class WireNet(NetSim):
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> WireNet:
         instance = super().fromJSON(simulation, json_obj)
-        instance._relative_pcap_file_path = base_utils.get_json_attr_top(json_obj, "relative_pcap_file_path") 
+        instance._relative_pcap_file_path = utils_base.get_json_attr_top(json_obj, "relative_pcap_file_path") 
         return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
@@ -131,7 +133,7 @@ class SwitchNet(NetSim):
         self._relative_pcap_file_path: str | None = relative_pcap_filepath
 
     def add(self, switch_spec: sys_eth.EthSwitch):
-        base_utils.has_expected_type(switch_spec, sys_eth.EthSwitch)
+        utils_base.has_expected_type(switch_spec, sys_eth.EthSwitch)
         if len(self._components) > 1:
             raise Exception("can only add a single switch component to the SwitchNet")
         super().add(switch_spec)
@@ -144,7 +146,7 @@ class SwitchNet(NetSim):
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> SwitchNet:
         instance = super().fromJSON(simulation, json_obj)
-        instance._relative_pcap_file_path = base_utils.get_json_attr_top(json_obj, "relative_pcap_file_path") 
+        instance._relative_pcap_file_path = utils_base.get_json_attr_top(json_obj, "relative_pcap_file_path") 
         return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
@@ -238,10 +240,10 @@ class SimpleNS3Sim(NetSim):
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> SimpleNS3Sim:
         instance = super().fromJSON(simulation, json_obj)
-        instance._ns3_run_script = base_utils.get_json_attr_top(
+        instance._ns3_run_script = utils_base.get_json_attr_top(
             json_obj, "ns3_run_script"
         )
-        instance.opt = base_utils.get_json_attr_top_or_none(json_obj, "opt")
+        instance.opt = utils_base.get_json_attr_top_or_none(json_obj, "opt")
         return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
@@ -260,8 +262,8 @@ class NS3DumbbellNet(SimpleNS3Sim):
         self._right: sys_eth.EthSwitch | None = None
 
     def add(self, left: sys_eth.EthSwitch, right: sys_eth.EthSwitch):
-        base_utils.has_expected_type(left, sys_eth.EthSwitch)
-        base_utils.has_expected_type(right, sys_eth.EthSwitch)
+        utils_base.has_expected_type(left, sys_eth.EthSwitch)
+        utils_base.has_expected_type(right, sys_eth.EthSwitch)
 
         if (
             len(self._components) > 2
@@ -286,9 +288,9 @@ class NS3DumbbellNet(SimpleNS3Sim):
         cls, simulation: sim_base.Simulation, json_obj: dict
     ) -> NS3DumbbellNet:
         instance = super().fromJSON(simulation, json_obj)
-        left_id = int(base_utils.get_json_attr_top(json_obj, "left"))
+        left_id = int(utils_base.get_json_attr_top(json_obj, "left"))
         instance._left = json_obj["left"] = simulation.system.get_comp(left_id)
-        right_id = int(base_utils.get_json_attr_top(json_obj, "right"))
+        right_id = int(utils_base.get_json_attr_top(json_obj, "right"))
         instance._right = json_obj["right"] = simulation.system.get_comp(right_id)
         return instance
 
@@ -322,7 +324,7 @@ class NS3BridgeNet(SimpleNS3Sim):
         self.name = f"NS3BridgeNet-{self._id}"
 
     def add(self, switch_comp: sys_eth.EthSwitch):
-        base_utils.has_expected_type(switch_comp, sys_eth.EthSwitch)
+        utils_base.has_expected_type(switch_comp, sys_eth.EthSwitch)
         if len(self._components) > 1:
             raise Exception("NS3BridgeNet can only simulate one switch/bridge")
         super().add(comp=switch_comp)
@@ -374,12 +376,12 @@ class NS3Net(SimpleNS3Sim):
                  simulation: sim_base.Simulation,
                  json_obj: dict) -> NS3Net:
         instance = super().fromJSON(simulation, json_obj)
-        instance.use_file = base_utils.get_json_attr_top(json_obj, "use_file")
+        instance.use_file = utils_base.get_json_attr_top(json_obj, "use_file")
         instance.global_conf = ns3_comps.NS3GlobalConfig.fromJSON(
-            base_utils.get_json_attr_top(json_obj, "global_conf")
+            utils_base.get_json_attr_top(json_obj, "global_conf")
         )
         instance.logging = ns3_comps.NS3Logging.fromJSON(
-            base_utils.get_json_attr_top(json_obj, "logging")
+            utils_base.get_json_attr_top(json_obj, "logging")
         )
         return instance
 
@@ -487,7 +489,7 @@ class NS3Net(SimpleNS3Sim):
             # TODO: change this to a more sensible file path?
             sim_out = inst.get_simulator_output_dir(self)
             pathlib.Path(sim_out).mkdir(parents=True, exist_ok=True)
-            file_path = inst._join_paths(sim_out, f"{self.name}_params")
+            file_path = utils_file.join_paths(sim_out, f"{self.name}_params")
             with open(file_path, 'w', encoding="utf-8") as f:
                 f.write(params_str)
             cmd += f"--ConfigFile={file_path}"

@@ -36,15 +36,15 @@ from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system.host import disk_images
-from simbricks.utils import base as util_base
-from simbricks.utils import file as util_file
+from simbricks.utils import base as utils_base
+from simbricks.utils import file as utils_file
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.runtime import command_executor as cmd_exec
 
 
-class InstantiationEnvironment(util_base.IdObj):
+class InstantiationEnvironment(utils_base.IdObj):
 
     def __init__(
         self,
@@ -138,11 +138,11 @@ class Instantiation(util_base.IdObj):
         fragments_json = []
         if len(self.fragments) < 1:
             fragment = self.assigned_fragment
-            util_base.has_attribute(fragment, "toJSON")
+            utils_base.has_attribute(fragment, "toJSON")
             fragments_json.append(fragment.toJSON())
         else:
             for fragment in self.fragments:
-                util_base.has_attribute(fragment, "toJSON")
+                utils_base.has_attribute(fragment, "toJSON")
                 fragments_json.append(fragment.toJSON())
         json_obj["simulation_fragments"] = fragments_json
 
@@ -161,32 +161,32 @@ class Instantiation(util_base.IdObj):
     def fromJSON(cls, sim: sim_base.Simulation, json_obj: dict) -> Instantiation:
         instance = super().fromJSON(json_obj)
 
-        simulation_id = int(util_base.get_json_attr_top(json_obj, "simulation"))
+        simulation_id = int(utils_base.get_json_attr_top(json_obj, "simulation"))
         assert simulation_id == sim.id()
         instance.simulation = sim
 
         instance.fragments = set()
-        fragments_json = util_base.get_json_attr_top(json_obj, "simulation_fragments")
+        fragments_json = utils_base.get_json_attr_top(json_obj, "simulation_fragments")
         for frag_json in fragments_json:
-            frag_class = util_base.get_cls_by_json(frag_json)
-            util_base.has_attribute(frag_class, "fromJSON")
+            frag_class = utils_base.get_cls_by_json(frag_json)
+            utils_base.has_attribute(frag_class, "fromJSON")
             frag = frag_class.fromJSON(frag_json)
             instance.fragments.add(frag)
 
-        instance.artifact_name = util_base.get_json_attr_top(json_obj, "artifact_name")
-        instance.artifact_paths = util_base.get_json_attr_top(json_obj, "artifact_paths")
+        instance.artifact_name = utils_base.get_json_attr_top(json_obj, "artifact_name")
+        instance.artifact_paths = utils_base.get_json_attr_top(json_obj, "artifact_paths")
 
         instance._create_checkpoint = bool(
-            util_base.get_json_attr_top(json_obj, "create_checkpoint")
+            utils_base.get_json_attr_top(json_obj, "create_checkpoint")
         )
         instance._restore_checkpoint = bool(
-            util_base.get_json_attr_top(json_obj, "restore_checkpoint")
+            utils_base.get_json_attr_top(json_obj, "restore_checkpoint")
         )
         instance._preserve_checkpoints = bool(
-            util_base.get_json_attr_top(json_obj, "preserve_checkpoints")
+            utils_base.get_json_attr_top(json_obj, "preserve_checkpoints")
         )
         instance.preserve_tmp_folder = bool(
-            util_base.get_json_attr_top(json_obj, "preserve_tmp_folder")
+            utils_base.get_json_attr_top(json_obj, "preserve_tmp_folder")
         )
         # TODO: deserialize other fields etc. of interest
         return instance
@@ -240,7 +240,7 @@ class Instantiation(util_base.IdObj):
                 raise Exception("cannot create socket path for given interface type")
 
         assert queue_type is not None
-        return self._join_paths(
+        return utils_file.join_paths(
             base=self.shm_base_dir(),
             relative_path=f"{queue_type}-{queue_ident}",
             enforce_existence=False,
@@ -386,8 +386,8 @@ class Instantiation(util_base.IdObj):
         if not self.create_checkpoint and not self.restore_checkpoint:
             to_prepare.append(self.cpdir())
         for tp in to_prepare:
-            util_file.rmtree(tp)
-            util_file.mkdir(tp)
+            utils_file.rmtree(tp)
+            utils_file.mkdir(tp)
 
         await self.simulation.prepare(inst=self)
 
@@ -424,9 +424,9 @@ class Instantiation(util_base.IdObj):
         )
 
     def hd_path(self, hd_name_or_path: str) -> str:
-        if util_file.is_absolute_exists(hd_name_or_path):
+        if utils_file.is_absolute_exists(hd_name_or_path):
             return hd_name_or_path
-        path = self._join_paths(
+        path = utils_file.join_paths(
             base=self.env._simbricksdir,
             relative_path=f"images/output-{hd_name_or_path}/{hd_name_or_path}",
             enforce_existence=True,
@@ -450,34 +450,36 @@ class Instantiation(util_base.IdObj):
 
     def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
         filename = f"{img._id}.{format}"
-        return self._join_paths(
+        return utils_file.join_paths(
             base=self.imgs_dir(),
             relative_path=filename,
         )
 
     def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
         filename = f"{img._id}_hdcopy.{format}"
-        return self._join_paths(
+        return utils_file.join_paths(
             base=self.imgs_dir(),
             relative_path=filename,
         )
 
     def cpdir_subdir(self, sim: sim_base.Simulator) -> str:
         dir_path = f"checkpoint.{sim.full_name()}-{sim._id}"
-        return self._join_paths(base=self.cpdir(), relative_path=dir_path, enforce_existence=False)
+        return utils_file.join_paths(
+            base=self.cpdir(), relative_path=dir_path, enforce_existence=False
+        )
 
     def get_simulator_output_dir(self, sim: sim_base.Simulator) -> str:
         dir_path = f"output.{sim.full_name()}-{sim._id}"
-        return self._join_paths(base=self.out_base_dir(), relative_path=dir_path)
+        return utils_file.join_paths(base=self.out_base_dir(), relative_path=dir_path)
 
     def get_simulator_shm_pool_path(self, sim: sim_base.Simulator) -> str:
-        return self._join_paths(
+        return utils_file.join_paths(
             base=self.shm_base_dir(),
             relative_path=f"{sim.full_name()}-shm-pool-{sim._id}",
         )
 
     def get_simulation_output_path(self) -> str:
-        return self._join_paths(
+        return utils_file.join_paths(
             base=self.out_base_dir(),
             relative_path=f"out.json",
         )
@@ -486,7 +488,7 @@ class Instantiation(util_base.IdObj):
         return self.find_sim_by_spec(spec=interface.component)
 
     def find_sim_by_spec(self, spec: sys_base.Component) -> sim_base.Simulator:
-        util_base.has_expected_type(spec, sys_base.Component)
+        utils_base.has_expected_type(spec, sys_base.Component)
         return self.simulation.find_sim(spec)
 
     def create_proxy_pair(
