@@ -322,7 +322,7 @@ class Runner:
             sim_task = asyncio.create_task(run.runner.run())
             res = await sim_task
 
-            output_path = run.inst.get_simulation_output_path()
+            output_path = run.inst.env.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
             if run.inst.create_artifact:
                 utils_art.create_artifact(

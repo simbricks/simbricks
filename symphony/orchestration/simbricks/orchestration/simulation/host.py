@@ -116,7 +116,7 @@ class Gem5Sim(HostSim):
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
-        utils_file.mkdir(inst.cpdir_subdir(sim=self))
+        utils_file.mkdir(inst.env.cpdir_sim(sim=self))
 
     def checkpoint_commands(self) -> list[str]:
         return ["m5 checkpoint"]
@@ -134,16 +134,16 @@ class Gem5Sim(HostSim):
             raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
         host_spec = full_sys_hosts[0]
 
-        cmd = f"{inst.join_repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.get_simulator_output_dir(sim=self)} "
+        cmd = f"{inst.env.repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.env.get_simulator_output_dir(sim=self)} "
         cmd += " ".join(self.extra_main_args)
         cmd += (
-            f" {inst.join_repo_base('sims/external/gem5/configs/simbricks/simbricks.py')} --caches --l2cache "
+            f" {inst.env.repo_base('sims/external/gem5/configs/simbricks/simbricks.py')} --caches --l2cache "
             "--l1d_size=32kB --l1i_size=32kB --l2_size=32MB "
             "--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=16 "
             f"--cacheline_size=64 --cpu-clock={host_spec.cpu_freq}"
             f" --sys-clock={self._sys_clock} "
-            f"--checkpoint-dir={inst.cpdir_subdir(sim=self)} "
-            f"--kernel={inst.join_repo_base('images/vmlinux')} "
+            f"--checkpoint-dir={inst.env.cpdir_sim(sim=self)} "
+            f"--kernel={inst.env.repo_base('images/vmlinux')} "
         )
         for disk in host_spec.disks:
             cmd += f"--disk-image={disk.path(inst=inst, format='raw')} "
@@ -290,9 +290,9 @@ class QemuSim(HostSim):
         accel = ",accel=kvm:tcg" if not sync else ""
 
         cmd = (
-            f"{inst.join_repo_base(relative_path=self._executable)} -machine q35{accel} -serial mon:stdio "
+            f"{inst.env.repo_base(relative_path=self._executable)} -machine q35{accel} -serial mon:stdio "
             "-cpu Skylake-Server -display none -nic none "
-            f"-kernel {inst.join_repo_base('images/bzImage')} "
+            f"-kernel {inst.env.repo_base('images/bzImage')} "
         )
 
         full_sys_hosts = self.filter_components_by_type(ty=sys_host.BaseLinuxHost)

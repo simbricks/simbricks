@@ -329,7 +329,7 @@ class CorundumLinuxHost(LinuxHost):
     def config_files(self, inst: instantiation.Instantiation) -> tp.Dict[str, tp.IO]:
         m = {
             "mqnic.ko": open(
-                f"{inst.join_repo_base(relative_path='images/mqnic/mqnic.ko')}", "rb"
+                f"{inst.env.repo_base(relative_path='images/mqnic/mqnic.ko')}", "rb"
             )
         }
         return {**m, **super().config_files(inst=inst)}

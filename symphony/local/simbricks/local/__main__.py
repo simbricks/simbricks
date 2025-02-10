@@ -36,6 +36,7 @@ from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.runtime import output as sim_out
 from simbricks.runtime.runs import base as runs_base
 from simbricks.runtime.runs import local as rt_local
+from simbricks.utils import file as utils_file
 
 
 def parse_args() -> argparse.Namespace:
@@ -150,8 +151,10 @@ def add_exp(
     rt: runs_base.Runtime,
     args: argparse.Namespace,
 ) -> runs_base.Run:
-
-    env = inst_base.InstantiationEnvironment(args.workdir, args.repo)
+    workdir = utils_file.join_paths(
+        args.workdir, f"{instantiation.simulation.name}/{instantiation.id()}"
+    )
+    env = inst_base.InstantiationEnvironment(workdir, args.repo)
     instantiation.env = env
 
     output = sim_out.SimulationOutput(instantiation.simulation)

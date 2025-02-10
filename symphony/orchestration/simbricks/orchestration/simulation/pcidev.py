@@ -92,7 +92,7 @@ class NICSim(PCIDevSim):
         run_sync = eth_run_sync
         sync_period = min(pci_sync_period, eth_sync_period)
 
-        cmd = f"{inst.join_repo_base(relative_path=self._executable)} "
+        cmd = f"{inst.env.repo_base(relative_path=self._executable)} "
 
         nic_devices = self.filter_components_by_type(ty=sys_nic.SimplePCIeNIC)
         assert len(nic_devices) == 1

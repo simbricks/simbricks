@@ -106,11 +106,11 @@ class WireNet(NetSim):
         sockets = self._get_socks_by_all_comp(inst=inst)
         assert len(sockets) == 2
 
-        cmd = inst.join_repo_base(self._executable)
+        cmd = inst.env.repo_base(self._executable)
         cmd += f"{sockets[0]._path} {sockets[1]._path} {run_sync} {sync_period} {eth_latency}"
 
         if self._relative_pcap_file_path is not None:
-            pcap_file = inst.join_output_base(
+            pcap_file = inst.env.output_base(
                 relative_path=self._relative_pcap_file_path
             )
             cmd += " " + pcap_file
@@ -155,14 +155,14 @@ class SwitchNet(NetSim):
             sim_base.Simulator.get_unique_latency_period_sync(channels=channels)
         )
 
-        cmd = inst.join_repo_base(self._executable)
+        cmd = inst.env.repo_base(self._executable)
         cmd += f" -S {sync_period} -E {eth_latency}"
 
         if not run_sync:
             cmd += " -u"
 
         if self._relative_pcap_file_path is not None:
-            pcap_file = inst.join_output_base(
+            pcap_file = inst.env.output_base(
                 relative_path=self._relative_pcap_file_path
             )
             cmd += " " + pcap_file
@@ -247,7 +247,7 @@ class SimpleNS3Sim(NetSim):
         return instance
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        return f"{inst.join_repo_base(self._executable)} {self._ns3_run_script} "
+        return f"{inst.env.repo_base(self._executable)} {self._ns3_run_script} "
 
 
 class NS3DumbbellNet(SimpleNS3Sim):
@@ -487,7 +487,7 @@ class NS3Net(SimpleNS3Sim):
 
         if self.use_file:
             # TODO: change this to a more sensible file path?
-            sim_out = inst.get_simulator_output_dir(self)
+            sim_out = inst.env.get_simulator_output_dir(self)
             pathlib.Path(sim_out).mkdir(parents=True, exist_ok=True)
             file_path = utils_file.join_paths(sim_out, f"{self.name}_params")
             with open(file_path, 'w', encoding="utf-8") as f:

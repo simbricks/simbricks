@@ -57,10 +57,10 @@ class DiskImage(utils_base.IdObj):
         sim: sim_base.Simulator
     ) -> str:
         disk_path = pathlib.Path(self.path(inst=inst, format=format))
-        copy_path = inst.join_imgs_path(relative_path=f"hdcopy.{self._id}")
+        copy_path = inst.env.img_dir(relative_path=f"hdcopy.{self._id}")
         prep_cmds = [
             (
-                f"{inst.join_repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -F qcow2 -o "
+                f"{inst.env.repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -F qcow2 -o "
                 f'backing_file="{disk_path}" '
                 f"{copy_path}"
             )
@@ -147,7 +147,7 @@ class DistroDiskImage(DiskImage):
         return self.formats
 
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
-        path = inst.hd_path(self.name)
+        path = inst.env.hd_path(self.name)
         if format == "raw":
             path += ".raw"
         elif format == "qcow2":
@@ -177,7 +177,7 @@ class DynamicDiskImage(DiskImage):
         super().__init__(h)
 
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
-        return inst.dynamic_img_path(self, format)
+        return inst.env.dynamic_img_path(self, format)
 
     @abc.abstractmethod
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:

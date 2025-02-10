@@ -48,20 +48,105 @@ class InstantiationEnvironment(utils_base.IdObj):
 
     def __init__(
         self,
-        workdir: pathlib.Path = pathlib.Path.cwd() / pathlib.Path("simbricks-workdir"),
-        simbricksdir: pathlib.Path = pathlib.Path("/simbricks"),
+        workdir: pathlib.Path,
+        simbricksdir: pathlib.Path,
     ):
         super().__init__()
-        self._simbricksdir: str = simbricksdir.resolve()
-        self._workdir: str = workdir.resolve()
-        self._output_base: str = pathlib.Path(f"{self._workdir}/output").resolve()
-        self._tmp_simulation_files: str = pathlib.Path(f"{self._workdir}/tmp").resolve()
-        self._imgdir: str = pathlib.Path(f"{self._tmp_simulation_files}/imgs").resolve()
-        self._cpdir: str = pathlib.Path(f"{self._tmp_simulation_files}/checkpoints").resolve()
-        self._shm_base: str = pathlib.Path(f"{self._tmp_simulation_files}/shm").resolve()
+        self._simbricks_dir: str = simbricksdir.resolve()
+        self._work_dir: str = workdir.resolve()
+        self._output_base: str = pathlib.Path(f"{self._work_dir}/output").resolve()
+        self._tmp_dir: str = pathlib.Path(f"{self._work_dir}/tmp").resolve()
+        self._img_dir: str = pathlib.Path(f"{self._tmp_dir}/imgs").resolve()
+        self._cp_dir: str = pathlib.Path(f"{self._tmp_dir}/checkpoints").resolve()
+        self._shm_base: str = pathlib.Path(f"{self._tmp_dir}/shm").resolve()
+
+    # --------------------------------------------------
+    # Read-only accessor functions for path properties -
+    # --------------------------------------------------
+
+    def repo_base(self, relative_path: str | None = None, must_exist: bool = True) -> str:
+        if relative_path is None:
+            return self._simbricks_dir
+        return utils_file.join_paths(
+            base=self._simbricks_dir, relative_path=relative_path, must_exist=must_exist
+        )
+
+    def work_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
+        if relative_path is None:
+            return self._work_dir
+        return utils_file.join_paths(
+            base=self._work_dir, relative_path=relative_path, must_exist=must_exist
+        )
+
+    def output_base(self, relative_path: str | None = None, must_exist: bool = False) -> str:
+        if relative_path is None:
+            return self._output_base
+        return utils_file.join_paths(
+            base=self._output_base, relative_path=relative_path, must_exist=must_exist
+        )
+
+    def tmp_simulation_files(
+        self, relative_path: str | None = None, must_exist: bool = False
+    ) -> str:
+        if relative_path is None:
+            return self._tmp_dir
+        return utils_file.join_paths(
+            base=self._tmp_dir, relative_path=relative_path, must_exist=must_exist
+        )
+
+    def img_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
+        if relative_path is None:
+            return self._img_dir
+        return utils_file.join_paths(
+            base=self._img_dir, relative_path=relative_path, must_exist=must_exist
+        )
+
+    def cp_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
+        if relative_path is None:
+            return self._cp_dir
+        return utils_file.join_paths(
+            base=self._cp_dir, relative_path=relative_path, must_exist=must_exist
+        )
+
+    def shm_base(self, relative_path: str | None = None, must_exist: bool = False) -> str:
+        if relative_path is None:
+            return self._shm_base
+        return utils_file.join_paths(
+            base=self._shm_base, relative_path=relative_path, must_exist=must_exist
+        )
+
+    # ----------------------------------------
+    # Other functions on instantiation paths -
+    # ----------------------------------------
+
+    def cfgtar_path(self, sim: sim_base.Simulator) -> str:
+        return self.work_dir(f"cfg.{sim.name}.tar")
+
+    def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
+        return self.img_dir(f"{img._id}.{format}")
+
+    def hd_path(self, hd_name_or_path: str) -> str:
+        if utils_file.is_absolute_exists(hd_name_or_path):
+            return hd_name_or_path
+        return self.repo_base(f"images/output-{hd_name_or_path}/{hd_name_or_path}", must_exist=True)
+
+    def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
+        return self.img_dir(f"{img._id}_hdcopy.{format}")
+
+    def cpdir_sim(self, sim: sim_base.Simulator) -> str:
+        return self.cp_dir(f"checkpoint.{sim.full_name()}-{sim._id}")
+
+    def get_simulator_output_dir(self, sim: sim_base.Simulator) -> str:
+        return self.output_base(f"output.{sim.full_name()}-{sim._id}")
+
+    def get_simulator_shm_pool_path(self, sim: sim_base.Simulator) -> str:
+        return self.shm_base(f"{sim.full_name()}-shm-pool-{sim._id}")
+
+    def get_simulation_output_path(self) -> str:
+        return self.output_base("out.json")
 
 
-class Instantiation(util_base.IdObj):
+class Instantiation(utils_base.IdObj):
 
     def __init__(
         self,
@@ -240,11 +325,7 @@ class Instantiation(util_base.IdObj):
                 raise Exception("cannot create socket path for given interface type")
 
         assert queue_type is not None
-        return utils_file.join_paths(
-            base=self.shm_base_dir(),
-            relative_path=f"{queue_type}-{queue_ident}",
-            enforce_existence=False,
-        )
+        return self.env.shm_base(f"{queue_type}-{queue_ident}")
 
     def _create_opposing_socket(
         self, socket: inst_socket.Socket, socket_type: inst_socket.SockType
@@ -366,25 +447,10 @@ class Instantiation(util_base.IdObj):
         cop._sim_dependency = None
         return cop
 
-    def out_base_dir(self) -> str:
-        return pathlib.Path(f"{self.env._output_base}/{self.simulation.name}/{self._id}").resolve()
-
-    def shm_base_dir(self) -> str:
-        return pathlib.Path(f"{self.env._shm_base}/{self.simulation.name}/{self._id}").resolve()
-
-    def imgs_dir(self) -> str:
-        return pathlib.Path(f"{self.env._imgdir}/{self.simulation.name}/{self._id}").resolve()
-
-    def cpdir(self) -> str:
-        return pathlib.Path(f"{self.env._cpdir}/{self.simulation.name}").resolve()  # /{self._id}"
-
-    def wrkdir(self) -> str:
-        return pathlib.Path(f"{self.env._workdir}/{self.simulation.name}").resolve()  # /{self._id}"
-
     async def prepare(self) -> None:
-        to_prepare = [self.shm_base_dir(), self.imgs_dir()]
+        to_prepare = [self.env.shm_base, self.env.imgdir]
         if not self.create_checkpoint and not self.restore_checkpoint:
-            to_prepare.append(self.cpdir())
+            to_prepare.append(self.env.cpdir)
         for tp in to_prepare:
             utils_file.rmtree(tp)
             utils_file.mkdir(tp)
@@ -394,95 +460,11 @@ class Instantiation(util_base.IdObj):
     async def cleanup(self) -> None:
         if self.preserve_tmp_folder:
             return
-        to_delete = [self.shm_base_dir(), self.imgs_dir()]
+        to_delete = [self.env.shm_base, self.env.imgdir]
         if not self._preserve_checkpoints:
-            to_delete.append(self.cpdir())
+            to_delete.append(self.env.cpdir)
         for td in to_delete:
-            util_file.rmtree(td)
-
-    def _join_paths(self, base: str = "", relative_path: str = "", enforce_existence=False) -> str:
-        if relative_path.startswith("/"):
-            raise Exception(
-                f"cannot join with base={base} because relative_path={relative_path} starts with '/'"
-            )
-
-        joined = pathlib.Path(base).joinpath(relative_path).resolve()
-        if enforce_existence and not joined.exists():
-            raise Exception(f"couldn't join {base} and {relative_path}")
-        return joined.as_posix()
-
-    def join_repo_base(self, relative_path: str) -> str:
-        return self._join_paths(
-            base=self.env._simbricksdir, relative_path=relative_path, enforce_existence=True
-        )
-
-    def join_output_base(self, relative_path: str) -> str:
-        return self._join_paths(
-            base=self.out_base_dir(),
-            relative_path=relative_path,
-            enforce_existence=True,
-        )
-
-    def hd_path(self, hd_name_or_path: str) -> str:
-        if utils_file.is_absolute_exists(hd_name_or_path):
-            return hd_name_or_path
-        path = utils_file.join_paths(
-            base=self.env._simbricksdir,
-            relative_path=f"images/output-{hd_name_or_path}/{hd_name_or_path}",
-            enforce_existence=True,
-        )
-        return path
-
-    def cfgtar_path(self, sim: sim_base.Simulator) -> str:
-        return f"{self.wrkdir()}/cfg.{sim.name}.tar"
-
-    # def join_tmp_base(self, relative_path: str) -> str:
-    #     return self._join_paths(
-    #         base=self.tmp_dir(),
-    #         relative_path=relative_path,
-    #     )
-
-    def join_imgs_path(self, relative_path: str) -> str:
-        return self._join_paths(
-            base=self.imgs_dir(),
-            relative_path=relative_path,
-        )
-
-    def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
-        filename = f"{img._id}.{format}"
-        return utils_file.join_paths(
-            base=self.imgs_dir(),
-            relative_path=filename,
-        )
-
-    def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
-        filename = f"{img._id}_hdcopy.{format}"
-        return utils_file.join_paths(
-            base=self.imgs_dir(),
-            relative_path=filename,
-        )
-
-    def cpdir_subdir(self, sim: sim_base.Simulator) -> str:
-        dir_path = f"checkpoint.{sim.full_name()}-{sim._id}"
-        return utils_file.join_paths(
-            base=self.cpdir(), relative_path=dir_path, enforce_existence=False
-        )
-
-    def get_simulator_output_dir(self, sim: sim_base.Simulator) -> str:
-        dir_path = f"output.{sim.full_name()}-{sim._id}"
-        return utils_file.join_paths(base=self.out_base_dir(), relative_path=dir_path)
-
-    def get_simulator_shm_pool_path(self, sim: sim_base.Simulator) -> str:
-        return utils_file.join_paths(
-            base=self.shm_base_dir(),
-            relative_path=f"{sim.full_name()}-shm-pool-{sim._id}",
-        )
-
-    def get_simulation_output_path(self) -> str:
-        return utils_file.join_paths(
-            base=self.out_base_dir(),
-            relative_path=f"out.json",
-        )
+            utils_file.rmtree(td)
 
     def find_sim_by_interface(self, interface: sys_base.Interface) -> sim_base.Simulator:
         return self.find_sim_by_spec(spec=interface.component)
