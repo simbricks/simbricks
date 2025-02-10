@@ -151,7 +151,22 @@ async def create_run(instantiation: instantiation.Instantiation) -> int:
     return run_id
 
 
-T = typing.TypeVar("T", bound=schemas.ApiEventRead_U)
+T = typing.TypeVar("T")
+
+
+async def create_event(rc: client.RunnerClient, event: schemas.ApiEventCreate_U) -> None:
+    create_bundle = schemas.ApiEventBundle[schemas.ApiEventCreate_U]()
+    create_bundle.add_event(event)
+
+    await rc.create_events(create_bundle)
+
+
+async def update_event(rc: client.RunnerClient, event: schemas.ApiEventUpdate_U) -> None:
+    update_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
+    update_bundle.add_event(event)
+
+    await rc.update_events(update_bundle)
+
 
 async def fetch_events(
     rc: client.RunnerClient, query: schemas.ApiEventQuery_U, expected: T
@@ -169,7 +184,9 @@ async def fetch_events(
     discr: str = expected.model_fields["event_discriminator"].default
 
     if discr not in result_read_bundle.events:
-        raise Exception(f"could not fetch the required event type {discr} from {result_read_bundle}")
+        raise Exception(
+            f"could not fetch the required event type {discr} from {result_read_bundle}"
+        )
     events = result_read_bundle.events[discr]
 
     adapter = pydantic.TypeAdapter(list[T])
