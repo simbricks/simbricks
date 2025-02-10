@@ -62,3 +62,10 @@ async def ns_delete(ident: int):
     client = client_provider.admin_client
     await client.delete(ns_id=ident)
     print(f"Deleted namespace with id {ident}.")
+
+
+@app.command()
+@async_cli()
+async def schedule(namespace_id: int):
+    """Trigger run scheduling manually for a namespace."""
+    await client_provider.admin_client.schedule_ns(namespace_id)
