@@ -246,19 +246,19 @@ static int SockInitCommon() {
 static int SockListen(struct sockaddr_in *addr) {
   int lfd;
   if ((lfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-    perror("RdmaIBListen: socket failed");
+    perror("SockListen: socket failed");
     return 1;
   }
 
   int flag;
   flag = 1;
   if (setsockopt(lfd, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag))) {
-    perror("RdmaIBListen: setsockopt reuseport faild");
+    perror("SockListen: setsockopt reuseport faild");
     return 1;
   }
 
   if (bind(lfd, (struct sockaddr *)addr, sizeof(*addr))) {
-    perror("RdmaIBListen: bind failed");
+    perror("SockListen: bind failed");
     return 1;
   }
 
@@ -268,7 +268,7 @@ static int SockListen(struct sockaddr_in *addr) {
   }
 
   if ((sockfd = accept(lfd, NULL, 0)) < 0) {
-    perror("RdmaIBListen: accept failed");
+    perror("SockListen: accept failed");
     return 1;
   }
   close(lfd);
@@ -278,12 +278,12 @@ static int SockListen(struct sockaddr_in *addr) {
 
 static int SockConnect(struct sockaddr_in *addr) {
   if ((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-    perror("RdmaIBConnect: socket failed");
+    perror("SockConnect: socket failed");
     return 1;
   }
 
   if (connect(sockfd, (struct sockaddr *)addr, sizeof(*addr))) {
-    perror("RdmaIBConnect: connect failed");
+    perror("SockConnect: connect failed");
   }
 
   return SockInitCommon();
