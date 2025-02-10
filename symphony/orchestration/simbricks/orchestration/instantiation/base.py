@@ -466,7 +466,7 @@ class Instantiation(util_base.IdObj):
         dir_path = f"checkpoint.{sim.full_name()}-{sim._id}"
         return self._join_paths(base=self.cpdir(), relative_path=dir_path, enforce_existence=False)
 
-    def get_simmulator_output_dir(self, sim: sim_base.Simulator) -> str:
+    def get_simulator_output_dir(self, sim: sim_base.Simulator) -> str:
         dir_path = f"output.{sim.full_name()}-{sim._id}"
         return self._join_paths(base=self.out_base_dir(), relative_path=dir_path)
 
