@@ -86,11 +86,6 @@ class Instantiation(util_base.IdObj):
         self._sim_dependency: inst_dep_graph.SimulationDependencyGraph | None = None
         self._cmd_executor: cmd_exec.CommandExecutorFactory | None = None
 
-    @staticmethod
-    def is_absolute_exists(path: str) -> bool:
-        path = pathlib.Path(path)
-        return path.is_absolute() and path.is_file()
-
     @property
     def create_artifact(self) -> bool:
         return len(self.artifact_paths) > 0
@@ -429,7 +424,7 @@ class Instantiation(util_base.IdObj):
         )
 
     def hd_path(self, hd_name_or_path: str) -> str:
-        if Instantiation.is_absolute_exists(hd_name_or_path):
+        if util_file.is_absolute_exists(hd_name_or_path):
             return hd_name_or_path
         path = self._join_paths(
             base=self.env._simbricksdir,

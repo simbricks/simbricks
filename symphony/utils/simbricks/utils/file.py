@@ -47,3 +47,8 @@ def rmtree(path: str) -> None:
         shutil.rmtree(path, ignore_errors=True)
     elif os.path.exists(path):
         os.unlink(path)
+
+
+def is_absolute_exists(path: str) -> bool:
+    pl_path = pathlib.Path(path)
+    return pl_path.is_absolute() and pl_path.is_file()
