@@ -177,7 +177,7 @@ class LocalSimpleRuntime(run_base.Runtime):
             print(f"Writing collected output of run {run.name()} to JSON file ...")
 
         # dump output into a file and then, before cleanup, create an artifact
-        output_path = run.instantiation.get_simulation_output_path()
+        output_path = run.instantiation.env.get_simulation_output_path()
         run._output.dump(outpath=output_path)
         if run.instantiation.create_artifact:
             utils_art.create_artifact(
@@ -254,7 +254,7 @@ class LocalParallelRuntime(run_base.Runtime):
         if self._verbose:
             print(f"Writing collected output of run {run.name()} to JSON file ...")
 
-        output_path = run.instantiation.get_simulation_output_path()
+        output_path = run.instantiation.env.get_simulation_output_path()
         run._output.dump(outpath=output_path)
 
         await sim_executor.cleanup()

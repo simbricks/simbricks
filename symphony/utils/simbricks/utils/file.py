@@ -21,8 +21,8 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """Utility functions for operations on files and directories."""
 
-import os
 import asyncio
+import os
 import pathlib
 import shutil
 
@@ -52,3 +52,15 @@ def rmtree(path: str) -> None:
 def is_absolute_exists(path: str) -> bool:
     pl_path = pathlib.Path(path)
     return pl_path.is_absolute() and pl_path.is_file()
+
+
+def join_paths(base: str = "", relative_path: str = "", must_exist=False) -> str:
+    if relative_path.startswith("/"):
+        raise Exception(
+            f"cannot join with base={base} because relative_path={relative_path} starts with '/'"
+        )
+
+    joined = pathlib.Path(base).joinpath(relative_path).resolve()
+    if must_exist and not joined.exists():
+        raise Exception(f"Joined path does not exist: {str(joined)}")
+    return joined.as_posix()

@@ -207,7 +207,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
             )
         else:
             return (
-                f"listen:{socket._path}:{inst.get_simulator_shm_pool_path(self)}:sync={sync_str}"
+                f"listen:{socket._path}:{inst.env.get_simulator_shm_pool_path(self)}:sync={sync_str}"
                 f":latency={latency}:sync_interval={sync_period}"
             )
 
