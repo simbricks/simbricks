@@ -400,6 +400,7 @@ class ApiRunEventUpdate(ApiUpdateEvent, AbstracApiRunEvent):
     event_discriminator: Literal["ApiRunEventUpdate"] = "ApiRunEventUpdate"
     run_event_type: RunEventType | None = None
 
+
 class ApiRunEventDelete(ApiDeleteEvent):
     event_discriminator: Literal["ApiRunEventDelete"] = "ApiRunEventDelete"
 
@@ -435,6 +436,35 @@ class AbstractApiSimulatorEvent(AbstractApiEvent, abc.ABC):
     """
 
 
+class AbstractApiSimulatorStateChangeEvent(AbstractApiSimulatorEvent, abc.ABC):
+    simulator_state: RunSimulatorState = RunSimulatorState.UNKNOWN
+    """
+    The current state of the simulator.
+    """
+    simulator_name: str
+    """
+    The name of the simulator.
+    """
+    command: str
+    """
+    The command associated with the state change.
+    """
+
+
+class ApiSimulatorStateChangeEventCreate(ApiCreateEvent, AbstractApiSimulatorStateChangeEvent):
+    event_discriminator: Literal["ApiSimulatorStateChangeEventCreate"] = (
+        "ApiSimulatorStateChangeEventCreate"
+    )
+    simulation_id: int | None = None
+
+
+class ApiSimulatorStateChangeEventRead(ApiReadEvent, AbstractApiSimulatorStateChangeEvent):
+    event_discriminator: Literal["ApiSimulatorStateChangeEventRead"] = (
+        "ApiSimulatorStateChangeEventRead"
+    )
+    simulation_id: int | None = None
+
+
 class AbstractApiOutputEvent(AbstractApiSimulatorEvent, abc.ABC):
     output_generated_at: datetime.datetime = datetime.datetime.now()
     """
@@ -449,14 +479,13 @@ class AbstractApiOutputEvent(AbstractApiSimulatorEvent, abc.ABC):
     Whether the output is from stdout or from stderr.
     """
 
-    @field_serializer('output_generated_at')
+    @field_serializer("output_generated_at")
     def serialize_output_generated_at(self, dt: datetime.datetime, _info) -> str:
         return dt.isoformat()
 
 
 class ApiSimulatorOutputEventCreate(ApiCreateEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiSimulatorOutputEventCreate"] = "ApiSimulatorOutputEventCreate"
-    runner_id: int | None = None
     simulation_id: int | None = None
 
 
@@ -492,22 +521,48 @@ class AbstractApiProxyEvent(AbstractApiEvent, abc.ABC):
     """
 
 
+class AbstractApiProxyStateChangeEvent(AbstractApiProxyEvent, abc.ABC):
+    simulator_state: RunSimulatorState = RunSimulatorState.UNKNOWN
+    """
+    The current state of the simulator.
+    """
+
+
+class ApiProxyStateChangeEventCreate(ApiCreateEvent, AbstractApiProxyStateChangeEvent):
+    event_discriminator: Literal["ApiProxyStateChangeEventCreate"] = (
+        "ApiProxyStateChangeEventCreate"
+    )
+
+
+class ApiProxyStateChangeEventRead(ApiReadEvent, AbstractApiProxyStateChangeEvent):
+    event_discriminator: Literal["ApiProxyStateChangeEventRead"] = "ApiProxyStateChangeEventRead"
+
+
 """
 ApiEventBundle definitions.
 """
 
 ApiEventCreate_U = Annotated[
-    ApiRunnerEventCreate | ApiRunEventCreate | ApiSimulatorOutputEventCreate,
+    ApiRunnerEventCreate
+    | ApiRunEventCreate
+    | ApiSimulatorOutputEventCreate
+    | ApiSimulatorStateChangeEventCreate
+    | ApiProxyStateChangeEventCreate,
     Field(discriminator="event_discriminator"),
 ]
 
 ApiEventRead_U = Annotated[
-    ApiRunnerEventRead | ApiRunEventRead | ApiSimulatorOutputEventRead,
+    ApiRunnerEventRead
+    | ApiRunEventRead
+    | ApiSimulatorOutputEventRead
+    | ApiSimulatorStateChangeEventRead
+    | ApiProxyStateChangeEventRead,
     Field(discriminator="event_discriminator"),
 ]
 
 ApiEventUpdate_U = Annotated[
-    ApiRunnerEventUpdate | ApiRunEventUpdate, Field(discriminator="event_discriminator")
+    ApiRunnerEventUpdate | ApiRunEventUpdate,
+    Field(discriminator="event_discriminator"),
 ]
 
 ApiEventDelete_U = Annotated[
@@ -548,83 +603,28 @@ class ApiEventBundle(BaseModel, Generic[BundleEventUnion_T]):
 """
 Type Adapters useful for validation etc. 
 """
-EventCreate_A = TypeAdapter(ApiEventCreate_U)
 
 ApiRunnerEventCreate_List_A = TypeAdapter(list[ApiRunnerEventCreate])
 ApiRunEventCreate_List_A = TypeAdapter(list[ApiRunEventCreate])
 ApiSimulatorOutputEventCreate_List_A = TypeAdapter(list[ApiSimulatorOutputEventCreate])
-
+ApiSimulatorStateChangeEventCreate_List_A = TypeAdapter(list[ApiSimulatorStateChangeEventCreate])
+ApiProxyStateChangeEventCreate_List_A = TypeAdapter(list[ApiProxyStateChangeEventCreate])
 
 EventRead_A = TypeAdapter(ApiEventRead_U)
 ApiRunnerEventRead_List_A = TypeAdapter(list[ApiRunnerEventRead])
 ApiRunEventRead_List_A = TypeAdapter(list[ApiRunEventRead])
 ApiSimulatorOutputEventRead_List_A = TypeAdapter(list[ApiSimulatorOutputEventRead])
-
+ApiSimulatorStateChangeEventRead_List_A = TypeAdapter(list[ApiSimulatorStateChangeEventRead])
+ApiProxyStateChangeEventRead_List_A = TypeAdapter(list[ApiProxyStateChangeEventRead])
 
 EventUpdate_A = TypeAdapter(ApiEventUpdate_U)
 ApiRunnerEventUpdate_List_A = TypeAdapter(list[ApiRunnerEventUpdate])
 ApiRunEventUpdate_List_A = TypeAdapter(list[ApiRunEventUpdate])
-
 
 EventDelete_A = TypeAdapter(ApiEventDelete_U)
 ApiRunnerEventDelete_List_A = TypeAdapter(list[ApiRunnerEventDelete])
 ApiRunEventDelete_List_A = TypeAdapter(list[ApiRunEventDelete])
 ApiSimulatorOutputEventDelete_List_A = TypeAdapter(list[ApiSimulatorOutputEventDelete])
 
-
 ApiRunnerEventQuery_List_A = TypeAdapter(list[ApiRunnerEventQuery])
 ApiRunEventQuery_List_A = TypeAdapter(list[ApiRunEventQuery])
-
-
-# TODO: FIXME
-# class ApiEventQuery(BaseModel):
-#     event_discriminator: str
-#     ids: list[int] | None = None
-#     runner_ids: list[int] | None = None
-#     run_ids: list[int] | None = None
-#     simulation_ids: list[int] | None = None
-#     proxy_ids: list[int] | None = None
-#     event_status: list[ApiEventStatus] | None = None
-#     runner_event_type: list[RunnerEventType] | None = None
-#     run_event_type: list[RunEventType] | None = None
-#     limit: int | None = None
-
-
-# if __name__ == "__main__":
-#     c_bundle = ApiEventBundle[ApiEventCreate_U]()
-#     c1 = ApiRunnerEventCreate(runner_id=3)
-#     c2 = ApiRunnerEventCreate(runner_id=2)
-#     c3 = ApiRunnerEventCreate(runner_id=3)
-#     cr1 = ApiRunEventCreate(runner_id=3, run_id=2, run_event_type=RunEventType.simulation_status)
-#     c_bundle.add_events(c1, c2, c3)
-#     c_bundle.add_event(cr1)
-#     d = c_bundle.model_dump()
-#     b = ApiEventBundle[ApiEventCreate_U].model_validate(d)
-#     print(b)
-
-#     r_bundle = ApiEventBundle[ApiEventRead_U]()
-#     r_bundle.add_event(
-#         ApiSimulatorOutputEventRead(
-#             id=4,
-#             runner_id=3,
-#             run_id=4,
-#             simulation_id=5,
-#             output="",
-#             simulator_id=7324,
-#             is_stderr=False,
-#         )
-#     )
-#     d = r_bundle.model_dump()
-#     b = ApiEventBundle[ApiEventRead_U].model_validate(d)
-#     for ty, lis in b.events.items():
-#         print(f"{ty} ==> {lis}")
-
-#     oe = ApiSimulatorOutputEventCreate(
-#         runner_id=3,
-#         run_id=4,
-#         simulation_id=23,
-#         simulator_id=23,
-#         output="kabfkjdsbfkdjb",
-#         is_stderr=False,
-#     )
-#     col = ApiConsoleOutputLine.model_validate(oe)
