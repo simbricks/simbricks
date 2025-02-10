@@ -21,8 +21,8 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import enum
-from simbricks.utils import base as util_base
-from simbricks.utils import file as util_file
+from simbricks.utils import base as utils_base
+from simbricks.utils import file as utils_file
 
 
 class SockType(enum.Enum):
@@ -30,7 +30,7 @@ class SockType(enum.Enum):
     CONNECT = enum.auto()
 
 
-class Socket(util_base.IdObj):
+class Socket(utils_base.IdObj):
 
     def __init__(self, path: str = "", ty: SockType = SockType.LISTEN):
         super().__init__()
@@ -43,4 +43,4 @@ class Socket(util_base.IdObj):
 
     async def wait(self):
         """Wait for socket to become available."""
-        await util_file.await_file(self._path)
+        await utils_file.await_file(self._path)

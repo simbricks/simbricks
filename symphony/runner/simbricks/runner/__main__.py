@@ -36,7 +36,7 @@ from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import settings
 from simbricks.runtime import simulation_executor as sim_exec
-from simbricks.utils import artifatcs as art
+from simbricks.utils import artifatcs as utils_art
 from simbricks.schemas import base as schemas
 
 if typing.TYPE_CHECKING:
@@ -325,7 +325,7 @@ class Runner:
             output_path = run.inst.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
             if run.inst.create_artifact:
-                art.create_artifact(
+                utils_art.create_artifact(
                     artifact_name=run.inst.artifact_name,
                     paths_to_include=run.inst.artifact_paths,
                 )

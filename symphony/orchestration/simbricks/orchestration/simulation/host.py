@@ -29,7 +29,7 @@ from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.system import host as sys_host
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
-from simbricks.utils import base as utils_base, file as util_file
+from simbricks.utils import base as utils_base, file as utils_file
 from simbricks.orchestration.instantiation import socket as inst_socket
 
 
@@ -116,7 +116,7 @@ class Gem5Sim(HostSim):
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
-        util_file.mkdir(inst.cpdir_subdir(sim=self))
+        utils_file.mkdir(inst.cpdir_subdir(sim=self))
 
     def checkpoint_commands(self) -> list[str]:
         return ["m5 checkpoint"]

@@ -25,8 +25,9 @@ from __future__ import annotations
 import abc
 import typing
 
-import simbricks.utils.base as util_base
 from simbricks.orchestration.instantiation import socket as inst_socket
+from simbricks.utils import base as utils_base
+from simbricks.utils import file as utils_file
 
 if typing.TYPE_CHECKING:
     import simbricks.orchestration.system.base as sys_base
@@ -34,7 +35,7 @@ if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
 
 
-class Proxy(util_base.IdObj, abc.ABC):
+class Proxy(utils_base.IdObj, abc.ABC):
 
     def __init__(self, connection_mode: inst_socket.SockType):
         super().__init__()
@@ -78,15 +79,7 @@ class DummyProxy(Proxy):
 
 class TCPProxy(Proxy):
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._ip: str | None = None
-        """If this is a connecting proxy, the IP to connect to."""
-        self._port: int | None = None
-        """If this is a connecting proxy, the port to connect to."""
-
-
-class ProxyPair(util_base.IdObj):
+class ProxyPair(utils_base.IdObj):
 
     def __init__(
         self, instantiation: inst_base.Instantiation, proxy_a: Proxy, proxy_b: Proxy

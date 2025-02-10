@@ -27,7 +27,7 @@ import typing
 
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.runtime.runs import base as run_base
-from simbricks.utils import artifatcs as art
+from simbricks.utils import artifatcs as utils_art
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
@@ -180,7 +180,7 @@ class LocalSimpleRuntime(run_base.Runtime):
         output_path = run.instantiation.get_simulation_output_path()
         run._output.dump(outpath=output_path)
         if run.instantiation.create_artifact:
-            art.create_artifact(
+            utils_art.create_artifact(
                 artifact_name=run.instantiation.artifact_name,
                 paths_to_include=run.instantiation.artifact_paths,
             )
