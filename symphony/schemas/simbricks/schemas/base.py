@@ -25,7 +25,7 @@ from __future__ import annotations
 import abc
 import datetime
 import enum
-from typing import TypeVar, Generic, Literal, Annotated, get_args, get_origin
+from typing import TypeVar, Generic, Literal, Annotated
 from pydantic import BaseModel, TypeAdapter, Field, field_serializer
 
 
@@ -264,8 +264,8 @@ class AbstractApiEvent(BaseModel, abc.ABC):
     """
     event_discriminator: Literal["AbstractApiEvent"] = "AbstractApiEvent"
     """
-    The event event_discriminator, is be used to reconstruct pydantic model. 
-    Must be OVERWRITTEN as Literal IN SUBCLASSES (see belows additional helper classes).
+    The event event_discriminator, is be used to reconstruct pydantic model.
+    Must be OVERWRITTEN as Literal IN SUBCLASSES (see the helper classes below).
     """
     event_status: ApiEventStatus = ApiEventStatus.PENDING
     """
@@ -280,26 +280,23 @@ class AbstractApiEvent(BaseModel, abc.ABC):
     """
 
 
-class ApiCreateEvent(AbstractApiEvent, abc.ABC):
+class ApiCreateEvent(AbstractApiEvent):
     id: None = None
-    """
-    overrides
-    """
 
 
-class ApiReadEvent(AbstractApiEvent, abc.ABC):
+class ApiReadEvent(AbstractApiEvent):
     pass
 
 
-class ApiUpdateEvent(AbstractApiEvent, abc.ABC):
+class ApiUpdateEvent(AbstractApiEvent):
     pass
 
 
-class ApiDeleteEvent(AbstractApiEvent, abc.ABC):
+class ApiDeleteEvent(AbstractApiEvent):
     pass
 
 
-class AbstractApiEventQuery(abc.ABC, BaseModel):
+class AbstractApiEventQuery(BaseModel, abc.ABC):
     event_discriminator: Literal["AbstractApiEventQuery"] = "AbstractApiEventQuery"
     """
     The event event_discriminator, is be used to reconstruct pydantic model. 
@@ -328,7 +325,7 @@ class RunnerEventType(str, enum.Enum):
     heartbeat = "heartbeat"
 
 
-class AbstractApiRunnerEvent(AbstractApiEvent, abc.ABC):
+class AbstractApiRunnerEvent(AbstractApiEvent):
     runner_id: int
     """
     the runner the event is associated with
@@ -373,8 +370,8 @@ class RunEventType(str, enum.Enum):
     START_RUN = "START_RUN"
 
 
-class AbstracApiRunEvent(AbstractApiEvent, abc.ABC):
-    runner_id: int
+class AbstracApiRunEvent(AbstractApiEvent):
+    runner_id: int  # TODO: considering fragments etc. we may want to remove this again
     """
     The runner the run is associated with.
     """
@@ -384,7 +381,7 @@ class AbstracApiRunEvent(AbstractApiEvent, abc.ABC):
     """
     run_event_type: RunEventType
     """
-    The kind of runner specific event this is (e.g. heartbeat).  
+    The kind of runner specific event this is (e.g. KILL).  
     """
 
 
@@ -414,10 +411,10 @@ class ApiRunEventQuery(AbstractApiEventQuery):
 
 """ ############################################################################
 Simulator related events
-"""  ############################################################################
+""" ############################################################################
 
 
-class AbstractApiSimulatorEvent(AbstractApiEvent, abc.ABC):
+class AbstractApiSimulatorEvent(AbstractApiEvent):
     runner_id: int
     """
     The runner a fragment is associated with.
@@ -426,17 +423,13 @@ class AbstractApiSimulatorEvent(AbstractApiEvent, abc.ABC):
     """
     The run a fragment is associated with.
     """
-    simulation_id: int
-    """
-    The simulation associated with.
-    """
     simulator_id: int
     """
-    The runtime simulators id the event is associated with.
+    The simulator id from the experiment definition the event is associated with.
     """
 
 
-class AbstractApiSimulatorStateChangeEvent(AbstractApiSimulatorEvent, abc.ABC):
+class AbstractApiSimulatorStateChangeEvent(AbstractApiSimulatorEvent):
     simulator_state: RunSimulatorState = RunSimulatorState.UNKNOWN
     """
     The current state of the simulator.
@@ -455,17 +448,15 @@ class ApiSimulatorStateChangeEventCreate(ApiCreateEvent, AbstractApiSimulatorSta
     event_discriminator: Literal["ApiSimulatorStateChangeEventCreate"] = (
         "ApiSimulatorStateChangeEventCreate"
     )
-    simulation_id: int | None = None
 
 
 class ApiSimulatorStateChangeEventRead(ApiReadEvent, AbstractApiSimulatorStateChangeEvent):
     event_discriminator: Literal["ApiSimulatorStateChangeEventRead"] = (
         "ApiSimulatorStateChangeEventRead"
     )
-    simulation_id: int | None = None
 
 
-class AbstractApiOutputEvent(AbstractApiSimulatorEvent, abc.ABC):
+class AbstractApiOutputEvent(AbstractApiSimulatorEvent):
     output_generated_at: datetime.datetime = datetime.datetime.now()
     """
     An indicator when the output was generated.
@@ -486,14 +477,12 @@ class AbstractApiOutputEvent(AbstractApiSimulatorEvent, abc.ABC):
 
 class ApiSimulatorOutputEventCreate(ApiCreateEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiSimulatorOutputEventCreate"] = "ApiSimulatorOutputEventCreate"
-    simulation_id: int | None = None
 
 
 class ApiSimulatorOutputEventRead(ApiReadEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiSimulatorOutputEventRead"] = "ApiSimulatorOutputEventRead"
     runner_id: int | None = None
     run_id: int | None = None
-    simulation_id: int | None = None
     simulator_id: int | None = None
 
 
@@ -506,7 +495,7 @@ Proxy related events
 """
 
 
-class AbstractApiProxyEvent(AbstractApiEvent, abc.ABC):
+class AbstractApiProxyEvent(AbstractApiEvent):
     runner_id: int
     """
     The runner a fragment is associated with.
@@ -521,10 +510,10 @@ class AbstractApiProxyEvent(AbstractApiEvent, abc.ABC):
     """
 
 
-class AbstractApiProxyStateChangeEvent(AbstractApiProxyEvent, abc.ABC):
-    simulator_state: RunSimulatorState = RunSimulatorState.UNKNOWN
+class AbstractApiProxyStateChangeEvent(AbstractApiProxyEvent):
+    proxy_state: RunSimulatorState = RunSimulatorState.UNKNOWN
     """
-    The current state of the simulator.
+    The current state of the proxy.
     """
 
 
@@ -583,8 +572,23 @@ BundleEventUnion_T = TypeVar(
 class ApiEventBundle(BaseModel, Generic[BundleEventUnion_T]):
     events: dict[str, list[BundleEventUnion_T]] = {}
     """
-    A dict that bundles events of different types in a dict. Each type is 
-    associated with a bundle of events of that specific type.
+    This bundle is supposed to bundle events. Bundling means that in instances of this class a mapping 
+    is stored in the following form: 'event_discriminator' -> list[Event]. For this reason, all events 
+    that shall be used with this bundle must overwrite the 'event_discriminator' literal and set it 
+    to a unique value. Having this mapping allows to not only bundle events of the same type, but to 
+    bundle events of multiple types. 
+    
+    This allows to 1) bundle multiple events of the same type to send e.g. multiple 'ApiSimulatorOutputEventCreate'
+    with one request to the backend. Besides, it allows to send multiple such bundles of different types 
+    to the backend, meaning that a 'ApiSimulatorOutputEventCreate' as well as 'ApiRunEventCreate' and 
+    a 'ApiRunnerEventCreate' bundle can each be send to the backend within a single request.
+
+    NOTE: Event thought this bundling allows to store bundles of different events, it shall always be 
+    used only with the types defined in one of the CRUD unions defined above at a time. That means
+    'update' events SHALL NOT be bundled together with cerate or delete events (even though this would 
+    be possible). The reason is that we want to keep a distinction between such CRUD operations in our
+    API, thus we advise not to bundle events in that way (this will also not be supported by our backend
+    API).
     """
 
     def empty(self) -> bool:
