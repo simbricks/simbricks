@@ -327,6 +327,9 @@ class Simulator(utils_base.IdObj, abc.ABC):
         promises = [comp.prepare(inst=inst) for comp in self._components]
         await asyncio.gather(*promises)
 
+    def __repr__(self) -> str:
+        return f"{str(self.__class__)}({self.full_name()})"
+
 
 class Simulation(utils_base.IdObj):
     """
