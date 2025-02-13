@@ -64,8 +64,8 @@ simulation = sim_helpers.simple_simulation(
 instantiation = inst_helpers.simple_instantiation(simulation)
 
 # create fragments and specify which types of runners they should execute on
-fragment0 = inst.Fragment(runner_label="runner0")
-fragment1 = inst.Fragment(runner_label="runner1")
+fragment0 = inst.Fragment()
+fragment1 = inst.Fragment()
 # assign simulators to fragments
 fragment0_sims = {simulation.find_sim(comp) for comp in [host0, nic0, switch]}
 fragment1_sims = {simulation.find_sim(comp) for comp in [host1, nic1]}
