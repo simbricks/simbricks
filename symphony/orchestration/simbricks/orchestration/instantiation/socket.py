@@ -26,8 +26,8 @@ from simbricks.utils import file as utils_file
 
 
 class SockType(enum.Enum):
-    LISTEN = enum.auto()
-    CONNECT = enum.auto()
+    LISTEN = "listen"
+    CONNECT = "connect"
 
 
 class Socket(utils_base.IdObj):
