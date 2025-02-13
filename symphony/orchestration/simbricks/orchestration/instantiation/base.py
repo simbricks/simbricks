@@ -276,12 +276,8 @@ class Instantiation(utils_base.IdObj):
         # TODO: deserialize other fields etc. of interest
         return instance
 
-    def _get_opposing_interface(self, interface: sys_base.Interface) -> sys_base.Interface:
-        opposing_inf = interface.get_opposing_interface()
-        return opposing_inf
-
     def _opposing_interface_within_same_sim(self, interface: sys_base.Interface) -> bool:
-        opposing_interface = self._get_opposing_interface(interface=interface)
+        opposing_interface = interface.get_opposing_interface()
         component = interface.component
         opposing_component = opposing_interface.component
         assert interface is not opposing_interface
@@ -305,7 +301,7 @@ class Instantiation(utils_base.IdObj):
     def _get_opposing_socket_by_interface(
         self, interface: sys_base.Interface
     ) -> inst_socket.Socket | None:
-        opposing_interface = self._get_opposing_interface(interface=interface)
+        opposing_interface = interface.get_opposing_interface()
         socket = self._get_socket_by_interface(interface=opposing_interface)
         return socket
 
