@@ -148,7 +148,6 @@ class SimulationOutput:
         json_obj["_success"] = self._success
         json_obj["_interrupted"] = self._interrupted
         json_obj["_metadata"] = self._metadata
-        # TODO (Jonas) Change backend to reflect multiple commands executed
         json_obj_out_list = []
         for _, proc_out in self._generic_prepare_output.items():
             json_obj_out_list.append(proc_out.toJSON())
