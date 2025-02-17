@@ -444,7 +444,7 @@ class ApiRunEventQuery(AbstractApiEventQuery):
 
 """ ############################################################################
 Simulator related events
-""" ############################################################################
+"""  ############################################################################
 
 
 class AbstractApiSimulatorEvent(AbstractApiEvent):
@@ -566,6 +566,21 @@ class ApiProxyStateChangeEventRead(ApiReadEvent, AbstractApiProxyStateChangeEven
     event_discriminator: Literal["ApiProxyStateChangeEventRead"] = "ApiProxyStateChangeEventRead"
 
 
+class ApiProxyOutputEventCreate(ApiCreateEvent, AbstractApiOutputEvent):
+    event_discriminator: Literal["ApiProxyOutputEventCreate"] = "ApiProxyOutputEventCreate"
+
+
+class ApiProxyOutputEventRead(ApiReadEvent, AbstractApiOutputEvent):
+    event_discriminator: Literal["ApiProxyOutputEventRead"] = "ApiProxyOutputEventRead"
+    runner_id: int | None = None
+    run_id: int | None = None
+    proxy_id: int | None = None
+
+
+class ApiProxyOutputEventDelete(ApiDeleteEvent):
+    event_discriminator: Literal["ApiProxyOutputEventDelete"] = "ApiProxyOutputEventDelete"
+
+
 """
 ApiEventBundle definitions.
 """
@@ -575,7 +590,8 @@ ApiEventCreate_U = Annotated[
     | ApiRunEventCreate
     | ApiSimulatorOutputEventCreate
     | ApiSimulatorStateChangeEventCreate
-    | ApiProxyStateChangeEventCreate,
+    | ApiProxyStateChangeEventCreate
+    | ApiProxyOutputEventCreate,
     Field(discriminator="event_discriminator"),
 ]
 
@@ -652,6 +668,7 @@ ApiRunnerEventCreate_List_A = TypeAdapter(list[ApiRunnerEventCreate])
 ApiRunEventCreate_List_A = TypeAdapter(list[ApiRunEventCreate])
 ApiSimulatorOutputEventCreate_List_A = TypeAdapter(list[ApiSimulatorOutputEventCreate])
 ApiSimulatorStateChangeEventCreate_List_A = TypeAdapter(list[ApiSimulatorStateChangeEventCreate])
+ApiProxyOutputEventCreate_List_A = TypeAdapter(list[ApiProxyOutputEventCreate])
 ApiProxyStateChangeEventCreate_List_A = TypeAdapter(list[ApiProxyStateChangeEventCreate])
 
 EventRead_A = TypeAdapter(ApiEventRead_U)
@@ -660,6 +677,7 @@ ApiRunEventRead_List_A = TypeAdapter(list[ApiRunEventRead])
 ApiProxyReadyRunEventRead_List_A = TypeAdapter(list[ApiProxyReadyRunEventRead])
 ApiSimulatorOutputEventRead_List_A = TypeAdapter(list[ApiSimulatorOutputEventRead])
 ApiSimulatorStateChangeEventRead_List_A = TypeAdapter(list[ApiSimulatorStateChangeEventRead])
+ApiProxyOutputEventRead_List_A = TypeAdapter(list[ApiProxyOutputEventRead])
 ApiProxyStateChangeEventRead_List_A = TypeAdapter(list[ApiProxyStateChangeEventRead])
 
 EventUpdate_A = TypeAdapter(ApiEventUpdate_U)
@@ -670,6 +688,7 @@ EventDelete_A = TypeAdapter(ApiEventDelete_U)
 ApiRunnerEventDelete_List_A = TypeAdapter(list[ApiRunnerEventDelete])
 ApiRunEventDelete_List_A = TypeAdapter(list[ApiRunEventDelete])
 ApiSimulatorOutputEventDelete_List_A = TypeAdapter(list[ApiSimulatorOutputEventDelete])
+ApiProxyOutputEventDelete_List_A = TypeAdapter(list[ApiProxyOutputEventDelete])
 
 ApiRunnerEventQuery_List_A = TypeAdapter(list[ApiRunnerEventQuery])
 ApiRunEventQuery_List_A = TypeAdapter(list[ApiRunEventQuery])

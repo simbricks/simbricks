@@ -188,9 +188,9 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         await opus_base.create_event(self._client, event)
 
     async def _send_out_proxy_events(self, proxy_id: int, lines: list[str], stderr: bool) -> None:
-        event_bundle = schemas.ApiEventBundle[schemas.ApiSimulatorOutputEventCreate]()
+        event_bundle = schemas.ApiEventBundle[schemas.ApiProxyOutputEventCreate]()
         for line in lines:
-            event = schemas.ApiSimulatorOutputEventCreate(
+            event = schemas.ApiProxyOutputEventCreate(
                 runner_id=self._client.runner_id,
                 run_id=self._run_id,
                 proxy_id=proxy_id,
@@ -208,35 +208,27 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
 
     async def proxy_ready(self, proxy: inst_proxy.Proxy) -> None:
         LOGGER.debug(f"[{proxy.name}] has started successfully")
-        await self._send_state_proxy_event(proxy.id(), state=schemas.RunComponentState.RUNNING)
+        await self._send_state_proxy_event(
+            proxy.id(),
+            state=schemas.RunComponentState.RUNNING,
+            proxy_ip=proxy._ip,
+            proxy_port=proxy._port,
+        )
 
     async def proxy_exited(self, proxy: inst_proxy.Proxy, exit_code: int) -> None:
         LOGGER.debug(f"- [{proxy.name}] exited with code {exit_code}")
+        await self._send_out_proxy_events(proxy.id(), [f"exited with code {exit_code}", False])
         await self._send_state_proxy_event(proxy.id(), state=schemas.RunComponentState.TERMINATED)
 
     async def proxy_stdout(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{proxy.name}] {line}")
-        # TODO: FIXME
-        await self._client.send_out_proxy(self._run_id, proxy.id(), False, lines)
-        output_lines = []
-        for line in lines:
-            LOGGER.debug(f"[{proxy.name}] {line}")
-            output_lines.append(
-                schemas.ApiConsoleOutputLine(
-                    produced_at=datetime.datetime.now(), output=line, is_stderr=False
-                )
-            )
-        output = schemas.ApiRunProxyOutput(
-            run_id=self._run_id, proxy_id=proxy.id(), output_lines=output_lines
-        )
-        await self._client.send_out_proxy(self._run_id, proxy.id(), output)
+        await self._send_out_proxy_events(proxy.id(), lines, False)
 
     async def proxy_stderr(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
         for line in lines:
             LOGGER.debug(f"[{proxy.name}] {line}")
-        # TODO: FIXME
-        await self._client.send_out_proxy(self._run_id, proxy.id(), True, lines)
+        await self._send_out_proxy_events(proxy.id(), lines, True)
 
 
 class Run:
