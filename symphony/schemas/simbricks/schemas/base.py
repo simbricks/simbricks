@@ -449,15 +449,15 @@ class AbstractApiSimulatorEvent(AbstractApiEvent):
 
 
 class AbstractApiSimulatorStateChangeEvent(AbstractApiSimulatorEvent):
-    simulator_state: RunSimulatorState = RunSimulatorState.UNKNOWN
+    simulator_state: RunComponentState | None
     """
     The current state of the simulator.
     """
-    simulator_name: str
+    simulator_name: str | None
     """
     The name of the simulator.
     """
-    command: str
+    command: str | None
     """
     The command associated with the state change.
     """
