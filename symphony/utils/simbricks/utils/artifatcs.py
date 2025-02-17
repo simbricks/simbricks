@@ -24,12 +24,11 @@ import pathlib
 import zipfile
 
 
-def _add_file_to_zip(zip_file: zipfile.ZipFile, file_path: str) -> None:
-    path = pathlib.Path(file_path)
-    if not path.is_file():
-        raise Exception(f"_add_file_to_zip: cannot add non file {path} to zip")
+def _add_file_to_zip(zip_file: zipfile.ZipFile, file_path: pathlib.Path) -> None:
+    if not file_path.is_file():
+        raise Exception(f"_add_file_to_zip: cannot add non file {file_path} to zip")
 
-    zip_file.write(filename=file_path, arcname=path)
+    zip_file.write(filename=file_path, arcname=str(file_path))
 
 
 def _add_folder_to_zip(zip_file: zipfile.ZipFile, dir_path: str) -> None:
