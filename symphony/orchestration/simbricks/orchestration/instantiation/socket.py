@@ -35,11 +35,6 @@ class Socket(utils_base.IdObj):
     def __init__(self, path: str = "", ty: SockType = SockType.LISTEN):
         super().__init__()
         self._path = path
-        self._type = ty
-
-    @property
-    def type(self) -> SockType:
-        return self._type
 
     async def wait(self):
         """Wait for socket to become available."""

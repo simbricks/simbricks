@@ -98,14 +98,14 @@ class NICSim(PCIDevSim):
         assert len(nic_devices) == 1
         nic_device = nic_devices[0]
 
-        socket = inst.update_get_socket(interface=nic_device._pci_if)
+        socket = inst.get_socket(interface=nic_device._pci_if)
         assert socket is not None and socket._type == inst_socket.SockType.LISTEN
         params_url = self.get_parameters_url(inst, socket, sync=run_sync,
                                              latency=pci_latency,
                                              sync_period=sync_period)
         cmd += f"{params_url} "
 
-        socket = inst.update_get_socket(interface=nic_device._eth_if)
+        socket = inst.get_socket(interface=nic_device._eth_if)
         assert socket is not None and socket._type == inst_socket.SockType.LISTEN
         params_url = self.get_parameters_url(inst, socket, sync=run_sync,
                                              latency=pci_latency,
