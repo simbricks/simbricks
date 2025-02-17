@@ -28,8 +28,7 @@ import traceback
 import typing
 
 from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.instantiation import dependency_topology as dep_topo
-from simbricks.orchestration.instantiation import socket as inst_socket
+from simbricks.orchestration.instantiation import dependency_graph as dep_graph
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.runtime import command_executor as cmd_exec
 from simbricks.runtime import output
@@ -37,6 +36,13 @@ from simbricks.utils import graphlib
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import proxy as inst_proxy
+
+
+class ProxyReadyInfo:
+    def __init__(self, id: int, ip: str, port: int):
+        self.id: int = id
+        self.ip: str = ip
+        self.port: int = port
 
 
 class SimulationExecutorCallbacks:
@@ -131,13 +137,20 @@ class SimulationExecutor:
         profile_int=None,
     ) -> None:
         self._instantiation: inst_base.Instantiation = instantiation
-        self._callbacks = callbacks
+        self._callbacks: SimulationExecutorCallbacks = callbacks
         self._verbose: bool = verbose
         self._profile_int: int | None = profile_int
         self._running_sims: dict[sim_base.Simulator, cmd_exec.CommandExecutor] = {}
         self._running_proxies: dict[inst_proxy.Proxy, cmd_exec.CommandExecutor] = {}
         self._wait_sims: list[cmd_exec.CommandExecutor] = []
         self._cmd_executor = cmd_exec.CommandExecutorFactory(callbacks)
+        self._external_proxy_running: dict[int, ProxyReadyInfo] = {}
+        self._external_proxy_running_lock: asyncio.Lock = asyncio.Lock()
+
+    async def mark_external_proxies_running(self, *proxy_info: ProxyReadyInfo):
+        async with self._external_proxy_running_lock:
+            for proxy in proxy_info:
+                self._external_proxy_running[proxy.id] = proxy
 
     async def _start_proxy(self, proxy: inst_proxy.Proxy) -> None:
         """Start a proxy and wait for it to be ready."""
@@ -226,25 +239,38 @@ class SimulationExecutor:
                 # start ready simulators in parallel
                 topo_comps = []
                 for comp in ts.get_ready():
-                    comp: dep_topo.TopologyComponent
+                    comp: dep_graph.SimulationDependencyNode
                     match comp.type:
-                        case dep_topo.TopologyComponentType.SIMULATOR:
+                        case dep_graph.SimulationDependencyNodeType.SIMULATOR:
                             starting.append(
                                 asyncio.create_task(self._start_sim(comp.get_simulator()))
                             )
-                        case dep_topo.TopologyComponentType.PROXY:
+                            topo_comps.append(comp)
+                        case dep_graph.SimulationDependencyNodeType.PROXY:
                             starting.append(
                                 asyncio.create_task(self._start_proxy(comp.get_proxy()))
                             )
+                            topo_comps.append(comp)
+                        case dep_graph.SimulationDependencyNodeType.EXTERNAL_PROXY:
+                            external_proxy = comp.get_proxy()
+                            async with self._external_proxy_running_lock:
+                                if external_proxy.id() in self._external_proxy_running:
+                                    proxy_info = self._external_proxy_running[external_proxy.id()]
+                                    external_proxy._ip = proxy_info.ip
+                                    external_proxy._port = proxy_info.port
+                                    topo_comps.append(comp)
                         case _:
                             raise RuntimeError("Unhandled topology component type")
-                    topo_comps.append(comp)
 
                 # wait for starts to complete
                 await asyncio.gather(*starting)
 
                 for comp in topo_comps:
                     ts.done(comp)
+
+                # could happen when blocked by waiting for external proxy to start
+                if not topo_comps:
+                    await asyncio.sleep(3)
 
             if self._profile_int:
                 profiler_task = asyncio.create_task(self._profiler())

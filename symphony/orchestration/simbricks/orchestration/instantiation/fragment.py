@@ -28,17 +28,18 @@ from simbricks.orchestration.instantiation import proxy
 from simbricks.utils import base as utils_base
 
 if typing.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import base as inst_base
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.orchestration.system import base as sys_base
 
 
 class Fragment(utils_base.IdObj):
 
-    def __init__(self, runner_label: str | None = None):
+    def __init__(self, runner_label: set[str] | None = None):
         super().__init__()
 
-        self.runner_label: str | None = runner_label
-        """If set, only execute this fragment on runner that has this label."""
+        self._runner_label = set() if runner_label is None else runner_label
+        """Only execute this fragment on runner that has all given labels."""
         self._proxies: set[proxy.Proxy] = set()
         self._simulators: set[sim_base.Simulator] = set()
 
@@ -113,3 +114,15 @@ class Fragment(utils_base.IdObj):
 
     def interface_handled_by_proxy(self, interface: sys_base.Interface) -> bool:
         return self.find_proxy_by_interface(interface) is not None
+
+    def _remove_unnecessary_proxies(self, inst: inst_base.Instantiation) -> None:
+        """Remove proxies that connect within this fragment."""
+        new_proxies = self._proxies.copy()
+        for proxy in self._proxies:
+            if proxy.is_dummy():
+                new_proxies.remove(proxy)
+            opp_proxy = inst._find_opposing_proxy(proxy)
+            if opp_proxy in self._proxies:
+                # opposing proxy is also in the current fragment
+                new_proxies.remove(proxy)
+        self._proxies = new_proxies

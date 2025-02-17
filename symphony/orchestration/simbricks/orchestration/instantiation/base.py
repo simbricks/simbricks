@@ -27,6 +27,7 @@ import pathlib
 import typing
 import uuid
 
+from simbricks.orchestration.helpers import exceptions
 from simbricks.orchestration.instantiation import dependency_graph as inst_dep_graph
 from simbricks.orchestration.instantiation import fragment as inst_fragment
 from simbricks.orchestration.instantiation import proxy as inst_proxy
@@ -59,6 +60,7 @@ class InstantiationEnvironment(utils_base.IdObj):
         self._img_dir: str = pathlib.Path(f"{self._tmp_dir}/imgs").resolve()
         self._cp_dir: str = pathlib.Path(f"{self._tmp_dir}/checkpoints").resolve()
         self._shm_base: str = pathlib.Path(f"{self._tmp_dir}/shm").resolve()
+        self._proxy_dir = pathlib.Path(f"{self._tmp_dir}/proxies").resolve()
 
     # --------------------------------------------------
     # Read-only accessor functions for path properties -
@@ -113,6 +115,13 @@ class InstantiationEnvironment(utils_base.IdObj):
             return self._shm_base
         return utils_file.join_paths(
             base=self._shm_base, relative_path=relative_path, must_exist=must_exist
+        )
+
+    def proxy_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
+        if relative_path is None:
+            return self._proxy_dir
+        return utils_file.join_paths(
+            base=self._proxy_dir, relative_path=relative_path, must_exist=must_exist
         )
 
     # ----------------------------------------
@@ -170,6 +179,8 @@ class Instantiation(utils_base.IdObj):
         # NOTE: temporary data structure
         self._sim_dependency: inst_dep_graph.SimulationDependencyGraph | None = None
         self._cmd_executor: cmd_exec.CommandExecutorFactory | None = None
+        self._proxy_pairs: list[inst_proxy.ProxyPair] = []
+        self._inf_socktype_assignment: dict[sys_base.Interface, inst_socket.SockType] = {}
 
     @property
     def create_artifact(self) -> bool:
@@ -239,6 +250,11 @@ class Instantiation(utils_base.IdObj):
         json_obj["preserve_checkpoints"] = self._preserve_checkpoints
         json_obj["preserve_tmp_folder"] = self.preserve_tmp_folder
 
+        inf_socktype_assignment = {}
+        for inf, socktype in self._inf_socktype_assignment.items():
+            inf_socktype_assignment[inf.id()] = socktype.value
+        json_obj["inf_socktype_assignment"] = inf_socktype_assignment
+
         # TODO: serialize other fields etc. of interest
         return json_obj
 
@@ -273,6 +289,16 @@ class Instantiation(utils_base.IdObj):
         instance.preserve_tmp_folder = bool(
             utils_base.get_json_attr_top(json_obj, "preserve_tmp_folder")
         )
+
+        inf_id_socktype_assignment: dict[int, str] = utils_base.get_json_attr_top(
+            json_obj, "inf_socktype_assignment"
+        )
+        instance._inf_socktype_assignment = {}
+        for inf_id, socktype_str in inf_id_socktype_assignment.items():
+            inf = sim.system.get_inf(inf_id)
+            socktype = inst_socket.SockType(socktype_str)
+            instance._inf_socktype_assignment[inf] = socktype
+
         # TODO: deserialize other fields etc. of interest
         return instance
 
@@ -284,26 +310,6 @@ class Instantiation(utils_base.IdObj):
         return self.find_sim_by_spec(spec=component) == self.find_sim_by_spec(
             spec=opposing_component
         )
-
-    def _updated_tracker_mapping(
-        self, interface: sys_base.Interface, socket: inst_socket.Socket
-    ) -> None:
-        # update interface mapping
-        if interface in self._socket_per_interface:
-            raise Exception("an interface cannot be associated with two sockets")
-        self._socket_per_interface[interface] = socket
-
-    def _get_socket_by_interface(self, interface: sys_base.Interface) -> inst_socket.Socket | None:
-        if interface not in self._socket_per_interface:
-            return None
-        return self._socket_per_interface[interface]
-
-    def _get_opposing_socket_by_interface(
-        self, interface: sys_base.Interface
-    ) -> inst_socket.Socket | None:
-        opposing_interface = interface.get_opposing_interface()
-        socket = self._get_socket_by_interface(interface=opposing_interface)
-        return socket
 
     def _interface_to_sock_path(self, interface: sys_base.Interface) -> str:
         channel = interface.get_chan_raise()
@@ -323,53 +329,19 @@ class Instantiation(utils_base.IdObj):
         assert queue_type is not None
         return self.env.shm_base(f"{queue_type}-{queue_ident}")
 
-    def _create_opposing_socket(
-        self, socket: inst_socket.Socket, socket_type: inst_socket.SockType
-    ) -> inst_socket.Socket:
-        new_ty = (
-            inst_socket.SockType.LISTEN
-            if socket._type == inst_socket.SockType.CONNECT
-            else inst_socket.SockType.CONNECT
-        )
-        if new_ty != socket_type:
-            raise Exception(
-                f"cannot create opposing socket, as required type is not supported: required={new_ty.name}, supported={socket_type.name}"
-            )
-        new_path = socket._path
-        new_socket = inst_socket.Socket(path=new_path, ty=new_ty)
-        return new_socket
-
-    def update_get_socket(self, interface: sys_base.Interface) -> inst_socket.Socket | None:
-        socket = self._get_socket_by_interface(interface=interface)
-        if socket:
-            return socket
-        return None
-
-    def _update_get_socket(
-        self, interface: sys_base.Interface, socket_type: inst_socket.SockType
-    ) -> inst_socket.Socket:
-
+    def get_socket(self, interface: sys_base.Interface) -> inst_socket.Socket:
         if self._opposing_interface_within_same_sim(interface=interface):
-            raise Exception(
+            raise exceptions.InstantiationExecutionError(
                 "we do not create a socket for channels where both interfaces belong to the same simulator"
             )
 
-        # check if already a socket is associated with this interface
-        socket = self._get_socket_by_interface(interface=interface)
-        if socket is not None:
-            return socket
+        if interface in self._socket_per_interface:
+            return self._socket_per_interface[interface]
 
-        # Check if other side already created a socket, and create an opposing one
-        socket = self._get_opposing_socket_by_interface(interface=interface)
-        if socket is not None:
-            new_socket = self._create_opposing_socket(socket=socket, socket_type=socket_type)
-            self._updated_tracker_mapping(interface=interface, socket=new_socket)
-            return new_socket
-
-        # create socket if opposing socket was not created yet
+        # create socket
         sock_path = self._interface_to_sock_path(interface=interface)
-        new_socket = inst_socket.Socket(path=sock_path, ty=socket_type)
-        self._updated_tracker_mapping(interface=interface, socket=new_socket)
+        new_socket = inst_socket.Socket(path=sock_path, ty=self.get_interface_socktype(interface))
+        self._socket_per_interface[interface] = new_socket
         return new_socket
 
     def sim_dependencies(self) -> inst_dep_graph.SimulationDependencyGraph:
@@ -441,6 +413,7 @@ class Instantiation(utils_base.IdObj):
         cop.preserve_tmp_folder = self.preserve_tmp_folder
         cop._socket_per_interface = {}
         cop._sim_dependency = None
+        cop._inf_socktype_assignment = self._inf_socktype_assignment
         return cop
 
     async def prepare(self) -> None:
@@ -471,14 +444,78 @@ class Instantiation(utils_base.IdObj):
 
     def create_proxy_pair(
         self,
-        ProxyClass: type[inst_proxy.Proxy],
+        ProxyImplementation: type[inst_proxy.Proxy],
         fragment_a: inst_fragment.Fragment,
         fragment_b: inst_fragment.Fragment,
     ) -> inst_proxy.ProxyPair:
         """Create a pair of proxies for connecting two fragments. Can be invoked multiple times with
         the same two fragments to create multiple proxy connections between them."""
-        # TODO (Jonas) Implement this.
-        pass
+        proxy_a = ProxyImplementation()
+        fragment_a.add_proxies(proxy_a)
+        proxy_b = ProxyImplementation()
+        fragment_b.add_proxies(proxy_b)
+        pair = inst_proxy.ProxyPair(self, fragment_a, fragment_b, proxy_a, proxy_b)
+        self._proxy_pairs.append(pair)
+        return pair
+
+    def get_proxy_pair(self, proxy: inst_proxy.Proxy) -> inst_proxy.ProxyPair:
+        """Use given proxy to find previously created proxy pair."""
+        for pair in self._proxy_pairs:
+            if pair.proxy_a is proxy or pair.proxy_b is proxy:
+                return pair
+        raise exceptions.InstantiationConfigurationError("Cannot find previously added proxy pair.")
+
+    def _find_opposing_proxy(self, proxy: inst_proxy.Proxy) -> inst_proxy.Proxy:
+        pair = self.get_proxy_pair(proxy)
+        return pair.proxy_a if pair.proxy_b is proxy else pair.proxy_b
+
+    def _assign_interface_socktype(self) -> None:
+        """For SimBricks sockets, assigns which interfaces listen and which connect."""
+        for sim_a in self.simulation.all_simulators():
+            for comp_a in sim_a.components():
+                for inf_a in comp_a.interfaces():
+                    # already assigned interface
+                    if inf_a in self._inf_socktype_assignment:
+                        continue
+
+                    # both interfaces of channel are located in the same simulator
+                    # => do not need to assign anything
+                    if self._opposing_interface_within_same_sim(interface=inf_a):
+                        continue
+
+                    # get info on other side of channel
+                    inf_b = inf_a.get_opposing_interface()
+                    sim_b = self.find_sim_by_interface(inf_b)
+
+                    # the actual assignment
+                    # figure out supported socket types for both sides
+                    supported_a = sim_a.supported_socket_types(inf_a)
+                    supported_b = sim_b.supported_socket_types(inf_b)
+
+                    # assign sockets as listening or connecting and add dependencies accordingly
+                    if (
+                        inst_socket.SockType.CONNECT in supported_a
+                        and inst_socket.SockType.LISTEN in supported_b
+                    ):
+                        self._inf_socktype_assignment[inf_a] = inst_socket.SockType.CONNECT
+                        self._inf_socktype_assignment[inf_b] = inst_socket.SockType.LISTEN
+                    elif (
+                        inst_socket.SockType.LISTEN in supported_a
+                        and inst_socket.SockType.CONNECT in supported_b
+                    ):
+                        self._inf_socktype_assignment[inf_a] = inst_socket.SockType.LISTEN
+                        self._inf_socktype_assignment[inf_b] = inst_socket.SockType.CONNECT
+                    else:
+                        raise exceptions.SimulationConfigurationError(
+                            f"Cannot connect simulators {sim_a} and {sim_b} with supported proxy types {supported_a} and {supported_b}, respectively."
+                        )
+
+    def get_interface_socktype(self, inf: sys_base.Interface) -> inst_socket.SockType:
+        if inf not in self._inf_socktype_assignment:
+            raise exceptions.InstantiationConfigurationError(
+                f"Interface {inf} does not have an assigned socket type."
+            )
+        return self._inf_socktype_assignment[inf]
 
     def finalize_validate(self) -> None:
         """This function can be invoked manually in the experiment script to validate system
@@ -486,3 +523,4 @@ class Instantiation(utils_base.IdObj):
         always invoked before running an instantiation to do some final processing steps. To allow
         this, we guarantee idempotence, i.e. calling this function one or multiple times has the
         same effect."""
+        self._assign_interface_socktype()
