@@ -216,7 +216,7 @@ class ApiProxyState(BaseModel):
 
 
 class ApiConsoleOutputLine(BaseModel):
-    id: int
+    id: int | None = None
     produced_at: datetime.datetime
     output: str
     is_stderr: bool
@@ -226,6 +226,7 @@ class ApiRunSimulatorOutput(BaseModel):
     run_id: int
     simulator_id: int
     output_lines: list[ApiConsoleOutputLine] = []
+
 
 class ApiRunProxyOutput(BaseModel):
     run_id: int
