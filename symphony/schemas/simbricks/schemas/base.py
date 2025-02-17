@@ -387,9 +387,10 @@ class RunEventType(str, enum.Enum):
     KILL = "KILL"
     SIMULATION_STATUS = "SIMULATION_STATUS"
     START_RUN = "START_RUN"
+    PROXY_READY = "PROXY_READY"
 
 
-class AbstracApiRunEvent(AbstractApiEvent):
+class AbstractApiRunEvent(AbstractApiEvent):
     runner_id: int  # TODO: considering fragments etc. we may want to remove this again
     """
     The runner the run is associated with.
@@ -404,15 +405,28 @@ class AbstracApiRunEvent(AbstractApiEvent):
     """
 
 
-class ApiRunEventCreate(ApiCreateEvent, AbstracApiRunEvent):
+class ApiRunEventCreate(ApiCreateEvent, AbstractApiRunEvent):
     event_discriminator: Literal["ApiRunEventCreate"] = "ApiRunEventCreate"
 
 
-class ApiRunEventRead(ApiReadEvent, AbstracApiRunEvent):
+class ApiRunEventRead(ApiReadEvent, AbstractApiRunEvent):
     event_discriminator: Literal["ApiRunEventRead"] = "ApiRunEventRead"
 
 
-class ApiRunEventUpdate(ApiUpdateEvent, AbstracApiRunEvent):
+class AbstractApiProxyReadyRunEvent(AbstractApiRunEvent):
+    proxy_id: int
+    """The ID of the proxy that became ready."""
+    proxy_ip: str
+    """The IP of the proxy."""
+    proxy_port: int
+    """The port of the proxy."""
+
+
+class ApiProxyReadyRunEventRead(ApiRunEventRead, AbstractApiProxyReadyRunEvent):
+    event_discriminator: Literal["ApiProxyReadyRunEventRead"] = "ApiProxyReadyRunEventRead"
+
+
+class ApiRunEventUpdate(ApiUpdateEvent, AbstractApiRunEvent):
     event_discriminator: Literal["ApiRunEventUpdate"] = "ApiRunEventUpdate"
     run_event_type: RunEventType | None = None
 
@@ -530,10 +544,16 @@ class AbstractApiProxyEvent(AbstractApiEvent):
 
 
 class AbstractApiProxyStateChangeEvent(AbstractApiProxyEvent):
-    proxy_state: RunSimulatorState = RunSimulatorState.UNKNOWN
+    proxy_name: str | None = None
+    """The name of the proxy."""
+    proxy_state: RunComponentState | None
     """
     The current state of the proxy.
     """
+    proxy_ip: str | None
+    """The IP the proxy is listening on / connecting to."""
+    proxy_port: int | None
+    """The port the proxy is listening on / connecting to."""
 
 
 class ApiProxyStateChangeEventCreate(ApiCreateEvent, AbstractApiProxyStateChangeEvent):
@@ -562,6 +582,7 @@ ApiEventCreate_U = Annotated[
 ApiEventRead_U = Annotated[
     ApiRunnerEventRead
     | ApiRunEventRead
+    | ApiProxyReadyRunEventRead
     | ApiSimulatorOutputEventRead
     | ApiSimulatorStateChangeEventRead
     | ApiProxyStateChangeEventRead,
@@ -636,6 +657,7 @@ ApiProxyStateChangeEventCreate_List_A = TypeAdapter(list[ApiProxyStateChangeEven
 EventRead_A = TypeAdapter(ApiEventRead_U)
 ApiRunnerEventRead_List_A = TypeAdapter(list[ApiRunnerEventRead])
 ApiRunEventRead_List_A = TypeAdapter(list[ApiRunEventRead])
+ApiProxyReadyRunEventRead_List_A = TypeAdapter(list[ApiProxyReadyRunEventRead])
 ApiSimulatorOutputEventRead_List_A = TypeAdapter(list[ApiSimulatorOutputEventRead])
 ApiSimulatorStateChangeEventRead_List_A = TypeAdapter(list[ApiSimulatorStateChangeEventRead])
 ApiProxyStateChangeEventRead_List_A = TypeAdapter(list[ApiProxyStateChangeEventRead])
