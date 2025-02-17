@@ -261,8 +261,8 @@ class Channel(utils_base.IdObj):
         self.parameters: dict[tp.Any, tp.Any] = {}
         a.component.system._add_channel(self)
 
-    def interfaces(self) -> list[Interface]:
-        return [self.a, self.b]
+    def interfaces(self) -> tuple[Interface, Interface]:
+        return self.a, self.b
 
     def disconnect(self):
         # Note AK: this is a bit ugly, this leaves the channel dangling. But
