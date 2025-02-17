@@ -80,4 +80,5 @@ proxy_pair = instantiation.create_proxy_pair(inst.TCPProxy, fragment0, fragment1
 proxy_pair.assign_sim_channel(simulation.get_channel(switch_nic1_channel))
 
 # indicate all instantiations that this script provides
+instantiation.finalize_validate()  # this is optional to see validation errors early
 instantiations = [instantiation]
