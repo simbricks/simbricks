@@ -21,15 +21,22 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
-import rich
+import typing
 from pathlib import Path
-import simbricks.utils.load_mod as load_mod
-from typer import Typer, Argument, Option
+
+import rich
+from typer import Argument, Option, Typer
 from typing_extensions import Annotated
-from simbricks.client.provider import client_provider
+
+import simbricks.utils.load_mod as load_mod
 from simbricks.client.opus import base as opus_base
-from ..utils import async_cli, print_table_generic
+from simbricks.client.provider import client_provider
 from simbricks.schemas import base as schemas
+
+from ..utils import async_cli, print_table_generic
+
+if typing.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import base as inst_base
 
 
 app = Typer(help="Managing SimBricks runs.")
@@ -138,10 +145,11 @@ async def submit(
     system_client = client_provider.simbricks_client
 
     experiment_mod = load_mod.load_module(module_path=path)
-    instantiations = experiment_mod.instantiations
+    instantiations: list[inst_base.Instantiation] = experiment_mod.instantiations
 
     run_id = None
     for sb_inst in instantiations:
+        sb_inst.finalize_validate()
         run_id = await opus_base.create_run(instantiation=sb_inst)
         run = await client_provider.simbricks_client.get_run(run_id=run_id)
         assert run_id == run.id

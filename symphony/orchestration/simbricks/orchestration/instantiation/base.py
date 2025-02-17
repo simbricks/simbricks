@@ -479,3 +479,10 @@ class Instantiation(utils_base.IdObj):
         the same two fragments to create multiple proxy connections between them."""
         # TODO (Jonas) Implement this.
         pass
+
+    def finalize_validate(self) -> None:
+        """This function can be invoked manually in the experiment script to validate system
+        configuration, simulation configration, and instantiation early. Regardless, it is also
+        always invoked before running an instantiation to do some final processing steps. To allow
+        this, we guarantee idempotence, i.e. calling this function one or multiple times has the
+        same effect."""

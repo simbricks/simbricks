@@ -212,6 +212,8 @@ def main():
             if not match:
                 continue
 
+        inst.finalize_validate()
+
         # if this is an experiment with a checkpoint we might have to create
         # it
         prereq = None
