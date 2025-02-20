@@ -565,15 +565,15 @@ class AbstractApiProxyEvent(AbstractApiEvent):
 
 
 class AbstractApiProxyStateChangeEvent(AbstractApiProxyEvent):
-    proxy_name: str | None = None
+    proxy_name: str
     """The name of the proxy."""
-    proxy_state: RunComponentState | None
+    proxy_state: RunComponentState
     """
     The current state of the proxy.
     """
-    proxy_ip: str | None
+    proxy_ip: str
     """The IP the proxy is listening on / connecting to."""
-    proxy_port: int | None
+    proxy_port: int
     """The port the proxy is listening on / connecting to."""
 
 
@@ -694,6 +694,15 @@ def validate_list_type(
     adapter = TypeAdapter(list[Model_Class_T])
     validated_model_list = adapter.validate_python(model_list)
     return validated_model_list
+
+
+def convert_validate(source: list[BaseModel], target: Type[Model_Class_T]) -> list[Model_Class_T]:
+    adapter = TypeAdapter(Model_Class_T)
+    converted = []
+    for mod in source:
+        conv = adapter.validate_python(mod.model_dump())
+        converted.append(conv)
+    return converted
 
 
 ApiRunnerEventCreate_List_A = TypeAdapter(list[ApiRunnerEventCreate])
