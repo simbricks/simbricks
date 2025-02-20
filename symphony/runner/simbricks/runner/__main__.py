@@ -181,7 +181,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             run_id=self._run_id,
             proxy_name=proxy_name,
             proxy_id=proxy_id,
-            simulator_state=state,
+            proxy_state=state,
             proxy_ip=proxy_ip,
             proxy_port=proxy_port,
         )
