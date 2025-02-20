@@ -25,7 +25,7 @@ from __future__ import annotations
 import abc
 import datetime
 import enum
-from typing import TypeVar, Generic, Literal, Annotated, Any
+from typing import TypeVar, Generic, Literal, Annotated, Any, Type
 from pydantic import BaseModel, TypeAdapter, Field, field_serializer
 
 
@@ -477,7 +477,7 @@ class AbstractApiSimulatorEvent(AbstractApiEvent):
 
 
 class AbstractApiSimulatorStateChangeEvent(AbstractApiSimulatorEvent):
-    simulator_state: RunComponentState | None
+    simulator_state: RunComponentState
     """
     The current state of the simulator.
     """
@@ -677,6 +677,17 @@ class ApiEventBundle(BaseModel, Generic[BundleEventUnion_T]):
 """
 Type Adapters useful for validation etc. 
 """
+
+Model_Class_T = TypeVar("Model_Class_T")
+
+
+def validate_list_type(
+    model_list: list[BundleEventUnion_T], model_class: Type[Model_Class_T]
+) -> list[Model_Class_T]:
+    adapter = TypeAdapter(list[Model_Class_T])
+    validated_model_list = adapter.validate_python(model_list)
+    return validated_model_list
+
 
 ApiRunnerEventCreate_List_A = TypeAdapter(list[ApiRunnerEventCreate])
 ApiRunEventCreate_List_A = TypeAdapter(list[ApiRunEventCreate])
