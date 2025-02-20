@@ -439,6 +439,13 @@ class ApiRunEventQuery(AbstractApiEventQuery):
     run_event_type: list[RunEventType] | None = None
 
 
+class ApiRunEventStartRunQuery(AbstractApiEventQuery):
+    event_discriminator: Literal["ApiRunEventStartRunQuery"] = "ApiRunEventStartRunQuery"
+    runner_ids: list[int] | None = None
+    run_ids: list[int] | None = None
+    run_event_type: RunEventType = RunEventType.START_RUN
+
+
 class AbstractApiProxyReadyRunEvent(AbstractApiRunEvent):
     proxy_id: int
     """The ID of the proxy that became ready."""
