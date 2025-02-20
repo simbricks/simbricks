@@ -25,7 +25,7 @@ from __future__ import annotations
 import abc
 import datetime
 import enum
-from typing import TypeVar, Generic, Literal, Annotated
+from typing import TypeVar, Generic, Literal, Annotated, Any
 from pydantic import BaseModel, TypeAdapter, Field, field_serializer
 
 
@@ -413,17 +413,14 @@ class ApiRunEventRead(ApiReadEvent, AbstractApiRunEvent):
     event_discriminator: Literal["ApiRunEventRead"] = "ApiRunEventRead"
 
 
-class AbstractApiProxyReadyRunEvent(AbstractApiRunEvent):
-    proxy_id: int
-    """The ID of the proxy that became ready."""
-    proxy_ip: str
-    """The IP of the proxy."""
-    proxy_port: int
-    """The port of the proxy."""
+class ApiRunEventStartRunRead(ApiRunEventRead):
+    run_event_type: RunEventType = RunEventType.START_RUN
+    event_discriminator: Literal["ApiRunEventStartRunRead"] = "ApiRunEventStartRunRead"
 
-
-class ApiProxyReadyRunEventRead(ApiRunEventRead, AbstractApiProxyReadyRunEvent):
-    event_discriminator: Literal["ApiProxyReadyRunEventRead"] = "ApiProxyReadyRunEventRead"
+    fragments: list[int]
+    inst: Any = None
+    system: Any = None
+    simulation: Any = None
 
 
 class ApiRunEventUpdate(ApiUpdateEvent, AbstractApiRunEvent):
@@ -440,6 +437,23 @@ class ApiRunEventQuery(AbstractApiEventQuery):
     runner_ids: list[int] | None = None
     run_ids: list[int] | None = None
     run_event_type: list[RunEventType] | None = None
+
+
+class AbstractApiProxyReadyRunEvent(AbstractApiRunEvent):
+    proxy_id: int
+    """The ID of the proxy that became ready."""
+    proxy_ip: str
+    """The IP of the proxy."""
+    proxy_port: int
+    """The port of the proxy."""
+
+
+class ApiProxyReadyRunEventRead(ApiRunEventRead, AbstractApiProxyReadyRunEvent):
+    event_discriminator: Literal["ApiProxyReadyRunEventRead"] = "ApiProxyReadyRunEventRead"
+
+
+class ApiProxyReadyRunEventQuery(ApiRunEventQuery, AbstractApiProxyReadyRunEvent):
+    event_discriminator: Literal["ApiProxyReadyRunEventQuery"] = "ApiProxyReadyRunEventQuery"
 
 
 """ ############################################################################
