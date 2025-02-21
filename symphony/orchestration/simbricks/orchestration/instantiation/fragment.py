@@ -118,11 +118,11 @@ class Fragment(utils_base.IdObj):
     def _remove_unnecessary_proxies(self, inst: inst_base.Instantiation) -> None:
         """Remove proxies that connect within this fragment."""
         new_proxies = self._proxies.copy()
-        for proxy in self._proxies:
-            if proxy.is_dummy():
-                new_proxies.remove(proxy)
-            opp_proxy = inst._find_opposing_proxy(proxy)
+        for p in self._proxies:
+            if isinstance(p, proxy.DummyProxy):
+                new_proxies.remove(p)
+            opp_proxy = inst._find_opposing_proxy(p)
             if opp_proxy in self._proxies:
                 # opposing proxy is also in the current fragment
-                new_proxies.remove(proxy)
+                new_proxies.remove(p)
         self._proxies = new_proxies
