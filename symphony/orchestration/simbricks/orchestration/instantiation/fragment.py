@@ -52,10 +52,33 @@ class Fragment(utils_base.IdObj):
             proxy_json.append(prox.toJSON())
         json_obj["proxies"] = proxy_json
 
+        json_obj["runner_labels"] = list(self._runner_label)
         json_obj["simulators"] = list(map(lambda sim: sim.id(), self._simulators))
         json_obj["cores_required"] = self.cores_required
         json_obj["memory_required"] = self.memory_required
         return json_obj
+
+    @classmethod
+    def fromJSON(cls, json_obj: dict, simulation: sim_base.Simulation) -> Fragment:
+        instance = super().fromJSON(json_obj)
+
+        instance._runner_label = set(utils_base.get_json_attr_top(json_obj, "runner_labels"))
+
+        proxies_json = utils_base.get_json_attr_top(json_obj, "proxies")
+        instance._proxies = set()
+        for proxy_json in proxies_json:
+            proxy_class = utils_base.get_cls_by_json(proxy_json)
+            utils_base.has_attribute(proxy_class, "fromJSON")
+            prox = proxy_class.fromJSON(proxy_json)
+            instance._proxies.add(prox)
+
+        simulator_ids = utils_base.get_json_attr_top(json_obj, "simulators")
+        instance._simulators = set()
+        for simulator_id in simulator_ids:
+            simulator = simulation.get_simulator(simulator_id)
+            instance._simulators.add(simulator)
+
+        return instance
 
     @property
     def cores_required(self) -> int:
@@ -68,12 +91,6 @@ class Fragment(utils_base.IdObj):
         req_mem_per_sim = map(lambda sim: sim.resreq_mem(), self._simulators)
         req_mem = functools.reduce(lambda x, y: x + y, req_mem_per_sim)
         return req_mem
-
-    @classmethod
-    def fromJSON(cls, json_obj: dict) -> Fragment:
-        instance = super().fromJSON(json_obj)
-        # TODO: FIXME implement proper reconstruction from json
-        return instance
 
     @staticmethod
     def merged(*fragments: Fragment):
