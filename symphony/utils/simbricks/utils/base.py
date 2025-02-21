@@ -97,7 +97,7 @@ def has_attribute(obj, attr: str) -> None:
         raise Exception(f"obj of type {type(obj)} no attribute called {attr}")
 
 
-def get_json_attr_top_or_none(json_obj: dict, attr: str) -> dict | None:
+def get_json_attr_top_or_none(json_obj: dict, attr: str) -> tp.Any | None:
     if attr in json_obj:
         return json_obj[attr]
 
@@ -109,7 +109,7 @@ def has_json_attr_top(json_obj: dict, attr: str) -> None:
         raise Exception(f"{json_obj} does not contain key {attr}")
 
 
-def get_json_attr_top(json_obj: dict, attr: str) -> dict:
+def get_json_attr_top(json_obj: dict, attr: str) -> tp.Any:
     has_json_attr_top(json_obj, attr)
     return json_obj[attr]
 
