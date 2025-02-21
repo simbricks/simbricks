@@ -418,6 +418,10 @@ class ApiRunEventStartRunRead(ApiRunEventRead):
     event_discriminator: Literal["ApiRunEventStartRunRead"] = "ApiRunEventStartRunRead"
 
     fragments: list[int]
+    """
+    A list of fragment IDs. Those are the IDs from the Fragment Python objects stored in the
+    instantiation.
+    """
     inst: Any = None
     system: Any = None
     simulation: Any = None
