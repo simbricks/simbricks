@@ -123,11 +123,19 @@ class Fragment(utils_base.IdObj):
 
     def get_proxy_by_interface(self, interface: sys_base.Interface) -> proxy.Proxy:
         """Same as `find_proxy_by_interface()` but raises an Error if interface
-        is assigned to any proxy in this fragment."""
+        is not assigned to any proxy in this fragment."""
         proxy = self.find_proxy_by_interface(interface)
         if proxy is None:
             raise RuntimeError("Interface not assigned to any proxies in this fragment.")
         return proxy
+
+    def get_proxy_by_id(self, id: int) -> proxy.Proxy:
+        # TODO: avoid iterating over all proxies?
+        for prox in self._proxies:
+            if prox.id() == id:
+                return prox
+        # TODO: use more specific exception
+        raise RuntimeError(f"there is no proxy with id {id}")
 
     def interface_handled_by_proxy(self, interface: sys_base.Interface) -> bool:
         return self.find_proxy_by_interface(interface) is not None

@@ -472,6 +472,14 @@ class Simulation(utils_base.IdObj):
             raise RuntimeError(f"Channel {chan} is not instantiated")
         return self._chan_map[chan]
 
+    def get_channel_by_id(self, id: int) -> sim_chan.Channel:
+        # TODO: avoid iterating over all values of the _chan_map
+        for channel in self._chan_map.values():
+            if channel.id() == id:
+                return channel
+        # TODO: use more specific exception
+        raise RuntimeError(f"there is no channel with id {id}")
+
     def all_simulators(self) -> list[Simulator]:
         return self._sim_list
 

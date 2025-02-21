@@ -175,6 +175,46 @@ class ProxyPair(utils_base.IdObj):
         self.fragment_b: inst_fragment.Fragment = fragment_b
         self.proxy_a: Proxy = proxy_a
         self.proxy_b: Proxy = proxy_b
+        assert proxy_a in fragment_a.all_proxies()
+        assert proxy_b in fragment_b.all_proxies()
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+
+        json_obj["instantiation"] = self._inst.id()
+        json_obj["channels"] = list(map(lambda chan: chan.id(), self._channels))
+        json_obj["fragment_a"] = self.fragment_a.id()
+        json_obj["fragment_b"] = self.fragment_b.id()
+        json_obj["proxy_a"] = self.proxy_a.id()
+        json_obj["proxy_b"] = self.proxy_b.id()
+
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, json_obj: dict, instantiation: inst_base.Instantiation) -> ProxyPair:
+        instance = super().fromJSON(json_obj)
+
+        instantiation_id = utils_base.get_json_attr_top(json_obj, "instantiation")
+        assert instantiation.id() == instantiation_id
+        instance._inst = instantiation
+
+        channel_ids = utils_base.get_json_attr_top(json_obj, "channels")
+        instance._channels = set()
+        for channel_id in channel_ids:
+            channel = instantiation.simulation.get_channel_by_id(channel_id)
+            instance._channels.add(channel)
+
+        fragment_a_id = utils_base.get_json_attr_top(json_obj, "fragment_a")
+        instance.fragment_a = instantiation.get_fragment(fragment_a_id)
+        fragment_b_id = utils_base.get_json_attr_top(json_obj, "fragment_b")
+        instance.fragment_b = instantiation.get_fragment(fragment_b_id)
+
+        proxy_a_id = utils_base.get_json_attr_top(json_obj, "proxy_a")
+        instance.proxy_a = instance.fragment_a.get_proxy_by_id(proxy_a_id)
+        proxy_b_id = utils_base.get_json_attr_top(json_obj, "proxy_b")
+        instance.proxy_b = instance.fragment_b.get_proxy_by_id(proxy_b_id)
+
+        return instance
 
     def assign_sim_channel(self, channel: sys_base.Channel) -> None:
         self._channels.add(channel)
