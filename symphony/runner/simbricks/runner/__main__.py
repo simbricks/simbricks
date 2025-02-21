@@ -266,8 +266,12 @@ class Runner:
         # self._to_run_queue: asyncio.Queue = asyncio.Queue()  # queue of run ids to run next
         self._run_map: dict[int, Run] = {}
 
-    async def _fetch_assemble_inst(self, run_id: int) -> inst_base.Instantiation:
+    async def _fetch_assemble_inst(self, run_id: int, start_event: schemas.ApiRunEventStartRunRead) -> inst_base.Instantiation:
         LOGGER.debug(f"fetch and assemble instantiation related to run {run_id}")
+
+        # For now we expect to always have exactly one fragment per runner
+        if len(start_event.fragments) != 1:
+            raise RuntimeError("There must be exactly one fragment assigned to a runner")
 
         run_obj_list = await self._rc.filter_get_runs(run_id=run_id, state="pending")
         if not run_obj_list or len(run_obj_list) != 1:
@@ -284,33 +288,40 @@ class Runner:
             run_workdir = self._workdir / f"run-{run_id}-{str(uuid.uuid4())}"
         run_workdir.mkdir(parents=True)
 
-        assert run_obj.instantiation_id
-        inst_obj = await self._sb_client.get_instantiation(run_obj.instantiation_id)
-        assert inst_obj.simulation_id
-        sim_obj = await self._sb_client.get_simulation(inst_obj.simulation_id)
-        assert sim_obj.system_id
-        sys_obj = await self._sb_client.get_system(sim_obj.system_id)
+        # Either use the JSON blobs included in the event or fetch the JSON from the backend
+        if (start_event.inst is not None
+            and start_event.system is not None
+            and start_event.simulation is not None):
+            inst_sb_json = start_event.inst
+            sim_sb_json = start_event.simulation
+            sys_sb_json = start_event.system
+        else:
+            assert run_obj.instantiation_id
+            inst_obj = await self._sb_client.get_instantiation(run_obj.instantiation_id)
+            assert inst_obj.simulation_id
+            inst_sb_json = inst_obj.sb_json
+            sim_obj = await self._sb_client.get_simulation(inst_obj.simulation_id)
+            assert sim_obj.system_id
+            sim_sb_json = sim_obj.sb_json
+            sys_obj = await self._sb_client.get_system(sim_obj.system_id)
+            sys_sb_json = sys_obj.sb_json
 
-        system = sys_base.System.fromJSON(json.loads(sys_obj.sb_json))
-        simulation = sim_base.Simulation.fromJSON(system, json.loads(sim_obj.sb_json))
-        tmp_inst = inst_base.Instantiation.fromJSON(simulation, json.loads(inst_obj.sb_json))
+        system = sys_base.System.fromJSON(json.loads(sys_sb_json))
+        simulation = sim_base.Simulation.fromJSON(system, json.loads(sim_sb_json))
+        inst = inst_base.Instantiation.fromJSON(simulation, json.loads(inst_sb_json))
 
         env = inst_base.InstantiationEnvironment(
             workdir=run_workdir,
-            simbricksdir=pathlib.Path("/home/jonask/Repos/simbricks-orchestration-rework"),
+            simbricksdir=pathlib.Path("/simbricks"), # TODO: we should not set the simbricks dir here
         )  # TODO
-        inst = inst_base.Instantiation(sim=simulation)
         inst.env = env
-        inst.preserve_tmp_folder = tmp_inst.preserve_tmp_folder
-        inst.create_checkpoint = tmp_inst.create_checkpoint
-        inst.artifact_name = tmp_inst.artifact_name
-        inst.artifact_paths = tmp_inst.artifact_paths
+        inst.assigned_fragment = inst.get_fragment(start_event.fragments[0])
         return inst
 
-    async def _prepare_run(self, run_id: int) -> Run:
+    async def _prepare_run(self, run_id: int, start_event: schemas.ApiRunEventStartRunRead) -> Run:
         LOGGER.debug(f"prepare run {run_id}")
 
-        inst = await self._fetch_assemble_inst(run_id=run_id)
+        inst = await self._fetch_assemble_inst(run_id, start_event)
         callbacks = RunnerSimulationExecutorCallbacks(inst, self._rc, run_id)
         runner = sim_exec.SimulationExecutor(inst, callbacks, settings.RunnerSettings().verbose)
         await runner.prepare()
@@ -399,6 +410,8 @@ class Runner:
                         LOGGER.debug(f"send sigusr1 to run {run_id}")
                     break
                 case schemas.RunEventType.START_RUN:
+                    assert (event.event_discriminator
+                            == schemas.ApiRunEventStartRunRead.event_discriminator)
                     if not run_id or run_id in self._run_map:
                         LOGGER.debug(
                             f"cannot start run, no run id or run with given id is being executed"
@@ -413,7 +426,7 @@ class Runner:
                             # For example, we need this property when dealing with distributed
                             # simulations. Other runners might send events to us, so we need the
                             # necessary data structures to handle them to be fully set up.
-                            run = await self._prepare_run(run_id=run_id)
+                            run = await self._prepare_run(run_id, event)
 
                             run.exec_task = asyncio.create_task(self._start_run(run=run))
                             self._run_map[run_id] = run
@@ -489,6 +502,12 @@ class Runner:
                 )
                 event_query_bundle.add_event(run_event_q)
 
+                start_run_event_q = schemas.ApiRunEventStartRunQuery(
+                    runner_ids=[self._ident],
+                    event_status=[schemas.ApiEventStatus.PENDING]
+                )
+                event_query_bundle.add_event(start_run_event_q)
+
                 for run_id in list(self._run_map.keys()):
                     run = self._run_map[run_id]
                     # check if run finished and cleanup map
@@ -513,7 +532,8 @@ class Runner:
                             await self._handle_runner_events(events, update_events_bundle)
                             break
                         # handle events related to a run that is currently being executed
-                        case "ApiRunEventRead":
+                        case ("ApiRunEventRead"
+                              | schemas.ApiRunEventStartRunRead.event_discriminator):
                             await self._handle_general_run_events(events, update_events_bundle)
                             break
                         # handle events notifying us that proxy on other runner became ready
