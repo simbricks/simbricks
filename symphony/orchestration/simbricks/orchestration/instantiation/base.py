@@ -258,6 +258,12 @@ class Instantiation(utils_base.IdObj):
             inf_socktype_assignment[inf.id()] = socktype.value
         json_obj["inf_socktype_assignment"] = inf_socktype_assignment
 
+        proxy_pairs_json = []
+        for proxy_pair in self._proxy_pairs:
+            utils_base.has_attribute(proxy_pair, "toJSON")
+            proxy_pairs_json.append(proxy_pair.toJSON())
+        json_obj["proxy_pairs"] = proxy_pairs_json
+
         # TODO: serialize other fields etc. of interest
         return json_obj
 
@@ -301,6 +307,15 @@ class Instantiation(utils_base.IdObj):
             inf = sim.system.get_inf(inf_id)
             socktype = inst_socket.SockType(socktype_str)
             instance._inf_socktype_assignment[inf] = socktype
+
+        # This needs to be deserialized after the fragments and the simulation is set
+        proxy_pairs_json = utils_base.get_json_attr_top(json_obj, "proxy_pairs")
+        instance._proxy_pairs = []
+        for proxy_pair_json in proxy_pairs_json:
+            proxy_pair_class = utils_base.get_cls_by_json(proxy_pair_json)
+            utils_base.has_attribute(proxy_pair_class, "fromJSON")
+            proxy_pair = proxy_pair_class.fromJSON(proxy_pair_json, instance)
+            instance._proxy_pairs.append(proxy_pair)
 
         # TODO: deserialize other fields etc. of interest
         return instance
