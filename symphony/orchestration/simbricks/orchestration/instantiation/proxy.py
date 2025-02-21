@@ -62,6 +62,42 @@ class Proxy(utils_base.IdObj, abc.ABC):
         self._listen_info_file: str | None = None
         """Path to file that proxy creates, which contains the port and IP it is listening to."""
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+
+        json_obj["interfaces"] = list(map(lambda interface: interface.id(), self._interfaces))
+        json_obj["connection_mode"] = self._connection_mode.value if self._connection_mode else None
+        json_obj["ip"] = self._ip
+        json_obj["port"] = self._port
+        # TODO: do we actually need to serialize this?
+        json_obj["ready_file"] = self._ready_file
+        # TODO: do we actually need to serialize this?
+        json_obj["listen_info_file"] = self._listen_info_file
+
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, json_obj: dict, simulation: sim_base.Simulation) -> Proxy:
+        instance = super().fromJSON(json_obj)
+
+        interface_ids = utils_base.get_json_attr_top(json_obj, "interfaces")
+        instance._interfaces = []
+        for interface_id in interface_ids:
+            interface = simulation.system.get_inf(interface_id)
+            instance._interfaces.append(interface)
+
+        connection_mode = utils_base.get_json_attr_top(json_obj, "connection_mode")
+        if connection_mode is not None:
+            instance._connection_mode = inst_socket.SockType(connection_mode)
+        else:
+            instance._connection_mode = None
+        instance._ip = utils_base.get_json_attr_top(json_obj, "ip")
+        instance._port = utils_base.get_json_attr_top(json_obj, "port")
+        instance._ready_file = utils_base.get_json_attr_top(json_obj, "ready_file")
+        instance._listen_info_file = utils_base.get_json_attr_top(json_obj, "listen_info_file")
+
+        return instance
+
     @property
     def name(self) -> str:
         return f"proxy_{self.id()}"

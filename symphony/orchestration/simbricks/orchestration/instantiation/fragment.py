@@ -69,7 +69,7 @@ class Fragment(utils_base.IdObj):
         for proxy_json in proxies_json:
             proxy_class = utils_base.get_cls_by_json(proxy_json)
             utils_base.has_attribute(proxy_class, "fromJSON")
-            prox = proxy_class.fromJSON(proxy_json)
+            prox = proxy_class.fromJSON(proxy_json, simulation)
             instance._proxies.add(prox)
 
         simulator_ids = utils_base.get_json_attr_top(json_obj, "simulators")
