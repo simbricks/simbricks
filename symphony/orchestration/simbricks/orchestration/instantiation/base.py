@@ -198,7 +198,7 @@ class Instantiation(utils_base.IdObj):
             # Default fragment contains all simulators
             fragment = inst_fragment.Fragment()
             fragment.add_simulators(*self.simulation.all_simulators())
-            return fragment
+            return [fragment]
         return self._fragments
 
     @fragments.setter
@@ -226,20 +226,23 @@ class Instantiation(utils_base.IdObj):
 
         self._fragments = new_val
 
+    def get_fragment(self, id: int) -> inst_fragment.Fragment:
+        # TODO: add dict for fragments or change _fragments to dict so that we don't have to iterate here
+        for fragment in self._fragments:
+            if fragment.id() == id:
+                return fragment
+        # TODO: use more specific exception
+        raise RuntimeError(f"could not find fragment with id {id}")
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
 
         json_obj["simulation"] = self.simulation.id()
 
         fragments_json = []
-        if len(self.fragments) < 1:
-            fragment = self.assigned_fragment
+        for fragment in self.fragments:
             utils_base.has_attribute(fragment, "toJSON")
             fragments_json.append(fragment.toJSON())
-        else:
-            for fragment in self.fragments:
-                utils_base.has_attribute(fragment, "toJSON")
-                fragments_json.append(fragment.toJSON())
         json_obj["simulation_fragments"] = fragments_json
 
         json_obj["artifact_name"] = self.artifact_name
@@ -387,17 +390,16 @@ class Instantiation(utils_base.IdObj):
 
     @property
     def assigned_fragment(self) -> inst_fragment.Fragment:
-        if self._assigned_fragment is not None:
-            return self._assigned_fragment
-
-        if not self.fragments:
-            # Experiment does not define any simulation fragments, so
-            # implicitly, we create one fragment that spans the whole simulation
-            self._assigned_fragment = inst_fragment.Fragment()
-            self._assigned_fragment.add_simulators(*self.simulation.all_simulators())
-        else:
-            assert self._assigned_fragment is not None, "Runner must set assigned fragment"
+        if self._assigned_fragment is None:
+            # TODO: use more specific exception
+            raise RuntimeError("Tried to access assigned fragment but there is no fragment "
+                               "assigned yet")
         return self._assigned_fragment
+
+    @assigned_fragment.setter
+    def assigned_fragment(self, fragment: inst_fragment.Fragment) -> None:
+        # TODO: check whether _assigned_fragment is already set?
+        self._assigned_fragment = fragment
 
     # TODO: this needs fixing...
     def copy(self) -> Instantiation:
