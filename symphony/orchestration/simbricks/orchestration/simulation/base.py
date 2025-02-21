@@ -475,6 +475,14 @@ class Simulation(utils_base.IdObj):
     def all_simulators(self) -> list[Simulator]:
         return self._sim_list
 
+    def get_simulator(self, id: int) -> Simulator:
+        # TODO: avoid iterating over the list of simulators
+        for sim in self._sim_list:
+            if sim.id() == id:
+                return sim
+        # TODO: use more specific exception
+        raise RuntimeError("could not find simulator with id {id}")
+
     def get_all_channels(self, lazy: bool = False) -> list[Channel]:
         if lazy:
             return list(self._chan_map.values())

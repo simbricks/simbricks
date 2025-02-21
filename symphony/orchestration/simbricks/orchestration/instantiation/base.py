@@ -274,7 +274,7 @@ class Instantiation(utils_base.IdObj):
         for frag_json in fragments_json:
             frag_class = utils_base.get_cls_by_json(frag_json)
             utils_base.has_attribute(frag_class, "fromJSON")
-            frag = frag_class.fromJSON(frag_json)
+            frag = frag_class.fromJSON(frag_json, sim)
             instance.fragments.add(frag)
 
         instance.artifact_name = utils_base.get_json_attr_top(json_obj, "artifact_name")
