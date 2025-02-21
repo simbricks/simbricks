@@ -25,7 +25,7 @@ from __future__ import annotations
 import abc
 import datetime
 import enum
-from typing import TypeVar, Generic, Literal, Annotated, Any, Type
+from typing import TypeVar, Generic, Literal, Annotated, Any, Type, Callable
 from pydantic import BaseModel, TypeAdapter, Field, field_serializer
 
 
@@ -71,6 +71,7 @@ class ApiSimulationQuery(BaseModel):
 
 class ApiFragment(BaseModel):
     id: int | None = None
+    object_id: int | None = None
     instantiation_id: int | None = None
     cores_required: int | None = None
     memory_required: int | None = None
@@ -378,6 +379,25 @@ class ApiRunnerEventQuery(AbstractApiEventQuery):
     runner_event_type: list[RunnerEventType] | None = None
 
 
+class AbstractApiOutputEvent:
+    output_generated_at: datetime.datetime = datetime.datetime.now()
+    """
+    An indicator when the output was generated.
+    """
+    output: str
+    """
+    The actual output from the simulator process.
+    """
+    is_stderr: bool
+    """
+    Whether the output is from stdout or from stderr.
+    """
+
+    @field_serializer("output_generated_at")
+    def serialize_output_generated_at(self, dt: datetime.datetime, _info) -> str:
+        return dt.isoformat()
+
+
 """ ############################################################################
 Run related events
 """  ############################################################################
@@ -450,23 +470,6 @@ class ApiRunEventStartRunQuery(AbstractApiEventQuery):
     run_event_type: RunEventType = RunEventType.START_RUN
 
 
-class AbstractApiProxyReadyRunEvent(AbstractApiRunEvent):
-    proxy_id: int
-    """The ID of the proxy that became ready."""
-    proxy_ip: str
-    """The IP of the proxy."""
-    proxy_port: int
-    """The port of the proxy."""
-
-
-class ApiProxyReadyRunEventRead(ApiRunEventRead, AbstractApiProxyReadyRunEvent):
-    event_discriminator: Literal["ApiProxyReadyRunEventRead"] = "ApiProxyReadyRunEventRead"
-
-
-class ApiProxyReadyRunEventQuery(ApiRunEventQuery, AbstractApiProxyReadyRunEvent):
-    event_discriminator: Literal["ApiProxyReadyRunEventQuery"] = "ApiProxyReadyRunEventQuery"
-
-
 """ ############################################################################
 Simulator related events
 """  ############################################################################
@@ -514,30 +517,13 @@ class ApiSimulatorStateChangeEventRead(ApiReadEvent, AbstractApiSimulatorStateCh
     )
 
 
-class AbstractApiOutputEvent(AbstractApiSimulatorEvent):
-    output_generated_at: datetime.datetime = datetime.datetime.now()
-    """
-    An indicator when the output was generated.
-    """
-    output: str
-    """
-    The actual output from the simulator process.
-    """
-    is_stderr: bool
-    """
-    Whether the output is from stdout or from stderr.
-    """
-
-    @field_serializer("output_generated_at")
-    def serialize_output_generated_at(self, dt: datetime.datetime, _info) -> str:
-        return dt.isoformat()
-
-
-class ApiSimulatorOutputEventCreate(ApiCreateEvent, AbstractApiOutputEvent):
+class ApiSimulatorOutputEventCreate(
+    ApiCreateEvent, AbstractApiSimulatorEvent, AbstractApiOutputEvent
+):
     event_discriminator: Literal["ApiSimulatorOutputEventCreate"] = "ApiSimulatorOutputEventCreate"
 
 
-class ApiSimulatorOutputEventRead(ApiReadEvent, AbstractApiOutputEvent):
+class ApiSimulatorOutputEventRead(ApiReadEvent, AbstractApiSimulatorEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiSimulatorOutputEventRead"] = "ApiSimulatorOutputEventRead"
     runner_id: int | None = None
     run_id: int | None = None
@@ -564,7 +550,8 @@ class AbstractApiProxyEvent(AbstractApiEvent):
     """
     proxy_id: int
     """
-    the proxy id the event is associated with.
+    the proxy id the event is associated with. Note that this is the python objects id and not those
+    of the database table. For details see 'IdObj'.
     """
 
 
@@ -591,11 +578,19 @@ class ApiProxyStateChangeEventRead(ApiReadEvent, AbstractApiProxyStateChangeEven
     event_discriminator: Literal["ApiProxyStateChangeEventRead"] = "ApiProxyStateChangeEventRead"
 
 
-class ApiProxyOutputEventCreate(ApiCreateEvent, AbstractApiOutputEvent):
+class ApiProxyStateChangeEventQuery(AbstractApiEventQuery):
+    event_discriminator: Literal["ApiProxyStateChangeEventQuery"] = "ApiProxyStateChangeEventQuery"
+    run_ids: list[int] | None = None
+    proxy_ids: list[int] | None = None
+    proxy_ips: list[str] | None = None
+    proxy_ports: list[int] | None = None
+
+
+class ApiProxyOutputEventCreate(ApiCreateEvent, AbstractApiProxyEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiProxyOutputEventCreate"] = "ApiProxyOutputEventCreate"
 
 
-class ApiProxyOutputEventRead(ApiReadEvent, AbstractApiOutputEvent):
+class ApiProxyOutputEventRead(ApiReadEvent, AbstractApiProxyEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiProxyOutputEventRead"] = "ApiProxyOutputEventRead"
     runner_id: int | None = None
     run_id: int | None = None
@@ -623,7 +618,6 @@ ApiEventCreate_U = Annotated[
 ApiEventRead_U = Annotated[
     ApiRunnerEventRead
     | ApiRunEventRead
-    | ApiProxyReadyRunEventRead
     | ApiSimulatorOutputEventRead
     | ApiSimulatorStateChangeEventRead
     | ApiProxyStateChangeEventRead,
@@ -641,7 +635,11 @@ ApiEventDelete_U = Annotated[
 ]
 
 ApiEventQuery_U = Annotated[
-    ApiRunnerEventQuery | ApiRunEventQuery, Field(discriminator="event_discriminator")
+    ApiRunnerEventQuery
+    | ApiRunEventQuery
+    | ApiRunEventStartRunQuery
+    | ApiProxyStateChangeEventQuery,
+    Field(discriminator="event_discriminator"),
 ]
 
 BundleEventUnion_T = TypeVar(
@@ -700,14 +698,37 @@ def validate_list_type(
     return validated_model_list
 
 
-def convert_validate(source: list[BaseModel], target: Type[Model_Class_T]) -> list[Model_Class_T]:
-    adapter = TypeAdapter(Model_Class_T)
+Source_Class_T = TypeVar("Source_Class_T")
+Target_Class_T = TypeVar("Target_Class_T")
+
+
+def convert_validate_type(
+    source: list[Source_Class_T], target: Type[Target_Class_T]
+) -> list[Target_Class_T]:
+    assert isinstance(target, type) and issubclass(target, BaseModel)
     converted = []
     for mod in source:
-        conv = adapter.validate_python(mod.model_dump())
+        assert issubclass(mod, BaseModel)
+        dump = mod.model_dump()
+        conv = target.model_validate(dump)
         converted.append(conv)
     return converted
 
+
+def convert_validate_factory(
+    source: list[Source_Class_T], factory: Callable[[Source_Class_T], Target_Class_T]
+) -> list[Target_Class_T]:
+    converted = []
+    for mod in source:
+        assert issubclass(mod, BaseModel)
+        conv = factory(mod)
+        converted.append(conv)
+    return converted
+
+
+"""
+The following type adapters are deprecated. Use aboves 'generic' methods instead.
+"""
 
 ApiRunnerEventCreate_List_A = TypeAdapter(list[ApiRunnerEventCreate])
 ApiRunEventCreate_List_A = TypeAdapter(list[ApiRunEventCreate])
@@ -719,7 +740,6 @@ ApiProxyStateChangeEventCreate_List_A = TypeAdapter(list[ApiProxyStateChangeEven
 EventRead_A = TypeAdapter(ApiEventRead_U)
 ApiRunnerEventRead_List_A = TypeAdapter(list[ApiRunnerEventRead])
 ApiRunEventRead_List_A = TypeAdapter(list[ApiRunEventRead])
-ApiProxyReadyRunEventRead_List_A = TypeAdapter(list[ApiProxyReadyRunEventRead])
 ApiSimulatorOutputEventRead_List_A = TypeAdapter(list[ApiSimulatorOutputEventRead])
 ApiSimulatorStateChangeEventRead_List_A = TypeAdapter(list[ApiSimulatorStateChangeEventRead])
 ApiProxyOutputEventRead_List_A = TypeAdapter(list[ApiProxyOutputEventRead])
