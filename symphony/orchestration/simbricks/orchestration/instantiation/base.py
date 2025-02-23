@@ -240,7 +240,7 @@ class Instantiation(utils_base.IdObj):
         json_obj["simulation"] = self.simulation.id()
 
         fragments_json = []
-        for fragment in self.fragments:
+        for fragment in self._fragments:
             utils_base.has_attribute(fragment, "toJSON")
             fragments_json.append(fragment.toJSON())
         json_obj["simulation_fragments"] = fragments_json
@@ -264,7 +264,6 @@ class Instantiation(utils_base.IdObj):
             proxy_pairs_json.append(proxy_pair.toJSON())
         json_obj["proxy_pairs"] = proxy_pairs_json
 
-        # TODO: serialize other fields etc. of interest
         return json_obj
 
     @classmethod
@@ -275,13 +274,13 @@ class Instantiation(utils_base.IdObj):
         assert simulation_id == sim.id()
         instance.simulation = sim
 
-        instance.fragments = set()
+        instance._fragments = []
         fragments_json = utils_base.get_json_attr_top(json_obj, "simulation_fragments")
         for frag_json in fragments_json:
             frag_class = utils_base.get_cls_by_json(frag_json)
             utils_base.has_attribute(frag_class, "fromJSON")
             frag = frag_class.fromJSON(frag_json, sim)
-            instance.fragments.add(frag)
+            instance._fragments.append(frag)
 
         instance.artifact_name = utils_base.get_json_attr_top(json_obj, "artifact_name")
         instance.artifact_paths = utils_base.get_json_attr_top(json_obj, "artifact_paths")
@@ -317,7 +316,6 @@ class Instantiation(utils_base.IdObj):
             proxy_pair = proxy_pair_class.fromJSON(proxy_pair_json, instance)
             instance._proxy_pairs.append(proxy_pair)
 
-        # TODO: deserialize other fields etc. of interest
         return instance
 
     def _opposing_interface_within_same_sim(self, interface: sys_base.Interface) -> bool:
