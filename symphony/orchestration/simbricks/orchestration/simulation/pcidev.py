@@ -132,7 +132,7 @@ class I40eNicSim(NICSim):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["log_file"]
+        json_obj["log_file"] = self.log_file
         return json_obj
 
     @classmethod
@@ -161,7 +161,7 @@ class CorundumBMNICSim(NICSim):
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["log_file"]
+        json_obj["log_file"] = self.log_file
         return json_obj
 
     @classmethod
