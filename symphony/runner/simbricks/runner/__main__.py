@@ -38,6 +38,7 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import settings
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.schemas import base as schemas
+from simbricks.utils import base as utils_base
 from simbricks.utils import artifatcs as utils_art
 
 if typing.TYPE_CHECKING:
@@ -266,7 +267,9 @@ class Runner:
         # self._to_run_queue: asyncio.Queue = asyncio.Queue()  # queue of run ids to run next
         self._run_map: dict[int, Run] = {}
 
-    async def _fetch_assemble_inst(self, run_id: int, start_event: schemas.ApiRunEventStartRunRead) -> inst_base.Instantiation:
+    async def _fetch_assemble_inst(
+        self, run_id: int, start_event: schemas.ApiRunEventStartRunRead
+    ) -> inst_base.Instantiation:
         LOGGER.debug(f"fetch and assemble instantiation related to run {run_id}")
 
         # For now we expect to always have exactly one fragment per runner
@@ -289,9 +292,11 @@ class Runner:
         run_workdir.mkdir(parents=True)
 
         # Either use the JSON blobs included in the event or fetch the JSON from the backend
-        if (start_event.inst is not None
+        if (
+            start_event.inst is not None
             and start_event.system is not None
-            and start_event.simulation is not None):
+            and start_event.simulation is not None
+        ):
             inst_sb_json = start_event.inst
             sim_sb_json = start_event.simulation
             sys_sb_json = start_event.system
@@ -312,7 +317,9 @@ class Runner:
 
         env = inst_base.InstantiationEnvironment(
             workdir=run_workdir,
-            simbricksdir=pathlib.Path("/simbricks"), # TODO: we should not set the simbricks dir here
+            simbricksdir=pathlib.Path(
+                "/simbricks"
+            ),  # TODO: we should not set the simbricks dir here
         )  # TODO
         inst.env = env
         inst.assigned_fragment = inst.get_fragment(start_event.fragments[0])
@@ -383,7 +390,7 @@ class Runner:
         events: list[schemas.ApiRunEventRead],
         updates: schemas.ApiEventBundle[schemas.ApiEventUpdate_U],
     ) -> None:
-        events = schemas.ApiRunEventRead_List_A.validate_python(events)
+        events = schemas.validate_list_type(events, schemas.ApiRunEventRead)
         for event in events:
             update = schemas.ApiRunEventUpdate(
                 id=event.id, runner_id=self._ident, run_id=event.run_id
@@ -410,11 +417,14 @@ class Runner:
                         LOGGER.debug(f"send sigusr1 to run {run_id}")
                     break
                 case schemas.RunEventType.START_RUN:
-                    assert (event.event_discriminator
-                            == schemas.ApiRunEventStartRunRead.event_discriminator)
-                    if not run_id or run_id in self._run_map:
+                    assert (
+                        event.event_discriminator
+                        == schemas.ApiRunEventStartRunRead.event_discriminator
+                    )
+                    event = schemas.ApiRunEventStartRunRead.model_validate(event)
+                    if run_id in self._run_map:
                         LOGGER.debug(
-                            f"cannot start run, no run id or run with given id is being executed"
+                            f"cannot start run, run with id {run_id} is already being executed"
                         )
                         update.event_status = schemas.ApiEventStatus.CANCELLED
                     else:
@@ -442,25 +452,20 @@ class Runner:
             LOGGER.info(f"handled run related event {event.id}")
 
     async def _handle_proxy_ready_run_events(
-        self,
-        events: list[schemas.ApiProxyReadyRunEventRead],
-        updates: schemas.ApiEventBundle[schemas.ApiEventUpdate_U],
+        self, events: list[schemas.ApiProxyStateChangeEventRead]
     ) -> None:
-        events = schemas.ApiProxyReadyRunEventRead_List_A.validate_python(events)
         for event in events:
-            update = schemas.ApiRunEventUpdate(
-                id=event.id, runner_id=self._ident, run_id=event.run_id
-            )
-            updates.add_event(update)
+            # TODO: FIXME proxy related events are currently not stored in the db, hence there is no
+            # point in updating an event itself. NOTE however that events are send to the backend in
+            # order to trigger a state change on the proxy db object. Similarly one can query for
+            # events that return the state of a proxy.
 
             run_id = event.run_id
             if run_id and not run_id in self._run_map:
-                update.event_status = schemas.ApiEventStatus.CANCELLED
                 continue
 
             run = self._run_map[run_id]
             await run.runner.mark_external_proxies_running(event.proxy_id)
-            update.event_status = schemas.ApiEventStatus.COMPLETED
             LOGGER.debug(
                 f"processed ApiProxyReadyRunEventRead for proxy {event.proxy_id} and marked it ready"
             )
@@ -490,23 +495,38 @@ class Runner:
                 # fetch all events not handled yet
                 event_query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
 
+                # query events for the runner itsel that do not relate to a specific run
                 runner_event_q = schemas.ApiRunnerEventQuery(
                     runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
                 )
                 event_query_bundle.add_event(runner_event_q)
 
+                # query run related events that do not trigger the start of a run. We explicitly
+                # exclude start_run events as we need the json blobs to start them. Therefore we
+                # create an extra query for them.
+                non_start_type = utils_base.enum_subs(
+                    schemas.RunEventType, schemas.RunEventType.START_RUN
+                )
                 run_event_q = schemas.ApiRunEventQuery(
                     runner_ids=[self._ident],
-                    # run_ids=[run_id],
                     event_status=[schemas.ApiEventStatus.PENDING],
+                    run_event_type=non_start_type,
                 )
+                schemas.RunnerEventType.value
                 event_query_bundle.add_event(run_event_q)
 
+                # query events that start a run
                 start_run_event_q = schemas.ApiRunEventStartRunQuery(
-                    runner_ids=[self._ident],
-                    event_status=[schemas.ApiEventStatus.PENDING]
+                    runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
                 )
                 event_query_bundle.add_event(start_run_event_q)
+
+                # query events indicating that proxies are now ready
+                state_change_q = schemas.ApiProxyStateChangeEventQuery(
+                    run_ids=list(self._run_map.keys()),
+                    proy_states=list[schemas.RunComponentState.RUNNING],
+                )
+                event_query_bundle.add_event(state_change_q)
 
                 for run_id in list(self._run_map.keys()):
                     run = self._run_map[run_id]
@@ -528,17 +548,19 @@ class Runner:
                     events = fetched_events_bundle.events[key]
                     match key:
                         # handle events that are just related to the runner itself, independent of any runs
-                        case "ApiRunnerEventRead":
+                        case schemas.ApiRunnerEventRead.event_discriminator:
                             await self._handle_runner_events(events, update_events_bundle)
                             break
                         # handle events related to a run that is currently being executed
-                        case ("ApiRunEventRead"
-                              | schemas.ApiRunEventStartRunRead.event_discriminator):
+                        case (
+                            schemas.ApiRunEventStartRunRead.event_discriminator
+                            | schemas.ApiRunEventRead.event_discriminator
+                        ):
                             await self._handle_general_run_events(events, update_events_bundle)
                             break
                         # handle events notifying us that proxy on other runner became ready
-                        case schemas.ApiProxyReadyRunEventRead.event_discriminator:
-                            await self._handle_proxy_ready_run_events(events, update_events_bundle)
+                        case schemas.ApiProxyStateChangeEventRead.event_discriminator:
+                            await self._handle_proxy_ready_run_events(events)
                             break
                         case _:
                             LOGGER.error(f"encountered not yet handled event type {key}")
