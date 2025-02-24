@@ -407,7 +407,6 @@ class RunEventType(str, enum.Enum):
     KILL = "KILL"
     SIMULATION_STATUS = "SIMULATION_STATUS"
     START_RUN = "START_RUN"
-    PROXY_READY = "PROXY_READY"
 
 
 class AbstractApiRunEvent(AbstractApiEvent):
@@ -582,6 +581,8 @@ class ApiProxyStateChangeEventQuery(AbstractApiEventQuery):
     event_discriminator: Literal["ApiProxyStateChangeEventQuery"] = "ApiProxyStateChangeEventQuery"
     run_ids: list[int] | None = None
     proxy_ids: list[int] | None = None
+    proxy_names: list[str] | None = None
+    proy_states: list[RunComponentState] | None = None
     proxy_ips: list[str] | None = None
     proxy_ports: list[int] | None = None
 
