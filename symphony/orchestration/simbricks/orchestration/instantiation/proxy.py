@@ -119,9 +119,13 @@ class Proxy(utils_base.IdObj, abc.ABC):
         return wait_sockets
 
     async def wait_ready(self) -> None:
+        if self._ready_file is None:
+            raise RuntimeError("Proxy does not specify a ready_file")
         await utils_file.await_file(self._ready_file)
 
     async def read_listening_info(self) -> None:
+        if self._listen_info_file is None:
+            raise RuntimeError("Proxy does not specify a listen_info_file")
         await self.wait_ready()
         with open(self._listen_info_file, mode="r", encoding="utf-8") as file:
             lines = file.readlines()
