@@ -512,7 +512,6 @@ class Runner:
                     event_status=[schemas.ApiEventStatus.PENDING],
                     run_event_type=non_start_type,
                 )
-                schemas.RunnerEventType.value
                 event_query_bundle.add_event(run_event_q)
 
                 # query events that start a run
@@ -524,7 +523,7 @@ class Runner:
                 # query events indicating that proxies are now ready
                 state_change_q = schemas.ApiProxyStateChangeEventQuery(
                     run_ids=list(self._run_map.keys()),
-                    proy_states=list[schemas.RunComponentState.RUNNING],
+                    proy_states=[schemas.RunComponentState.RUNNING],
                 )
                 event_query_bundle.add_event(state_change_q)
 

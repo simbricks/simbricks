@@ -42,7 +42,7 @@ class Proxy(utils_base.IdObj, abc.ABC):
 
     def __init__(self):
         super().__init__()
-        self._interfaces: list[sys_base.Interface]
+        self._interfaces: list[sys_base.Interface] = []
         """
         The interfaces this proxy handles.
         
@@ -197,8 +197,9 @@ class ProxyPair(utils_base.IdObj):
         proxy_a: Proxy,
         proxy_b: Proxy,
     ) -> None:
+        super().__init__()
         self._inst: inst_base.Instantiation = instantiation
-        self._channels: set[sim_base.Channel] = set()
+        self._channels: set[sys_base.Channel] = set()
         self.fragment_a: inst_fragment.Fragment = fragment_a
         self.fragment_b: inst_fragment.Fragment = fragment_b
         self.proxy_a: Proxy = proxy_a
