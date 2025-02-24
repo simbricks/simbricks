@@ -525,6 +525,18 @@ class Instantiation(utils_base.IdObj):
                             f"Cannot connect simulators {sim_a} and {sim_b} with supported proxy types {supported_a} and {supported_b}, respectively."
                         )
 
+    def _assign_proxy_socktype(self) -> None:
+        for fragment in self.fragments:
+            for proxy_a in fragment.all_proxies():
+                if proxy_a._connection_mode is not None:
+                    continue
+
+                proxy_b = self._find_opposing_proxy(proxy_a)
+                assert proxy_b._connection_mode is None
+
+                proxy_a._connection_mode = inst_socket.SockType.LISTEN
+                proxy_b._connection_mode = inst_socket.SockType.CONNECT
+
     def get_interface_socktype(self, inf: sys_base.Interface) -> inst_socket.SockType:
         if inf not in self._inf_socktype_assignment:
             raise exceptions.InstantiationConfigurationError(
@@ -539,3 +551,4 @@ class Instantiation(utils_base.IdObj):
         this, we guarantee idempotence, i.e. calling this function one or multiple times has the
         same effect."""
         self._assign_interface_socktype()
+        self._assign_proxy_socktype()
