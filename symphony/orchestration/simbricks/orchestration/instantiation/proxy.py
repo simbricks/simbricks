@@ -146,8 +146,32 @@ class TCPProxy(Proxy):
         proxy_bin = inst.env.repo_base("dist/sockets/net_sockets")
         cmd_args = [proxy_bin]
 
-        inst._join_paths()
-        cmd_args.extend([inst.env.workdir])
+        if self._connection_mode == inst_socket.SockType.LISTEN:
+            cmd_args.append("-l")
+
+        shm_path = inst.env.shm_base(f"proxy-shm-pool-{self.id()}")
+        cmd_args.append("-s")
+        cmd_args.append(shm_path)
+        # TODO: allow to set shm size
+
+        for interface in self._interfaces:
+            if inst.get_interface_socktype(interface) == inst_socket.SockType.CONNECT:
+                cmd_args.append("-L")
+            else:
+                cmd_args.append("-C")
+            cmd_args.append(inst.get_socket(interface)._path)
+
+        if self._ip is None or self._port is None:
+            raise RuntimeError("Ip and port of proxy must be not None")
+        cmd_args.append(f"{self._ip}")
+        cmd_args.append(f"{self._port}")
+
+        self._listen_info_file = inst.env.tmp_simulation_files(
+            f"proxy-listen-info-file-{self.id()}"
+        )
+        cmd_args.append(self._listen_info_file)
+        self._ready_file = inst.env.tmp_simulation_files(f"proxy-ready-file-{self.id()}")
+        cmd_args.append(self._ready_file)
 
         return shlex.join(cmd_args)
 
