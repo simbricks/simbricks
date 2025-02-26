@@ -474,7 +474,8 @@ class Runner:
                 continue
 
             run = self._run_map[run_id]
-            await run.runner.mark_external_proxies_running(event.proxy_id)
+            proxy_info = sim_exec.ProxyReadyInfo(event.proxy_id, event.proxy_ip, event.proxy_port)
+            await run.runner.mark_external_proxies_running(proxy_info)
             LOGGER.debug(
                 f"processed ApiProxyReadyRunEventRead for proxy {event.proxy_id} and marked it ready"
             )
