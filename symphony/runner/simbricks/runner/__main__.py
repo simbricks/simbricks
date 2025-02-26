@@ -429,10 +429,7 @@ class Runner:
                         LOGGER.debug(f"send sigusr1 to run {run_id}")
                     break
                 case schemas.RunEventType.START_RUN:
-                    assert (
-                        event.event_discriminator
-                        == schemas.ApiRunEventStartRunRead.event_discriminator
-                    )
+                    assert event.event_discriminator == "ApiRunEventStartRunRead"
                     event = schemas.ApiRunEventStartRunRead.model_validate(event)
                     if run_id in self._run_map:
                         LOGGER.debug(
@@ -559,18 +556,15 @@ class Runner:
                     events = fetched_events_bundle.events[key]
                     match key:
                         # handle events that are just related to the runner itself, independent of any runs
-                        case schemas.ApiRunnerEventRead.event_discriminator:
+                        case "ApiRunnerEventRead":
                             await self._handle_runner_events(events, update_events_bundle)
                             break
                         # handle events related to a run that is currently being executed
-                        case (
-                            schemas.ApiRunEventStartRunRead.event_discriminator
-                            | schemas.ApiRunEventRead.event_discriminator
-                        ):
+                        case ("ApiRunEventStartRunRead" | "ApiRunEventRead"):
                             await self._handle_general_run_events(events, update_events_bundle)
                             break
                         # handle events notifying us that proxy on other runner became ready
-                        case schemas.ApiProxyStateChangeEventRead.event_discriminator:
+                        case "ApiProxyStateChangeEventRead":
                             await self._handle_proxy_ready_run_events(events)
                             break
                         case _:
