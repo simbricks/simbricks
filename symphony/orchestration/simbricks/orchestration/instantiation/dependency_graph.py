@@ -165,14 +165,11 @@ def build_simulation_dependency_graph(
                 # get / create nodes
                 node_a = nodes_sim.setdefault(
                     sim_a,
-                    default=SimulationDependencyNode(SimulationDependencyNodeType.SIMULATOR, sim_a),
+                    SimulationDependencyNode(SimulationDependencyNodeType.SIMULATOR, sim_a),
                 )
                 node_b = nodes_sim.setdefault(
                     sim_b,
-                    default=SimulationDependencyNode(
-                        SimulationDependencyNodeType.SIMULATOR,
-                        sim_b,
-                    ),
+                    SimulationDependencyNode(SimulationDependencyNodeType.SIMULATOR, sim_b),
                 )
                 _insert_dep_if_a_depends_on_b(dep_graph, inst, inf_a, node_a, inf_b, node_b)
                 _insert_dep_if_a_depends_on_b(dep_graph, inst, inf_b, node_b, inf_a, node_a)
@@ -185,21 +182,19 @@ def build_simulation_dependency_graph(
         for inf_a in proxy_a.interfaces:
             # get simulator on other side that proxy is connecting to
             inf_b = inf_a.get_opposing_interface()
-            sim_b = inst.find_sim_by_interface(inf_b)
-
-            # create node for proxy
-            node_a = (
-                nodes_proxy[proxy_a]
-                if proxy_a in nodes_proxy
-                else SimulationDependencyNode(SimulationDependencyNodeType.PROXY, proxy_a)
-            )
+            sim_a = inst.find_sim_by_interface(inf_a)
 
             # simulator node was already created during phase 1
-            node_b = nodes_sim[sim_b]
+            node_a = nodes_sim[sim_a]
 
-            # this will only add a dependency for the proxy if we actually need to start the
-            # simulator before the proxy
+            # create node for proxy
+            node_b = nodes_proxy.setdefault(
+                proxy_a,
+                SimulationDependencyNode(SimulationDependencyNodeType.PROXY, proxy_a),
+            )
+
             _insert_dep_if_a_depends_on_b(dep_graph, inst, inf_a, node_a, inf_b, node_b)
+            _insert_dep_if_a_depends_on_b(dep_graph, inst, inf_b, node_b, inf_a, node_a)
 
     # add proxy-proxy dependencies, i.e. listening proxies create the proxy-proxy connection and
     # therefore have to be started before connecting proxies
@@ -211,7 +206,7 @@ def build_simulation_dependency_graph(
         ), "connection between proxies in the same fragment should have been optimized out earlier"
         node_b = nodes_sim.setdefault(
             sim_b,
-            default=SimulationDependencyNode(SimulationDependencyNodeType.EXTERNAL_PROXY, proxy_b),
+            SimulationDependencyNode(SimulationDependencyNodeType.EXTERNAL_PROXY, proxy_b),
         )
 
         # Implicit property: proxy_b is located in external fragment. Hence, we only need to add a
