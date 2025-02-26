@@ -303,7 +303,7 @@ class Instantiation(utils_base.IdObj):
         )
         instance._inf_socktype_assignment = {}
         for inf_id, socktype_str in inf_id_socktype_assignment.items():
-            inf = sim.system.get_inf(inf_id)
+            inf = sim.system.get_inf(int(inf_id))
             socktype = inst_socket.SockType(socktype_str)
             instance._inf_socktype_assignment[inf] = socktype
 
@@ -315,6 +315,11 @@ class Instantiation(utils_base.IdObj):
             utils_base.has_attribute(proxy_pair_class, "fromJSON")
             proxy_pair = proxy_pair_class.fromJSON(proxy_pair_json, instance)
             instance._proxy_pairs.append(proxy_pair)
+
+        instance.env = None
+        instance._sim_dependency = None
+        instance._socket_per_interface = {}
+        instance._cmd_executor = None
 
         return instance
 
