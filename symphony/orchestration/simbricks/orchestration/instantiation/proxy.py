@@ -230,7 +230,7 @@ class ProxyPair(utils_base.IdObj):
         channel_ids = utils_base.get_json_attr_top(json_obj, "channels")
         instance._channels = set()
         for channel_id in channel_ids:
-            channel = instantiation.simulation.get_channel_by_id(channel_id)
+            channel = instantiation.simulation.system.get_chan(channel_id)
             instance._channels.add(channel)
 
         fragment_a_id = utils_base.get_json_attr_top(json_obj, "fragment_a")
