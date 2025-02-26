@@ -154,14 +154,16 @@ class SimulationExecutor:
 
     async def _start_proxy(self, proxy: inst_proxy.Proxy) -> None:
         """Start a proxy and wait for it to be ready."""
-        cmd_exec = await self._cmd_executor.start_simulator(proxy, proxy.run_cmd())
+        cmd_exec = await self._cmd_executor.start_proxy(
+            proxy, proxy.run_cmd(self._instantiation)
+        )
         self._running_proxies[proxy] = cmd_exec
 
         # Wait till sockets exist
         wait_socks = proxy.sockets_wait(inst=self._instantiation)
         for sock in wait_socks:
             await sock.wait()
-        self._callbacks.proxy_ready(proxy)
+        await self._callbacks.proxy_ready(proxy)
 
     async def _start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""

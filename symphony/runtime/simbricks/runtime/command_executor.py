@@ -246,7 +246,7 @@ class CommandExecutorFactory:
         return executor
 
     async def start_proxy(self, proxy: inst_proxy.Proxy, cmd) -> CommandExecutor:
-        async def started_cb(cmd: str) -> None:
+        async def started_cb() -> None:
             await self._sim_exec_cbs.proxy_started(proxy, cmd)
 
         async def exited_cb(exit_code: int) -> None:
@@ -259,7 +259,7 @@ class CommandExecutorFactory:
             await self._sim_exec_cbs.proxy_stderr(proxy, lines)
 
         executor = CommandExecutor(
-            cmd, f"proxy_{proxy.id()}", started_cb, exited_cb, stdout_cb, stderr_cb
+            cmd, proxy.name, started_cb, exited_cb, stdout_cb, stderr_cb
         )
         await executor.start()
         return executor
