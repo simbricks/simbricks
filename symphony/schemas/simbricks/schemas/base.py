@@ -494,11 +494,11 @@ class AbstractApiSimulatorStateChangeEvent(AbstractApiSimulatorEvent):
     """
     The current state of the simulator.
     """
-    simulator_name: str | None
+    simulator_name: str | None = None
     """
     The name of the simulator.
     """
-    command: str | None
+    command: str | None = None
     """
     The command associated with the state change.
     """
@@ -565,6 +565,10 @@ class AbstractApiProxyStateChangeEvent(AbstractApiProxyEvent):
     """The IP the proxy is listening on / connecting to."""
     proxy_port: int
     """The port the proxy is listening on / connecting to."""
+    command: str | None = None
+    """
+    The command associated with the state change.
+    """
 
 
 class ApiProxyStateChangeEventCreate(ApiCreateEvent, AbstractApiProxyStateChangeEvent):
@@ -619,6 +623,7 @@ ApiEventCreate_U = Annotated[
 ApiEventRead_U = Annotated[
     ApiRunnerEventRead
     | ApiRunEventRead
+    | ApiRunEventStartRunRead
     | ApiSimulatorOutputEventRead
     | ApiSimulatorStateChangeEventRead
     | ApiProxyStateChangeEventRead,
@@ -721,7 +726,7 @@ def convert_validate_factory(
 ) -> list[Target_Class_T]:
     converted = []
     for mod in source:
-        assert issubclass(mod, BaseModel)
+        assert isinstance(mod, BaseModel)
         conv = factory(mod)
         converted.append(conv)
     return converted
