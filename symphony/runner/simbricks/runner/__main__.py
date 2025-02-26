@@ -172,10 +172,11 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def _send_state_proxy_event(
         self,
         proxy_id: int,
-        proxy_name: str | None = None,
-        state: schemas.RunComponentState | None = None,
-        proxy_ip: str | None = None,
-        proxy_port: int | None = None,
+        proxy_name: str,
+        state: schemas.RunComponentState,
+        proxy_ip: str,
+        proxy_port: int,
+        proxy_cmd: str | None = None,
     ) -> None:
         event = schemas.ApiProxyStateChangeEventCreate(
             runner_id=self._client.runner_id,
@@ -185,6 +186,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             proxy_state=state,
             proxy_ip=proxy_ip,
             proxy_port=proxy_port,
+            command=proxy_cmd,
         )
         await opus_base.create_event(self._client, event)
 
@@ -205,21 +207,31 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def proxy_started(self, proxy: inst_proxy.Proxy, cmd: str) -> None:
         LOGGER.debug(f"+ [{proxy.name}] {cmd}")
 
-        await self._send_state_proxy_event(proxy.id(), state=schemas.RunComponentState.STARTING)
+        await self._send_state_proxy_event(
+            proxy.id(),
+            proxy.name,
+            schemas.RunComponentState.STARTING,
+            proxy._ip,
+            proxy._port,
+            proxy_cmd=cmd,
+        )
 
     async def proxy_ready(self, proxy: inst_proxy.Proxy) -> None:
         LOGGER.debug(f"[{proxy.name}] has started successfully")
         await self._send_state_proxy_event(
             proxy.id(),
-            state=schemas.RunComponentState.RUNNING,
-            proxy_ip=proxy._ip,
-            proxy_port=proxy._port,
+            proxy.name,
+            schemas.RunComponentState.RUNNING,
+            proxy._ip,
+            proxy._port,
         )
 
     async def proxy_exited(self, proxy: inst_proxy.Proxy, exit_code: int) -> None:
         LOGGER.debug(f"- [{proxy.name}] exited with code {exit_code}")
         await self._send_out_proxy_events(proxy.id(), [f"exited with code {exit_code}", False])
-        await self._send_state_proxy_event(proxy.id(), state=schemas.RunComponentState.TERMINATED)
+        await self._send_state_proxy_event(
+            proxy.id(), proxy.name, schemas.RunComponentState.TERMINATED, proxy._ip, proxy._port
+        )
 
     async def proxy_stdout(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
         for line in lines:
