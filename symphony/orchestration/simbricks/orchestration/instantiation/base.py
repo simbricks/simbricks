@@ -432,9 +432,9 @@ class Instantiation(utils_base.IdObj):
         return cop
 
     async def prepare(self) -> None:
-        to_prepare = [self.env.shm_base, self.env.imgdir]
+        to_prepare = [self.env.shm_base(), self.env.img_dir()]
         if not self.create_checkpoint and not self.restore_checkpoint:
-            to_prepare.append(self.env.cpdir)
+            to_prepare.append(self.env.cp_dir())
         for tp in to_prepare:
             utils_file.rmtree(tp)
             utils_file.mkdir(tp)
@@ -444,9 +444,9 @@ class Instantiation(utils_base.IdObj):
     async def cleanup(self) -> None:
         if self.preserve_tmp_folder:
             return
-        to_delete = [self.env.shm_base, self.env.imgdir]
+        to_delete = [self.env.shm_base(), self.env.img_dir()]
         if not self._preserve_checkpoints:
-            to_delete.append(self.env.cpdir)
+            to_delete.append(self.env.cp_dir())
         for td in to_delete:
             utils_file.rmtree(td)
 
