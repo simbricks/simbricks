@@ -204,8 +204,8 @@ def build_simulation_dependency_graph(
         assert (
             proxy_b not in inst.assigned_fragment.all_proxies()
         ), "connection between proxies in the same fragment should have been optimized out earlier"
-        node_b = nodes_sim.setdefault(
-            sim_b,
+        node_b = nodes_proxy.setdefault(
+            proxy_b,
             SimulationDependencyNode(SimulationDependencyNodeType.EXTERNAL_PROXY, proxy_b),
         )
 
