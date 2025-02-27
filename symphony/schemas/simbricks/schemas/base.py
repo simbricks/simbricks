@@ -626,7 +626,8 @@ ApiEventRead_U = Annotated[
     | ApiRunEventStartRunRead
     | ApiSimulatorOutputEventRead
     | ApiSimulatorStateChangeEventRead
-    | ApiProxyStateChangeEventRead,
+    | ApiProxyStateChangeEventRead
+    | ApiProxyOutputEventRead,
     Field(discriminator="event_discriminator"),
 ]
 
