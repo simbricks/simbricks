@@ -228,7 +228,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
 
     async def proxy_exited(self, proxy: inst_proxy.Proxy, exit_code: int) -> None:
         LOGGER.debug(f"- [{proxy.name}] exited with code {exit_code}")
-        await self._send_out_proxy_events(proxy.id(), [f"exited with code {exit_code}", False])
+        await self._send_out_proxy_events(proxy.id(), [f"exited with code {exit_code}"], False)
         await self._send_state_proxy_event(
             proxy.id(), proxy.name, schemas.RunComponentState.TERMINATED, proxy._ip, proxy._port
         )
