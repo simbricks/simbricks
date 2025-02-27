@@ -714,7 +714,7 @@ def convert_validate_type(
     assert isinstance(target, type) and issubclass(target, BaseModel)
     converted = []
     for mod in source:
-        assert issubclass(mod, BaseModel)
+        assert isinstance(mod, BaseModel)
         dump = mod.model_dump()
         conv = target.model_validate(dump)
         converted.append(conv)
