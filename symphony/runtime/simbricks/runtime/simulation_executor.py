@@ -39,10 +39,11 @@ if typing.TYPE_CHECKING:
 
 
 class ProxyReadyInfo:
-    def __init__(self, id: int, ip: str, port: int):
+    def __init__(self, id: int):
         self.id: int = id
-        self.ip: str = ip
-        self.port: int = port
+        self.event: asyncio.Event = asyncio.Event()
+        self.ip: str | None = None
+        self.port: int | None = None
 
 
 class SimulationExecutorCallbacks:
@@ -145,12 +146,18 @@ class SimulationExecutor:
         self._wait_sims: list[cmd_exec.CommandExecutor] = []
         self._cmd_executor = cmd_exec.CommandExecutorFactory(callbacks)
         self._external_proxy_running: dict[int, ProxyReadyInfo] = {}
-        self._external_proxy_running_lock: asyncio.Lock = asyncio.Lock()
 
-    async def mark_external_proxies_running(self, *proxy_info: ProxyReadyInfo):
-        async with self._external_proxy_running_lock:
-            for proxy in proxy_info:
-                self._external_proxy_running[proxy.id] = proxy
+    async def mark_external_proxies_running(self, id: int, ip: str, port: int):
+        if id not in self._external_proxy_running:
+            # Ignore external proxies that we do not depend on
+            return
+        proxy_info = self._external_proxy_running[id]
+        if proxy_info.event.is_set():
+            # We have already set the information for this external proxy
+            return
+        proxy_info.ip = ip
+        proxy_info.port = port
+        proxy_info.event.set()
 
     async def _start_proxy(self, proxy: inst_proxy.Proxy) -> None:
         """Start a proxy and wait for it to be ready."""
@@ -164,6 +171,22 @@ class SimulationExecutor:
         for sock in wait_socks:
             await sock.wait()
         await self._callbacks.proxy_ready(proxy)
+
+    async def _wait_for_external_proxy(self, external_proxy: inst_proxy.Proxy) -> None:
+        proxy_id = external_proxy.id()
+        if proxy_id not in self._external_proxy_running:
+            raise RuntimeError(f"could not find external proxy {proxy_id}")
+        proxy_info = self._external_proxy_running[proxy_id]
+
+        # Wait until the external proxy is ready
+        await proxy_info.event.wait()
+
+        assert proxy_info.ip is not None
+        assert proxy_info.port is not None
+        # TODO: the depending proxies need to get this information
+        external_proxy._ip = proxy_info.ip
+        external_proxy._port = proxy_info.port
+
 
     async def _start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
@@ -235,6 +258,15 @@ class SimulationExecutor:
         try:
             await self._callbacks.simulation_started()
             graph = self._instantiation.sim_dependencies()
+
+            # add a ProxyReadyInfo mapping for each external proxy in the graph
+            for node in graph:
+                for dep in graph[node]:
+                    if (dep.type == dep_graph.SimulationDependencyNodeType.EXTERNAL_PROXY
+                        and dep.get_proxy().id() not in self._external_proxy_running):
+                        proxy_id = dep.get_proxy().id()
+                        self._external_proxy_running[proxy_id] = ProxyReadyInfo(proxy_id)
+
             ts = graphlib.TopologicalSorter(graph)
             ts.prepare()
             while ts.is_active():
@@ -254,13 +286,12 @@ class SimulationExecutor:
                             )
                             topo_comps.append(comp)
                         case dep_graph.SimulationDependencyNodeType.EXTERNAL_PROXY:
-                            external_proxy = comp.get_proxy()
-                            async with self._external_proxy_running_lock:
-                                if external_proxy.id() in self._external_proxy_running:
-                                    proxy_info = self._external_proxy_running[external_proxy.id()]
-                                    external_proxy._ip = proxy_info.ip
-                                    external_proxy._port = proxy_info.port
-                                    topo_comps.append(comp)
+                            starting.append(
+                                asyncio.create_task(
+                                    self._wait_for_external_proxy(comp.get_proxy())
+                                )
+                            )
+                            topo_comps.append(comp)
                         case _:
                             raise RuntimeError("Unhandled topology component type")
 
