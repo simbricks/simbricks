@@ -288,7 +288,7 @@ class Runner:
         if len(start_event.fragments) != 1:
             raise RuntimeError("There must be exactly one fragment assigned to a runner")
 
-        run_obj_list = await self._rc.filter_get_runs(run_id=run_id, state="pending")
+        run_obj_list = await self._rc.filter_get_runs(run_id=run_id)
         if not run_obj_list or len(run_obj_list) != 1:
             msg = f"could not fetch run with id {run_id} that is still 'pending'"
             LOGGER.error(msg)
