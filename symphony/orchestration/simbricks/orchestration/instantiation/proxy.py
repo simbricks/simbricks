@@ -152,6 +152,12 @@ class TCPProxy(Proxy):
 
         if self._connection_mode == inst_socket.SockType.LISTEN:
             cmd_args.append("-l")
+        else:
+            opposing_proxy = inst._find_opposing_proxy(self)
+            assert opposing_proxy._ip is not None
+            assert opposing_proxy._port is not None
+            self._ip = opposing_proxy._ip
+            self._port = opposing_proxy._port
 
         shm_path = inst.env.shm_base(f"proxy-shm-pool-{self.id()}")
         cmd_args.append("-s")

@@ -183,7 +183,6 @@ class SimulationExecutor:
 
         assert proxy_info.ip is not None
         assert proxy_info.port is not None
-        # TODO: the depending proxies need to get this information
         external_proxy._ip = proxy_info.ip
         external_proxy._port = proxy_info.port
 
