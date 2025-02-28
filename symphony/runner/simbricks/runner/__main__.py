@@ -532,11 +532,12 @@ class Runner:
                 event_query_bundle.add_event(start_run_event_q)
 
                 # query events indicating that proxies are now ready
-                state_change_q = schemas.ApiProxyStateChangeEventQuery(
-                    run_ids=list(self._run_map.keys()),
-                    proy_states=[schemas.RunComponentState.RUNNING],
-                )
-                event_query_bundle.add_event(state_change_q)
+                if self._run_map:
+                    state_change_q = schemas.ApiProxyStateChangeEventQuery(
+                        run_ids=list(self._run_map.keys()),
+                        proy_states=[schemas.RunComponentState.RUNNING],
+                    )
+                    event_query_bundle.add_event(state_change_q)
 
                 for run_id in list(self._run_map.keys()):
                     run = self._run_map[run_id]
