@@ -263,13 +263,19 @@ class Run:
 class Runner:
 
     def __init__(
-        self, base_url: str, workdir: str, namespace: str, ident: int, polling_delay_sec: int
+        self, base_url: str,
+        workdir: str,
+        namespace: str,
+        ident: int,
+        polling_delay_sec: int,
+        runner_ip: str,
     ):
         self._base_url: str = base_url
         self._workdir: pathlib.Path = pathlib.Path(workdir).resolve()
         self._polling_delay_sec: int = polling_delay_sec
         self._namespace: str = namespace
         self._ident: int = ident
+        self._runner_ip: str = runner_ip
         self._base_client = client.BaseClient(base_url=base_url)
         self._namespace_client = client.NSClient(base_client=self._base_client, namespace=namespace)
         self._sb_client = client.SimBricksClient(self._namespace_client)
@@ -342,7 +348,9 @@ class Runner:
 
         inst = await self._fetch_assemble_inst(run_id, start_event)
         callbacks = RunnerSimulationExecutorCallbacks(inst, self._rc, run_id)
-        runner = sim_exec.SimulationExecutor(inst, callbacks, settings.RunnerSettings().verbose)
+        runner = sim_exec.SimulationExecutor(
+            inst, callbacks, settings.RunnerSettings().verbose, self._runner_ip
+        )
         await runner.prepare()
 
         run = Run(run_id=run_id, inst=inst, runner=runner, callbacks=callbacks)
@@ -609,6 +617,7 @@ async def amain():
         namespace=settings.runner_settings().namespace,
         ident=settings.runner_settings().runner_id,
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
+        runner_ip=settings.runner_settings().runner_ip,
     )
 
     await runner.run()
