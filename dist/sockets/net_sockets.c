@@ -269,15 +269,15 @@ static int SockListen(struct sockaddr_in *addr) {
     return 1;
   }
 
-  if (listen(lfd, 1)) {
-    perror("SockListen: listen");
+  // retrieve assigned port number
+  socklen_t addr_len = sizeof(*addr);
+  if (getsockname(lfd, (struct sockaddr *)addr, &addr_len)) {
+    perror("SockListen: getsockname failed");
     return 1;
   }
 
-  // retrieve assigned port number
-  socklen_t addr_len;
-  if (getsockname(lfd, (struct sockaddr *)&addr, &addr_len)) {
-    perror("SockListen: getsockname failed");
+  if (listen(lfd, 1)) {
+    perror("SockListen: listen");
     return 1;
   }
 
