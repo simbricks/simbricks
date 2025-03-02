@@ -29,6 +29,7 @@ import typing
 
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.instantiation import dependency_graph as dep_graph
+from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.runtime import command_executor as cmd_exec
 from simbricks.runtime import output
@@ -135,11 +136,13 @@ class SimulationExecutor:
         instantiation: inst_base.Instantiation,
         callbacks: SimulationExecutorCallbacks,
         verbose: bool,
+        runner_ip: str,
         profile_int=None,
     ) -> None:
         self._instantiation: inst_base.Instantiation = instantiation
         self._callbacks: SimulationExecutorCallbacks = callbacks
         self._verbose: bool = verbose
+        self._runner_ip: str = runner_ip
         self._profile_int: int | None = profile_int
         self._running_sims: dict[sim_base.Simulator, cmd_exec.CommandExecutor] = {}
         self._running_proxies: dict[inst_proxy.Proxy, cmd_exec.CommandExecutor] = {}
@@ -162,7 +165,7 @@ class SimulationExecutor:
     async def _start_proxy(self, proxy: inst_proxy.Proxy) -> None:
         """Start a proxy and wait for it to be ready."""
         cmd_exec = await self._cmd_executor.start_proxy(
-            proxy, proxy.run_cmd(self._instantiation)
+            proxy, proxy.run_cmd(self._instantiation, self._runner_ip)
         )
         self._running_proxies[proxy] = cmd_exec
 
@@ -170,6 +173,10 @@ class SimulationExecutor:
         wait_socks = proxy.sockets_wait(inst=self._instantiation)
         for sock in wait_socks:
             await sock.wait()
+        # Retrieve the port of a listening proxy
+        if proxy._connection_mode == inst_socket.SockType.LISTEN:
+            await proxy.read_listening_info()
+            assert proxy._port is not None and proxy._port != 0
         await self._callbacks.proxy_ready(proxy)
 
     async def _wait_for_external_proxy(self, external_proxy: inst_proxy.Proxy) -> None:

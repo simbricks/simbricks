@@ -36,6 +36,8 @@ class RunnerSettings(BaseSettings):
     namespace: str = "foo/bar/baz"
     runner_id: int = 1
 
+    runner_ip: str = "127.0.0.1"
+
     verbose: bool = True
     log_level: str = "DEBUG"
     polling_delay_sec: int = Field(default=10, gt=5, lt=60)
