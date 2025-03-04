@@ -489,6 +489,19 @@ class Runner:
                 f"processed ApiProxyReadyRunEventRead for proxy {event.proxy_id} and marked it ready"
             )
 
+    async def _handle_simulator_state_change_events(
+        self, events: list[schemas.ApiSimulatorStateChangeEventRead]
+    ) -> None:
+        # TODO: FIXME the same applies here as for _handle_proxy_ready_run_events
+        for event in events:
+            run_id = event.run_id
+            if run_id not in self._run_map:
+                continue
+
+            run = self._run_map[run_id]
+            await run.runner.mark_simulator_terminated(event.simulator_id)
+            LOGGER.debug(f"marked simulator {event.simulator_id} as terminated")
+
     async def _handle_runner_events(
         self,
         events: list[schemas.ApiRunnerEventRead],
@@ -539,13 +552,21 @@ class Runner:
                 )
                 event_query_bundle.add_event(start_run_event_q)
 
-                # query events indicating that proxies are now ready
                 if self._run_map:
+                    # query events indicating that proxies are now ready
                     state_change_q = schemas.ApiProxyStateChangeEventQuery(
                         run_ids=list(self._run_map.keys()),
                         proy_states=[schemas.RunComponentState.RUNNING],
                     )
                     event_query_bundle.add_event(state_change_q)
+
+                    for id, run in self._run_map.items():
+                        simulator_term_q = schemas.ApiSimulatorStateChangeEventQuery(
+                            run_ids=[id],
+                            simulator_ids=list(run.runner._wait_sims.keys()),
+                            simulator_states=[schemas.RunComponentState.TERMINATED],
+                        )
+                        event_query_bundle.add_event(simulator_term_q)
 
                 for run_id in list(self._run_map.keys()):
                     run = self._run_map[run_id]
@@ -578,6 +599,8 @@ class Runner:
                         case "ApiProxyStateChangeEventRead":
                             await self._handle_proxy_ready_run_events(events)
                             break
+                        case "ApiSimulatorStateChangeEventRead":
+                            await self._handle_simulator_state_change_events(events)
                         case _:
                             LOGGER.error(f"encountered not yet handled event type {key}")
 

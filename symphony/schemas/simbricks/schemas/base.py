@@ -516,6 +516,16 @@ class ApiSimulatorStateChangeEventRead(ApiReadEvent, AbstractApiSimulatorStateCh
     )
 
 
+class ApiSimulatorStateChangeEventQuery(AbstractApiEventQuery):
+    event_discriminator: Literal["ApiSimulatorStateChangeEventQuery"] = (
+        "ApiSimulatorStateChangeEventQuery"
+    )
+    run_ids: list[int] | None = None
+    simulator_ids: list[int] | None = None
+    simulator_names: list[str] | None = None
+    simulator_states: list[RunComponentState] | None = None
+
+
 class ApiSimulatorOutputEventCreate(
     ApiCreateEvent, AbstractApiSimulatorEvent, AbstractApiOutputEvent
 ):
@@ -645,6 +655,7 @@ ApiEventQuery_U = Annotated[
     ApiRunnerEventQuery
     | ApiRunEventQuery
     | ApiRunEventStartRunQuery
+    | ApiSimulatorStateChangeEventQuery
     | ApiProxyStateChangeEventQuery,
     Field(discriminator="event_discriminator"),
 ]

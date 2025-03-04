@@ -146,7 +146,7 @@ class SimulationExecutor:
         self._profile_int: int | None = profile_int
         self._running_sims: dict[sim_base.Simulator, cmd_exec.CommandExecutor] = {}
         self._running_proxies: dict[inst_proxy.Proxy, cmd_exec.CommandExecutor] = {}
-        self._wait_sims: list[cmd_exec.CommandExecutor] = []
+        self._wait_sims: dict[int, asyncio.Event] = {}
         self._cmd_executor = cmd_exec.CommandExecutorFactory(callbacks)
         self._external_proxy_running: dict[int, ProxyReadyInfo] = {}
 
@@ -161,6 +161,10 @@ class SimulationExecutor:
         proxy_info.ip = ip
         proxy_info.port = port
         proxy_info.event.set()
+
+    async def mark_simulator_terminated(self, id: int):
+        if id in self._wait_sims:
+            self._wait_sims[id].set()
 
     async def _start_proxy(self, proxy: inst_proxy.Proxy) -> None:
         """Start a proxy and wait for it to be ready."""
@@ -221,15 +225,16 @@ class SimulationExecutor:
                     )
             await self._callbacks.simulator_ready(sim)
 
-            if sim.wait_terminate:
-                self._wait_sims.append(cmd_exec)
-
         except asyncio.CancelledError:
             pass
 
     async def prepare(self) -> None:
         self._instantiation._cmd_executor = self._cmd_executor
         await self._instantiation.prepare()
+
+        for sim in self._instantiation.simulation.all_simulators():
+            if sim.wait_terminate:
+                self._wait_sims[sim.id()] = asyncio.Event()
 
     async def terminate_collect_sims(self) -> None:
         """Terminates all simulators and collects output."""
@@ -315,7 +320,7 @@ class SimulationExecutor:
                 profiler_task = asyncio.create_task(self._profiler())
 
             # wait until all simulators indicated to be awaited exit
-            for sc in self._wait_sims:
+            for sc in self._wait_sims.values():
                 await sc.wait()
             await self._callbacks.simulation_exited(output.SimulationExitState.SUCCESS)
         except asyncio.CancelledError:
