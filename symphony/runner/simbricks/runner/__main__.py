@@ -426,7 +426,6 @@ class Runner:
                         await run.exec_task
                         update.event_status = schemas.ApiEventStatus.COMPLETED
                         LOGGER.debug(f"executed kill to cancel execution of run {run_id}")
-                    break
                 case schemas.RunEventType.SIMULATION_STATUS:
                     if not run_id or not run_id in self._run_map:
                         update.event_status = schemas.ApiEventStatus.CANCELLED
@@ -435,7 +434,6 @@ class Runner:
                         await run.runner.sigusr1()
                         update.event_status = schemas.ApiEventStatus.COMPLETED
                         LOGGER.debug(f"send sigusr1 to run {run_id}")
-                    break
                 case schemas.RunEventType.START_RUN:
                     assert event.event_discriminator == "ApiRunEventStartRunRead"
                     event = schemas.ApiRunEventStartRunRead.model_validate(event)
@@ -590,15 +588,12 @@ class Runner:
                         # handle events that are just related to the runner itself, independent of any runs
                         case "ApiRunnerEventRead":
                             await self._handle_runner_events(events, update_events_bundle)
-                            break
                         # handle events related to a run that is currently being executed
                         case ("ApiRunEventStartRunRead" | "ApiRunEventRead"):
                             await self._handle_general_run_events(events, update_events_bundle)
-                            break
                         # handle events notifying us that proxy on other runner became ready
                         case "ApiProxyStateChangeEventRead":
                             await self._handle_proxy_ready_run_events(events)
-                            break
                         case "ApiSimulatorStateChangeEventRead":
                             await self._handle_simulator_state_change_events(events)
                         case _:
