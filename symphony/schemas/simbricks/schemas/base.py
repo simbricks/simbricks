@@ -621,6 +621,28 @@ class ApiProxyOutputEventDelete(ApiDeleteEvent):
 ApiEventBundle definitions.
 """
 
+
+class ApiEventType(enum.Enum):
+    ApiEventCreate = "ApiEventCreate"
+    ApiEventRead = "ApiEventRead"
+    ApiEventUpdate = "ApiEventUpdate"
+    ApiEventDelete = "ApiEventDelete"
+    ApiEventQuery = "ApiEventQuery"
+
+    def get_type(self):
+        match self:
+            case ApiEventType.ApiEventCreate:
+                return ApiEventCreate_U
+            case ApiEventType.ApiEventRead:
+                return ApiEventRead_U
+            case ApiEventType.ApiEventUpdate:
+                return ApiEventUpdate_U
+            case ApiEventType.ApiEventDelete:
+                return ApiEventDelete_U
+            case ApiEventType.ApiEventQuery:
+                return ApiEventQuery_U
+
+
 ApiEventCreate_U = Annotated[
     ApiRunnerEventCreate
     | ApiRunEventCreate
