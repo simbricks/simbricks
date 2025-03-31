@@ -15,7 +15,7 @@
 import os
 import sys
 
-sys.path.append(os.path.abspath('../experiments'))
+sys.path.append(os.path.abspath('../symphony'))
 sys.path.append(os.path.abspath('.'))
 from external_links import *
 
