@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import asyncio
 import logging
+import traceback
 
 from simbricks import client
 from simbricks.runner.main_runner import settings
@@ -80,6 +81,7 @@ class BundleUpdatesEventCallback(EventCallback):
                 self.update_event.event_status = schemas.ApiEventStatus.COMPLETED
             else:
                 self.update_event.event_status = schemas.ApiEventStatus.ERROR
+            event_bundle.add_event(self.update_event)
             self.rc.update_events(event_bundle)
             self.remove_callback()
         return True
@@ -131,8 +133,8 @@ class MainRunner:
         self._ident = ident
         self._polling_delay_sec = polling_delay_sec
 
-        self.loaded_plugins: dict[str, plugin.FragmentRunnerPlugin] = {}
-        self.fragment_runners: dict[str, list[FragmentRunner]] = {}
+        self.loaded_plugins: dict[str, type[plugin.FragmentRunnerPlugin]] = {}
+        self.fragment_runners: dict[str, set[FragmentRunner]] = {}
         self.fragment_runner_events = asyncio.Queue[FragmentRunnerEvent]()
 
         self._base_client = client.BaseClient(base_url=base_url)
@@ -147,15 +149,20 @@ class MainRunner:
             print(f"Error occured during loading of runner plugins:\n{err}")
             exit(1)
 
-    async def _send_events_aggregate_updates(self, run_id: int, event, update) -> None:
+        for plugin in self.loaded_plugins:
+            self.fragment_runners[plugin] = set()
+
+    async def _send_events_aggregate_updates(
+        self, run_id: int, event, event_type: str, update
+    ) -> None:
         run = self._run_map[run_id]
 
         # add handlers for update events from fragment runners
         handlers = []
-        for runner in  run.fragment_runner_map.values():
+        for runner in run.fragment_runner_map.values():
             handlers.append(runner.update_event_handlers)
         BundleUpdatesEventCallback(
-            handlers, "", event.id, len(run.fragment_runner_map), update, self._rc
+            handlers, event_type, event.id, len(run.fragment_runner_map), update, self._rc
         )
 
         # send event to fragment runners
@@ -170,6 +177,58 @@ class MainRunner:
             ))
 
         asyncio.gather(*senders)
+
+    async def _stop_ephemeral_fragment_runners(
+            self, fragment_runner_map: dict[int, FragmentRunner]
+    ):
+        stop = []
+        for runner in fragment_runner_map.values():
+            if runner.fragment_runner.ephemeral():
+                stop.append(asyncio.create_task(runner.stop()))
+                self.fragment_runners[runner.fragment_runner.name()].remove(runner)
+
+        asyncio.gather(*stop)
+
+    async def _start_run(self, run_id: int, event: schemas.ApiRunEventStartRunRead, update):
+        fragment_runner_map: dict[int, FragmentRunner] = {}
+        for id, name in event.fragments:
+            if name not in self.loaded_plugins:
+                await self._stop_ephemeral_fragment_runners(fragment_runner_map)
+                raise RuntimeError(f"unsupported fragment runner type {name}")
+            if (self.loaded_plugins[name].ephemeral() or not self.fragment_runners[name]):
+                runner = self.loaded_plugins[name]()
+                await runner.start()
+                read_task = asyncio.create_task(self._read_fragment_runner_events(runner))
+                fragment_runner = FragmentRunner(runner, read_task)
+                fragment_runner_map[id] = fragment_runner
+                self.fragment_runners[name].add(fragment_runner)
+            else:
+                assert len(self.fragment_runners[name]) == 1
+                fragment_runner_map[id] = list(self.fragment_runners[name])[0]
+
+        run = MainRun(run_id, fragment_runner_map)
+        self._run_map[run_id] = run
+
+        handlers = []
+        for runner in fragment_runner_map.values():
+            handlers.append(runner.update_event_handlers)
+        BundleUpdatesEventCallback(
+            handlers, "ApiRunEventUpdate", event.id, len(run.fragment_runner_map), update, self._rc
+        )
+
+        senders = []
+        for fragment_id, runner in fragment_runner_map.items():
+            fragment_event = event.model_copy()
+            fragment_event.fragments = [fragment_id]
+            event_bundle = schemas.ApiEventBundle()
+            event_bundle.add_event(fragment_event)
+            senders.append(asyncio.create_task(
+                runner.fragment_runner.send_events(event_bundle, schemas.ApiEventType.ApiEventRead)
+            ))
+
+        asyncio.gather(*senders)
+
+        #TODO add callback for run update events
 
     async def _handle_run_events(
         self,
@@ -189,7 +248,9 @@ class MainRunner:
                         update.event_status = schemas.ApiEventStatus.CANCELLED
                         updates.add_event(update)
                     else:
-                        await self._send_events_aggregate_updates(run_id, event, update)
+                        await self._send_events_aggregate_updates(
+                            run_id, event, "ApiRunEventUpdate", update
+                        )
                         LOGGER.debug(
                             "send kill event to fragment runners to "
                             f"cancel execution of run {run_id}"
@@ -199,7 +260,9 @@ class MainRunner:
                         update.event_status = schemas.ApiEventStatus.CANCELLED
                         updates.add_event(update)
                     else:
-                        await self._send_events_aggregate_updates(run_id, event, update)
+                        await self._send_events_aggregate_updates(
+                            run_id, event, "ApiRunEventUpdate", update
+                        )
                         LOGGER.debug(
                             f"send simulation status events to fragment runners of run {run_id}"
                         )
@@ -213,27 +276,12 @@ class MainRunner:
                         update.event_status = schemas.ApiEventStatus.CANCELLED
                         updates.add_event(update)
                     else:
-                        # TODO: need to do the assignment of fragments to fragment runners here and
-                        # start fragment runner if needed, probably better to do this in a separate
-                        # function
                         try:
-                            # The await here is deliberate, we want to make sure that we block here
-                            # and do not poll for / process further events before the run is fully
-                            # set up.
-
-                            # For example, we need this property when dealing with distributed
-                            # simulations. Other runners might send events to us, so we need the
-                            # necessary data structures to handle them to be fully set up.
-                            run = await self._prepare_run(run_id, event)
-
-                            run.exec_task = asyncio.create_task(self._start_run(run=run))
-                            self._run_map[run_id] = run
-                            update.event_status = schemas.ApiEventStatus.COMPLETED
-                            updates.add_event(update)
+                            await self._start_run(run_id, event, update)
                             LOGGER.debug(f"started execution of run {run_id}")
                         except Exception:
                             trace = traceback.format_exc()
-                            LOGGER.error(f"could not prepare run {run_id}: {trace}")
+                            LOGGER.error(f"could not start run {run_id}: {trace}")
                             await self._rc.update_run(run_id, schemas.RunState.ERROR, "")
                             update.event_status = schemas.ApiEventStatus.ERROR
                             updates.add_event(update)
@@ -418,12 +466,11 @@ class MainRunner:
         # start non-ephemeral plugins
         for name, plugin in self.loaded_plugins.items():
             if not plugin.ephemeral():
-                p = plugin()
-                if name in self.fragment_runners:
-                    self.fragment_runners[name].append(p)
-                else:
-                    self.fragment_runners[name] = [p]
-                await p.start()
+                runner = plugin()
+                await runner.start()
+                read_task = asyncio.create_task(self._read_fragment_runner_events(runner))
+                fragment_runner = FragmentRunner(runner, read_task)
+                self.fragment_runners[name].add(fragment_runner)
 
         plugin_tags = [schemas.ApiRunnerTag(label=p) for p in self.loaded_plugins]
         await self._rc.runner_started(plugin_tags)
