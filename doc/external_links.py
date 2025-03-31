@@ -1,6 +1,7 @@
 """Definition of external links that can be used in Sphinx as :<key>:`%s`"""
 
 extlinks = {
+    'simbricks-repo-plain': ('https://github.com/simbricks/simbricks%s', None),
     'simbricks-repo': ('https://github.com/simbricks/simbricks%s', 'README%s'),
     'simbricks-examples':
         ('https://github.com/simbricks/simbricks-examples%s', None),
@@ -17,4 +18,5 @@ extlinks = {
         'https://github.com/simbricks/simbricks/blob/f260bf16b0bd110c3f1d48b851688f27c3f38a53/lib/simbricks/%s',
         'lib/simbricks/%s'
     ),
+    'website': ('https://www.simbricks.io/%s', None),
 }
