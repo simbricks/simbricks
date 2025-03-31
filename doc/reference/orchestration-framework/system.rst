@@ -1,5 +1,5 @@
 ..
-  Copyright 2022 Max Planck Institute for Software Systems, and
+  Copyright 2021 Max Planck Institute for Software Systems, and
   National University of Singapore
 ..
   Permission is hereby granted, free of charge, to any person obtaining
@@ -21,20 +21,47 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SimBricks
-=========
+System Configuration
+=======================================
 
-The SimBricks documentation comprises three parts. The first part focuses on
-using SimBricks as is, the second part on internals and developer information
-for extending SimBricks, and the third part contains information on specific
-component simulators. The first part is typically where you should start.
 
-.. toctree::
-   :numbered:
-   :maxdepth: 2
-   :caption: Contents:
+Base
+------------------------------------------
 
-   about/index
-   getting-started/index
-   learn/index
-   reference/index
+.. automodule:: simbricks.orchestration.system.base
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+Eth
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.system.eth
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+PCIe
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.system.pcie
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+Mem
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.system.mem
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+
+NIC
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.system.nic
+   :members:
+   :undoc-members:
+   :inherited-members:
