@@ -1,5 +1,5 @@
 ..
-  Copyright 2022 Max Planck Institute for Software Systems, and
+  Copyright 2021 Max Planck Institute for Software Systems, and
   National University of Singapore
 ..
   Permission is hereby granted, free of charge, to any person obtaining
@@ -21,20 +21,19 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SimBricks
-=========
+AXI
+=======================================
 
-The SimBricks documentation comprises three parts. The first part focuses on
-using SimBricks as is, the second part on internals and developer information
-for extending SimBricks, and the third part contains information on specific
-component simulators. The first part is typically where you should start.
+AXI Subordinate
+-----------------------------------------
 
-.. toctree::
-   :numbered:
-   :maxdepth: 2
-   :caption: Contents:
+.. doxygenfile:: axi/axi_subordinate.hh
+   :project: simbricks
 
-   about/index
-   getting-started/index
-   learn/index
-   reference/index
+
+AXIL Manager
+------------------------------------------
+
+.. doxygenfile:: axi/axil_manager.hh
+   :project: simbricks
+

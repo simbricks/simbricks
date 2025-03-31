@@ -1,5 +1,5 @@
 ..
-  Copyright 2022 Max Planck Institute for Software Systems, and
+  Copyright 2021 Max Planck Institute for Software Systems, and
   National University of Singapore
 ..
   Permission is hereby granted, free of charge, to any person obtaining
@@ -21,20 +21,45 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SimBricks
-=========
+Instantiation Configuration
+=======================================
 
-The SimBricks documentation comprises three parts. The first part focuses on
-using SimBricks as is, the second part on internals and developer information
-for extending SimBricks, and the third part contains information on specific
-component simulators. The first part is typically where you should start.
+Base
+------------------------------------------
 
-.. toctree::
-   :numbered:
-   :maxdepth: 2
-   :caption: Contents:
+.. automodule:: simbricks.orchestration.instantiation.base
+   :members:
+   :undoc-members:
+   :inherited-members:
 
-   about/index
-   getting-started/index
-   learn/index
-   reference/index
+Fragment
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.instantiation.fragment
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+Dependency Graph
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.instantiation.dependency_graph
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+Proxy
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.instantiation.proxy
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+Socket
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.instantiation.socket
+   :members:
+   :undoc-members:
+   :inherited-members:

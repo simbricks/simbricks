@@ -21,20 +21,18 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SimBricks
-=========
 
-The SimBricks documentation comprises three parts. The first part focuses on
-using SimBricks as is, the second part on internals and developer information
-for extending SimBricks, and the third part contains information on specific
-component simulators. The first part is typically where you should start.
+Simulator Integration
+******************************
 
-.. toctree::
-   :numbered:
-   :maxdepth: 2
-   :caption: Contents:
 
-   about/index
-   getting-started/index
-   learn/index
-   reference/index
+Adapter
+==============================
+
+
+Synchronization
+------------------------------
+
+
+Orchestration Framework
+==============================
