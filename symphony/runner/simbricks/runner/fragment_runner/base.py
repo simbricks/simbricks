@@ -15,6 +15,7 @@ from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import settings
+from simbricks.runner import utils as runner_utils
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.schemas import base as schemas
 from simbricks.utils import base as utils_base
@@ -275,30 +276,10 @@ class FragmentRunner(abc.ABC):
     async def send_events(
         self, events: schemas.ApiEventBundle, event_type: schemas.ApiEventType
     ) -> None:
-        events_json = events.model_dump_json()
-        payload = bytes(f"{event_type.value},{events_json}", encoding="utf-8")
-        data = bytes(f"{len(payload):12x}", encoding="utf-8") + payload
-        # TODO: error handling
-        self.write(data)
+        await runner_utils.send_events(self.write, events, event_type)
 
     async def get_events(self) -> tuple[schemas.ApiEventType, schemas.ApiEventBundle]:
-        try:
-            length_str = (await self.read(12)).decode("utf-8")
-            length = int(length_str, 16)
-            payload = (await self.read(length)).decode("utf-8")
-        except Exception:
-            #TODO
-            pass
-
-        separator = payload.find(",")
-        if separator == -1:
-            raise RuntimeError("invalid format of event bundle payload")
-
-        event_type = schemas.ApiEventType(payload[:separator])
-        events_json = payload[separator+1:]
-        events = schemas.ApiEventBundle[event_type.get_type()].model_validate_json(events_json)
-
-        return (event_type, events)
+        return await runner_utils.get_events(self.read)
     
     async def _assemble_inst(
         self, run_id: int, start_event: schemas.ApiRunEventStartRunRead
