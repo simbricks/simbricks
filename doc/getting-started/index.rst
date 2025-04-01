@@ -21,14 +21,29 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-###################################
-Getting Started
+.. _chap-quickstart:
+
+Quickstart
 ###################################
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+Get up and running with the SimBricks in a few minutes.
 
-   installation
-   run-first
-   examples
+In this guide we will make use of an SimBricks Example and guide you through the execution of your first virtual prototype using the SimBricks CLI and SimBricks Cloud version.
+
+Setup
+******************************
+
+In the following 
+
+Install the SimBricks 
+
+Running Your First Virtual Prototype
+************************************
+
+
+Next Steps
+******************************
+
+* Check out more SimBricks exampels from our SimBricks examples repo at :simbricks-examples:`\ `.
+* To learn more about the inner workings and details of SimBricks check out :ref:`chap-learn` chapter. 
+* Join the SimBricks community on :slack:`Slack`
