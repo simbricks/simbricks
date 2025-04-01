@@ -471,6 +471,35 @@ class ApiRunEventStartRunQuery(AbstractApiEventQuery):
 
 
 """ ############################################################################
+Run fragment related events
+""" ############################################################################
+
+
+class AbstractApiRunFragmentEvent(AbstractApiEvent):
+    run_id: int
+    """
+    The associated run.
+    """
+    fragment_id: int
+    """
+    The associated fragment.
+    """
+
+
+class AbstractApiRunFragmentStateEvent(AbstractApiRunFragmentEvent):
+    run_state: RunState
+    """
+    The state of the run for this fragment.
+    """
+
+
+class ApiRunFragmentStateEventCreate(AbstractApiRunFragmentStateEvent):
+    event_discriminator: Literal["ApiRunFragmentStateEventCreate"] = (
+        "ApiRunFragmentStateEventCreate"
+    )
+
+
+""" ############################################################################
 Simulator related events
 """  ############################################################################
 
@@ -639,7 +668,8 @@ ApiEventCreate_U = Annotated[
     | ApiSimulatorOutputEventCreate
     | ApiSimulatorStateChangeEventCreate
     | ApiProxyStateChangeEventCreate
-    | ApiProxyOutputEventCreate,
+    | ApiProxyOutputEventCreate
+    | ApiRunFragmentStateEventCreate,
     Field(discriminator="event_discriminator"),
 ]
 
