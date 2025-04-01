@@ -35,7 +35,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     ):
         super().__init__(instantiation)
         self._instantiation = instantiation
-        self._client: client.RunnerClient = rc
+        #self._client: client.RunnerClient = rc
         self._run_id: int = run_id
 
     # ---------------------------------------
@@ -261,9 +261,15 @@ class FragmentRunner(abc.ABC):
         #self._sb_client = client.SimBricksClient(self._namespace_client)
         #self._rc = client.RunnerClient(self._namespace_client, ident)
 
+        self._send_event_queue = asyncio.Queue[
+            tuple[schemas.ApiEventType, schemas.ApiEventBundle]
+        ]()
+
         # self._cur_run: Run | None = None  # currently executed run
         # self._to_run_queue: asyncio.Queue = asyncio.Queue()  # queue of run ids to run next
         self._run_map: dict[int, Run] = {}
+
+        self._worker_tasks: list[asyncio.Task] = []
 
     @abc.abstractmethod
     async def read(self, length: int) -> bytes:
@@ -476,110 +482,95 @@ class FragmentRunner(abc.ABC):
             await run.runner.mark_simulator_terminated(event.simulator_id)
             LOGGER.debug(f"marked simulator {event.simulator_id} as terminated")
 
-    async def _handle_runner_events(
-        self,
-        events: list[schemas.ApiRunnerEventRead],
-        updates: schemas.ApiEventBundle[schemas.ApiEventUpdate_U],
-    ) -> schemas.ApiEventBundle[schemas.ApiEventUpdate_U]:
-        events = schemas.ApiRunnerEventRead_List_A.validate_python(events)
-        for event in events:
-            update = schemas.ApiRunnerEventUpdate(id=event.id, runner_id=self._ident)
-            match event.runner_event_type:
-                case schemas.RunnerEventType.heartbeat:
-                    await self._rc.send_heartbeat()
-                    update.event_status = schemas.ApiEventStatus.COMPLETED
-                    LOGGER.debug(f"send heartbeat")
-
-            updates.add_event(update)
-            LOGGER.info(f"handled runner related event {event.id}")
-
     async def _handle_events(self) -> None:
-        try:
-            await self._rc.runner_started()
+        while True:
+            event_type, event_bundle = await self.get_events()
 
-            while True:
-                # fetch all events not handled yet
-                event_query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
+            if event_type != schemas.ApiEventType.ApiEventRead:
+                LOGGER.warning(f"received events of unexpected type {event_type.value}")
+                continue
 
-                # query events for the runner itsel that do not relate to a specific run
-                runner_event_q = schemas.ApiRunnerEventQuery(
-                    runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
+            LOGGER.debug(f"events fetched ({len(event_bundle.events)}): {event_bundle.events}")
+
+            update_events_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
+            for key, events in event_bundle.events.items():
+                match key:
+                    # handle events related to a run that is currently being executed
+                    case ("ApiRunEventStartRunRead" | "ApiRunEventRead"):
+                        await self._handle_general_run_events(events, update_events_bundle)
+                    # handle events notifying us that proxy on other runner became ready
+                    case "ApiProxyStateChangeEventRead":
+                        await self._handle_proxy_ready_run_events(events)
+                    case "ApiSimulatorStateChangeEventRead":
+                        await self._handle_simulator_state_change_events(events)
+                    case _:
+                        LOGGER.error(f"encountered not yet handled event type {key}")
+
+            if not update_events_bundle.empty():
+                await self._send_event_queue.put(
+                    (schemas.ApiEventType.ApiEventUpdate, update_events_bundle)
                 )
-                event_query_bundle.add_event(runner_event_q)
 
-                # query run related events that do not trigger the start of a run. We explicitly
-                # exclude start_run events as we need the json blobs to start them. Therefore we
-                # create an extra query for them.
-                non_start_type = utils_base.enum_subs(
-                    schemas.RunEventType, schemas.RunEventType.START_RUN
-                )
-                run_event_q = schemas.ApiRunEventQuery(
-                    runner_ids=[self._ident],
-                    event_status=[schemas.ApiEventStatus.PENDING],
-                    run_event_type=non_start_type,
-                )
-                event_query_bundle.add_event(run_event_q)
+    async def _worker_loop(self):
+        while True:
+            # fetch all events not handled yet
+            event_query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
 
-                # query events that start a run
-                start_run_event_q = schemas.ApiRunEventStartRunQuery(
-                    runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
+            if self._run_map:
+                # query events indicating that proxies are now ready
+                state_change_q = schemas.ApiProxyStateChangeEventQuery(
+                    run_ids=list(self._run_map.keys()),
+                    proy_states=[schemas.RunComponentState.RUNNING],
                 )
-                event_query_bundle.add_event(start_run_event_q)
+                event_query_bundle.add_event(state_change_q)
 
-                if self._run_map:
-                    # query events indicating that proxies are now ready
-                    state_change_q = schemas.ApiProxyStateChangeEventQuery(
-                        run_ids=list(self._run_map.keys()),
-                        proy_states=[schemas.RunComponentState.RUNNING],
+                for id, run in self._run_map.items():
+                    simulator_term_q = schemas.ApiSimulatorStateChangeEventQuery(
+                        run_ids=[id],
+                        simulator_ids=list(run.runner._wait_sims.keys()),
+                        simulator_states=[schemas.RunComponentState.TERMINATED],
                     )
-                    event_query_bundle.add_event(state_change_q)
+                    event_query_bundle.add_event(simulator_term_q)
 
-                    for id, run in self._run_map.items():
-                        simulator_term_q = schemas.ApiSimulatorStateChangeEventQuery(
-                            run_ids=[id],
-                            simulator_ids=list(run.runner._wait_sims.keys()),
-                            simulator_states=[schemas.RunComponentState.TERMINATED],
-                        )
-                        event_query_bundle.add_event(simulator_term_q)
+            await self._send_event_queue.put(
+                (schemas.ApiEventType.ApiEventQuery, event_query_bundle)
+            )
 
-                for run_id in list(self._run_map.keys()):
-                    run = self._run_map[run_id]
-                    # check if run finished and cleanup map
-                    if run.exec_task and run.exec_task.done():
-                        run = self._run_map.pop(run_id)
-                        LOGGER.debug(f"removed run {run_id} from run_map")
-                        assert run_id not in self._run_map
-                        continue
+            for run_id in list(self._run_map.keys()):
+                run = self._run_map[run_id]
+                # check if run finished and cleanup map
+                if run.exec_task and run.exec_task.done():
+                    run = self._run_map.pop(run_id)
+                    LOGGER.debug(f"removed run {run_id} from run_map")
+                    assert run_id not in self._run_map
+                    continue
 
-                fetched_events_bundle = await self._rc.fetch_events(event_query_bundle)
+            await asyncio.sleep(self._polling_delay_sec)
 
-                LOGGER.debug(
-                    f"events fetched ({len(fetched_events_bundle.events)}): {fetched_events_bundle.events}"
-                )
+    async def _send_loop(self):
+        while True:
+            event_type, event_bundle = await self._send_event_queue.get()
+            await self.send_events(event_bundle, event_type)
 
-                update_events_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
-                for key in fetched_events_bundle.events.keys():
-                    events = fetched_events_bundle.events[key]
-                    match key:
-                        # handle events that are just related to the runner itself, independent of any runs
-                        case "ApiRunnerEventRead":
-                            await self._handle_runner_events(events, update_events_bundle)
-                        # handle events related to a run that is currently being executed
-                        case ("ApiRunEventStartRunRead" | "ApiRunEventRead"):
-                            await self._handle_general_run_events(events, update_events_bundle)
-                        # handle events notifying us that proxy on other runner became ready
-                        case "ApiProxyStateChangeEventRead":
-                            await self._handle_proxy_ready_run_events(events)
-                        case "ApiSimulatorStateChangeEventRead":
-                            await self._handle_simulator_state_change_events(events)
-                        case _:
-                            LOGGER.error(f"encountered not yet handled event type {key}")
+    async def run(self) -> None:
+        LOGGER.info("STARTED FRAGMENT EXECUTOR")
+        LOGGER.debug(
+            f"fragment executor params: base_url={self._base_url}, workdir={self._workdir}, namespace={self._namespace}, ident={self._ident}, polling_delay_sec={self._polling_delay_sec}"
+        )
 
-                if not update_events_bundle.empty():
-                    await self._rc.update_events(update_events_bundle)
+        try:
+            await self._handle_events()
+        except Exception as exc:
+            LOGGER.error(f"fatal error {exc}")
+            raise exc
 
-                await asyncio.sleep(self._polling_delay_sec)
-
+        try:
+            workers = []
+            workers.append(asyncio.create_task(self._send_loop()))
+            workers.append(asyncio.create_task(self._worker_loop()))
+            workers.append(asyncio.create_task(self._handle_events()))
+            #TODO: need to properly handle cancellation here
+            asyncio.gather(*workers)
         except asyncio.CancelledError:
             LOGGER.error(f"cancelled event handling loop")
             await self._cancel_all_tasks()
@@ -588,18 +579,6 @@ class FragmentRunner(abc.ABC):
             await self._cancel_all_tasks()
             trace = traceback.format_exc()
             LOGGER.error(f"an error occured while running: {trace}")
-
-    async def run(self) -> None:
-        LOGGER.info("STARTED RUNNER")
-        LOGGER.debug(
-            f" runner params: base_url={self._base_url}, workdir={self._workdir}, namespace={self._namespace}, ident={self._ident}, polling_delay_sec={self._polling_delay_sec}"
-        )
-
-        try:
-            await self._handle_events()
-        except Exception as exc:
-            LOGGER.error(f"fatal error {exc}")
-            raise exc
 
         LOGGER.info("TERMINATED RUNNER")
 

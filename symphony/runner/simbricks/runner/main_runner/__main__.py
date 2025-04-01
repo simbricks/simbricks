@@ -338,23 +338,6 @@ class MainRunner:
                 )
                 event_query_bundle.add_event(start_run_event_q)
 
-                # TODO: move these queries to the fragment runners
-                # if self._run_map:
-                #     # query events indicating that proxies are now ready
-                #     state_change_q = schemas.ApiProxyStateChangeEventQuery(
-                #         run_ids=list(self._run_map.keys()),
-                #         proy_states=[schemas.RunComponentState.RUNNING],
-                #     )
-                #     event_query_bundle.add_event(state_change_q)
-
-                #     for id, run in self._run_map.items():
-                #         simulator_term_q = schemas.ApiSimulatorStateChangeEventQuery(
-                #             run_ids=[id],
-                #             simulator_ids=list(run.runner._wait_sims.keys()),
-                #             simulator_states=[schemas.RunComponentState.TERMINATED],
-                #         )
-                #         event_query_bundle.add_event(simulator_term_q)
-
                 # TODO: I need to check whether all fragment runners have finished
                 # for run_id in list(self._run_map.keys()):
                 #     run = self._run_map[run_id]
