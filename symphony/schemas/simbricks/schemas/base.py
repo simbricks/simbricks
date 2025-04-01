@@ -476,10 +476,6 @@ Simulator related events
 
 
 class AbstractApiSimulatorEvent(AbstractApiEvent):
-    runner_id: int
-    """
-    The runner a fragment is associated with.
-    """
     run_id: int
     """
     The run a fragment is associated with.
@@ -535,7 +531,6 @@ class ApiSimulatorOutputEventCreate(
 
 class ApiSimulatorOutputEventRead(ApiReadEvent, AbstractApiSimulatorEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiSimulatorOutputEventRead"] = "ApiSimulatorOutputEventRead"
-    runner_id: int | None = None
     run_id: int | None = None
     simulator_id: int | None = None
 
@@ -550,10 +545,6 @@ Proxy related events
 
 
 class AbstractApiProxyEvent(AbstractApiEvent):
-    runner_id: int
-    """
-    The runner a fragment is associated with.
-    """
     run_id: int
     """
     The run a fragment is associated with.
@@ -608,7 +599,6 @@ class ApiProxyOutputEventCreate(ApiCreateEvent, AbstractApiProxyEvent, AbstractA
 
 class ApiProxyOutputEventRead(ApiReadEvent, AbstractApiProxyEvent, AbstractApiOutputEvent):
     event_discriminator: Literal["ApiProxyOutputEventRead"] = "ApiProxyOutputEventRead"
-    runner_id: int | None = None
     run_id: int | None = None
     proxy_id: int | None = None
 
