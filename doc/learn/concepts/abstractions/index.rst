@@ -21,15 +21,18 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+.. _sec-abstractions:
 
-Concepts
-******************************
-
-
-Abstractions Overview
+Abstractions
 ==============================
 
 
-Architectural Overview
-==============================
+Virtual Prototype Scripts
+------------------------------
+
+Adapter
+------------------------------
+
+SimBricks Protocol
+------------------------------
 
