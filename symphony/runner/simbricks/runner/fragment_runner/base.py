@@ -9,8 +9,6 @@ import traceback
 import typing
 import uuid
 
-from simbricks import client
-from simbricks.client.opus import base as opus_base
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
@@ -18,7 +16,6 @@ from simbricks.runner import settings
 from simbricks.runner import utils as runner_utils
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.schemas import base as schemas
-from simbricks.utils import base as utils_base
 from simbricks.utils import artifatcs as utils_art
 
 if typing.TYPE_CHECKING:
@@ -258,17 +255,11 @@ class FragmentRunner(abc.ABC):
         self._namespace: str = namespace
         self._ident: int = ident
         self._runner_ip: str = runner_ip
-        #self._base_client = client.BaseClient(base_url=base_url)
-        #self._namespace_client = client.NSClient(base_client=self._base_client, namespace=namespace)
-        #self._sb_client = client.SimBricksClient(self._namespace_client)
-        #self._rc = client.RunnerClient(self._namespace_client, ident)
 
         self._send_event_queue = asyncio.Queue[
             tuple[schemas.ApiEventType, schemas.ApiEventBundle]
         ]()
 
-        # self._cur_run: Run | None = None  # currently executed run
-        # self._to_run_queue: asyncio.Queue = asyncio.Queue()  # queue of run ids to run next
         self._run_map: dict[int, Run] = {}
 
         self._worker_tasks: list[asyncio.Task] = []
@@ -331,7 +322,7 @@ class FragmentRunner(abc.ABC):
         LOGGER.debug(f"prepare run {run_id}")
 
         inst = await self._assemble_inst(run_id, start_event)
-        callbacks = RunnerSimulationExecutorCallbacks(inst, self._rc, run_id)
+        callbacks = RunnerSimulationExecutorCallbacks(inst, self._send_event_queue, run_id)
         runner = sim_exec.SimulationExecutor(
             inst, callbacks, settings.RunnerSettings().verbose, self._runner_ip
         )
@@ -345,8 +336,14 @@ class FragmentRunner(abc.ABC):
         try:
             LOGGER.info(f"start run {run.run_id}")
 
-            # TODO: use run state event here instead
-            await self._rc.update_run(run.run_id, schemas.RunState.RUNNING, "")
+            event = schemas.ApiRunFragmentStateEventCreate(
+                run_id=run.run_id,
+                fragment_id=run.inst.assigned_fragment.id(),
+                run_state=schemas.RunState.RUNNING
+            )
+            event_bundle = schemas.ApiEventBundle()
+            event_bundle.add_event(event)
+            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
 
             # TODO: allow for proper checkpointing run
             sim_task = asyncio.create_task(run.runner.run())
@@ -363,8 +360,14 @@ class FragmentRunner(abc.ABC):
                 await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)
 
             status = schemas.RunState.ERROR if res.failed() else schemas.RunState.COMPLETED
-            # TODO: use run state event here instead
-            await self._rc.update_run(run.run_id, status, output="")
+            event = schemas.ApiRunFragmentStateEventCreate(
+                run_id=run.run_id,
+                fragment_id=run.inst.assigned_fragment.id(),
+                run_state=status
+            )
+            event_bundle = schemas.ApiEventBundle()
+            event_bundle.add_event(event)
+            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
 
             await run.runner.cleanup()
 
@@ -374,14 +377,28 @@ class FragmentRunner(abc.ABC):
             LOGGER.debug("_start_sim handle cancelled error")
             if sim_task:
                 sim_task.cancel()
-            await self._rc.update_run(run.run_id, state=schemas.RunState.CANCELLED, output="")
+            event = schemas.ApiRunFragmentStateEventCreate(
+                run_id=run.run_id,
+                fragment_id=run.inst.assigned_fragment.id(),
+                run_state=schemas.RunState.CANCELLED
+            )
+            event_bundle = schemas.ApiEventBundle()
+            event_bundle.add_event(event)
+            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
             LOGGER.info(f"cancelled execution of run {run.run_id}")
 
         except Exception as ex:
             LOGGER.debug("_start_sim handle error")
             if sim_task:
                 sim_task.cancel()
-            await self._rc.update_run(run_id=run.run_id, state=schemas.RunState.ERROR, output="")
+            event = schemas.ApiRunFragmentStateEventCreate(
+                run_id=run.run_id,
+                fragment_id=run.inst.assigned_fragment.id(),
+                run_state=schemas.RunState.ERROR
+            )
+            event_bundle = schemas.ApiEventBundle()
+            event_bundle.add_event(event)
+            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
             LOGGER.error(f"error while executing run {run.run_id}: {ex}")
 
     async def _cancel_all_tasks(self) -> None:
@@ -447,8 +464,15 @@ class FragmentRunner(abc.ABC):
                         except Exception:
                             trace = traceback.format_exc()
                             LOGGER.error(f"could not prepare run {run_id}: {trace}")
-                            # TODO: use run state event here instead
-                            await self._rc.update_run(run_id, schemas.RunState.ERROR, "")
+                            assert len(event.fragments) == 1
+                            state_event = schemas.ApiRunFragmentStateEventCreate(
+                                run_id=run.run_id,
+                                fragment_id=event.fragments[0][0],
+                                run_state=schemas.RunState.ERROR
+                            )
+                            event_bundle = schemas.ApiEventBundle()
+                            event_bundle.add_event(state_event)
+                            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
                             update.event_status = schemas.ApiEventStatus.ERROR
 
             updates.add_event(update)
