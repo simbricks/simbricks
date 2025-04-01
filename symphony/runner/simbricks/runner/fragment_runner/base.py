@@ -30,12 +30,12 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     def __init__(
         self,
         instantiation: inst_base.Instantiation,
-        rc: client.RunnerClient,
+        send_queue: asyncio.Queue[tuple[schemas.ApiEventType, schemas.ApiEventBundle]],
         run_id: int,
     ):
         super().__init__(instantiation)
         self._instantiation = instantiation
-        #self._client: client.RunnerClient = rc
+        self._send_queue = send_queue
         self._run_id: int = run_id
 
     # ---------------------------------------
@@ -70,14 +70,16 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         state: schemas.RunComponentState | None = None,
     ) -> None:
         event = schemas.ApiSimulatorStateChangeEventCreate(
-            runner_id=self._client.runner_id,
             run_id=self._run_id,
             simulator_id=simulator_id,
             simulator_state=state,
             simulator_name=sim_name,
             command=cmd,
         )
-        await opus_base.create_event(self._client, event)
+
+        event_bundle = schemas.ApiEventBundle()
+        event_bundle.add_event(event)
+        await self._send_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
 
     async def _send_out_simulator_events(
         self, simulator_id: int, lines: list[str], stderr: bool
@@ -85,7 +87,6 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         event_bundle = schemas.ApiEventBundle[schemas.ApiSimulatorOutputEventCreate]()
         for line in lines:
             event = schemas.ApiSimulatorOutputEventCreate(
-                runner_id=self._client.runner_id,
                 run_id=self._run_id,
                 simulator_id=simulator_id,
                 output=line,
@@ -93,7 +94,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             )
             event_bundle.add_event(event)
 
-        await self._client.create_events(event_bundle)
+        await self._send_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
 
     async def simulator_prepare_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
@@ -159,7 +160,6 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         proxy_cmd: str | None = None,
     ) -> None:
         event = schemas.ApiProxyStateChangeEventCreate(
-            runner_id=self._client.runner_id,
             run_id=self._run_id,
             proxy_name=proxy_name,
             proxy_id=proxy_id,
@@ -168,13 +168,15 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             proxy_port=proxy_port,
             command=proxy_cmd,
         )
-        await opus_base.create_event(self._client, event)
+
+        event_bundle = schemas.ApiEventBundle()
+        event_bundle.add_event(event)
+        await self._send_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
 
     async def _send_out_proxy_events(self, proxy_id: int, lines: list[str], stderr: bool) -> None:
         event_bundle = schemas.ApiEventBundle[schemas.ApiProxyOutputEventCreate]()
         for line in lines:
             event = schemas.ApiProxyOutputEventCreate(
-                runner_id=self._client.runner_id,
                 run_id=self._run_id,
                 proxy_id=proxy_id,
                 output=line,
@@ -182,7 +184,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             )
             event_bundle.add_event(event)
 
-        await self._client.create_events(event_bundle)
+        await self._send_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
 
     async def proxy_started(self, proxy: inst_proxy.Proxy, cmd: str) -> None:
         LOGGER.debug(f"+ [{proxy.name}] {cmd}")
@@ -339,10 +341,11 @@ class FragmentRunner(abc.ABC):
         return run
 
     async def _start_run(self, run: Run) -> None:
-        sim_task: asyncio.Task | None = None
+        sim_task = None
         try:
             LOGGER.info(f"start run {run.run_id}")
 
+            # TODO: use run state event here instead
             await self._rc.update_run(run.run_id, schemas.RunState.RUNNING, "")
 
             # TODO: allow for proper checkpointing run
@@ -356,9 +359,11 @@ class FragmentRunner(abc.ABC):
                     artifact_name=run.inst.artifact_name,
                     paths_to_include=run.inst.artifact_paths,
                 )
+                # TODO: send artifact to runner using artifact event
                 await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)
 
             status = schemas.RunState.ERROR if res.failed() else schemas.RunState.COMPLETED
+            # TODO: use run state event here instead
             await self._rc.update_run(run.run_id, status, output="")
 
             await run.runner.cleanup()
@@ -442,6 +447,7 @@ class FragmentRunner(abc.ABC):
                         except Exception:
                             trace = traceback.format_exc()
                             LOGGER.error(f"could not prepare run {run_id}: {trace}")
+                            # TODO: use run state event here instead
                             await self._rc.update_run(run_id, schemas.RunState.ERROR, "")
                             update.event_status = schemas.ApiEventStatus.ERROR
 
