@@ -101,6 +101,34 @@ class ApiInstantiationQuery(BaseModel):
 
 
 class RunState(str, enum.Enum):
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            ranking = {
+                RunState.SPAWNED: 1,
+                RunState.PENDING: 2,
+                RunState.RUNNING: 3,
+                RunState.COMPLETED: 4,
+                RunState.ERROR: 5,
+                RunState.CANCELLED: 6,
+            }
+            return ranking[self] > ranking[other]
+        return NotImplemented
+
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            return self > other or self == other
+        return NotImplemented
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return not (self >= other)
+        return NotImplemented
+
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            return not (self > other)
+        return NotImplemented
+
     SPAWNED = "spawned"
     PENDING = "pending"
     RUNNING = "running"
