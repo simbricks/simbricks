@@ -22,37 +22,29 @@
 from __future__ import annotations
 
 import asyncio
-import datetime
-import json
 import logging
 import pathlib
-import traceback
-import typing
-import uuid
 
-from simbricks import client
-from simbricks.client.opus import base as opus_base
-from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import settings
 from simbricks.runner.fragment_runner import base as runner_base
-from simbricks.runtime import simulation_executor as sim_exec
-from simbricks.schemas import base as schemas
-from simbricks.utils import base as utils_base
-from simbricks.utils import artifatcs as utils_art
-
-if typing.TYPE_CHECKING:
-    from simbricks.orchestration.instantiation import proxy as inst_proxy
 
 
 class LocalRunner(runner_base.FragmentRunner):
 
+    def __init__(self, base_url, workdir, namespace, ident, polling_delay_sec, runner_ip):
+        super().__init__(base_url, workdir, namespace, ident, polling_delay_sec, runner_ip)
+        self.reader: asyncio.StreamReader
+        self.writer: asyncio.StreamWriter
+
+    async def connect(self) -> None:
+        self.reader, self.writer = asyncio.open_connection(self._runner_ip, 9000)
+
     async def read(self, length: int) -> bytes:
-        pass
+        return await self.reader.read(length)
 
     async def write(self, data: bytes) -> None:
-        pass
+        self.writer.write(data)
+        await self.writer.drain()
 
 
 async def amain():
