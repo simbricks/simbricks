@@ -37,7 +37,7 @@ class LocalRunner(runner_base.FragmentRunner):
         self.writer: asyncio.StreamWriter
 
     async def connect(self) -> None:
-        self.reader, self.writer = asyncio.open_connection(self._runner_ip, 9000)
+        self.reader, self.writer = await asyncio.open_connection(self._runner_ip, 9000)
 
     async def read(self, length: int) -> bytes:
         return await self.reader.read(length)
