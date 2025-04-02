@@ -396,12 +396,11 @@ class MainRunner:
 
                 await asyncio.sleep(self._polling_delay_sec)
 
-        except asyncio.CancelledError:
+        except asyncio.CancelledError as err:
             LOGGER.error(f"cancelled event handling loop")
-            await self._cancel_all_tasks()
+            raise err
 
         except Exception:
-            await self._cancel_all_tasks()
             trace = traceback.format_exc()
             LOGGER.error(f"an error occured while running: {trace}")
 
@@ -452,23 +451,6 @@ class MainRunner:
                 FragmentRunnerEvent(fragment_runner, event_type, events)
             )
 
-    async def test_env(self):
-        plugin = list(self.loaded_plugins.values())[0]()
-        await plugin.start()
-        while "forever":
-            length_str = await plugin.read(12)
-            print(f"length_str: {length_str}")
-            if length_str == "":
-                raise RuntimeError("connection broken")
-            length = int(length_str, 16)
-            data = await plugin.read(length)
-            if data == "":
-                raise RuntimeError("connection broken")
-            print("------new event------")
-            print(f"length: {hex(length)}, {length}")
-            print(f"data: {data}")
-            
-
     async def run(self):
         # start non-ephemeral plugins
         for name, plugin in self.loaded_plugins.items():
@@ -482,8 +464,10 @@ class MainRunner:
         plugin_tags = [schemas.ApiRunnerTag(label=p) for p in self.loaded_plugins]
         await self._rc.runner_started(plugin_tags)
 
-        #await self._handel_events()
-        await self.test_env()
+        workers = []
+        workers.append(asyncio.create_task(self._handle_fragment_runner_events()))
+        workers.append(asyncio.create_task(self._handel_events()))
+        asyncio.gather(*workers)
 
     async def cleanup(self):
         for _, runners in self.fragment_runners.items():
@@ -516,7 +500,7 @@ LOGGER = setup_logger()
 
 
 def main():
-    asyncio.run(amain(["/workspaces/simbricks/symphony/runner/simbricks/runner/main_runner/plugins/test_plugin.py"]))
+    asyncio.run(amain(["/workspaces/simbricks/symphony/runner/simbricks/runner/main_runner/plugins/local_plugin.py"]))
 
 
 if __name__ == "__main__":
