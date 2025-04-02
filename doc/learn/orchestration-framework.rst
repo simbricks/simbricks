@@ -21,6 +21,7 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+.. _sec-orchestration-framework:
 
 Orchestration Framework for Virtual Prototypes
 **********************************************
@@ -28,6 +29,20 @@ Orchestration Framework for Virtual Prototypes
 
 System Configuration 
 ==============================
+
+..
+  NOTE: WHEN SPEAKING OF CHANNELS, MENTION THIS AND REFERENCE THE SYNCHRONIZATION SECTION!!!!!!!!!!!
+    Link Latency and Sync period
+        Most of the pre-defined simulators in orchestration/simulators.py provide an attribute for tuning link latencies and the synchronization period.
+        Both are configured in nanoseconds and apply to the message flow from the configured simulator to connected ones.
+        Some simulators have interfaces for different link types, for example, NIC simulators based on NICSim have a PCIe interface to connect to a host and an Ethernet link to connect to the network.
+        The link latencies can then be configured individually per interface type.
+        The synchronization period defines the simulator’s time between sending synchronization messages to connected simulators.
+        Generally, for accurate simulations, you want to configure this to the same value as the link latency.
+        This ensures an accurate simulation.
+        With a lower value we don’t lose accuracy, but we send more synchronization messages than necessary.
+        The other direction is also possible to increase simulation performance by trading-off accuracy using a higher setting.
+        For more information, refer to the section on Synchronization in the Architectural Overview.
 
 
 Simulation Configuration

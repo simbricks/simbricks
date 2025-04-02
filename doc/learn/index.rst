@@ -21,16 +21,17 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+.. _chap-learn:
+
 Learn
 ###################################
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-   concepts
+   concepts/index
    orchestration-framework
-   simulator-integration
+   simulator-integration/index
    runner
    execution
    faq
