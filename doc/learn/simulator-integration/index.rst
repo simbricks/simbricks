@@ -38,6 +38,8 @@ In the end, you should have all the required knowledge to extend SimBricks by in
     In case you want to jump straight into the **implementation details**, check out the :ref:`sec-simulator-integration-implementation` section.  
 
 
+.. _sec-simulator-integration-background:
+
 Background
 ==============================
 
@@ -134,24 +136,50 @@ This includes the message size which is freely configurable per interface to acc
 Synchronization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. 
-    synchronization
-    So far, we only covered transmitting important events in one simulator to another. In case you are just interested in functional simulation, for example, for debugging or functional testing, you can run the whole virtual testbed unsynchronized for the lowest simulation time and skip this section. In order to get sensible end-to-end measurements, however, you need to synchronize the advancement of virtual time between the simulators.
-    Synchronization in the case of SimBricks means informing the connected simulator that there will be no more messages to process up to some concrete timestamp. For this, the base protocol defines a special synchronization message type. Synchronization messages are sent over the same pair of send and receive queues as the interface-specific messages. However, sending these for every tick of a simulator’s virtual clock doesn’t scale. We can use some of SimBricks’ properties to reduce their number. First, we don’t need to synchronize simulators globally. Instead, it suffices to only do so pair-wise along the connections between adapters. In particular, this means that we don’t have to synchronize simulators that aren’t directly connected.
-    Furthermore, all messages are inserted into the shared memory queues in FIFO order of when their respective event occurred in the sending simulator. This guarantees that when polling the messages on the receiver side, the timestamps always increase monotonically. We use this together with the observation that links between components in real systems always have some latency to provide synchronization slack. Essentially, if one side of the connection polls a message with time t, it can safely advance to timestamp t + link latency. The link latency is configured by the user.
-    The link latency also helps with the frequency of synchronization messages. If we already sent a synchronization message containing t, then it suffices to only send another one when our local clock reaches t + link latency since the connected simulator, due to the link latency, couldn’t process any message from us in the meantime anyway. For accurate simulation, it therefore suffices to periodically send synchronization messages with the link latency as the period.
-    There is one last optimization. Every message carries a timestamp and can therefore serve as an implicit synchronization message. Whenever we send a message at time t, we can therefore reschedule sending a synchronization message to t + link latency. Depending on the expected frequency of messages, rescheduling may be more expensive than just sending the synchronization message periodically. This is, for example, the case for gem5.
+Once simulators can communicate at component interfaces to exchange data, we can create functionally correct and efficient virtual prototypes.
+The performance measurements they produce are however not meaningful. 
+The reason is that each simulator process has its local simulator clock advancing at an independent pace.
+Therefore, **meaningful performance results require synchronized clocks** across all component simulators of a virtual prototype.
 
-.. synchronized vs. unsynchronized
-    SimBricks offers two modes of operation, unsynchronized and synchronized, which are defined on a per component basis. The default is the unsynchronized mode that is meant purely for functional testing. Unsynchronized components advance virtual time as quickly as they possibly can, which means that measurements taken on them are meaningless and cross-component measurements inaccurate.
-    The synchronized mode, in contrast, is meant for accurate measurements and has to be enabled per component, for example, by setting simbricks.orchestration.simulators.PCIDevSim.sync_mode or simbricks.orchestration.simulators.HostSim.sync_mode. Running synchronized means that a simulator waits to process incoming messages from connected simulators at the correct timestamps. For technical details, see Synchronization.
+For this reason SimBricks offers two modes of operation, **unsynchronized and synchronized**.
 
-..
-    Link Latency and Sync period
-    Most of the pre-defined simulators in orchestration/simulators.py provide an attribute for tuning link latencies and the synchronization period. Both are configured in nanoseconds and apply to the message flow from the configured simulator to connected ones.
-    Some simulators have interfaces for different link types, for example, NIC simulators based on NICSim have a PCIe interface to connect to a host and an Ethernet link to connect to the network. The link latencies can then be configured individually per interface type.
-    The synchronization period defines the simulator’s time between sending synchronization messages to connected simulators. Generally, for accurate simulations, you want to configure this to the same value as the link latency. This ensures an accurate simulation. With a lower value we don’t lose accuracy, but we send more synchronization messages than necessary. The other direction is also possible to increase simulation performance by trading-off accuracy using a higher setting. For more information, refer to the section on Synchronization in the Architectural Overview.
+.. warning::
+    SimBricks default behavior is to execute virtual prototypes unsynchronized. 
+    This mode of operation is meant purely for functional testing.
 
+In unsynchronized mode, component simulators advance their virtual time as quickly as possible. 
+This means that measurements taken on them are meaningless and cross-component measurements inaccurate but simulation times are generally faster.
+
+The synchronized mode is meant for accurate measurements and has to be enabled when :ref:`configuring virtual prototypes <sec-orchestration-framework>`.
+
+.. note::
+    In case you are just interested in **functional** simulation, you can run the whole virtual testbed unsynchronized and skip this section.
+
+To enable the synchronized execution of virtual prototypes, SimBricks messages are tagged with timestamps.
+Communicating peer simulators synchronize with each other using these timestamps.
+This is sufficient as correctness only requires that each simulator processes incoming messages at the correct time.
+
+.. note::
+    For meaningful performance results we do not need to synchronize simulators globally (for details check our `paper <https://www.simbricks.io/documents/22sigcomm_simbricks.pdf>`_).
+    Instead it suffices to only perform pair-wise synchronization, i.e. we only sznchronize the clocks of simulators that are directly connected to each other.
+
+A message with a particular timestamp is a promise that no older messages will arrive on that channel, and thus the simulator can safely advance to that time.
+Therefore, the messages timestamps increase monotonically at the receiver side.
+This mechanism is combined with the understanding that real-world component links always introduce some latency, which provides synchronization slack.
+In essence, if one side of the connection polls a message with timestamp ``t``, it can safely proceed to ``t + link latency``.
+In SimBricks virtual prototypes this link latency is :ref:`configured by the user <sec-orchestration-framework>`.
+
+This latency can also be used to control the frequency of (dummy-) synchronization messages.
+If a synchronization message with timestamp ``t`` has already been sent, another message is only necessary once the local clock reaches ``t + link`` latency.
+This is because the connected simulator would not have processed any messages from the sender in the interim, due to the link latency.
+
+.. note::
+    Due to the above it is sufficient to send periodic synchronization messages with the link latency as the period. 
+    Sending more messages for synchronization is equally valid does however harm performance.
+
+Performing synchronization by using timestamps that are send along with messages incurs the risks of deadlocks in cases were no data messages are exchanged between simulators.
+To prevent such deadlocks SimBricks employs dummy messages that carry a timestamp.
+These messages are used for synchronization only and are used to ensure that connected peers can move forward in time even in cases were no data between Adapters is exchanged.
 
 
 .. _sec-simulator-integration-implementation:
@@ -159,12 +187,52 @@ Synchronization
 Implementation
 ==============================
 
+As we have seen :ref:`before <sec-simulator-integration-background>` does SimBricks enable the modular connectiion and synchronization of component simulators to create virtual prototypes.
+
+Now we will have a look at the practical steps one has to take in order to integrate a component simulator into the SimBricks platform for the first time.
+We can divide this integration process roughly into two steps:
+
+1. **Adapter Implementation:** We discussed that SimBricks defines standardized interfaces and achieves simulator integration by the implementation of an Adapter between the SimBricks interface
+   and the simulators internal abstractions.
+
+2. **Orchestration Framework Integration:** Once this adapter is implemented the respective simulator must be integrated into the SimBricks :ref:`sec-orchestration-framework`.
+   This will allow users to easily make use of the integrated simulator within python scripts that are used by SimBricks to configure virtual prototypes.
+
+
+
+
+More specifically does a user need to  .
+
 .. the two steps that must be done
     The first step is to implement a SimBricks adapter in the simulator you want to integrate. This adapter on one side uses the simulator’s extension API to act as a native device and on the other side sends and receives SimBricks messages. You can find more information on adapters in our Architectural Overview.
     To make running experiments and setting up the SimBricks communication channels to other simulators convenient, add a class for the simulator in orchestration/simulators.py` that inherits either from Simulator or one of the more specialized base classes in. In this class, you define the command(s) to execute the simulator together with further parameters, for example, to connect to the communication channels with other simulators. Below is an example of what this looks like.
 
-Protocol
-------------------------------
+
+
+
+
+Adapter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To integrate a new simulator with SimBricks for the first time, a user needs to implement an adapter between the SimBricks interface and the simulators
+internal abstractions.
+
+SimBricks interfaces are based on the natural components boundaries, with simulators connected through message passing via these interfaces.
+
+..
+    SimBricks interfaces are based on the natural components boundaries, with simulators connected through message passing via these interfaces.
+    For instance, a PCIe interface links a host to a hardware device, while an Ethernet interface connects a NIC simulator to a network simulator.
+    The first step in integrating simulators is to understand the specific interface and message types involved.
+    For example, the SimBricks PCIe interface models slightly abstracted PCIe transactions, where message types between the device and the host include INIT_DEV, DMA_READ/WRITE/COMPLETE, MMIO_READ/WRITE/COMPLETE, and INTERRUPT.
+    Here is a concrete example of the DMA_WRITE message:
+
+..
+    The full list of PCIe messages is here, and we have anologous definitions for our our memory and Ethernet interfaces.
+    Messages are comprised of a type-specific cache-line-sized header and an optional variable length data payload.
+    The overall message size, is fixed by the channel parameters configured at runtime.
+    The header starts with message type specific fields, and ends with standard SimBricks message fields for synchronization and message identification.
+    As we will see below, the adapter interprets these incoming messages and translates them into actions within the simulator.
+    Similarly the adapter sends messages to pass events to its peer over the channel.
 
 ..
     Let’s walk through the memory protocol as a simple example. 
@@ -183,15 +251,38 @@ Protocol
     It mustn’t collide with those used in the base SimBricks protocol, collisions with other interface-specific protocols, however, are fine.
     Similarly, we must ensure to not overwrite the base protocol’s fields with something else.
 
+..
+    Once we determine the interface, we can begin writing an adapter.
+    For illustration, we use an example from our repo where we integrate a matrix multiplication accelerator as a PCIe device.
+    At a high level, implementing an adapter involves three key components:
+    Adapter initialization
+    Handing incoming messages
+    Implementing polling & synchronization
 
-Adapter
-------------------------------
+    Adapter Initialization
+    During startup, the adapter has to establish connections with its peer simulators. This also includes an initial protocol-specific welcome message. In the case of PCIe, the device simulator will send the device information message to the host during this process, including device identification information, BARs, supported interrupts, etc.. The SimBricks library provides helpers to establish connected channels.
+    
+    Handling Incoming Messages
+    The main simulation loop polls the incoming queue for each channel. Once a message is ready for processing, the adapter interprets the message from the SimBricks channel and calls the corresponding internal simulator functions to process the event. This function typically boils down to a switch case to handle each message type. Below is an example from our Matrix Multiplication accelerator for handling an MMIO_READ message received from the PCIe channel.
 
-To integrate a new simulator with SimBricks for the first time, a user needs to implement an adapter between the SimBricks interface and the simulators
-internal abstractions.
-
-SimBricks interfaces are based on the natural components boundaries, with simulators connected through message passing via these interfaces.
-
+    Implementing Polling & Synchronization
+    Once message handling is ready, the next step is implement the channel polling and synchronization logic.
+    The details here heavily depend on the specific simulator’s mechanics.
+    A basic simulation model as in the example above might simply poll for messages in the simulation loop, and advance the simulation time according to the minimal next message timestamp for synchronization (see our recent synchronization post).
+    For more complex discrete event-based simulator with scheduled event queues, the logic is slightly more complex.
+    At a very high level, the adapter schedules an event for processing the next message, and at the end of this handler polls for the next message and re-schedules the event (see our gem5 adapter as an example).
+    This ensures that the simulator clock does not proceed ahead of the next message.
+    Additionally, the simulator also needs to periodically send out dummy messages to allow its peer to progress when no data messages have been sent.
 
 Orchestration Framework
-------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+..
+    Lastly, 
+    Create a simulator class that inherits from the PCI device simulator class and configure the command to run the simulator.
+    With this simulator class defined in the orchestration framework, we can invoke it in the experiment script and run it alongside other components in an end-to-end environment.
+    For further guidance to the simulation script, refer to our previous blog post on running a simple experiment with the orchestration framework.
+
+Examples
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
