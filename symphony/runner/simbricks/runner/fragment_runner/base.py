@@ -265,6 +265,10 @@ class FragmentRunner(abc.ABC):
         self._worker_tasks: list[asyncio.Task] = []
 
     @abc.abstractmethod
+    async def connect(self) -> None:
+        pass
+
+    @abc.abstractmethod
     async def read(self, length: int) -> bytes:
         pass
 
@@ -357,7 +361,7 @@ class FragmentRunner(abc.ABC):
                     paths_to_include=run.inst.artifact_paths,
                 )
                 # TODO: send artifact to runner using artifact event
-                await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)
+                #await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)
 
             status = schemas.RunState.ERROR if res.failed() else schemas.RunState.COMPLETED
             event = schemas.ApiRunFragmentStateEventCreate(
@@ -589,7 +593,7 @@ class FragmentRunner(abc.ABC):
         )
 
         try:
-            await self._handle_events()
+            await self.connect()
         except Exception as exc:
             LOGGER.error(f"fatal error {exc}")
             raise exc
