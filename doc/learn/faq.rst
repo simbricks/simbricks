@@ -22,5 +22,8 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
+.. _sec-faq:
+
+
 FAQ / Troubleshooting
 ******************************
