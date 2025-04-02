@@ -319,7 +319,7 @@ class FragmentRunner(abc.ABC):
             ),  # TODO: we should not set the simbricks dir here
         )  # TODO
         inst.env = env
-        inst.assigned_fragment = inst.get_fragment(start_event.fragments[0])
+        inst.assigned_fragment = inst.get_fragment(start_event.fragments[0][0])
         return inst
 
     async def _prepare_run(self, run_id: int, start_event: schemas.ApiRunEventStartRunRead) -> Run:
