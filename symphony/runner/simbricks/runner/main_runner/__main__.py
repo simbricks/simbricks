@@ -141,7 +141,6 @@ class MainRunner:
     def __init__(
             self,
             base_url: str,
-            workdir: str,
             namespace: str,
             ident: int,
             polling_delay_sec: int,
@@ -476,7 +475,13 @@ class MainRunner:
 
 
 async def amain(paths):
-    runner = MainRunner(paths)
+    runner = MainRunner(
+        base_url=settings.runner_settings().base_url,
+        namespace=settings.runner_settings().namespace,
+        ident=settings.runner_settings().runner_id,
+        polling_delay_sec=settings.runner_settings().polling_delay_sec,
+        plugin_paths=paths,
+    )
 
     try:
         await runner.run()
