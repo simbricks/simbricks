@@ -25,6 +25,10 @@ class MainRun:
         self.fragment_runner_map = fragment_runner_map
         #self.inst: inst_base.Instantiation = inst
         self.cancelled: bool = False
+        self.fragment_run_state: dict[int, schemas.RunState] = {}
+        for fragment in fragment_runner_map:
+            self.fragment_run_state[fragment] = schemas.RunState.SPAWNED
+        self.run_state_callback: EventCallback | None = None
 
 
 class EventCallback(abc.ABC):
@@ -89,6 +93,19 @@ class BundleUpdatesEventCallback(EventCallback):
     def passthrough(self):
         return False
 
+
+class RunFragmentStateCallback(EventCallback):
+
+    def __init__(self, handlers, event_type, run: MainRun):
+        super().__init__(handlers, event_type)
+        self.run = run
+
+    async def callback(self, event: schemas.ApiEventCreate_U):
+        assert isinstance(event, schemas.ApiRunFragmentStateEventCreate)
+        self.run.fragment_run_state[event.fragment_id] = event.run_state
+
+    def passthrough(self):
+        return True
 
 class FragmentRunner:
     def __init__(self, fragment_runner: plugin.FragmentRunnerPlugin, read_task: asyncio.Task):
@@ -216,6 +233,12 @@ class MainRunner:
             handlers, "ApiRunEventUpdate", event.id, len(run.fragment_runner_map), update, self._rc
         )
 
+        handlers = []
+        for runner in fragment_runner_map.values():
+            handlers.append(runner.create_event_handlers)
+        callback = RunFragmentStateCallback(handlers, "ApiRunFragmentStateEventCreate", run)
+        run.run_state_callback = callback
+
         senders = []
         for fragment_id, runner in fragment_runner_map.items():
             fragment_event = event.model_copy()
@@ -227,8 +250,6 @@ class MainRunner:
             ))
 
         asyncio.gather(*senders)
-
-        #TODO add callback for run update events
 
     async def _handle_run_events(
         self,
@@ -338,15 +359,18 @@ class MainRunner:
                 )
                 event_query_bundle.add_event(start_run_event_q)
 
-                # TODO: I need to check whether all fragment runners have finished
-                # for run_id in list(self._run_map.keys()):
-                #     run = self._run_map[run_id]
-                #     # check if run finished and cleanup map
-                #     if run.exec_task and run.exec_task.done():
-                #         run = self._run_map.pop(run_id)
-                #         LOGGER.debug(f"removed run {run_id} from run_map")
-                #         assert run_id not in self._run_map
-                #         continue
+                for run_id in list(self._run_map.keys()):
+                    run = self._run_map[run_id]
+                    for fragment_state in run.fragment_run_state.values():
+                        if fragment_state < schemas.RunState.COMPLETED:
+                            break
+                    else:
+                        if run.run_state_callback is not None:
+                            run.run_state_callback.remove_callback()
+                        for fragment_executor in run.fragment_runner_map.values():
+                            await fragment_executor.stop()
+                        self._run_map.pop(run_id)
+                        LOGGER.debug(f"removed run {run_id} from run_map")
 
                 fetched_events_bundle = await self._rc.fetch_events(event_query_bundle)
 
