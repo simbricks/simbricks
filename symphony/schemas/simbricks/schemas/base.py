@@ -521,7 +521,7 @@ class AbstractApiRunFragmentStateEvent(AbstractApiRunFragmentEvent):
     """
 
 
-class ApiRunFragmentStateEventCreate(AbstractApiRunFragmentStateEvent):
+class ApiRunFragmentStateEventCreate(ApiCreateEvent, AbstractApiRunFragmentStateEvent):
     event_discriminator: Literal["ApiRunFragmentStateEventCreate"] = (
         "ApiRunFragmentStateEventCreate"
     )
