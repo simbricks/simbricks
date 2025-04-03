@@ -101,11 +101,14 @@ class RunFragmentStateCallback(EventCallback):
         super().__init__(handlers, event_type)
         self.run = run
 
-    async def callback(self, event: schemas.ApiEventCreate_U):
+    async def callback(self, event: schemas.ApiEventCreate_U) -> bool:
         assert isinstance(event, schemas.ApiRunFragmentStateEventCreate)
+        if event.run_id != self.run.run_id:
+            return False
         self.run.fragment_run_state[event.fragment_id] = event.run_state
+        return True
 
-    def passthrough(self):
+    def passthrough(self) -> bool:
         return True
 
 class FragmentRunner:
