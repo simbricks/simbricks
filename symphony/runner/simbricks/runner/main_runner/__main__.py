@@ -112,9 +112,9 @@ class RunFragmentStateCallback(EventCallback):
         return True
 
 class FragmentRunner:
-    def __init__(self, fragment_runner: plugin.FragmentRunnerPlugin, read_task: asyncio.Task):
+    def __init__(self, fragment_runner: plugin.FragmentRunnerPlugin):
         self.fragment_runner = fragment_runner
-        self.read_task = read_task
+        self.read_task: asyncio.Task | None = None
         self.create_event_handlers: dict[str, set[EventCallback]] = {}
         self.update_event_handlers: dict[str, set[EventCallback]] = {}
         self.delete_event_handlers: dict[str, set[EventCallback]] = {}
@@ -462,8 +462,10 @@ class MainRunner:
             if not plugin.ephemeral():
                 runner = plugin()
                 await runner.start()
-                read_task = asyncio.create_task(self._read_fragment_runner_events(runner))
-                fragment_runner = FragmentRunner(runner, read_task)
+                fragment_runner = FragmentRunner(runner)
+                fragment_runner.read_task = asyncio.create_task(
+                    self._read_fragment_runner_events(fragment_runner)
+                )
                 self.fragment_runners[name].add(fragment_runner)
 
         plugin_tags = [schemas.ApiRunnerTag(label=p) for p in self.loaded_plugins]
