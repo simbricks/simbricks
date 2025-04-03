@@ -372,8 +372,7 @@ class MainRunner:
                     else:
                         if run.run_state_callback is not None:
                             run.run_state_callback.remove_callback()
-                        for fragment_executor in run.fragment_runner_map.values():
-                            await fragment_executor.stop()
+                        await self._stop_ephemeral_fragment_runners(run.fragment_runner_map)
                         self._run_map.pop(run_id)
                         LOGGER.debug(f"removed run {run_id} from run_map")
 
