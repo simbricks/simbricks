@@ -192,7 +192,7 @@ class MainRunner:
                 )
             ))
 
-        asyncio.gather(*senders)
+        await asyncio.gather(*senders)
 
     async def _stop_ephemeral_fragment_runners(
             self, fragment_runner_map: dict[int, FragmentRunner]
@@ -203,7 +203,7 @@ class MainRunner:
                 stop.append(asyncio.create_task(runner.stop()))
                 self.fragment_runners[runner.fragment_runner.name()].remove(runner)
 
-        asyncio.gather(*stop)
+        await asyncio.gather(*stop)
 
     async def _start_run(self, run_id: int, event: schemas.ApiRunEventStartRunRead, update):
         fragment_runner_map: dict[int, FragmentRunner] = {}
@@ -248,7 +248,7 @@ class MainRunner:
                 runner.fragment_runner.send_events(event_bundle, schemas.ApiEventType.ApiEventRead)
             ))
 
-        asyncio.gather(*senders)
+        await asyncio.gather(*senders)
 
     async def _handle_run_events(
         self,
@@ -466,7 +466,7 @@ class MainRunner:
         workers = []
         workers.append(asyncio.create_task(self._handle_fragment_runner_events()))
         workers.append(asyncio.create_task(self._handel_events()))
-        asyncio.gather(*workers)
+        await asyncio.gather(*workers)
 
     async def cleanup(self):
         for _, runners in self.fragment_runners.items():

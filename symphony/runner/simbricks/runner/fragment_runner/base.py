@@ -604,7 +604,7 @@ class FragmentRunner(abc.ABC):
             workers.append(asyncio.create_task(self._worker_loop()))
             workers.append(asyncio.create_task(self._handle_events()))
             #TODO: need to properly handle cancellation here
-            asyncio.gather(*workers)
+            await asyncio.gather(*workers)
         except asyncio.CancelledError:
             LOGGER.error(f"cancelled event handling loop")
             await self._cancel_all_tasks()
