@@ -412,6 +412,9 @@ class MainRunner:
     async def _apply_callbacks(self, event_bundle: schemas.ApiEventBundle, callbacks: dict[str, set[EventCallback]]) -> schemas.ApiEventBundle:
         passthrough_events = schemas.ApiEventBundle()
         for event_type, events in event_bundle.events.items():
+            if event_type not in callbacks:
+                passthrough_events.add_events(*events)
+                continue
             for event in events:
                 for callback in callbacks[event_type]:
                     if await callback.callback(event):
