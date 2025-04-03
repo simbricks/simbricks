@@ -87,7 +87,7 @@ class BundleUpdatesEventCallback(EventCallback):
             else:
                 self.update_event.event_status = schemas.ApiEventStatus.ERROR
             event_bundle.add_event(self.update_event)
-            self.rc.update_events(event_bundle)
+            await self.rc.update_events(event_bundle)
             self.remove_callback()
         return True
 
