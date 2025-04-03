@@ -37,7 +37,8 @@ class EventCallback(abc.ABC):
         self.handlers = handlers
         self.event_type = event_type
         for handler in self.handlers:
-            handler[self.event_type].add(self)
+            hs = handler.setdefault(self.event_type, set())
+            hs.add(self)
 
     def remove_callback(self):
         for handler in self.handlers:
