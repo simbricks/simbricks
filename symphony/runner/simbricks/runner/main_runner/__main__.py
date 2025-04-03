@@ -240,13 +240,15 @@ class MainRunner:
         run.run_state_callback = callback
 
         senders = []
-        for fragment_id, runner in fragment_runner_map.items():
+        for fragment_id, name in event.fragments:
             fragment_event = event.model_copy()
-            fragment_event.fragments = [fragment_id]
+            fragment_event.fragments = [(fragment_id, name)]
             event_bundle = schemas.ApiEventBundle()
             event_bundle.add_event(fragment_event)
             senders.append(asyncio.create_task(
-                runner.fragment_runner.send_events(event_bundle, schemas.ApiEventType.ApiEventRead)
+                fragment_runner_map[fragment_id].fragment_runner.send_events(
+                    event_bundle, schemas.ApiEventType.ApiEventRead
+                )
             ))
 
         await asyncio.gather(*senders)
