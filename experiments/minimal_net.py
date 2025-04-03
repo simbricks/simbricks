@@ -1,3 +1,4 @@
+from simbricks.orchestration import instantiation as inst
 from simbricks.orchestration import simulation as sim
 from simbricks.orchestration import system
 from simbricks.orchestration.helpers import instantiation as inst_helpers
@@ -45,4 +46,9 @@ simulation = sim_helpers.simple_simulation(
     },
 )
 
-instantiations = [inst_helpers.simple_instantiation(simulation)]
+instantiation = inst_helpers.simple_instantiation(simulation)
+fragment = inst.Fragment()
+fragment.add_simulators(*simulation.all_simulators())
+instantiation.fragments = [fragment]
+
+instantiations = [instantiation]
