@@ -21,7 +21,10 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
         return False
 
     async def read(self, length: int) -> bytes:
-        return await self.reader.read(length)
+        data = await self.reader.read(length)
+        if length != 0 and len(data) == 0:
+            raise RuntimeError("connection broken")
+        return data
 
     async def write(self, data: bytes) -> None:
         self.writer.write(data)
@@ -50,6 +53,8 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
             return
         self.executor.terminate()
         self.executor.wait()
+        self.executor = None
         await self.server.wait_closed()
+        print("successfully stopped local fragment executor")
 
 runner_plugin = SimbricksLocalPlugin
