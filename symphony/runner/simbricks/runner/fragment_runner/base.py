@@ -628,7 +628,9 @@ class FragmentRunner(abc.ABC):
 def setup_logger() -> logging.Logger:
     level = settings.RunnerSettings().log_level
     logging.basicConfig(
-        level=level, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        level=level,
+        format="%(asctime)s - fragment executor - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     logger = logging.getLogger(__name__)
     return logger
