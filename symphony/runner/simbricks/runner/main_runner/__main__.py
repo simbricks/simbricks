@@ -209,6 +209,17 @@ class MainRunner:
 
         await asyncio.gather(*stop)
 
+    async def _start_fragment_runner(self, name: str) -> FragmentRunner:
+        assert name in self.loaded_plugins
+        runner = self.loaded_plugins[name]()
+        await runner.start()
+        fragment_runner = FragmentRunner(runner)
+        fragment_runner.read_task = asyncio.create_task(
+            self._read_fragment_runner_events(fragment_runner)
+        )
+        self.fragment_runners[name].add(fragment_runner)
+        return fragment_runner
+
     async def _start_run(self, run_id: int, event: schemas.ApiRunEventStartRunRead, update):
         fragment_runner_map: dict[int, FragmentRunner] = {}
         for id, name in event.fragments:
@@ -216,12 +227,8 @@ class MainRunner:
                 await self._stop_ephemeral_fragment_runners(fragment_runner_map)
                 raise RuntimeError(f"unsupported fragment runner type {name}")
             if (self.loaded_plugins[name].ephemeral() or not self.fragment_runners[name]):
-                runner = self.loaded_plugins[name]()
-                await runner.start()
-                read_task = asyncio.create_task(self._read_fragment_runner_events(runner))
-                fragment_runner = FragmentRunner(runner, read_task)
+                fragment_runner = await self._start_fragment_runner(name)
                 fragment_runner_map[id] = fragment_runner
-                self.fragment_runners[name].add(fragment_runner)
             else:
                 assert len(self.fragment_runners[name]) == 1
                 fragment_runner_map[id] = list(self.fragment_runners[name])[0]
@@ -461,13 +468,7 @@ class MainRunner:
         # start non-ephemeral plugins
         for name, plugin in self.loaded_plugins.items():
             if not plugin.ephemeral():
-                runner = plugin()
-                await runner.start()
-                fragment_runner = FragmentRunner(runner)
-                fragment_runner.read_task = asyncio.create_task(
-                    self._read_fragment_runner_events(fragment_runner)
-                )
-                self.fragment_runners[name].add(fragment_runner)
+                await self._start_fragment_runner(name)
 
         plugin_tags = [schemas.ApiRunnerTag(label=p) for p in self.loaded_plugins]
         await self._rc.runner_started(plugin_tags)
