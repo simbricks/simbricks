@@ -411,7 +411,10 @@ class FragmentRunner(abc.ABC):
                 continue
 
             run.exec_task.cancel()
-            await run.exec_task
+            try:
+                await run.exec_task
+            except asyncio.CancelledError:
+                pass
 
     async def _handle_general_run_events(
         self,
@@ -470,7 +473,7 @@ class FragmentRunner(abc.ABC):
                             LOGGER.error(f"could not prepare run {run_id}: {trace}")
                             assert len(event.fragments) == 1
                             state_event = schemas.ApiRunFragmentStateEventCreate(
-                                run_id=run.run_id,
+                                run_id=event.run_id,
                                 fragment_id=event.fragments[0][0],
                                 run_state=schemas.RunState.ERROR
                             )
@@ -594,19 +597,24 @@ class FragmentRunner(abc.ABC):
 
         try:
             await self.connect()
-        except Exception as exc:
-            LOGGER.error(f"fatal error {exc}")
-            raise exc
+        except Exception:
+            LOGGER.error(f"failed to connect to runner")
+            raise
 
+        workers: list[asyncio.Task] = []
         try:
-            workers = []
             workers.append(asyncio.create_task(self._send_loop()))
             workers.append(asyncio.create_task(self._worker_loop()))
             workers.append(asyncio.create_task(self._handle_events()))
-            #TODO: need to properly handle cancellation here
             await asyncio.gather(*workers)
         except asyncio.CancelledError:
-            LOGGER.error(f"cancelled event handling loop")
+            LOGGER.error("cancelled event handling loop")
+            for worker in workers:
+                worker.cancel()
+                try:
+                    await worker
+                except asyncio.CancelledError:
+                    LOGGER.debug(f"cancelled worker task {worker.get_name()}")
             await self._cancel_all_tasks()
 
         except Exception:

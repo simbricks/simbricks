@@ -9,19 +9,14 @@ async def send_events(
     events_json = events.model_dump_json()
     payload = bytes(f"{event_type.value},{events_json}", encoding="utf-8")
     data = bytes(f"{len(payload):12x}", encoding="utf-8") + payload
-    # TODO: error handling
     await write(data)
 
 async def get_events(
         read: abc.Callable[[int], abc.Awaitable[bytes]]
 ) -> tuple[schemas.ApiEventType, schemas.ApiEventBundle]:
-    try:
-        length_str = (await read(12)).decode("utf-8")
-        length = int(length_str, 16)
-        payload = (await read(length)).decode("utf-8")
-    except Exception:
-        #TODO
-        pass
+    length_str = (await read(12)).decode("utf-8")
+    length = int(length_str, 16)
+    payload = (await read(length)).decode("utf-8")
 
     separator = payload.find(",")
     if separator == -1:

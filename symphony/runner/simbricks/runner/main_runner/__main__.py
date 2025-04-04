@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import itertools
 import logging
 import traceback
 
@@ -126,6 +127,10 @@ class FragmentRunner:
         self.delete_event_handlers.clear()
         self.query_event_handlers.clear()
         self.read_task.cancel()
+        try:
+            await self.read_task
+        except asyncio.CancelledError:
+            pass
         await self.fragment_runner.stop()
 
 
@@ -148,7 +153,6 @@ class MainRunner:
             namespace: str,
             ident: int,
             polling_delay_sec: int,
-            plugin_paths: list[str]
     ):
         self._ident = ident
         self._polling_delay_sec = polling_delay_sec
@@ -162,15 +166,6 @@ class MainRunner:
         self._rc = client.RunnerClient(self._namespace_client, ident)
 
         self._run_map: dict[int, MainRun] = {}
-
-        try:
-            self.loaded_plugins = plugin_loader.load_plugins(plugin_paths)
-        except (plugin_loader.RunnerPluginLoadError, load_mod.SimBricksModuleLoadError) as err:
-            print(f"Error occured during loading of runner plugins:\n{err}")
-            exit(1)
-
-        for plugin in self.loaded_plugins:
-            self.fragment_runners[plugin] = set()
 
     async def _send_events_aggregate_updates(
         self, run_id: int, event, event_type: str, update
@@ -188,7 +183,7 @@ class MainRunner:
         # send event to fragment runners
         event_bundle = schemas.ApiEventBundle()
         event_bundle.add_event(event)
-        senders = []
+        senders: list[asyncio.Task] = []
         for runner in run.fragment_runner_map.values():
             senders.append(asyncio.create_task(
                 runner.fragment_runner.send_events(
@@ -196,7 +191,16 @@ class MainRunner:
                 )
             ))
 
-        await asyncio.gather(*senders)
+        try:
+            await asyncio.gather(*senders)
+        except asyncio.CancelledError:
+            for sender in senders:
+                sender.cancel()
+                try:
+                    await sender
+                except asyncio.CancelledError:
+                    pass
+            raise
 
     async def _stop_ephemeral_fragment_runners(
             self, fragment_runner_map: dict[int, FragmentRunner]
@@ -249,7 +253,7 @@ class MainRunner:
         callback = RunFragmentStateCallback(handlers, "ApiRunFragmentStateEventCreate", run)
         run.run_state_callback = callback
 
-        senders = []
+        senders: list[asyncio.Task] = []
         for fragment_id, name in event.fragments:
             fragment_event = event.model_copy()
             fragment_event.fragments = [(fragment_id, name)]
@@ -261,7 +265,16 @@ class MainRunner:
                 )
             ))
 
-        await asyncio.gather(*senders)
+        try:
+            await asyncio.gather(*senders)
+        except asyncio.CancelledError:
+            for sender in senders:
+                sender.cancel()
+                try:
+                    await sender
+                except asyncio.CancelledError:
+                    pass
+            raise
 
     async def _handle_run_events(
         self,
@@ -339,80 +352,70 @@ class MainRunner:
             LOGGER.info(f"handled runner related event {event.id}")
 
     async def _handel_events(self) -> None:
-        try:
+        while True:
+            # fetch all events not handled yet
+            event_query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
 
-            while True:
-                # fetch all events not handled yet
-                event_query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
+            # query events for the runner itself that do not relate to a specific run
+            runner_event_q = schemas.ApiRunnerEventQuery(
+                runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
+            )
+            event_query_bundle.add_event(runner_event_q)
 
-                # query events for the runner itself that do not relate to a specific run
-                runner_event_q = schemas.ApiRunnerEventQuery(
-                    runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
-                )
-                event_query_bundle.add_event(runner_event_q)
+            # query run related events that do not trigger the start of a run. We explicitly
+            # exclude start_run events as we need the json blobs to start them. Therefore we
+            # create an extra query for them.
+            non_start_type = utils_base.enum_subs(
+                schemas.RunEventType, schemas.RunEventType.START_RUN
+            )
+            run_event_q = schemas.ApiRunEventQuery(
+                runner_ids=[self._ident],
+                event_status=[schemas.ApiEventStatus.PENDING],
+                run_event_type=non_start_type,
+            )
+            event_query_bundle.add_event(run_event_q)
 
-                # query run related events that do not trigger the start of a run. We explicitly
-                # exclude start_run events as we need the json blobs to start them. Therefore we
-                # create an extra query for them.
-                non_start_type = utils_base.enum_subs(
-                    schemas.RunEventType, schemas.RunEventType.START_RUN
-                )
-                run_event_q = schemas.ApiRunEventQuery(
-                    runner_ids=[self._ident],
-                    event_status=[schemas.ApiEventStatus.PENDING],
-                    run_event_type=non_start_type,
-                )
-                event_query_bundle.add_event(run_event_q)
+            # query events that start a run
+            start_run_event_q = schemas.ApiRunEventStartRunQuery(
+                runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
+            )
+            event_query_bundle.add_event(start_run_event_q)
 
-                # query events that start a run
-                start_run_event_q = schemas.ApiRunEventStartRunQuery(
-                    runner_ids=[self._ident], event_status=[schemas.ApiEventStatus.PENDING]
-                )
-                event_query_bundle.add_event(start_run_event_q)
+            for run_id in list(self._run_map.keys()):
+                run = self._run_map[run_id]
+                for fragment_state in run.fragment_run_state.values():
+                    if fragment_state < schemas.RunState.COMPLETED:
+                        break
+                else:
+                    if run.run_state_callback is not None:
+                        run.run_state_callback.remove_callback()
+                    await self._stop_ephemeral_fragment_runners(run.fragment_runner_map)
+                    self._run_map.pop(run_id)
+                    LOGGER.debug(f"removed run {run_id} from run_map")
 
-                for run_id in list(self._run_map.keys()):
-                    run = self._run_map[run_id]
-                    for fragment_state in run.fragment_run_state.values():
-                        if fragment_state < schemas.RunState.COMPLETED:
-                            break
-                    else:
-                        if run.run_state_callback is not None:
-                            run.run_state_callback.remove_callback()
-                        await self._stop_ephemeral_fragment_runners(run.fragment_runner_map)
-                        self._run_map.pop(run_id)
-                        LOGGER.debug(f"removed run {run_id} from run_map")
+            fetched_events_bundle = await self._rc.fetch_events(event_query_bundle)
 
-                fetched_events_bundle = await self._rc.fetch_events(event_query_bundle)
+            LOGGER.debug(
+                f"events fetched ({len(fetched_events_bundle.events)}): {fetched_events_bundle.events}"
+            )
 
-                LOGGER.debug(
-                    f"events fetched ({len(fetched_events_bundle.events)}): {fetched_events_bundle.events}"
-                )
+            update_events_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
+            for key in fetched_events_bundle.events.keys():
+                events = fetched_events_bundle.events[key]
+                match key:
+                    # handle events that are just related to the runner itself, independent of any runs
+                    case "ApiRunnerEventRead":
+                        await self._handle_runner_events(events, update_events_bundle)
+                    # handle events related to a run that is currently being executed
+                    case ("ApiRunEventStartRunRead" | "ApiRunEventRead"):
+                        await self._handle_run_events(events, update_events_bundle)
+                    case _:
+                        LOGGER.error(f"encountered not yet handled event type {key}")
 
-                update_events_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
-                for key in fetched_events_bundle.events.keys():
-                    events = fetched_events_bundle.events[key]
-                    match key:
-                        # handle events that are just related to the runner itself, independent of any runs
-                        case "ApiRunnerEventRead":
-                            await self._handle_runner_events(events, update_events_bundle)
-                        # handle events related to a run that is currently being executed
-                        case ("ApiRunEventStartRunRead" | "ApiRunEventRead"):
-                            await self._handle_run_events(events, update_events_bundle)
-                        case _:
-                            LOGGER.error(f"encountered not yet handled event type {key}")
+            if not update_events_bundle.empty():
+                await self._rc.update_events(update_events_bundle)
 
-                if not update_events_bundle.empty():
-                    await self._rc.update_events(update_events_bundle)
-
-                await asyncio.sleep(self._polling_delay_sec)
-
-        except asyncio.CancelledError as err:
-            LOGGER.error(f"cancelled event handling loop")
-            raise err
-
-        except Exception:
-            trace = traceback.format_exc()
-            LOGGER.error(f"an error occured while running: {trace}")
+            await asyncio.sleep(self._polling_delay_sec)
 
     async def _apply_callbacks(self, event_bundle: schemas.ApiEventBundle, callbacks: dict[str, set[EventCallback]]) -> schemas.ApiEventBundle:
         passthrough_events = schemas.ApiEventBundle()
@@ -458,30 +461,57 @@ class MainRunner:
                 await event.fragment_runner.fragment_runner.send_events(read_events, schemas.ApiEventType.ApiEventRead)
 
     async def _read_fragment_runner_events(self, fragment_runner: FragmentRunner):
-        while True:
-            (event_type, events) = await fragment_runner.fragment_runner.get_events()
-            await self.fragment_runner_events.put(
-                FragmentRunnerEvent(fragment_runner, event_type, events)
+        try:
+            while True:
+                (event_type, events) = await fragment_runner.fragment_runner.get_events()
+                await self.fragment_runner_events.put(
+                    FragmentRunnerEvent(fragment_runner, event_type, events)
+                )
+        except Exception:
+            LOGGER.error(
+                f"failed to read events from runner {fragment_runner.fragment_runner.name()}"
             )
+            raise
 
-    async def run(self):
-        # start non-ephemeral plugins
-        for name, plugin in self.loaded_plugins.items():
-            if not plugin.ephemeral():
-                await self._start_fragment_runner(name)
+    def _load_plugins(self, plugin_paths: list[str]):
+        try:
+            self.loaded_plugins = plugin_loader.load_plugins(plugin_paths)
+        except Exception:
+            LOGGER.error("Failed to load runner plugins")
+            raise
 
-        plugin_tags = [schemas.ApiRunnerTag(label=p) for p in self.loaded_plugins]
-        await self._rc.runner_started(plugin_tags)
+        for plugin in self.loaded_plugins:
+            self.fragment_runners[plugin] = set()
 
-        workers = []
-        workers.append(asyncio.create_task(self._handle_fragment_runner_events()))
-        workers.append(asyncio.create_task(self._handel_events()))
-        await asyncio.gather(*workers)
+    async def run(self, plugin_paths: list[str]):
+        workers: list[asyncio.Task] = []
+        try:
+            self._load_plugins(plugin_paths)
+            # start non-ephemeral plugins
+            LOGGER.debug("start non-ephemeral plugins")
+            for name, plugin in self.loaded_plugins.items():
+                if not plugin.ephemeral():
+                    await self._start_fragment_runner(name)
 
-    async def cleanup(self):
-        for _, runners in self.fragment_runners.items():
-            for runner in runners:
-                await runner.stop()
+            LOGGER.debug("notify backend that runner has started")
+            plugin_tags = [schemas.ApiRunnerTag(label=p) for p in self.loaded_plugins]
+            await self._rc.runner_started(plugin_tags)
+
+            LOGGER.debug("start worker tasks")
+            workers.append(asyncio.create_task(self._handle_fragment_runner_events()))
+            workers.append(asyncio.create_task(self._handel_events()))
+            await asyncio.gather(*workers)
+        except (asyncio.CancelledError, Exception):
+            LOGGER.warning("aborting run loop and cleaning up")
+            for worker in workers:
+                worker.cancel()
+                try:
+                    await worker
+                except asyncio.CancelledError:
+                    LOGGER.debug(f"cancelled worker task {worker.get_name()}")
+            for executor in itertools.chain(*self.fragment_runners.values()):
+                await asyncio.shield(executor.stop())
+            raise
 
 
 async def amain(paths):
@@ -490,16 +520,9 @@ async def amain(paths):
         namespace=settings.runner_settings().namespace,
         ident=settings.runner_settings().runner_id,
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
-        plugin_paths=paths,
     )
 
-    try:
-        await runner.run()
-    except Exception as err:
-        print(f"Fatal error: {err}")
-        await runner.cleanup()
-        exit(1)
-    await runner.cleanup()
+    await runner.run(paths)
 
 
 def setup_logger() -> logging.Logger:
@@ -515,7 +538,15 @@ LOGGER = setup_logger()
 
 
 def main():
-    asyncio.run(amain(["/workspaces/simbricks/symphony/runner/simbricks/runner/main_runner/plugins/local_plugin.py"]))
+    try:
+        asyncio.run(amain(["/workspaces/simbricks/symphony/runner/simbricks/runner/main_runner/plugins/local_plugin.py"]))
+    except KeyboardInterrupt:
+        LOGGER.info("received keyboard interrupt, shutting down...")
+        LOGGER.info("Bye!")
+    except:
+        trace = traceback.format_exc()
+        LOGGER.error(f"Fatal error:\n{trace}")
+        exit(1)
 
 
 if __name__ == "__main__":
