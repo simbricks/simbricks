@@ -47,7 +47,7 @@ simulation = sim_helpers.simple_simulation(
 )
 
 instantiation = inst_helpers.simple_instantiation(simulation)
-fragment = inst.Fragment()
+fragment = inst.Fragment("SimbricksLocalRunner")
 fragment.add_simulators(*simulation.all_simulators())
 instantiation.fragments = [fragment]
 

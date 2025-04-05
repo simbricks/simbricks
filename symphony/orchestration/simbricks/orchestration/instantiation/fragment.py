@@ -35,10 +35,11 @@ if typing.TYPE_CHECKING:
 
 class Fragment(utils_base.IdObj):
 
-    def __init__(self, runner_label: set[str] | None = None):
+    def __init__(self, fragment_executor_tag: str, runner_tags: set[str] | None = None):
         super().__init__()
 
-        self._runner_label = set() if runner_label is None else runner_label
+        self._fragment_executor_tag = fragment_executor_tag
+        self._runner_tags = set() if runner_tags is None else runner_tags
         """Only execute this fragment on runner that has all given labels."""
         self._proxies: set[proxy.Proxy] = set()
         self._simulators: set[sim_base.Simulator] = set()
@@ -52,7 +53,8 @@ class Fragment(utils_base.IdObj):
             proxy_json.append(prox.toJSON())
         json_obj["proxies"] = proxy_json
 
-        json_obj["runner_labels"] = list(self._runner_label)
+        json_obj["fragment_executor_tag"] = self._fragment_executor_tag
+        json_obj["runner_tags"] = list(self._runner_tags)
         json_obj["simulators"] = list(map(lambda sim: sim.id(), self._simulators))
         json_obj["cores_required"] = self.cores_required
         json_obj["memory_required"] = self.memory_required
@@ -62,7 +64,10 @@ class Fragment(utils_base.IdObj):
     def fromJSON(cls, json_obj: dict, simulation: sim_base.Simulation) -> Fragment:
         instance = super().fromJSON(json_obj)
 
-        instance._runner_label = set(utils_base.get_json_attr_top(json_obj, "runner_labels"))
+        instance._fragment_executor_tag = utils_base.get_json_attr_top(
+            json_obj, "fragment_executor_tag"
+        )
+        instance._runner_tags = set(utils_base.get_json_attr_top(json_obj, "runner_tags"))
 
         proxies_json = utils_base.get_json_attr_top(json_obj, "proxies")
         instance._proxies = set()
@@ -93,8 +98,24 @@ class Fragment(utils_base.IdObj):
         return req_mem
 
     @staticmethod
-    def merged(*fragments: Fragment):
-        merged_fragment = Fragment()
+    def merged(*fragments: Fragment) -> Fragment:
+        def compare_labels(a: Fragment, b: Fragment) -> bool:
+            if len(a._runner_tags) != len(b._runner_tags):
+                return False
+            for label in a._runner_tags:
+                if label not in b._runner_tags:
+                    return False
+            return True
+
+        if not fragments:
+            raise RuntimeError("cannot merge 0 fragments")
+        for fragment in fragments:
+            if (fragment._fragment_executor_tag != fragments[0]._fragment_executor_tag
+                or not compare_labels(fragment, fragments[0])
+            ):
+                raise RuntimeError("cannot merge fragments with different fragment executor tags "
+                                   "or different runner tags")
+        merged_fragment = Fragment(fragments[0]._fragment_executor_tag, fragments[0]._runner_tags)
         proxies = set()
         simulators = set()
         for fragment in fragments:
@@ -102,6 +123,7 @@ class Fragment(utils_base.IdObj):
             simulators.update(fragment.all_simulators())
         merged_fragment._proxies = proxies
         merged_fragment._simulators = simulators
+        return merged_fragment
 
     def add_simulators(self, *sims: sim_base.Simulator):
         self._simulators.update(sims)
