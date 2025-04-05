@@ -75,6 +75,8 @@ class ApiFragment(BaseModel):
     instantiation_id: int | None = None
     cores_required: int | None = None
     memory_required: int | None = None
+    runner_tags: list[str] | None = None
+    fragment_executor_tag: str | None = None
 
 
 class ApiFragmentQuery(BaseModel):
