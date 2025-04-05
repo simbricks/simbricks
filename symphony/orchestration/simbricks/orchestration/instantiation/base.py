@@ -163,7 +163,7 @@ class Instantiation(utils_base.IdObj):
     ):
         super().__init__()
         self.simulation: sim_base.Simulation = sim
-        self._fragments: list[inst_fragment.Fragment] | None = None
+        self._fragments: list[inst_fragment.Fragment] = []
         self._assigned_fragment: inst_fragment.Fragment | None = None
         """The fragment that is actually executed. This is set by the runner and can also be a
         merged fragment."""
@@ -194,11 +194,6 @@ class Instantiation(utils_base.IdObj):
 
     @property
     def fragments(self) -> list[inst_fragment.Fragment]:
-        if self._fragments is None:
-            # Default fragment contains all simulators
-            fragment = inst_fragment.Fragment()
-            fragment.add_simulators(*self.simulation.all_simulators())
-            return [fragment]
         return self._fragments
 
     @fragments.setter
@@ -239,6 +234,8 @@ class Instantiation(utils_base.IdObj):
 
         json_obj["simulation"] = self.simulation.id()
 
+        if not self._fragments:
+            raise RuntimeError("Instantiation needs at least one fragment, but no fragments found.")
         fragments_json = []
         for fragment in self._fragments:
             utils_base.has_attribute(fragment, "toJSON")
