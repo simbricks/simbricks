@@ -45,7 +45,7 @@ extensions = [
     'breathe',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
-    'sphinx.ext.extlinks'
+    'sphinx.ext.extlinks',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -112,7 +112,7 @@ html_static_path = ['_static']
 
 html_logo = 'simbricks-text-horizontal.svg'
 html_theme_options = {
-    'logo_only': True,
+    # 'logo_only': True,
     # 'display_version': False,
 }
 
