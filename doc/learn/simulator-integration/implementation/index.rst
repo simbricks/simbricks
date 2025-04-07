@@ -206,7 +206,8 @@ Handling Incoming Messages
 
 * In :numref:`code-adapter-handling-incoming` you can see the example code for handling incoming messages from our Corundum Verilator Adapter.
   
-  - You can see that in this Adapter two poll functions (``poll_h2d``, ``poll_n2d``) defined. One to handle messages coming from the host interface and another to handle message received on the ethernet interface.  
+  - The main simulation loop polls the incoming queue for each channel.
+  - You can see that in this Adapter two poll functions (``poll_h2d``, ``poll_n2d``) are used. One to handle messages coming from the host interface and another to handle message received on the ethernet interface.  
   - Each of these function triggers different actions in the simulator (in this case Verilator) depending on the Message Type they receive from their respective interface. An example of how this might be handled
     is shown in the ``h2d_read`` function that will read the received message and triggers the mmio read by interacting with Verilators top level module.
 
@@ -438,38 +439,8 @@ Polling and Synchronization
     * **Network:** :ns3-adapter:`\ `
 
 
-..
- TODO: BETTER EXAMPLES IN THIS SECTION
 
 
-..
-    Once we determine the interface, we can begin writing an adapter.
-    For illustration, we use an example from our repo where we integrate a matrix multiplication accelerator as a PCIe device.
-    At a high level, implementing an adapter involves three key components:
-    Adapter initialization
-    Handing incoming messages
-    Implementing polling & synchronization
-
-    Adapter Initialization
-    During startup, the adapter has to establish connections with its peer simulators. 
-    This also includes an initial protocol-specific welcome message.
-    In the case of PCIe, the device simulator will send the device information message to the host during this process, including device identification information, BARs, supported interrupts, etc..
-    The SimBricks library provides helpers to establish connected channels.
-    
-    Handling Incoming Messages
-    The main simulation loop polls the incoming queue for each channel.
-    Once a message is ready for processing, the adapter interprets the message from the SimBricks channel and calls the corresponding internal simulator functions to process the event.
-    This function typically boils down to a switch case to handle each message type.
-    Below is an example from our Matrix Multiplication accelerator for handling an MMIO_READ message received from the PCIe channel.
-
-    Implementing Polling & Synchronization
-    Once message handling is ready, the next step is implement the channel polling and synchronization logic.
-    The details here heavily depend on the specific simulator’s mechanics.
-    A basic simulation model as in the example above might simply poll for messages in the simulation loop, and advance the simulation time according to the minimal next message timestamp for synchronization (see our recent synchronization post).
-    For more complex discrete event-based simulator with scheduled event queues, the logic is slightly more complex.
-    At a very high level, the adapter schedules an event for processing the next message, and at the end of this handler polls for the next message and re-schedules the event (see our gem5 adapter as an example).
-    This ensures that the simulator clock does not proceed ahead of the next message.
-    Additionally, the simulator also needs to periodically send out dummy messages to allow its peer to progress when no data messages have been sent.
 
 Orchestration Framework
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

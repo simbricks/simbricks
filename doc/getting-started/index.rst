@@ -33,9 +33,13 @@ In this guide we will make use of an SimBricks Example and guide you through the
 Setup
 ******************************
 
-In the following 
+In the following
 
 Install the SimBricks 
+
+Create Your First Virtual Prototype
+************************************
+
 
 Running Your First Virtual Prototype
 ************************************
