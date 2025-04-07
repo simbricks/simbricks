@@ -21,7 +21,11 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-CLI
+
+.. _sec-cli-ref:
+
+
+Command Line Interface (CLI)
 ******************************
 
 
