@@ -276,6 +276,10 @@ class MainRunner:
                     pass
             raise
 
+        # TODO: should we wait here until all fragment executors sent their successful update
+        # events? Only then we have also already updated the state of the StartRunEvent in the
+        # backend and do not accidentally fetch the same StartRunEvent again.
+
     async def _handle_run_events(
         self,
         events: list[schemas.ApiRunEventRead],
@@ -460,6 +464,7 @@ class MainRunner:
             if read_events is not None and not read_events.empty():
                 await event.fragment_runner.fragment_runner.send_events(read_events, schemas.ApiEventType.ApiEventRead)
 
+    # TODO: abort a run if the fragment executor fails/the connection breaks
     async def _read_fragment_runner_events(self, fragment_runner: FragmentRunner):
         try:
             while True:
