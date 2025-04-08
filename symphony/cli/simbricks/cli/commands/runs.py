@@ -165,6 +165,27 @@ async def submit(
 
 @app.command()
 @async_cli()
+async def create(
+    instantiation_id: int,
+    follow: Annotated[
+        bool,
+        Option(
+            "--follow",
+            "-f",
+            help="Wait for run to terminate and show output live.",
+        ),
+    ] = False,
+):
+    """Create a virtual prototype run based on an already submitted configuration."""
+    run = await client_provider.simbricks_client.create_run(instantiation_id)
+    print_table_generic("Run", [run], "id", "instantiation_id", "state")
+
+    if follow and run.id is not None:
+        await opus_base.follow_run(run_id=run.id)
+
+
+@app.command()
+@async_cli()
 async def create_event(
     runner_id: int,
     run_id: int,
