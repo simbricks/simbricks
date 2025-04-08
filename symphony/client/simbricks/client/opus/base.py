@@ -54,7 +54,8 @@ class ConsoleLineGenerator:
 
     async def _fetch_next_output(self) -> list[str, str]:
         filter = schemas.ApiRunOutputFilter(
-            self._simulators_seen_until_id, self._proxies_seen_until_id
+            simulator_seen_until_line_id=self._simulators_seen_until_id,
+            proxy_seen_until_line_id=self._proxies_seen_until_id,
         )
         output = await self._sb_client.get_run_console(self._run_id, filter=filter)
 
@@ -62,10 +63,14 @@ class ConsoleLineGenerator:
         for simulator_id, simulator in output.simulators.items():
             for _, output_lines in simulator.commands.items():
                 for output_line in output_lines:
+                    assert output_line.id is not None
                     lines.append((simulator.name, output_line.output))
-                    self._simulators_seen_until_id = max(
-                        self._simulators_seen_until_id, output_line.id
-                    )
+                    if self._simulators_seen_until_id is None:
+                        self._simulators_seen_until_id = output_line.id
+                    else:
+                        self._simulators_seen_until_id = max(
+                            self._simulators_seen_until_id, output_line.id
+                        )
 
         return lines
 

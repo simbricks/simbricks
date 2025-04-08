@@ -483,7 +483,7 @@ class SimBricksClient:
     async def get_run_console(
         self, run_id: int, filter: schemas.ApiRunOutputFilter
     ) -> schemas.ApiRunOutput:
-        filter = schemas.ApiRunOutputFilter.model_validate(filter)
+        filter = schemas.ApiRunOutputFilter.model_validate(filter).model_dump()
         async with self._ns_client.get(url=f"/runs/{run_id}/console", json=filter) as resp:
             raw_json = await resp.json()
             return schemas.ApiRunOutput.model_validate(raw_json)
