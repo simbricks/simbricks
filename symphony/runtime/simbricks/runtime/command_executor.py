@@ -89,12 +89,13 @@ class CommandExecutor:
         self, stream: asyncio.StreamReader, consume_fn: typing.Callable[[bytes], None]
     ) -> None:
         while True:
-            bs = await stream.read(4096)
+            bs = await stream.read(8192)
             if bs:
                 await consume_fn(bs)
             else:
                 await consume_fn(bs)
                 return
+            await asyncio.sleep(1)
 
     async def _waiter(self) -> None:
         stdout_handler = asyncio.create_task(
