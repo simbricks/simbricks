@@ -30,10 +30,11 @@ Reference
     :maxdepth: 2
 
     cli/index
+    client.rst
     orchestration-framework/index
+    runner.rst
     core-lib/index
 ..    
-    runner
     simulators
   
   
