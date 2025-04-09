@@ -26,9 +26,37 @@
 Orchestration Framework for Virtual Prototypes
 **********************************************
 
+SimBricks provides users with a powerful orchestration framework to programmatically define and configure virtual prototypes through Python scripts.
+Users leverage a dedicated Python package that offers an intuitive and flexible API, allowing for seamless virtual prototype configuration.
+
+The structure of this package reflects SimBricks' distinct configuration abstractions-:ref:`System Configuration <sec-orchestration-framework-sys-conf>`,
+:ref:`Simulation Configuration <sec-orchestration-framework-sim-conf>`, and :ref:`Instantiation Configuration <sec-orchestration-framework-inst-conf>`.
+Consequently, scripts written by users typically adopt a three-part structure corresponding to these abstractions.
+
+We will now take a closer look at how the SimBricks orchestration framework works and examine some of its most important aspects in detail. 
+Let’s delve into the specifics!
+
+.. _sec-orchestration-framework-sys-conf:
 
 System Configuration 
 ==============================
+
+System
+------------------------------
+
+..
+  System Configuration: The blueprint of the virtual prototype system, detailing its components and properties.
+  Simulation Configuration: Instructions specifying how the system components are simulated.
+  Instantiation Configuration: Runtime details, such as placement and execution parameters.
+
+Components
+------------------------------
+
+Interfaces
+------------------------------
+
+Channels
+------------------------------
 
 ..
   NOTE: WHEN SPEAKING OF CHANNELS, MENTION THIS AND REFERENCE THE SYNCHRONIZATION SECTION!!!!!!!!!!!
@@ -45,9 +73,13 @@ System Configuration
         For more information, refer to the section on Synchronization in the Architectural Overview.
 
 
+.. _sec-orchestration-framework-sim-conf:
+
 Simulation Configuration
 ==============================
 
+
+.. _sec-orchestration-framework-inst-conf:
 
 Instantiation Configuration
 ==============================
