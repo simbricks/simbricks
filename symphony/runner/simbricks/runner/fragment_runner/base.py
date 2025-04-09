@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import datetime
 import json
 import logging
 import pathlib
@@ -88,6 +89,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
                 simulator_id=simulator_id,
                 output=line,
                 is_stderr=stderr,
+                output_generated_at=datetime.datetime.now()
             )
             event_bundle.add_event(event)
 
@@ -178,6 +180,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
                 proxy_id=proxy_id,
                 output=line,
                 is_stderr=stderr,
+                output_generated_at=datetime.datetime.now()
             )
             event_bundle.add_event(event)
 

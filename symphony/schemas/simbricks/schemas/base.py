@@ -411,7 +411,7 @@ class ApiRunnerEventQuery(AbstractApiEventQuery):
 
 
 class AbstractApiOutputEvent:
-    output_generated_at: datetime.datetime = datetime.datetime.now()
+    output_generated_at: datetime.datetime
     """
     An indicator when the output was generated.
     """
