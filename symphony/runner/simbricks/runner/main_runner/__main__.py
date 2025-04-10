@@ -546,7 +546,7 @@ LOGGER = setup_logger()
 
 def main():
     try:
-        asyncio.run(amain(["/workspaces/simbricks/symphony/runner/simbricks/runner/main_runner/plugins/local_plugin.py"]))
+        asyncio.run(amain(["/workspaces/simbricks/symphony/runner/simbricks/runner/main_runner/plugins/docker_plugin.py"]))
     except KeyboardInterrupt:
         LOGGER.info("received keyboard interrupt, shutting down...")
         LOGGER.info("Bye!")

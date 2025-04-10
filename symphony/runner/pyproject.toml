@@ -40,7 +40,8 @@ packages = [
 ]
 
 [tool.poetry.scripts]
-simbricks-runner = "simbricks.runner.__main__:main"
+simbricks-runner = "simbricks.runner.main_runner.__main__:main"
+simbricks-executor-local = "simbricks.runner.fragment_runner.local.__main__:main"
 
 [tool.poetry.dependencies]
 rich = "13.9.4"

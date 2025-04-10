@@ -1,14 +1,16 @@
-import socket
+import asyncio
 import subprocess
-import typing as tp
 from simbricks.runner.main_runner.plugins import plugin
 
 class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
 
     def __init__(self):
         super().__init__()
-        self.docker_container_id: str | None = None
-        self.fragment_socket: socket.socket | None = None
+        self.executor: subprocess.Popen | None = None
+        self.server: asyncio.Server | None = None
+        self.reader: asyncio.StreamReader | None = None
+        self.writer: asyncio.StreamWriter | None = None
+        self.connected = asyncio.Event()
 
     @staticmethod
     def name():
@@ -16,51 +18,48 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
 
     @staticmethod
     def ephemeral():
-        return False
+        return True
 
-    async def read(self, length: int) -> str:
-        if self.fragment_socket is None:
-            return ""
-        chunks = []
-        received_bytes = 0
-        while received_bytes < length:
-            chunk = self.fragment_socket.recv(min(length - received_bytes, 2048))
-            if chunk == b"":
-                # TODO: raise exception instead?
-                return ""
-            chunks.append(chunk)
-            received_bytes += len(chunk)
-        return (b"".join(chunks)).decode("utf-8")
+    async def read(self, length: int) -> bytes:
+        data = await self.reader.read(length)
+        if length != 0 and len(data) == 0:
+            raise RuntimeError("connection broken")
+        return data
 
-    async def write(self) -> bool:
-        pass
+    async def write(self, data: bytes) -> None:
+        self.writer.write(data)
+        await self.writer.drain()
+
+    def accept_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        assert self.reader is None
+        assert self.writer is None
+        self.reader = reader
+        self.writer = writer
+        self.server.close()
+        self.connected.set()
 
     async def start(self):
-        print("start simbricks docker runner")
-        # create a TCP socket for a connection between the main-runner and fragment-runner
-        serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serversock.bind(("127.0.0.1", 0))
-        serversock.listen(1)
+        print("start simbricks docker fragment executor")
+        self.server = await asyncio.start_server(self.accept_connection, "0.0.0.0")
 
-        # start the docker container with the fragment-runner
-        # docker_run = subprocess.run(["docker", "run", "-d", "simbricks/local-runner"])
-        # docker_run.check_returncode()
-        # self.docker_container_id = str(docker_run.stdout.strip())
-        runner_run = subprocess.Popen(["python", "/workspaces/simbricks/runner.py", "127.0.0.1", f"{serversock.getsockname()[1]}"])
+        port = self.server.sockets[0].getsockname()[1]
+        self.executor = subprocess.Popen([
+            "docker", "run", "--rm", "-it", "--device=/dev/kvm",
+            "--add-host=host.docker.internal:host-gateway",
+            "simbricks/simbricks-executor",
+            "host.docker.internal", str(port)])
 
-        # wait for the fragment-runner to connect
-        # TODO: add a timeout and fail if no connection has been established
-        (clientsock, address) = serversock.accept()
-        serversock.close()
-        self.fragment_socket = clientsock
-
+        # wait for the fragment executor to connect
+        await self.connected.wait()
 
     async def stop(self):
-        print("stop simbricks docker runner")
-        if self.docker_container_id is None:
+        print("stop simbricks docker fragment executor")
+        if self.executor is None:
             return
-        docker_stop = subprocess.run(["docker", "container", "stop", self.docker_container_id])
-        if docker_stop.returncode != 0:
-            print(f"WARNING: could not stop docker container {self.docker_container_id}")
+        self.executor.terminate()
+        self.executor.wait()
+        self.executor = None
+        await self.server.wait_closed()
+        print("successfully stopped docker fragment executor")
 
 runner_plugin = SimbricksDockerPlugin
