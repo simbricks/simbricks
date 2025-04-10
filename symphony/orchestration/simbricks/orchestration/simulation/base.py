@@ -185,11 +185,13 @@ class Simulator(utils_base.IdObj, abc.ABC):
         channel: sim_chan.Channel | None = None,
         sync: bool | None = None,
         latency: int | None = None,
-        sync_period: int | None = None
+        sync_period: int | None = None,
     ) -> str:
         if not channel and (sync == None or latency == None or sync_period == None):
-            raise ValueError("Cannot generate parameters url if channel and at least one of sync, "
-                             "latency, sync_period are None")
+            raise ValueError(
+                "Cannot generate parameters url if channel and at least one of sync, "
+                "latency, sync_period are None"
+            )
         if channel:
             if not sync:
                 sync = channel._synchronized
@@ -331,6 +333,30 @@ class Simulator(utils_base.IdObj, abc.ABC):
         return f"{str(self.__class__)}({self.full_name()})"
 
 
+class DummySimulator(Simulator):
+
+    def __init__(
+        self,
+        simulation: sim_base.Simulation,
+        executable: str,
+        name: str = "",
+    ) -> None:
+        super().__init__(simulation, executable, name)
+        self._is_dummy = True
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        raise Exception("DummySimulator does not implement run_cmd")
+
+    def supported_socket_types(self, interface: sys_conf.Interface) -> set[inst_socket.SockType]:
+        raise Exception("DummySimulator does not implement supported_socket_types")
+
+    @classmethod
+    def fromJSON(cls, simulation: Simulation, json_obj: dict) -> DummySimulator:
+        instance = super().fromJSON(simulation, json_obj)
+        instance._is_dummy = True
+        return instance
+
+
 class Simulation(utils_base.IdObj):
     """
     Base class for all simulation experiments.
@@ -360,6 +386,12 @@ class Simulation(utils_base.IdObj):
         """Channel spec and its instanciation"""
 
     def toJSON(self) -> dict:
+        """
+        Serializes a Simulation.
+
+        Note: The sys_sim_map is not serialized as the sim_list stores the required information implicitly as Simulators,
+              when serialized store a list of their corresponding components.
+        """
         json_obj = super().toJSON()
 
         json_obj["name"] = self.name
@@ -373,13 +405,6 @@ class Simulation(utils_base.IdObj):
             simulators_json.append(sim.toJSON())
 
         json_obj["sim_list"] = simulators_json
-
-        # TODO: we do not need this --> we can create it implicitly when deserializing because the simulators store a list of components themselves
-        # sys_sim_map_json = []
-        # for comp, sim in self._sys_sim_map.items():
-        #     sys_sim_map_json.append([comp.id(), sim.id()])
-
-        # json_obj["sys_sim_map"] = sys_sim_map_json
 
         chan_map_json = []
         chan_json = []
@@ -399,6 +424,13 @@ class Simulation(utils_base.IdObj):
 
     @classmethod
     def fromJSON(cls, system: sys_conf.System, json_obj: dict) -> Simulation:
+        """
+        Deserializes a Simulation.
+
+        Note: The sys_sim_map is not deserialized as the map is restored when deserializing the the sim_list.
+              This is possible as each Simulator stores when a list of their corresponding components when serialized.
+        """
+
         instance = super().fromJSON(json_obj)
         instance.metadata = utils_base.get_json_attr_top(json_obj, "metadata")
         instance.name = utils_base.get_json_attr_top(json_obj, "name")
@@ -411,19 +443,17 @@ class Simulation(utils_base.IdObj):
         instance._sys_sim_map = {}
         simulators_json = utils_base.get_json_attr_top(json_obj, "sim_list")
         for sim_json in simulators_json:
-            sim_class = utils_base.get_cls_by_json(sim_json)
-            utils_base.has_attribute(sim_class, "fromJSON")
-            sim = sim_class.fromJSON(instance, sim_json)
-            instance._sim_list.append(sim)
+            sim_class = utils_base.get_cls_by_json(sim_json, False)
 
-        # TODO: probably do not need this --> we create it when deserializing the simulators that store a list of components themselves
-        # instance._sys_sim_map: dict[sys_conf.Component, Simulator] = {}
-        # sys_sim_map_json = utils_base.get_json_attr_top(json_obj, "sys_sim_map")
-        # print(sys_sim_map_json)
-        # for sys_id, sim_id in sys_sim_map_json:
-        #     print(f"{sys_id} --> {sim_id}")
-        #     # TODO
-        #     pass
+            sim = None
+            if sim_class is None:
+                sim = DummySimulator.fromJSON(instance, sim_json)
+            else:
+                utils_base.has_attribute(sim_class, "fromJSON")
+                sim = sim_class.fromJSON(instance, sim_json)
+
+            assert sim
+            instance._sim_list.append(sim)
 
         instance._chan_map = {}
         chan_map_json = utils_base.get_json_attr_top(json_obj, "chan_map")

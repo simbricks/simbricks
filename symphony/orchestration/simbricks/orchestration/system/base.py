@@ -50,7 +50,6 @@ class System(utils_base.IdObj):
         return self._all_components[ident]
 
     def _add_interface(self, i: Interface) -> None:
-        assert i.component.id() in self._all_components
         assert i.id() not in self._all_interfaces
         self._all_interfaces[i.id()] = i
 
@@ -100,6 +99,14 @@ class System(utils_base.IdObj):
 
         json_obj["all_components"] = components_json
 
+        interfaces_json = []
+        for _, interface in self._all_interfaces.items():
+            utils_base.has_attribute(interface, "toJSON")
+            inf_json = interface.toJSON()
+            interfaces_json.append(inf_json)
+
+        json_obj["interfaces"] = interfaces_json
+
         channels_json = []
         for _, chan in self._all_channels.items():
             utils_base.has_attribute(chan, "toJSON")
@@ -116,22 +123,46 @@ class System(utils_base.IdObj):
         instance._all_interfaces = {}
         instance._all_channels = {}
 
+        interfaces_json = utils_base.get_json_attr_top(json_obj, "interfaces")
+        for inf_json in interfaces_json:
+            inf_class = utils_base.get_cls_by_json(inf_json, False)
+
+            # create a dummy interface if we cannot deserialize the given
+            if inf_class is None:
+                inf = Interface.fromJSON(instance, inf_json)
+                inf._is_dummy = True
+                continue
+
+            utils_base.has_attribute(inf_class, "fromJSON")
+            _ = inf_class.fromJSON(instance, inf_json)
+
         components_json = utils_base.get_json_attr_top(json_obj, "all_components")
         for comp_json in components_json:
-            comp_class = utils_base.get_cls_by_json(comp_json)
+            comp_class = utils_base.get_cls_by_json(comp_json, False)
+
+            # create a dummy component if we cannot deserialize the given
+            if comp_class is None:
+                _ = DummyComponent.fromJSON(instance, comp_json)
+                continue
+
             utils_base.has_attribute(comp_class, "fromJSON")
-            comp = comp_class.fromJSON(instance, comp_json)
+            _ = comp_class.fromJSON(instance, comp_json)
 
         channels_json = utils_base.get_json_attr_top(json_obj, "channels")
         for chan_json in channels_json:
             chan_class = utils_base.get_cls_by_json(chan_json)
             utils_base.has_attribute(chan_class, "fromJSON")
-            chan = chan_class.fromJSON(instance, chan_json)
+            _ = chan_class.fromJSON(instance, chan_json)
 
         return instance
 
 
 class Component(utils_base.IdObj):
+    """
+    Defines a component that is a part of the System Configuration.
+
+    Components could e.g. be hosts, NICs, switches.
+    """
 
     def __init__(self, s: System) -> None:
         super().__init__()
@@ -162,8 +193,9 @@ class Component(utils_base.IdObj):
 
         interfaces_json = []
         for inf in self.interfaces():
-            utils_base.has_attribute(inf, "toJSON")
-            interfaces_json.append(inf.toJSON())
+            interfaces_json.append(inf.id())
+            # utils_base.has_attribute(inf, "toJSON")
+            # interfaces_json.append(inf.toJSON())
         json_obj["interfaces"] = interfaces_json
 
         return json_obj
@@ -181,18 +213,41 @@ class Component(utils_base.IdObj):
         instance.ifs = []
         interfaces_json = utils_base.get_json_attr_top(json_obj, "interfaces")
         for inf_json in interfaces_json:
-            inf_class = utils_base.get_cls_by_json(inf_json)
-            utils_base.has_attribute(inf_class, "fromJSON")
-            # NOTE: this will add the interface to the system map for retrieval in sub-classes
-            inf = inf_class.fromJSON(system, inf_json)
+            inf_id = int(inf_json)
+            inf = system.get_inf(inf_id)
+            assert inf.component is None
+            instance.add_if(inf)
+            inf.component = instance
+
+            # inf_class = utils_base.get_cls_by_json(inf_json)
+            # utils_base.has_attribute(inf_class, "fromJSON")
+            # # NOTE: this will add the interface to the system map for retrieval in sub-classes
+            # inf_class.fromJSON(system, inf_json)
 
         return instance
 
 
+class DummyComponent(Component):
+    def __init__(self, s: System) -> None:
+        super().__init__(s)
+
+    @classmethod
+    def fromJSON(cls, system: System, json_obj: dict) -> DummyComponent:
+        instance = super().fromJSON(system, json_obj)
+        instance._is_dummy = True
+        return instance
+
+
 class Interface(utils_base.IdObj):
+    """
+    Specifies a single Interface of a Component.
+
+    A host component could e.g. have multiple PCI Interfaces.
+    """
+
     def __init__(self, c: Component) -> None:
         super().__init__()
-        self.component = c
+        self.component: Component | None = c
         c.system._add_interface(self)
         self.channel: Channel | None = None
 
@@ -240,13 +295,34 @@ class Interface(utils_base.IdObj):
 
     @classmethod
     def fromJSON(cls, system: System, json_obj: dict) -> Interface:
+        """
+        Deserializes an Interface from its JSON representation.
+
+        Note: This function will not set the component which is done by the component base classes 'fromJSON' method.
+        """
         instance = super().fromJSON(json_obj)
-        comp_id = utils_base.get_json_attr_top(json_obj, "component")
-        comp = system.get_comp(comp_id)
-        instance.component = comp
-        comp.add_if(instance)
+
+        # comp_id = utils_base.get_json_attr_top(json_obj, "component")
+        # comp = system.get_comp(comp_id)
+        # instance.component = comp
+        # comp.add_if(instance)
+
         system._add_interface(instance)
         instance.channel = None
+        instance.component = None
+
+        return instance
+
+
+class DummyInterface(Interface):
+
+    def __init__(self, c: Component) -> None:
+        super().__init__(c)
+
+    @classmethod
+    def fromJSON(cls, system: System, json_obj: dict) -> DummyInterface:
+        instance = super().fromJSON(system, json_obj)
+        instance._is_dummy = True
         return instance
 
 
@@ -279,7 +355,9 @@ class Channel(utils_base.IdObj):
         assert opposing != interface
         return opposing
 
-    def set_latency(self, amount: int, ratio: utils_base.Time = utils_base.Time.Nanoseconds) -> None:
+    def set_latency(
+        self, amount: int, ratio: utils_base.Time = utils_base.Time.Nanoseconds
+    ) -> None:
         utils_base.has_expected_type(obj=ratio, expected_type=utils_base.Time)
         self.latency = amount * ratio
 
