@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import abc
+import importlib.util
 import itertools
 import importlib
 import typing as tp
@@ -32,6 +33,7 @@ class IdObj(abc.ABC):
 
     def __init__(self):
         self._id = next(self.__id_iter)
+        self._is_dummy: bool = False
 
     def id(self) -> int:
         return self._id
@@ -41,12 +43,14 @@ class IdObj(abc.ABC):
         json_obj["type"] = self.__class__.__qualname__
         json_obj["module"] = self.__class__.__module__
         json_obj["id"] = self._id
+        json_obj["is_dummy"] = self._is_dummy
         return json_obj
 
     @classmethod
     def fromJSON(cls, json_obj):
         instance = cls.__new__(cls)
         instance._id = get_json_attr_top(json_obj, "id")
+        instance._is_dummy = bool(get_json_attr_top(json_obj, "is_dummy"))
         return instance
 
 
@@ -114,20 +118,29 @@ def get_json_attr_top(json_obj: dict, attr: str) -> tp.Any:
     return json_obj[attr]
 
 
-def get_cls_from_type_module(type_name: str, module_name: str):
+def get_cls_from_type_module(type_name: str, module_name: str, required: bool) -> tp.Any:
+
+    if importlib.util.find_spec(module_name) is None:
+        if required:
+            raise Exception(f'could not load module "{module_name}"')
+        return None
     # Import the module
     module = importlib.import_module(module_name)
 
+    if not hasattr(module, type_name):
+        if required:
+            raise Exception(f'module "{module_name}" has no attribute "{type_name}"')
+        return None
     # Get the class from the module
     cls = getattr(module, type_name)
 
     return cls
 
 
-def get_cls_by_json(json_obj: dict):
+def get_cls_by_json(json_obj: dict, required: bool = True) -> tp.Any:
     type_name = get_json_attr_top(json_obj, "type")
     module_name = get_json_attr_top(json_obj, "module")
-    return get_cls_from_type_module(type_name, module_name)
+    return get_cls_from_type_module(type_name, module_name, required)
 
 
 def _has_base_type(obj: tp.Any) -> bool:
