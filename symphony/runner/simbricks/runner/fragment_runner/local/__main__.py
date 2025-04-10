@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import pathlib
+import sys
 
 from simbricks.runner import settings
 from simbricks.runner.fragment_runner import base as runner_base
@@ -31,13 +32,14 @@ from simbricks.runner.fragment_runner import base as runner_base
 
 class LocalRunner(runner_base.FragmentRunner):
 
-    def __init__(self, base_url, workdir, namespace, ident, polling_delay_sec, runner_ip):
+    def __init__(self, base_url, workdir, namespace, ident, polling_delay_sec, runner_ip, runner_port):
         super().__init__(base_url, workdir, namespace, ident, polling_delay_sec, runner_ip)
         self.reader: asyncio.StreamReader
         self.writer: asyncio.StreamWriter
+        self._runner_port: int = runner_port
 
     async def connect(self) -> None:
-        self.reader, self.writer = await asyncio.open_connection(self._runner_ip, 9000)
+        self.reader, self.writer = await asyncio.open_connection(self._runner_ip, self._runner_port)
 
     async def read(self, length: int) -> bytes:
         return await self.reader.read(length)
@@ -54,7 +56,8 @@ async def amain():
         namespace=settings.runner_settings().namespace,
         ident=settings.runner_settings().runner_id,
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
-        runner_ip=settings.runner_settings().runner_ip,
+        runner_ip=sys.argv[1],
+        runner_port=int(sys.argv[2]),
     )
 
     await runner.run()

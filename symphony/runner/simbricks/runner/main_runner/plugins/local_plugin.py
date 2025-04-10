@@ -40,9 +40,10 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
 
     async def start(self):
         print("start simbricks local runner")
-        self.server = await asyncio.start_server(self.accept_connection, "127.0.0.1", 9000)
+        self.server = await asyncio.start_server(self.accept_connection, "127.0.0.1")
+        port = self.server.sockets[0].getsockname()[1]
 
-        self.executor = subprocess.Popen(["python", "/workspaces/simbricks/symphony/runner/simbricks/runner/fragment_runner/local/__main__.py"])
+        self.executor = subprocess.Popen(["simbricks-executor-local", "127.0.0.1", str(port)])
 
         # wait for the fragment executor to connect
         await self.connected.wait()
