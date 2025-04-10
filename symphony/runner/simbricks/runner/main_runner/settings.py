@@ -42,6 +42,8 @@ class RunnerSettings(BaseSettings):
     log_level: str = "DEBUG"
     polling_delay_sec: int = Field(default=10, gt=5, lt=60)
 
+    plugin_paths: list[str] = []
+
 
 @lru_cache
 def runner_settings() -> RunnerSettings:

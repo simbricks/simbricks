@@ -8,11 +8,12 @@ import traceback
 
 from simbricks import client
 from simbricks.runner.main_runner import settings
+from simbricks.runner.main_runner.plugins import docker_plugin
+from simbricks.runner.main_runner.plugins import local_plugin
 from simbricks.runner.main_runner.plugins import plugin
 from simbricks.runner.main_runner.plugins import plugin_loader
 from simbricks.schemas import base as schemas
 from simbricks.utils import base as utils_base
-from simbricks.utils import load_mod
 
 
 class MainRun:
@@ -478,20 +479,28 @@ class MainRunner:
             )
             raise
 
-    def _load_plugins(self, plugin_paths: list[str]):
+    def _load_plugins(
+        self, plugin_paths: list[str], plugins: list[type[plugin.FragmentRunnerPlugin]]
+    ) -> None:
         try:
             self.loaded_plugins = plugin_loader.load_plugins(plugin_paths)
         except Exception:
             LOGGER.error("Failed to load runner plugins")
             raise
 
+        for plugin in plugins:
+            name = plugin.name()
+            if name in self.loaded_plugins:
+                raise KeyError(f"Plugin {name} already exists")
+            self.loaded_plugins[name] = plugin
+
         for plugin in self.loaded_plugins:
             self.fragment_runners[plugin] = set()
 
-    async def run(self, plugin_paths: list[str]):
+    async def run(self, plugin_paths: list[str], plugins: list[type[plugin.FragmentRunnerPlugin]]):
         workers: list[asyncio.Task] = []
         try:
-            self._load_plugins(plugin_paths)
+            self._load_plugins(plugin_paths, plugins)
             # start non-ephemeral plugins
             LOGGER.debug("start non-ephemeral plugins")
             for name, plugin in self.loaded_plugins.items():
@@ -519,7 +528,7 @@ class MainRunner:
             raise
 
 
-async def amain(paths):
+async def amain():
     runner = MainRunner(
         base_url=settings.runner_settings().base_url,
         namespace=settings.runner_settings().namespace,
@@ -527,7 +536,9 @@ async def amain(paths):
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
     )
 
-    await runner.run(paths)
+    plugins = [docker_plugin.runner_plugin, local_plugin.runner_plugin]
+
+    await runner.run(settings.runner_settings().plugin_paths, plugins)
 
 
 def setup_logger() -> logging.Logger:
@@ -546,7 +557,7 @@ LOGGER = setup_logger()
 
 def main():
     try:
-        asyncio.run(amain(["/workspaces/simbricks/symphony/runner/simbricks/runner/main_runner/plugins/docker_plugin.py"]))
+        asyncio.run(amain())
     except KeyboardInterrupt:
         LOGGER.info("received keyboard interrupt, shutting down...")
         LOGGER.info("Bye!")

@@ -26,14 +26,24 @@ import logging
 import pathlib
 import sys
 
-from simbricks.runner import settings
+from simbricks.runner.fragment_runner.local import settings
 from simbricks.runner.fragment_runner import base as runner_base
 
 
 class LocalRunner(runner_base.FragmentRunner):
 
-    def __init__(self, base_url, workdir, namespace, ident, polling_delay_sec, runner_ip, runner_port):
-        super().__init__(base_url, workdir, namespace, ident, polling_delay_sec, runner_ip)
+    def __init__(
+        self,
+        base_url,
+        workdir,
+        namespace,
+        ident,
+        polling_delay_sec,
+        runner_ip,
+        runner_port,
+        verbose,
+    ):
+        super().__init__(base_url, workdir, namespace, ident, polling_delay_sec, runner_ip, verbose)
         self.reader: asyncio.StreamReader
         self.writer: asyncio.StreamWriter
         self._runner_port: int = runner_port
@@ -58,6 +68,7 @@ async def amain():
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
         runner_ip=sys.argv[1],
         runner_port=int(sys.argv[2]),
+        verbose=settings.runner_settings().verbose,
     )
 
     await runner.run()
@@ -66,13 +77,16 @@ async def amain():
 def setup_logger() -> logging.Logger:
     level = settings.RunnerSettings().log_level
     logging.basicConfig(
-        level=level, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        level=level,
+        format="%(asctime)s - fragment executor - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     logger = logging.getLogger(__name__)
     return logger
 
 
 LOGGER = setup_logger()
+runner_base.LOGGER = LOGGER
 
 
 def main():
