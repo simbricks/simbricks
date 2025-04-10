@@ -13,7 +13,6 @@ import uuid
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
-from simbricks.runner import settings
 from simbricks.runner import utils as runner_utils
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.schemas import base as schemas
@@ -251,6 +250,7 @@ class FragmentRunner(abc.ABC):
         ident: int,
         polling_delay_sec: int,
         runner_ip: str,
+        verbose: bool,
     ):
         self._base_url: str = base_url
         self._workdir: pathlib.Path = pathlib.Path(workdir).resolve()
@@ -258,6 +258,7 @@ class FragmentRunner(abc.ABC):
         self._namespace: str = namespace
         self._ident: int = ident
         self._runner_ip: str = runner_ip
+        self._verbose: bool = verbose
 
         self._send_event_queue = asyncio.Queue[
             tuple[schemas.ApiEventType, schemas.ApiEventBundle]
@@ -331,7 +332,7 @@ class FragmentRunner(abc.ABC):
         inst = await self._assemble_inst(run_id, start_event)
         callbacks = RunnerSimulationExecutorCallbacks(inst, self._send_event_queue, run_id)
         runner = sim_exec.SimulationExecutor(
-            inst, callbacks, settings.RunnerSettings().verbose, self._runner_ip
+            inst, callbacks, self._verbose, self._runner_ip
         )
         await runner.prepare()
 
@@ -628,15 +629,4 @@ class FragmentRunner(abc.ABC):
         LOGGER.info("TERMINATED RUNNER")
 
 
-def setup_logger() -> logging.Logger:
-    level = settings.RunnerSettings().log_level
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s - fragment executor - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    logger = logging.getLogger(__name__)
-    return logger
-
-
-LOGGER = setup_logger()
+LOGGER: logging.Logger
