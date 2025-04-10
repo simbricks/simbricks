@@ -1,16 +1,5 @@
 ARG REGISTRY=
 ARG TAG=:latest
-FROM ${REGISTRY}simbricks/simbricks${TAG}
-WORKDIR /simbricks
-RUN sudo pip install -r requirements.txt
-RUN make -j `nproc` symphony-build
-RUN sudo pip install symphony/utils/dist/simbricks_utils-*-py2.py3-none-any.whl \
-                     symphony/orchestration/dist/simbricks_orchestration-*-py2.py3-none-any.whl \
-                     symphony/client/dist/simbricks_client-*-py2.py3-none-any.whl \
-                     symphony/cli/dist/simbricks_cli-*-py2.py3-none-any.whl \
-                     symphony/runtime/dist/simbricks_runtime-*-py2.py3-none-any.whl \
-                     symphony/runner/dist/simbricks_runner-*-py2.py3-none-any.whl \
-                     symphony/local/dist/simbricks_local-*-py2.py3-none-any.whl
-
-COPY ./run_runner.sh /usr/local/bin
-ENTRYPOINT ["/usr/local/bin/run_runner.sh"]
+FROM ${REGISTRY}simbricks/simbricks-local${TAG}
+COPY docker/run_runner.sh /run_runner.sh
+ENTRYPOINT ["/run_runner.sh"]

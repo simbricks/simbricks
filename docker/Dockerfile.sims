@@ -1,0 +1,31 @@
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks-build${TAG}
+RUN mkdir /simbricks && chown simbricks:simbricks /simbricks
+COPY --chown=simbricks sims /simbricks/sims
+COPY --chown=simbricks lib /simbricks/lib
+COPY --chown=simbricks dist /simbricks/dist
+COPY --chown=simbricks .git /simbricks/.git
+COPY --chown=simbricks docker /simbricks/docker
+COPY --chown=simbricks mk /simbricks/mk
+COPY --chown=simbricks LICENSE.md Makefile /simbricks/
+WORKDIR /simbricks
+USER simbricks
+RUN make -j `nproc` ENABLE_VERILATOR=y
+RUN git submodule update --init sims/external/qemu \
+ && make -j `nproc` sims/external/qemu/ready \
+ && bash docker/cleanup_external.sh
+RUN git submodule update --init sims/external/gem5 \
+ && make -j `nproc` sims/external/gem5/ready \
+ && bash docker/cleanup_gem5.sh
+RUN git submodule update --init sims/external/femu \
+ && make -j `nproc` sims/external/femu/ready
+RUN git submodule update --init sims/external/ns-3 \
+ && make -j `nproc` sims/external/ns-3/ready \
+ && bash docker/cleanup_ns3.sh
+RUN sudo ln -s /simbricks/sims/external/qemu/build/qemu-system-x86_64 \
+    /usr/bin/qemu-system-x86_64 \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-system-x86_64 \
+    /usr/bin/kvm \
+ && sudo ln -s /simbricks/sims/external/qemu/build/qemu-img \
+    /usr/bin/qemu-img

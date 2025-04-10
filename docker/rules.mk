@@ -26,59 +26,56 @@ include mk/subdir_pre.mk
 DOCKER_REGISTRY ?= docker.io/
 DOCKER_TAG ?= :latest
 
-DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-base \
-  simbricks/simbricks simbricks/simbricks-runenv simbricks/simbricks-min \
-  simbricks/simbricks-dist-worker simbricks/simbricks-gem5opt
+DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-runenv \
+  simbricks/simbricks-sims simbricks/simbricks-fullsims \
+  simbricks/simbricks-local simbricks/simbricks-runner \
+  simbricks/simbricks-executor
 
 REQUIREMENTS_TXT := $(d)requirements.txt
 
 $(REQUIREMENTS_TXT):
 	cat requirements.txt doc/requirements.txt > $@
 
-docker-images: $(REQUIREMENTS_TXT)
+docker-images-sims: $(REQUIREMENTS_TXT)
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.buildenv docker
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-base$(DOCKER_TAG) \
-		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
-		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.base .
-	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks$(DOCKER_TAG) \
-		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
-		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile .
-	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-runenv$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.runenv docker
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-min$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-sims$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.min docker
-# The simbricks-dist-worker should be obsolete now and can be removed
-#	docker build -t \
-#		$(DOCKER_REGISTRY)simbricks/simbricks-dist-worker$(DOCKER_TAG) \
-#		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
-#		--build-arg="TAG=$(DOCKER_TAG)" \
-#		-f docker/Dockerfile.dist-worker docker
+		-f docker/Dockerfile.sims .
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-fullsims$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
+		-f docker/Dockerfile.full .
+
+docker-images-symphony: $(REQUIREMENTS_TXT)
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-local$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
+		-f docker/Dockerfile.local .
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-runner$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.runner docker
-
-docker-images-debug:
+		-f docker/Dockerfile.runner .
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-gem5opt$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-executor$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.gem5opt docker
+		-f docker/Dockerfile.executor .
+
+docker-images: docker-images-sims docker-images-symphony
 
 docker-images-tofino:
 	docker build -t $(DOCKER_REGISTRY)simbricks/simbricks-tofino$(DOCKER_TAG) \
