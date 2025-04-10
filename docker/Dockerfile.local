@@ -1,0 +1,15 @@
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks-build${TAG} AS builder
+RUN mkdir /simbricks && chown simbricks:simbricks /simbricks
+COPY --chown=simbricks symphony /simbricks/symphony
+COPY --chown=simbricks mk /simbricks/mk
+COPY --chown=simbricks Makefile requirements.txt /simbricks/
+WORKDIR /simbricks
+USER simbricks
+RUN sudo pip install -r requirements.txt
+RUN make -j `nproc` symphony-build
+
+FROM ${REGISTRY}simbricks/simbricks-sims${TAG}
+COPY --from=builder /simbricks/symphony/*/dist/*.whl /tmp
+RUN sudo pip install /tmp/simbricks*.whl

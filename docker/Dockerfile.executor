@@ -1,0 +1,4 @@
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks-runner${TAG}
+ENTRYPOINT ["simbricks-executor-local"]
