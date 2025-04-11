@@ -45,6 +45,7 @@ class Fragment(utils_base.IdObj):
         """Only execute this fragment on runner that has all given labels."""
         self._proxies: set[proxy.Proxy] = set()
         self._simulators: set[sim_base.Simulator] = set()
+        self._parameters: dict[typing.Any, typing.Any] = {}
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -58,6 +59,7 @@ class Fragment(utils_base.IdObj):
         json_obj["fragment_executor_tag"] = self._fragment_executor_tag
         json_obj["runner_tags"] = list(self._runner_tags)
         json_obj["simulators"] = list(map(lambda sim: sim.id(), self._simulators))
+        json_obj["parameters"] = utils_base.dict_to_json(self._parameters)
         json_obj["cores_required"] = self.cores_required
         json_obj["memory_required"] = self.memory_required
         return json_obj
@@ -84,6 +86,10 @@ class Fragment(utils_base.IdObj):
         for simulator_id in simulator_ids:
             simulator = simulation.get_simulator(simulator_id)
             instance._simulators.add(simulator)
+
+        instance._parameters = utils_base.json_to_dict(
+            utils_base.get_json_attr_top(json_obj, "parameters")
+        )
 
         return instance
 
