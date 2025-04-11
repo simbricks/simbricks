@@ -181,6 +181,7 @@ class Instantiation(utils_base.IdObj):
         self._cmd_executor: cmd_exec.CommandExecutorFactory | None = None
         self._proxy_pairs: list[inst_proxy.ProxyPair] = []
         self._inf_socktype_assignment: dict[sys_base.Interface, inst_socket.SockType] = {}
+        self._parameters: dict[typing.Any, typing.Any] = {}
 
     @property
     def create_artifact(self) -> bool:
@@ -261,6 +262,8 @@ class Instantiation(utils_base.IdObj):
             proxy_pairs_json.append(proxy_pair.toJSON())
         json_obj["proxy_pairs"] = proxy_pairs_json
 
+        json_obj["parameters"] = utils_base.dict_to_json(self._parameters)
+
         return json_obj
 
     @classmethod
@@ -317,6 +320,10 @@ class Instantiation(utils_base.IdObj):
         instance._sim_dependency = None
         instance._socket_per_interface = {}
         instance._cmd_executor = None
+
+        instance._parameters = utils_base.json_to_dict(
+            utils_base.get_json_attr_top(json_obj, "parameters")
+        )
 
         return instance
 
