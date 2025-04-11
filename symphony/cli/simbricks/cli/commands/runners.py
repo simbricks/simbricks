@@ -36,7 +36,7 @@ async def ls():
     """List runners."""
     runners = await client_provider.runner_client(-1).list_runners()
     print_table_generic(
-        "Runners", runners, "id", "label", "tags", "plugin_tags", "namespace_id", "resource_group_id"
+        "Runners", runners, "id", "label", "tags", "plugin_tags", "namespace_id", "resource_group_id", "status"
     )
 
 
@@ -46,7 +46,7 @@ async def show(runner_id: int):
     """Show individual runner."""
     runner = await client_provider.runner_client(runner_id).get_runner()
     print_table_generic(
-        "Runners", [runner], "id", "label", "tags", "namespace_id", "resource_group_id"
+        "Runners", [runner], "id", "label", "tags", "namespace_id", "resource_group_id", "status"
     )
 
 
@@ -65,7 +65,7 @@ async def create(resource_group_id: int, label: str, tags: list[str]):
         resource_group_id=resource_group_id, label=label, tags=tags
     )
     print_table_generic(
-        "Runner", [runner], "id", "label", "tags", "namespace_id", "resource_group_id"
+        "Runner", [runner], "id", "label", "tags", "namespace_id", "resource_group_id", "status"
     )
 
 
