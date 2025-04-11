@@ -423,7 +423,7 @@ class Simulation(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_conf.System, json_obj: dict) -> Simulation:
+    def fromJSON(cls, system: sys_conf.System, json_obj: dict, enforce_dummies: bool = False) -> Simulation:
         """
         Deserializes a Simulation.
 
@@ -446,7 +446,7 @@ class Simulation(utils_base.IdObj):
             sim_class = utils_base.get_cls_by_json(sim_json, False)
 
             sim = None
-            if sim_class is None:
+            if enforce_dummies or sim_class is None:
                 sim = DummySimulator.fromJSON(instance, sim_json)
             else:
                 utils_base.has_attribute(sim_class, "fromJSON")

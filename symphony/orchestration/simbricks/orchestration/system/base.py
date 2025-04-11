@@ -117,7 +117,7 @@ class System(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, json_obj: dict) -> System:
+    def fromJSON(cls, json_obj: dict, enforce_dummies: bool = False) -> System:
         instance = super().fromJSON(json_obj)
         instance._all_components = {}
         instance._all_interfaces = {}
@@ -128,9 +128,8 @@ class System(utils_base.IdObj):
             inf_class = utils_base.get_cls_by_json(inf_json, False)
 
             # create a dummy interface if we cannot deserialize the given
-            if inf_class is None:
-                inf = Interface.fromJSON(instance, inf_json)
-                inf._is_dummy = True
+            if enforce_dummies or inf_class is None:
+                _ = DummyInterface.fromJSON(instance, inf_json)
                 continue
 
             utils_base.has_attribute(inf_class, "fromJSON")
@@ -141,7 +140,7 @@ class System(utils_base.IdObj):
             comp_class = utils_base.get_cls_by_json(comp_json, False)
 
             # create a dummy component if we cannot deserialize the given
-            if comp_class is None:
+            if enforce_dummies or comp_class is None:
                 _ = DummyComponent.fromJSON(instance, comp_json)
                 continue
 
