@@ -1,5 +1,7 @@
 import asyncio
 import subprocess
+import typing as tp
+
 from simbricks.runner.main_runner.plugins import plugin
 
 class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
@@ -34,7 +36,9 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
         self.server.close()
         self.connected.set()
 
-    async def start(self):
+    async def start(
+        self, config_params: dict[tp.Any, tp.Any], fragment_params: dict[tp.Any, tp.Any]
+    ) -> None:
         print("start simbricks docker fragment executor")
         self.server = await asyncio.start_server(self.accept_connection, "0.0.0.0")
 

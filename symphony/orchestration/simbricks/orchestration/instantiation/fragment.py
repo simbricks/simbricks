@@ -35,7 +35,9 @@ if typing.TYPE_CHECKING:
 
 class Fragment(utils_base.IdObj):
 
-    def __init__(self, fragment_executor_tag: str, runner_tags: set[str] | None = None):
+    def __init__(
+        self, fragment_executor_tag: str | None = None, runner_tags: set[str] | None = None
+    ):
         super().__init__()
 
         self._fragment_executor_tag = fragment_executor_tag
