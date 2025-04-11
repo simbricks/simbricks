@@ -37,6 +37,7 @@ class System(utils_base.IdObj):
         self._all_components: dict[int, Component] = {}
         self._all_interfaces: dict[int, Interface] = {}
         self._all_channels: dict[int, Channel] = {}
+        self._parameters: dict[tp.Any, tp.Any] = {}
 
     def _add_component(self, c: Component) -> None:
         assert c.system == self
@@ -114,6 +115,8 @@ class System(utils_base.IdObj):
 
         json_obj["channels"] = channels_json
 
+        json_obj["parameters"] = utils_base.dict_to_json(self._parameters)
+
         return json_obj
 
     @classmethod
@@ -152,6 +155,10 @@ class System(utils_base.IdObj):
             chan_class = utils_base.get_cls_by_json(chan_json)
             utils_base.has_attribute(chan_class, "fromJSON")
             _ = chan_class.fromJSON(instance, chan_json)
+
+        instance._parameters = utils_base.json_to_dict(
+            utils_base.get_json_attr_top(json_obj, "parameters")
+        )
 
         return instance
 

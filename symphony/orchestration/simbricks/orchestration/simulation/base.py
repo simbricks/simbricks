@@ -385,6 +385,8 @@ class Simulation(utils_base.IdObj):
         self._chan_map: dict[sys_conf.Channel, sim_chan.Channel] = {}
         """Channel spec and its instanciation"""
 
+        self._parameters: dict[tp.Any, tp.Any] = {}
+
     def toJSON(self) -> dict:
         """
         Serializes a Simulation.
@@ -419,6 +421,8 @@ class Simulation(utils_base.IdObj):
 
         json_obj["chan_map"] = chan_map_json
         # json_obj["simulation_channels"] = chan_json
+
+        json_obj["parameters"] = utils_base.dict_to_json(self._parameters)
 
         return json_obj
 
@@ -463,6 +467,10 @@ class Simulation(utils_base.IdObj):
             sim_chan = chan_class.fromJSON(instance, chan_json)
             sys_chan = instance.system.get_chan(sys_id)
             instance.update_channel_mapping(sys_chan=sys_chan, sim_chan=sim_chan)
+
+        instance._parameters = utils_base.json_to_dict(
+            utils_base.get_json_attr_top(json_obj, "parameters")
+        )
 
         return instance
 
