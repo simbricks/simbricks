@@ -175,11 +175,17 @@ class ApiRunnerTag(BaseModel):
     label: str
 
 
+class RunnerStatus(str, enum.Enum):
+    HEALTHY = "HEALTHY"
+    OFFLINE = "OFFLINE"
+
+
 class ApiRunner(BaseModel):
     id: int | None = None
     label: str | None = None
     namespace_id: int | None = None
     resource_group_id: int | None = None
+    status: RunnerStatus | None = None
     tags: list[ApiRunnerTag] = []
     plugin_tags: list[ApiRunnerTag] = []
 
@@ -502,7 +508,7 @@ class ApiRunEventStartRunQuery(AbstractApiEventQuery):
 
 """ ############################################################################
 Run fragment related events
-""" ############################################################################
+"""  ############################################################################
 
 
 class AbstractApiRunFragmentEvent(AbstractApiEvent):
