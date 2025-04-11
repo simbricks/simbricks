@@ -4,6 +4,7 @@ import abc
 import asyncio
 import importlib
 import itertools
+import json
 import logging
 import traceback
 import typing as tp
@@ -224,12 +225,14 @@ class MainRunner:
 
         await asyncio.gather(*stop)
 
-    async def _start_fragment_runner(self, name: str) -> FragmentRunner:
+    async def _start_fragment_runner(
+        self, name: str, parameters: dict[tp.Any, tp.Any]
+    ) -> FragmentRunner:
         assert name in self._fragment_executor_configs
         config = self._fragment_executor_configs[name]
         runner = config.plugin()
         # TODO: parse fragment params and give it to runner.start
-        await runner.start(config.settings, {})
+        await runner.start(config.settings, parameters)
         fragment_runner = FragmentRunner(name, runner)
         fragment_runner.read_task = asyncio.create_task(
             self._read_fragment_runner_events(fragment_runner)
@@ -239,6 +242,20 @@ class MainRunner:
 
     async def _start_run(self, run_id: int, event: schemas.ApiRunEventStartRunRead, update):
         fragment_runner_map: dict[int, FragmentRunner] = {}
+
+        # get parameters from fragments
+        parameters_map: dict[int, dict[tp.Any, tp.Any]] = {}
+        inst_json = json.loads(event.inst)
+        if "simulation_fragments" not in inst_json:
+            raise RuntimeError("could not find simulation fragments in instantiation")
+        fragments_json = inst_json["simulation_fragments"]
+        for fragment_json in fragments_json:
+            if "id" not in fragment_json or "parameters" not in fragment_json:
+                raise RuntimeError("could not find id or parameters in fragment")
+            id = int(fragment_json["id"])
+            params = fragment_json["parameters"]
+            parameters_map[id] = params
+
         for id, name in event.fragments:
             if name is None:
                 name = self._available_fragment_executors[0]
@@ -246,7 +263,7 @@ class MainRunner:
                 await self._stop_fragment_runners(fragment_runner_map)
                 raise RuntimeError(f"unsupported fragment runner type {name}")
 
-            fragment_runner = await self._start_fragment_runner(name)
+            fragment_runner = await self._start_fragment_runner(name, parameters_map[id])
             fragment_runner_map[id] = fragment_runner
 
         run = MainRun(run_id, fragment_runner_map)
