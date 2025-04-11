@@ -1,4 +1,5 @@
 import abc
+import typing as tp
 
 from simbricks.runner import utils
 from simbricks.schemas import base as schemas
@@ -11,7 +12,9 @@ class FragmentRunnerPlugin(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def start(self) -> None:
+    async def start(
+        self, config_params: dict[tp.Any, tp.Any], fragment_params: dict[tp.Any, tp.Any]
+    ) -> None:
         pass
 
     @abc.abstractmethod

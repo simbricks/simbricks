@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import importlib
 import itertools
 import logging
 import traceback
+import typing as tp
+import yaml
 
 from simbricks import client
 from simbricks.runner.main_runner import settings
-from simbricks.runner.main_runner.plugins import docker_plugin
-from simbricks.runner.main_runner.plugins import local_plugin
 from simbricks.runner.main_runner.plugins import plugin
 from simbricks.runner.main_runner.plugins import plugin_loader
 from simbricks.schemas import base as schemas
@@ -113,8 +114,19 @@ class RunFragmentStateCallback(EventCallback):
     def passthrough(self) -> bool:
         return True
 
+
+class FragmentExecutorConfiguration:
+    def __init__(
+        self, name: str, plugin: type[plugin.FragmentRunnerPlugin], settings: dict[tp.Any, tp.Any]
+    ):
+        self.name = name
+        self.plugin = plugin
+        self.settings = settings
+
+
 class FragmentRunner:
-    def __init__(self, fragment_runner: plugin.FragmentRunnerPlugin):
+    def __init__(self, name: str, fragment_runner: plugin.FragmentRunnerPlugin):
+        self.name = name
         self.fragment_runner = fragment_runner
         self.read_task: asyncio.Task | None = None
         self.create_event_handlers: dict[str, set[EventCallback]] = {}
@@ -158,7 +170,8 @@ class MainRunner:
         self._ident = ident
         self._polling_delay_sec = polling_delay_sec
 
-        self.loaded_plugins: dict[str, type[plugin.FragmentRunnerPlugin]] = {}
+        self._fragment_executor_configs: dict[str, FragmentExecutorConfiguration] = {}
+        self._available_fragment_executors: list[str] = []
         self.fragment_runners: dict[str, set[FragmentRunner]] = {}
         self.fragment_runner_events = asyncio.Queue[FragmentRunnerEvent]()
 
@@ -207,15 +220,17 @@ class MainRunner:
         stop = []
         for runner in fragment_runner_map.values():
             stop.append(asyncio.create_task(runner.stop()))
-            self.fragment_runners[runner.fragment_runner.name()].remove(runner)
+            self.fragment_runners[runner.name].remove(runner)
 
         await asyncio.gather(*stop)
 
     async def _start_fragment_runner(self, name: str) -> FragmentRunner:
-        assert name in self.loaded_plugins
-        runner = self.loaded_plugins[name]()
-        await runner.start()
-        fragment_runner = FragmentRunner(runner)
+        assert name in self._fragment_executor_configs
+        config = self._fragment_executor_configs[name]
+        runner = config.plugin()
+        # TODO: parse fragment params and give it to runner.start
+        await runner.start(config.settings, {})
+        fragment_runner = FragmentRunner(name, runner)
         fragment_runner.read_task = asyncio.create_task(
             self._read_fragment_runner_events(fragment_runner)
         )
@@ -225,7 +240,9 @@ class MainRunner:
     async def _start_run(self, run_id: int, event: schemas.ApiRunEventStartRunRead, update):
         fragment_runner_map: dict[int, FragmentRunner] = {}
         for id, name in event.fragments:
-            if name not in self.loaded_plugins:
+            if name is None:
+                name = self._available_fragment_executors[0]
+            elif name not in self._fragment_executor_configs:
                 await self._stop_fragment_runners(fragment_runner_map)
                 raise RuntimeError(f"unsupported fragment runner type {name}")
 
@@ -473,31 +490,68 @@ class MainRunner:
             )
             raise
 
-    def _load_plugins(
-        self, plugin_paths: list[str], plugins: list[type[plugin.FragmentRunnerPlugin]]
-    ) -> None:
-        try:
-            self.loaded_plugins = plugin_loader.load_plugins(plugin_paths)
-        except Exception:
-            LOGGER.error("Failed to load runner plugins")
-            raise
+    def _load_configuration(self, configuration_file: str) -> None:
+        # load yaml configuration
+        configuration = None
+        with open(configuration_file, "r", encoding="utf-8") as cf:
+            configuration = yaml.load(cf, yaml.FullLoader)
+        assert configuration is not None
 
-        for plugin in plugins:
-            name = plugin.name()
-            if name in self.loaded_plugins:
-                raise KeyError(f"Plugin {name} already exists")
-            self.loaded_plugins[name] = plugin
+        if not isinstance(configuration, dict) or "fragment_executors" not in configuration:
+            raise RuntimeError("invalid configuration format")
 
-        for plugin in self.loaded_plugins:
-            self.fragment_runners[plugin] = set()
+        executors = configuration["fragment_executors"]
+        if not isinstance(executors, list):
+            raise RuntimeError("invalid configuration format")
 
-    async def run(self, plugin_paths: list[str], plugins: list[type[plugin.FragmentRunnerPlugin]]):
+        loaded_plugins: dict[str, type[plugin.FragmentRunnerPlugin]] = {}
+
+        for executor in executors:
+            if not isinstance(executor, dict) or len(executor) != 1:
+                raise RuntimeError("invalid configuration format")
+
+            executor_name = list(executor.keys())[0]
+            executor_data = executor[executor_name]
+
+            if (not isinstance(executor_data, dict)
+                or "plugin" not in executor_data
+                or "settings" not in executor_data
+                or not isinstance(executor_data["settings"], dict)
+            ):
+                raise RuntimeError("invalid configuration format")
+
+            plugin = executor_data["plugin"]
+            settings: dict[tp.Any, tp.Any] = executor_data["settings"]
+
+            if plugin not in loaded_plugins:
+                loaded_plugin = plugin_loader.load_plugin(plugin)
+                loaded_plugins[plugin] = loaded_plugin
+
+            fragment_executor = FragmentExecutorConfiguration(
+                executor_name, loaded_plugins[plugin], settings
+            )
+
+            if executor_name in self._fragment_executor_configs:
+                raise KeyError(f"fragment executor configuration {executor_name} already exists")
+
+            self._fragment_executor_configs[executor_name] = fragment_executor
+            self._available_fragment_executors.append(executor_name)
+
+        for fragment_executor in self._available_fragment_executors:
+            self.fragment_runners[fragment_executor] = set()
+
+    async def run(self, configuration_file: str):
         workers: list[asyncio.Task] = []
         try:
-            self._load_plugins(plugin_paths, plugins)
+            self._load_configuration(configuration_file)
+
+            if not self._available_fragment_executors:
+                raise RuntimeError("no fragment executor configurations loaded")
 
             LOGGER.debug("notify backend that runner has started")
-            plugin_tags = [schemas.ApiRunnerTag(label=p) for p in self.loaded_plugins]
+            plugin_tags = [
+                schemas.ApiRunnerTag(label=p) for p in self._available_fragment_executors
+            ]
             await self._rc.runner_started(plugin_tags)
 
             LOGGER.debug("start worker tasks")
@@ -525,9 +579,10 @@ async def amain():
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
     )
 
-    plugins = [docker_plugin.runner_plugin, local_plugin.runner_plugin]
+    if settings.runner_settings().configuration_file == "":
+        raise RuntimeError("no configuration file given")
 
-    await runner.run(settings.runner_settings().plugin_paths, plugins)
+    await runner.run(settings.runner_settings().configuration_file)
 
 
 def setup_logger() -> logging.Logger:

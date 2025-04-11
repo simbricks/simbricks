@@ -1,5 +1,7 @@
 import asyncio
 import subprocess
+import typing as tp
+
 from simbricks.runner.main_runner.plugins import plugin
 
 class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
@@ -34,7 +36,9 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
         self.server.close()
         self.connected.set()
 
-    async def start(self):
+    async def start(
+        self, config_params: dict[tp.Any, tp.Any], fragment_params: dict[tp.Any, tp.Any]
+    ) -> None:
         print("start simbricks local runner")
         self.server = await asyncio.start_server(self.accept_connection, "127.0.0.1")
         port = self.server.sockets[0].getsockname()[1]

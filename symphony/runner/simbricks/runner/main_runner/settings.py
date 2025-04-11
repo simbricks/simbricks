@@ -22,10 +22,11 @@
 
 from functools import lru_cache
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class RunnerSettings(BaseSettings):
+    model_config = SettingsConfigDict(cli_parse_args=True)
     base_url: str = "https://app.simbricks.io/api"
     auth_client_id: str = "api.auth.simbricks.io"
     auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
@@ -42,7 +43,7 @@ class RunnerSettings(BaseSettings):
     log_level: str = "DEBUG"
     polling_delay_sec: int = Field(default=10, gt=5, lt=60)
 
-    plugin_paths: list[str] = []
+    configuration_file: str = ""
 
 
 @lru_cache
