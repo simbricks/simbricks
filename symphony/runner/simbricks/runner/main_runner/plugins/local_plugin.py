@@ -16,10 +16,6 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
     def name():
         return "SimbricksLocalRunner"
 
-    @staticmethod
-    def ephemeral():
-        return False
-
     async def read(self, length: int) -> bytes:
         data = await self.reader.read(length)
         if length != 0 and len(data) == 0:

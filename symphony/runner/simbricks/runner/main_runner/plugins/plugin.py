@@ -10,11 +10,6 @@ class FragmentRunnerPlugin(abc.ABC):
     def name() -> str:
         pass
 
-    @staticmethod
-    @abc.abstractmethod
-    def ephemeral() -> bool:
-        pass
-
     @abc.abstractmethod
     async def start(self) -> None:
         pass

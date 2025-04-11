@@ -203,14 +203,11 @@ class MainRunner:
                     pass
             raise
 
-    async def _stop_ephemeral_fragment_runners(
-            self, fragment_runner_map: dict[int, FragmentRunner]
-    ):
+    async def _stop_fragment_runners(self, fragment_runner_map: dict[int, FragmentRunner]):
         stop = []
         for runner in fragment_runner_map.values():
-            if runner.fragment_runner.ephemeral():
-                stop.append(asyncio.create_task(runner.stop()))
-                self.fragment_runners[runner.fragment_runner.name()].remove(runner)
+            stop.append(asyncio.create_task(runner.stop()))
+            self.fragment_runners[runner.fragment_runner.name()].remove(runner)
 
         await asyncio.gather(*stop)
 
@@ -229,14 +226,11 @@ class MainRunner:
         fragment_runner_map: dict[int, FragmentRunner] = {}
         for id, name in event.fragments:
             if name not in self.loaded_plugins:
-                await self._stop_ephemeral_fragment_runners(fragment_runner_map)
+                await self._stop_fragment_runners(fragment_runner_map)
                 raise RuntimeError(f"unsupported fragment runner type {name}")
-            if (self.loaded_plugins[name].ephemeral() or not self.fragment_runners[name]):
-                fragment_runner = await self._start_fragment_runner(name)
-                fragment_runner_map[id] = fragment_runner
-            else:
-                assert len(self.fragment_runners[name]) == 1
-                fragment_runner_map[id] = list(self.fragment_runners[name])[0]
+
+            fragment_runner = await self._start_fragment_runner(name)
+            fragment_runner_map[id] = fragment_runner
 
         run = MainRun(run_id, fragment_runner_map)
         self._run_map[run_id] = run
@@ -394,7 +388,7 @@ class MainRunner:
                 else:
                     if run.run_state_callback is not None:
                         run.run_state_callback.remove_callback()
-                    await self._stop_ephemeral_fragment_runners(run.fragment_runner_map)
+                    await self._stop_fragment_runners(run.fragment_runner_map)
                     self._run_map.pop(run_id)
                     LOGGER.debug(f"removed run {run_id} from run_map")
 
@@ -501,11 +495,6 @@ class MainRunner:
         workers: list[asyncio.Task] = []
         try:
             self._load_plugins(plugin_paths, plugins)
-            # start non-ephemeral plugins
-            LOGGER.debug("start non-ephemeral plugins")
-            for name, plugin in self.loaded_plugins.items():
-                if not plugin.ephemeral():
-                    await self._start_fragment_runner(name)
 
             LOGGER.debug("notify backend that runner has started")
             plugin_tags = [schemas.ApiRunnerTag(label=p) for p in self.loaded_plugins]

@@ -16,10 +16,6 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
     def name():
         return "SimbricksDockerRunner"
 
-    @staticmethod
-    def ephemeral():
-        return True
-
     async def read(self, length: int) -> bytes:
         data = await self.reader.read(length)
         if length != 0 and len(data) == 0:
