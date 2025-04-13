@@ -10,6 +10,6 @@ USER simbricks
 RUN sudo pip install -r requirements.txt
 RUN make -j `nproc` symphony-build
 
-FROM ${REGISTRY}simbricks/simbricks-sims${TAG}
-COPY --from=builder /simbricks/symphony/*/dist/*.whl /tmp
+FROM ${REGISTRY}simbricks/simbricks-fullsims${TAG}
+COPY --from=builder /simbricks/symphony/*/dist/*.whl /tmp/
 RUN sudo pip install /tmp/simbricks*.whl
