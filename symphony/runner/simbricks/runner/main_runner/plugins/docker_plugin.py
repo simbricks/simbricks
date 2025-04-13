@@ -44,7 +44,7 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
 
         port = self.server.sockets[0].getsockname()[1]
         self.executor = subprocess.Popen([
-            "docker", "run", "--rm", "-it", "--device=/dev/kvm",
+            "docker", "run", "--rm", "--device=/dev/kvm",
             "--add-host=host.docker.internal:host-gateway",
             "simbricks/simbricks-executor",
             "host.docker.internal", str(port)])
@@ -56,10 +56,13 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
         print("stop simbricks docker fragment executor")
         if self.executor is None:
             return
-        self.executor.terminate()
+
+        self.writer.close()
+        await self.writer.wait_closed()
+        await self.server.wait_closed()
+
         self.executor.wait()
         self.executor = None
-        await self.server.wait_closed()
         print("successfully stopped docker fragment executor")
 
 runner_plugin = SimbricksDockerPlugin
