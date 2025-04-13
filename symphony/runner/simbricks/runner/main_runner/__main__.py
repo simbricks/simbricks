@@ -530,15 +530,16 @@ class MainRunner:
             executor_name = list(executor.keys())[0]
             executor_data = executor[executor_name]
 
-            if (not isinstance(executor_data, dict)
-                or "plugin" not in executor_data
-                or "settings" not in executor_data
-                or not isinstance(executor_data["settings"], dict)
-            ):
+            if (not isinstance(executor_data, dict) or "plugin" not in executor_data):
                 raise RuntimeError("invalid configuration format")
 
             plugin = executor_data["plugin"]
-            settings: dict[tp.Any, tp.Any] = executor_data["settings"]
+
+            settings: dict[tp.Any, tp.Any] = {}
+            if "settings" in executor_data:
+                if not isinstance(executor_data["settings"], dict):
+                    raise RuntimeError("invalid configuration format")
+                settings = executor_data["settings"]
 
             if plugin not in loaded_plugins:
                 loaded_plugin = plugin_loader.load_plugin(plugin)
