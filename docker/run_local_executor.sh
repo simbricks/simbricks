@@ -9,8 +9,6 @@ if [[ "$ip" = "" ]] || [[ "$port" = "" ]]; then
     exit 1
 fi
 
-pwd
-ls
 sudo chmod o+rw /dev/kvm
 make convert-images-raw
 exec simbricks-executor-local "$ip" "$port"
