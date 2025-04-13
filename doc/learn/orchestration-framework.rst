@@ -27,36 +27,52 @@ Orchestration Framework for Virtual Prototypes
 **********************************************
 
 SimBricks provides users with a powerful orchestration framework to programmatically define and configure virtual prototypes through Python scripts.
-Users leverage a dedicated Python package that offers an intuitive and flexible API, allowing for seamless virtual prototype configuration.
+To do this, users leverage the `simbricks-orchestration` python package that offers an intuitive and flexible API, allowing for seamless virtual prototype configuration.
 
-The structure of this package reflects SimBricks' distinct configuration abstractions-:ref:`System Configuration <sec-orchestration-framework-sys-conf>`,
-:ref:`Simulation Configuration <sec-orchestration-framework-sim-conf>`, and :ref:`Instantiation Configuration <sec-orchestration-framework-inst-conf>`.
+The orchestration framework package is divided into three modules that reflect SimBricks configuration abstractions, namely the :ref:`System Configuration <sec-orchestration-framework-sys-conf>`,
+:ref:`Simulation Configuration <sec-orchestration-framework-sim-conf>`, and :ref:`Instantiation Configuration <sec-orchestration-framework-inst-conf>`:
+
+- `simbricks.orchestration.system`: For defining the systems structure through components, interfaces, and channels.
+- `simbricks.orchestration.simulation`: For assigning simulators to components and defining simulation behavior.
+- `simbricks.orchestration.instantiation`: For configuring how and where the virtual prototype is executed.
+
 Consequently, scripts written by users typically adopt a three-part structure corresponding to these abstractions.
 
 We will now take a closer look at how the SimBricks orchestration framework works and examine some of its most important aspects in detail. 
-Let’s delve into the specifics!
 
 .. _sec-orchestration-framework-sys-conf:
 
 System Configuration 
 ==============================
 
-System
-------------------------------
+The System Configuration defines the structure of the virtual prototype.
+This structure typically reflects the structure of real physical systems and is organized similar.
+
+The System Configuration does not specify how the system will be simulated (that means the System Configuration does not make any simulator choices).
+Instead it only **defines the blueprint of the virtual prototype and thus what the simualted system should look like**.
+
+The System Configuration makes use of three key concepts:
+
+- **Components:** Represent compoenents of the virtual prototype, such as a Corundum NIC, a Linux-Host, or a Switch.
+- **Interfaces:** Define intefaces between components through which they will comunicate. An Interface could e.g. be a PCIe interface or a Ethernet interface.
+- **Channels:** Channels connect interfaces and act as communication paths. These Channels are later upon execution transformed into shared memory queues that link simulator instances.
+
+.. System
+.. ------------------------------
 
 ..
   System Configuration: The blueprint of the virtual prototype system, detailing its components and properties.
   Simulation Configuration: Instructions specifying how the system components are simulated.
   Instantiation Configuration: Runtime details, such as placement and execution parameters.
 
-Components
-------------------------------
+.. Components
+.. ------------------------------
 
-Interfaces
-------------------------------
+.. Interfaces
+.. ------------------------------
 
-Channels
-------------------------------
+.. Channels
+.. ------------------------------
 
 ..
   NOTE: WHEN SPEAKING OF CHANNELS, MENTION THIS AND REFERENCE THE SYNCHRONIZATION SECTION!!!!!!!!!!!
@@ -78,8 +94,20 @@ Channels
 Simulation Configuration
 ==============================
 
+The Simulation Configuration determines how the Components from the System Configuration are simulated.
+Therefore, the System Configuration must be defined beforehand. 
+Once that is done, each Component is assigned to a specific simulator. For example:
+
+- A Corundum NIC could be simulated by a behavioral C++ simulator or an RTL simulator such as `Verilator <https://www.veripool.org/verilator/>`_.
+- A host could be simulated using `QEMU <https://www.qemu.org/>`_ or other full-system simulators like `gem5 <https://www.gem5.org/>`_.
+
 
 .. _sec-orchestration-framework-inst-conf:
 
 Instantiation Configuration
 ==============================
+
+The Instantiation Configuration specifies how the virtual prototype is executed, including execution details such as:
+
+- Choice of a Runner responsible for the execution of the virtual prototype.
+- Specification of simulation Fragments, that can be distributed across multiple runners.
