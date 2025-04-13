@@ -41,8 +41,6 @@ Make sure this python script is ready and contains the necessary information.
 Cloud
 ==============================
 
-**TODO: show example output how that would look like**
-
 .. attention::
   Throughout this section we will assume that you already set up Runner properly in order to execute your virtual prototypes in the cloud.
   That means we assume that you are using a setup in which Runner were created and that they have the required dependencies installed.
@@ -102,7 +100,7 @@ This package is particularly useful if users want to interact with SimBricks vir
 
 Through the Client Library you can:
 
-- make changes to the experiment script
+- extend the experiment script to send the virtual prototype through the python API to the SimBricks Backend: 
 
   .. code-block:: python
 
@@ -143,7 +141,9 @@ Through the CLI you can:
 
   .. code-block:: bash
 
-    simbricks-cli runs submit --follow simple_demo.py
+    simbricks-cli runs submit --follow <path to tour virtual prototype python script>
+
+  Note that in order to submit a virtual prototype python script to the backend via the CLI, it must declare a list of Instantiation Configurations.
 
   Alternatively users can also create a Run from an existing Instantiation Configuration that they submitted beforehand:
 
@@ -161,13 +161,7 @@ Through the CLI you can:
 
   .. code-block:: bash
 
-    TODO
-
-- Store a Simulation Configuration in the SimBricks Backend:
-
-  .. code-block:: bash
-
-    TODO
+    simbricks-cli runs ls
 
 
 .. hint::
