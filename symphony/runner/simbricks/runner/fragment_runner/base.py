@@ -361,8 +361,8 @@ class FragmentRunner(abc.ABC):
             res.dump(outpath=output_path)  # TODO: FIXME
             if run.inst.create_artifact:
                 utils_art.create_artifact(
-                    artifact_name=run.inst.artifact_name,
-                    paths_to_include=run.inst.artifact_paths,
+                    artifact_name=run.inst.output_artifact_name,
+                    paths_to_include=run.inst.output_artifact_paths,
                 )
                 # TODO: send artifact to runner using artifact event
                 #await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)

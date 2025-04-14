@@ -168,8 +168,10 @@ class Instantiation(utils_base.IdObj):
         """The fragment that is actually executed. This is set by the runner and can also be a
         merged fragment."""
         self.env: InstantiationEnvironment | None = None
-        self.artifact_name: str = f"simbricks-artifact-{str(uuid.uuid4())}.zip"
-        self.artifact_paths: list[str] = []
+        self.output_artifact_name: str = f"output-artifact-{str(uuid.uuid4())}.zip"
+        self.output_artifact_paths: list[str] = []
+        self.input_artifact_name: str = f"input-artifact-{str(uuid.uuid4())}.zip"
+        self.input_artifact_paths: list[str] = []
         self._create_checkpoint: bool = False
         self._restore_checkpoint: bool = False
         self._preserve_checkpoints: bool = True
@@ -185,7 +187,7 @@ class Instantiation(utils_base.IdObj):
 
     @property
     def create_artifact(self) -> bool:
-        return len(self.artifact_paths) > 0
+        return len(self.output_artifact_paths) > 0
 
     @property
     def command_executor(self) -> cmd_exec.CommandExecutorFactory:
@@ -243,8 +245,10 @@ class Instantiation(utils_base.IdObj):
             fragments_json.append(fragment.toJSON())
         json_obj["simulation_fragments"] = fragments_json
 
-        json_obj["artifact_name"] = self.artifact_name
-        json_obj["artifact_paths"] = self.artifact_paths
+        json_obj["output_artifact_name"] = self.output_artifact_name
+        json_obj["output_artifact_paths"] = self.output_artifact_paths
+        json_obj["input_artifact_name"] = self.input_artifact_name
+        json_obj["input_artifact_paths"] = self.input_artifact_paths
 
         json_obj["create_checkpoint"] = self._create_checkpoint
         json_obj["restore_checkpoint"] = self._restore_checkpoint
@@ -282,8 +286,10 @@ class Instantiation(utils_base.IdObj):
             frag = frag_class.fromJSON(frag_json, sim)
             instance._fragments.append(frag)
 
-        instance.artifact_name = utils_base.get_json_attr_top(json_obj, "artifact_name")
-        instance.artifact_paths = utils_base.get_json_attr_top(json_obj, "artifact_paths")
+        instance.output_artifact_name = utils_base.get_json_attr_top(json_obj, "output_artifact_name")
+        instance.output_artifact_paths = utils_base.get_json_attr_top(json_obj, "output_artifact_paths")
+        instance.input_artifact_name = utils_base.get_json_attr_top(json_obj, "input_artifact_name")
+        instance.input_artifact_paths = utils_base.get_json_attr_top(json_obj, "input_artifact_paths")
 
         instance._create_checkpoint = bool(
             utils_base.get_json_attr_top(json_obj, "create_checkpoint")
@@ -427,8 +433,8 @@ class Instantiation(utils_base.IdObj):
         cop.simulation = copy.deepcopy(
             self.simulation
         )  # maybe there is a smarter way of achieving this...
-        cop.artifact_name = self.artifact_name
-        cop.artifact_paths = self.artifact_paths
+        cop.output_artifact_name = self.output_artifact_name
+        cop.output_artifact_paths = self.output_artifact_paths
         cop._create_checkpoint = self._create_checkpoint
         cop._restore_checkpoint = self._restore_checkpoint
         cop._preserve_checkpoints = self._preserve_checkpoints

@@ -162,6 +162,6 @@ for host_type in host_types:
             instance = inst.Instantiation(sim=simulation)
             instance.preserve_tmp_folder = False
             instance.create_checkpoint = False
-            instance.artifact_paths = ["simbricks-workdir/output"]
+            instance.output_artifact_paths = ["simbricks-workdir/output"]
             
             instantiations.append(instance)

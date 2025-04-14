@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import functools
 import typing
+import uuid
 
 from simbricks.orchestration.instantiation import proxy
 from simbricks.utils import base as utils_base
@@ -47,6 +48,9 @@ class Fragment(utils_base.IdObj):
         self._simulators: set[sim_base.Simulator] = set()
         self._parameters: dict[typing.Any, typing.Any] = {}
 
+        self.input_artifact_name: str = f"input-artifact-{str(uuid.uuid4())}.zip"
+        self.input_artifact_paths: list[str] = []
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
 
@@ -62,6 +66,10 @@ class Fragment(utils_base.IdObj):
         json_obj["parameters"] = utils_base.dict_to_json(self._parameters)
         json_obj["cores_required"] = self.cores_required
         json_obj["memory_required"] = self.memory_required
+
+        json_obj["input_artifact_name"] = self.input_artifact_name
+        json_obj["input_artifact_paths"] = self.input_artifact_paths
+
         return json_obj
 
     @classmethod
@@ -90,6 +98,9 @@ class Fragment(utils_base.IdObj):
         instance._parameters = utils_base.json_to_dict(
             utils_base.get_json_attr_top(json_obj, "parameters")
         )
+
+        instance.input_artifact_name = utils_base.get_json_attr_top(json_obj, "input_artifact_name")
+        instance.input_artifact_paths = utils_base.get_json_attr_top(json_obj, "input_artifact_paths")
 
         return instance
 
