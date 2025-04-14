@@ -160,6 +160,10 @@ def build_simulation_dependency_graph(
                 # other simulator is not part of current fragment, will handle this case later via
                 # simulator-proxy dependencies
                 if sim_b not in inst.assigned_fragment.all_simulators():
+                    if sim_a not in nodes_sim:
+                        nodes_sim[sim_a] = (
+                            SimulationDependencyNode(SimulationDependencyNodeType.SIMULATOR, sim_a)
+                        )
                     continue
 
                 # get / create nodes
