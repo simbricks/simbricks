@@ -34,4 +34,4 @@ Learn
    simulator-integration/index
    runner
    execution
-   faq
+  ..  faq
