@@ -452,7 +452,7 @@ class NS3Net(SimpleNS3Sim):
                         # the component is in a different simulator instance
                         sim_chan = self._simulation.retrieve_or_create_channel(chan)
                         socket = inst.get_socket(get_component_interface(chan, comp))
-                        assert(socket)
+                        assert socket is not None
                         ns3_sb_chan = ns3_comps.NS3NetworkSimbricks(other, sim_chan, socket)
                         ns3_components[comp].add_component(ns3_sb_chan)
                     else:
