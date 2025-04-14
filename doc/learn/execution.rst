@@ -81,6 +81,80 @@ The creation and execution of a Run will not modify or alter the submitted Syste
 Instead, the Run establishes the necessary connections between these configurations and the output data generated during its execution.
 This ensures that the original configurations remain unchanged, allowing users to reuse them for additional Runs while maintaining a clear link to the results and logs associated with each specific execution i.e. Run.
 
+.. _sec-execution-cloud-cli:
+
+CLI
+------------------------------------------
+
+The CLI i.e. the `simbricks-cli` package provides a command-line interface for managing SimBricks virtual prototypes.
+That means either sending them to or managing virtual protoypes already stored in the SimBricks Backend.
+
+.. hint::
+  You can simply install CLI package by running ``pip install simbricks-cli``.
+
+It is ideal when working in a terminal environment if a lightweight way to interact with the SimBricks Backend is needed.
+
+Through the CLI you can:
+
+- Submit Instantiation Configurations for execution:
+
+  .. code-block:: bash
+
+    simbricks-cli runs submit <path to tour virtual prototype python script>
+
+  Note that in order to submit a virtual prototype python script to the backend via the CLI, it must declare a list of Instantiation Configurations.
+  In case submitting yout virtual prototype was successful, you should be able to see output that looks similar to the following:
+
+  .. code-block:: console
+
+    $ simbricks-cli runs submit <path to tour virtual prototype python script>
+                          Run                     
+      --------------------------------------------
+      | id | instantiation_id | state            |
+      --------------------------------------------
+      | 10 | 10               | RunState.SPAWNED |
+      --------------------------------------------
+
+  Alternatively users can also create a Run from an existing Instantiation Configuration that they submitted beforehand:
+
+  .. code-block:: bash
+
+    simbricks-cli runs create <id of the instantiation configoration>
+
+- Assuming the execution of a virtual prototypes already started. Then, in case one wants to follow the output created by that execution, its easy to do so:
+
+  .. code-block:: bash
+
+    simbricks-cli runs follow <id of the run to follow>
+
+  When following an active Run you should be able to see output that looks similar to the following:
+
+  .. code-block:: console
+
+    [host.QemuSim-25] Formatting '/workspaces/simbricks_docker/runner-work/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/hdcopy.2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/workspaces/simbricks_docker/images/output-base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+    [host.QemuSim-25] prepare command exited with code 0
+    [host.QemuSim-26] Formatting '/workspaces/simbricks_docker/runner-work/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/hdcopy.10', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/workspaces/simbricks_docker/images/output-base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+    [host.QemuSim-26] prepare command exited with code 0
+    [net.SwitchNet-29] Switch connecting to: /workspaces/simbricks_docker/runner-work/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-5.21.20
+    [net.SwitchNet-29] Switch connecting to: /workspaces/simbricks_docker/runner-work/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-13.23.22
+    [host.QemuSim-25] qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.07H:EBX.hle [bit 4]
+    [host.QemuSim-25] qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.07H:EBX.rtm [bit 11]
+    [host.QemuSim-25] Wrong EFI loader signature.
+    [host.QemuSim-25] early console in extract_kernel
+    ...
+    
+
+- View Runs that are currently stored on the server along their status:
+
+  .. code-block:: bash
+
+    simbricks-cli runs ls
+
+
+.. hint::
+  SimBricks CLI does offer more commands which allow users to interact with SimBricks backend for managing virtual prototypes and their execution.
+  For a complete list check out :ref:`references <sec-cli-ref>`.
+
 
 .. _sec-execution-cloud-client-lib:
 
@@ -95,6 +169,10 @@ It provides the interface i.e. python functions to:
   Users can upload their Python simulation scripts and related configurations to the cloud.
 - Manage Simulations: It allows users to cerate, stop, monitor and alter the execution of virtual prototypes through Runs.
 - Retrieve Results: After a simulation is complete, users can download logs and output files for analysis.
+
+
+.. hint::
+  You can simply install client library by running ``pip install simbricks-client``.
 
 This package is particularly useful if users want to interact with SimBricks virtual prototypes in python directly. This can e.g. be very useful when integrating SimBricks into yout CI/CD setup.
 
@@ -123,50 +201,6 @@ Through the Client Library you can:
 
 .. hint::
   If you want to have a closer look at the funcitons offered by our python client library check out its refernce :ref:`here <sec-client-ref>`.
-
-
-.. _sec-execution-cloud-cli:
-
-CLI
-------------------------------------------
-
-The CLI i.e. the `simbricks-cli` package provides a command-line interface for managing SimBricks virtual prototypes.
-That means either sending them to or managing virtual protoypes already stored in the SimBricks Backend.
-
-It is ideal when working in a terminal environment if a lightweight way to interact with the SimBricks Backend is needed.
-
-Through the CLI you can:
-
-- Submit Instantiation Configurations for execution:
-
-  .. code-block:: bash
-
-    simbricks-cli runs submit --follow <path to tour virtual prototype python script>
-
-  Note that in order to submit a virtual prototype python script to the backend via the CLI, it must declare a list of Instantiation Configurations.
-
-  Alternatively users can also create a Run from an existing Instantiation Configuration that they submitted beforehand:
-
-  .. code-block:: bash
-
-    simbricks-cli runs create --follow <id of the instantiation configoration>
-
-- Assuming the execution of a virtual prototypes already started. Then, in case one wants to follow the output created by that execution, its easy to do so:
-
-  .. code-block:: bash
-
-    simbricks-cli runs follow <id of the run to follow>
-
-- View Runs that are currently stored on the server along their status:
-
-  .. code-block:: bash
-
-    simbricks-cli runs ls
-
-
-.. hint::
-  SimBricks CLI does offer more commands which allow users to interact with SimBricks backend for managing virtual prototypes and their execution.
-  For a complete list check out :ref:`references <sec-cli-ref>`.
 
 ..
   * **Data Analysis** - *How to retrieve and process data from Executions in the Cloud?*
@@ -219,8 +253,10 @@ Having it installed, users can simply execute their virtual prototypes (assuming
 
   simbricks-run --verbose <path to your virtual prototype python script>
 
-This command will cause SImBRicks to run your virtual prototype locally.
+This command will cause SimBricks to run your virtual prototype locally.
 
+.. hint::
+  You can simply install SimBricks package for local execution by running ``pip install simbricks-local``
 
 All output is collected in a JSON file, which allows easy post-processing afterwards.
 Output files generated through local execution will be placed in a local folder that user can investigate to extract data from the execution. 
