@@ -2,4 +2,5 @@ ARG REGISTRY=
 ARG TAG=:latest
 FROM ${REGISTRY}simbricks/simbricks-local${TAG}
 COPY docker/run_runner.sh /run_runner.sh
+COPY docker/runner_config.yaml /runner_config.yaml
 ENTRYPOINT ["/run_runner.sh"]
