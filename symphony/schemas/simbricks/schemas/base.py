@@ -475,12 +475,16 @@ class ApiRunEventStartRunRead(ApiRunEventRead):
 
     fragments: list[tuple[int, str | None]]
     """
-    A list of fragment IDs. Those are the IDs from the Fragment Python objects stored in the
-    instantiation.
+    A list of tuples of fragment IDs and fragment executor tags. Those are the IDs from the Fragment
+    Python objects stored in the instantiation.
     """
     inst: Any = None
+    inst_id: int | None = None
     system: Any = None
     simulation: Any = None
+
+    inst_input_artifact: str | None = None
+    fragment_input_artifact: str | None = None
 
 
 class ApiRunEventUpdate(ApiUpdateEvent, AbstractApiRunEvent):
