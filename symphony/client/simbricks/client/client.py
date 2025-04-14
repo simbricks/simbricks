@@ -468,6 +468,11 @@ class SimBricksClient:
             with open(store_path, "wb") as f:
                 f.write(content)
 
+    async def get_inst_input_artifact_raw(self, iid: int) -> bytes:
+        async with self._ns_client.post(url=f"/instantiations/input_artifact/{iid}") as resp:
+            content = await resp.read()
+            return content
+
     async def set_fragment_input_artifact(
         self, iid: int, fid: int, uploaded_input_file: str
     ) -> None:
@@ -481,6 +486,11 @@ class SimBricksClient:
             content = await resp.read()
             with open(store_path, "wb") as f:
                 f.write(content)
+
+    async def get_fragment_input_artifact_raw(self, iid: int, fid: int) -> bytes:
+        async with self._ns_client.post(url=f"/instantiations/input_artifact/{iid}/{fid}") as resp:
+            content = await resp.read()
+            return content
 
     async def get_run_console(
         self, run_id: int, filter: schemas.ApiRunOutputFilter
