@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import base64
 import importlib
 import itertools
 import json
@@ -11,6 +12,9 @@ import typing as tp
 import yaml
 
 from simbricks import client
+from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.system import base as sys_base
 from simbricks.runner.main_runner import settings
 from simbricks.runner.main_runner.plugins import plugin
 from simbricks.runner.main_runner.plugins import plugin_loader
@@ -179,6 +183,7 @@ class MainRunner:
         self._base_client = client.BaseClient(base_url=base_url)
         self._namespace_client = client.NSClient(base_client=self._base_client, namespace=namespace)
         self._rc = client.RunnerClient(self._namespace_client, ident)
+        self._simbricks_client = client.SimBricksClient(self._namespace_client)
 
         self._run_map: dict[int, MainRun] = {}
 
@@ -243,18 +248,31 @@ class MainRunner:
     async def _start_run(self, run_id: int, event: schemas.ApiRunEventStartRunRead, update):
         fragment_runner_map: dict[int, FragmentRunner] = {}
 
+        if (event.system is None
+            or event.simulation is None
+            or event.inst is None
+            or event.inst_id is None
+        ):
+            raise RuntimeError("invalid ApiRunEventStartRunRead event")
+
+        sb_sys = sys_base.System.fromJSON(json.loads(event.system), True)
+        sb_sim = sim_base.Simulation.fromJSON(sb_sys, json.loads(event.simulation), True)
+        sb_inst = inst_base.Instantiation.fromJSON(sb_sim, json.loads(event.inst))
+
         # get parameters from fragments
         parameters_map: dict[int, dict[tp.Any, tp.Any]] = {}
-        inst_json = json.loads(event.inst)
-        if "simulation_fragments" not in inst_json:
-            raise RuntimeError("could not find simulation fragments in instantiation")
-        fragments_json = inst_json["simulation_fragments"]
-        for fragment_json in fragments_json:
-            if "id" not in fragment_json or "parameters" not in fragment_json:
-                raise RuntimeError("could not find id or parameters in fragment")
-            id = int(fragment_json["id"])
-            params = fragment_json["parameters"]
-            parameters_map[id] = params
+        for fragment in sb_inst.fragments:
+            parameters_map[fragment.id()] = fragment._parameters
+
+        # retrieve instantiation input artifacts
+        inst_artifact = None
+        if sb_inst.input_artifact_paths:
+            inst_artifact = await self._simbricks_client.get_inst_input_artifact_raw(event.inst_id)
+
+        api_inst = await self._simbricks_client.get_instantiation(event.inst_id)
+        fragment_id_map: dict[int, int] = {}
+        for fragment in api_inst.fragments:
+            fragment_id_map[fragment.object_id] = fragment.id
 
         for id, name in event.fragments:
             if name is None:
@@ -286,6 +304,18 @@ class MainRunner:
         for fragment_id, name in event.fragments:
             fragment_event = event.model_copy()
             fragment_event.fragments = [(fragment_id, name)]
+            if inst_artifact is not None:
+                fragment_event.inst_input_artifact = base64.b64encode(inst_artifact).decode("utf-8")
+            fragment = sb_inst.get_fragment(fragment_id)
+            if fragment.input_artifact_paths:
+                fragment_artifact = (
+                    await self._simbricks_client.get_fragment_input_artifact_raw(
+                        event.inst_id, fragment_id_map[fragment_id]
+                    )
+                )
+                fragment_event.fragment_input_artifact = (
+                    base64.b64encode(fragment_artifact).decode("utf-8")
+                )
             event_bundle = schemas.ApiEventBundle()
             event_bundle.add_event(fragment_event)
             senders.append(asyncio.create_task(
