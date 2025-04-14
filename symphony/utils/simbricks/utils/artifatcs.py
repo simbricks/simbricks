@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import pathlib
+import typing as tp
 import zipfile
 
 
@@ -56,3 +57,8 @@ def create_artifact(artifact_name: str = "simbricks-artifact.zip", paths_to_incl
                 _add_file_to_zip(zip_file=zip_file, file_path=path_obj)
             else:
                 _add_folder_to_zip(zip_file=zip_file, dir_path=path_obj)
+
+
+def unpack_artifact(file: str | tp.IO[bytes], dest_path: str) -> None:
+    with zipfile.ZipFile(file, "r") as zip_file:
+        zip_file.extractall(dest_path)

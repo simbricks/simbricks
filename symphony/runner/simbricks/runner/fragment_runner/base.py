@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import base64
 import datetime
+import io
 import json
 import logging
 import pathlib
@@ -324,6 +326,21 @@ class FragmentRunner(abc.ABC):
         )  # TODO
         inst.env = env
         inst.assigned_fragment = inst.get_fragment(start_event.fragments[0][0])
+
+        # retrieve input artifacts
+        input_artifacts_dir = inst.env.input_artifacts_dir()
+        pathlib.Path(input_artifacts_dir).mkdir(parents=True, exist_ok=True)
+        if inst.input_artifact_paths:
+            assert start_event.inst_input_artifact is not None
+            inst_artifact = base64.b64decode(start_event.inst_input_artifact.encode("utf-8"))
+            utils_art.unpack_artifact(io.BytesIO(inst_artifact), input_artifacts_dir)
+        if inst.assigned_fragment.input_artifact_paths:
+            assert start_event.fragment_input_artifact is not None
+            fragment_artifact = base64.b64decode(
+                start_event.fragment_input_artifact.encode("utf-8")
+            )
+            utils_art.unpack_artifact(io.BytesIO(fragment_artifact), input_artifacts_dir)
+
         return inst
 
     async def _prepare_run(self, run_id: int, start_event: schemas.ApiRunEventStartRunRead) -> Run:
