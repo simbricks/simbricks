@@ -255,7 +255,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
         sockets = []
         for interface in comp.interfaces():
             socket = inst.get_socket(interface=interface)
-            if socket:
+            if socket is not None:
                 sockets.append(socket)
         return sockets
 

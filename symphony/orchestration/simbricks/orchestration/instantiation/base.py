@@ -354,11 +354,9 @@ class Instantiation(utils_base.IdObj):
         assert queue_type is not None
         return self.env.shm_base(f"{queue_type}-{queue_ident}")
 
-    def get_socket(self, interface: sys_base.Interface) -> inst_socket.Socket:
+    def get_socket(self, interface: sys_base.Interface) -> inst_socket.Socket | None:
         if self._opposing_interface_within_same_sim(interface=interface):
-            raise exceptions.InstantiationExecutionError(
-                "we do not create a socket for channels where both interfaces belong to the same simulator"
-            )
+            return None
 
         if interface in self._socket_per_interface:
             return self._socket_per_interface[interface]
