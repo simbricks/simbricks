@@ -181,8 +181,8 @@ class LocalSimpleRuntime(run_base.Runtime):
         run._output.dump(outpath=output_path)
         if run.instantiation.create_artifact:
             utils_art.create_artifact(
-                artifact_name=run.instantiation.artifact_name,
-                paths_to_include=run.instantiation.artifact_paths,
+                artifact_name=run.instantiation.output_artifact_name,
+                paths_to_include=run.instantiation.output_artifact_paths,
             )
 
         await sim_executor.cleanup()
