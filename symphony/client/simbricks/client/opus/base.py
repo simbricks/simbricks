@@ -35,6 +35,7 @@ import rich.console
 
 from simbricks.orchestration import instantiation, simulation, system
 from simbricks.schemas import base as schemas
+from simbricks.utils import artifatcs as utils_artifacts
 
 from .. import client, provider
 
@@ -135,9 +136,27 @@ async def submit_simulation(system_id: int, simulation: simulation.Simulation) -
 async def submit_instantiation(
     simulation_id: int, instantiation: instantiation.Instantiation
 ) -> int:
-    inst = await provider.client_provider.simbricks_client.create_instantiation(
-        simulation_id, instantiation
-    )
+    simbricks_client = provider.client_provider.simbricks_client
+
+    inst = await simbricks_client.create_instantiation(simulation_id, instantiation)
+
+    if instantiation.input_artifact_paths:
+        utils_artifacts.create_artifact(
+            instantiation.input_artifact_name, instantiation.input_artifact_paths
+        )
+        await simbricks_client.set_inst_input_artifact(inst.id, instantiation.input_artifact_name)
+
+    fragment_id_map: dict[int, int] = {}
+    for fragment in inst.fragments:
+        fragment_id_map[fragment.object_id] = fragment.id
+    for fragment in instantiation.fragments:
+        if not fragment.input_artifact_paths:
+            continue
+        utils_artifacts.create_artifact(fragment.input_artifact_name, fragment.input_artifact_paths)
+        await simbricks_client.set_fragment_input_artifact(
+            inst.id, fragment_id_map[fragment.id()], fragment.input_artifact_name
+        )
+
     assert inst.id
     return inst.id
 

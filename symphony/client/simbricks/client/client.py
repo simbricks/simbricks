@@ -456,26 +456,28 @@ class SimBricksClient:
             raw_json = await resp.json()
             return schemas.ApiRunList_A.validate_python(raw_json)
 
-    async def set_run_input(self, rid: int, uploaded_input_file: str) -> None:
+    async def set_inst_input_artifact(self, iid: int, uploaded_input_file: str) -> None:
         with open(uploaded_input_file, "rb") as f:
             file_data = {"file": f}
-            async with self._ns_client.put(url=f"/runs/input/{rid}", data=file_data) as _:
+            async with self._ns_client.put(url=f"/instantiations/input_artifact/{iid}", data=file_data) as _:
                 pass
 
-    async def get_run_input(self, rid: int, store_path: str) -> None:
-        async with self._ns_client.post(url=f"/runs/input/{rid}") as resp:
+    async def get_inst_input_artifact(self, iid: int, store_path: str) -> None:
+        async with self._ns_client.post(url=f"/instantiations/input_artifact/{iid}") as resp:
             content = await resp.read()
             with open(store_path, "wb") as f:
                 f.write(content)
 
-    async def set_run_artifact(self, rid: int, uploaded_output_file: str) -> None:
-        with open(uploaded_output_file, "rb") as f:
+    async def set_fragment_input_artifact(
+        self, iid: int, fid: int, uploaded_input_file: str
+    ) -> None:
+        with open(uploaded_input_file, "rb") as f:
             file_data = {"file": f}
-            async with self._ns_client.put(url=f"/runs/output/{rid}", data=file_data) as resp:
-                await resp.json()
+            async with self._ns_client.put(url=f"/instantiations/input_artifact/{iid}/{fid}", data=file_data) as _:
+                pass
 
-    async def get_run_artifact(self, rid: int, store_path: str) -> None:
-        async with self._ns_client.post(url=f"/runs/output/{rid}") as resp:
+    async def get_fragment_input_artifact(self, iid: int, fid: int, store_path: str) -> None:
+        async with self._ns_client.post(url=f"/instantiations/input_artifact/{iid}/{fid}") as resp:
             content = await resp.read()
             with open(store_path, "wb") as f:
                 f.write(content)
