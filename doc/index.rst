@@ -68,6 +68,6 @@ To easily get started with using SimBricks check out our :ref:`chap-quickstart` 
    :maxdepth: 2
    :caption: Contents:
 
-   getting-started/index
+   quickstart/index
    learn/index
    reference/index

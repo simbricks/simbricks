@@ -28,22 +28,15 @@ Quickstart
 
 Get up and running with the SimBricks in a few minutes.
 
-In this guide we will make use of an SimBricks Example and guide you through the execution of your first virtual prototype using the SimBricks CLI and SimBricks Cloud version.
+In this guide we will make use of the `SimBricks Examples Repository <https://github.com/simbricks/simbricks-examples>`_ and guide you through the execution of
+your first virtual prototype using the SimBricks CLI and SimBricks Cloud version.
 
-Setup
-******************************
+.. toctree::
+   :maxdepth: 2
 
-In the following
-
-Install the SimBricks 
-
-Create Your First Virtual Prototype
-************************************
-
-
-Running Your First Virtual Prototype
-************************************
-
+   setup
+   first-vp
+   execute-first-vp
 
 Next Steps
 ******************************
@@ -51,3 +44,4 @@ Next Steps
 * Check out more SimBricks exampels from our SimBricks examples repo at :simbricks-examples:`\ `.
 * To learn more about the inner workings and details of SimBricks check out :ref:`chap-learn` chapter. 
 * Join the SimBricks community on :slack:`Slack`
+
