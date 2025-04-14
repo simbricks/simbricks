@@ -61,6 +61,7 @@ class InstantiationEnvironment(utils_base.IdObj):
         self._cp_dir: str = pathlib.Path(f"{self._tmp_dir}/checkpoints").resolve()
         self._shm_base: str = pathlib.Path(f"{self._tmp_dir}/shm").resolve()
         self._proxy_dir = pathlib.Path(f"{self._tmp_dir}/proxies").resolve()
+        self._input_artifacts_dir = pathlib.Path(f"{self._work_dir}/input_artifacts").resolve()
 
     # --------------------------------------------------
     # Read-only accessor functions for path properties -
@@ -122,6 +123,13 @@ class InstantiationEnvironment(utils_base.IdObj):
             return self._proxy_dir
         return utils_file.join_paths(
             base=self._proxy_dir, relative_path=relative_path, must_exist=must_exist
+        )
+
+    def input_artifacts_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
+        if relative_path is None:
+            return self._input_artifacts_dir
+        return utils_file.join_paths(
+            base=self._input_artifacts_dir, relative_path=relative_path, must_exist=must_exist
         )
 
     # ----------------------------------------
