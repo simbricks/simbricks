@@ -36,12 +36,12 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import pcie as sys_pcie
-from simbricks.orchestration.system.host import disk_images
 from simbricks.utils import base as utils_base
 from simbricks.utils import file as utils_file
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
+    from simbricks.orchestration.system import disk_images
     from simbricks.runtime import command_executor as cmd_exec
 
 

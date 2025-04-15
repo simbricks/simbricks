@@ -22,4 +22,3 @@
 
 from simbricks.orchestration.system.host.base import *
 from simbricks.orchestration.system.host.app import *
-from simbricks.orchestration.system.host.disk_images import *

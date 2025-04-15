@@ -25,7 +25,6 @@ from __future__ import annotations
 import typing as tp
 import io
 import asyncio
-import simbricks.orchestration.instantiation.base as instantiation
 from simbricks.orchestration.system import base as base
 from simbricks.orchestration.system import eth as eth
 from simbricks.orchestration.system import nic as nic
@@ -34,7 +33,8 @@ from simbricks.orchestration.system.host import app
 from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system.host import disk_images
+    import simbricks.orchestration.instantiation.base as instantiation
+    from simbricks.orchestration.system import disk_images
 
 
 class Host(base.Component):
@@ -89,7 +89,7 @@ class FullSystemHost(Host):
         self.disks.append(disk)
 
     async def prepare(self, inst: instantiation.Instantiation) -> None:
-        promises = [disk.prepare(inst) for disk in self.disks]
+        promises = [disk.prepare(inst, self) for disk in self.disks]
         await asyncio.gather(*promises)
 
     def toJSON(self) -> dict:
@@ -98,11 +98,7 @@ class FullSystemHost(Host):
         json_obj["cores"] = self.cores
         json_obj["cpu_freq"] = self.cpu_freq
 
-        disks_json = []
-        for disk in self.disks:
-            utils_base.has_attribute(disk, "toJSON")
-            disks_json.append(disk.toJSON())
-        json_obj["disks"] = disks_json
+        json_obj["disks"] = list(map(lambda disk: disk.id(), self.disks))
 
         return json_obj
 
@@ -114,12 +110,11 @@ class FullSystemHost(Host):
         instance.cpu_freq = utils_base.get_json_attr_top(json_obj, "cpu_freq")
 
         instance.disks = []
-        disks_json = utils_base.get_json_attr_top(json_obj, "disks")
-        for disk_js in disks_json:
-            disk_class = utils_base.get_cls_by_json(disk_js)
-            utils_base.has_attribute(disk_class, "fromJSON")
-            disk = disk_class.fromJSON(system, disk_js)
-            instance.add_disk(disk)
+        disk_ids = utils_base.get_json_attr_top(json_obj, "disks")
+        for disk_id in disk_ids:
+            disk = system._get_disk_image(disk_id)
+            disk.add_host(instance)
+            instance.disks.append(disk)
 
         return instance
 
