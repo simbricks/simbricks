@@ -26,9 +26,10 @@ include mk/subdir_pre.mk
 DOCKER_REGISTRY ?= docker.io/
 DOCKER_TAG ?= :latest
 
-DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-runenv \
-  simbricks/simbricks-sims simbricks/simbricks-fullsims \
-  simbricks/simbricks-local simbricks/simbricks-runner \
+DOCKER_IMAGES_SIMS := simbricks/simbricks-build simbricks/simbricks-runenv \
+  simbricks/simbricks-sims simbricks/simbricks-fullsims
+
+DOCKER_IMAGES_SYMPHONY := simbricks/simbricks-local simbricks/simbricks-runner \
   simbricks/simbricks-executor
 
 REQUIREMENTS_TXT := $(d)requirements.txt
@@ -83,17 +84,33 @@ docker-images-tofino:
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.tofino .
 
-docker-retag:
-	for i in $(DOCKER_IMAGES) ; do \
+
+docker-retag-sims:
+	for i in $(DOCKER_IMAGES_SIMS) ; do \
 		docker image inspect \
 		  $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) >/dev/null && \
 		docker tag $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) \
 			$(DOCKER_REGISTRY)$${i}$(DOCKER_TAG) ; \
 		done
 
-docker-push:
+docker-retag-symphony:
+	for i in $(DOCKER_IMAGES_SYMPHONY) ; do \
+		docker image inspect \
+		  $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) >/dev/null && \
+		docker tag $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) \
+			$(DOCKER_REGISTRY)$${i}$(DOCKER_TAG) ; \
+		done
+
+
+docker-push-sims:
 	for i in $(addprefix $(DOCKER_REGISTRY), $(addsuffix $(DOCKER_TAG), \
-		$(DOCKER_IMAGES))) ; do \
+		$(DOCKER_IMAGES_SIMS))) ; do \
+		docker image inspect $$i >/dev/null && docker push $$i ; \
+		done
+
+docker-push-symphony:
+	for i in $(addprefix $(DOCKER_REGISTRY), $(addsuffix $(DOCKER_TAG), \
+		$(DOCKER_IMAGES_SYMPHONY))) ; do \
 		docker image inspect $$i >/dev/null && docker push $$i ; \
 		done
 
