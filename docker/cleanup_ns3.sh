@@ -10,7 +10,7 @@ cp -r \
   .lock-ns3* \
   ../ns-3-new/
 cd ..
-git submodule deinit -f ns-3
+test -f .git && git submodule deinit -f ns-3
 rm -rf ../../.git/modules/sims/external/ns-3
 rm -rf ns-3
 mv ns-3-new ns-3
