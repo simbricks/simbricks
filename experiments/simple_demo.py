@@ -157,6 +157,9 @@ for rate in iperf_udp_rates:
     Create an instatiation of your virtual prototype
     """
     instance = inst.Instantiation(sim=simulation)
+    fragment = inst.Fragment()
+    fragment.add_simulators(*simulation.all_simulators())
+    instance.fragments = [fragment]
     instantiations.append(instance)
 
 

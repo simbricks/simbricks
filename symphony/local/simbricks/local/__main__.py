@@ -33,6 +33,8 @@ import signal
 import sys
 
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.system import base as sys_base
 from simbricks.runtime import output as sim_out
 from simbricks.runtime.runs import base as runs_base
 from simbricks.runtime.runs import local as rt_local
@@ -145,6 +147,17 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def copy_instantiation(to_copy: inst_base.Instantiation) -> inst_base.Instantiation:
+    # TODO: this is an somewhat ugly hack to make a copy
+    json_sys_tmp = to_copy.simulation.system.toJSON()
+    json_sim_tmp = to_copy.simulation.toJSON()
+    json_inst_tmp = to_copy.toJSON()
+    sys_copy = sys_base.System.fromJSON(json_sys_tmp)
+    sim_copy = sim_base.Simulation.fromJSON(sys_copy, json_sim_tmp)
+    inst_copy = inst_base.Instantiation.fromJSON(sim_copy, json_inst_tmp)
+    return inst_copy
+
+
 def add_exp(
     instantiation: inst_base.Instantiation,
     prereq: runs_base.Run | None,
@@ -154,8 +167,12 @@ def add_exp(
     workdir = utils_file.join_paths(
         args.workdir, f"{instantiation.simulation.name}/{instantiation.id()}"
     )
-    env = inst_base.InstantiationEnvironment(workdir, args.repo)
+    env = inst_base.InstantiationEnvironment(
+        pathlib.Path(workdir).resolve(), pathlib.Path(args.repo).resolve()
+    )
     instantiation.env = env
+    assert len(instantiation.fragments) == 1
+    instantiation.assigned_fragment = instantiation.fragments[0]
 
     output = sim_out.SimulationOutput(instantiation.simulation)
     run = runs_base.Run(instantiation=instantiation, prereq=prereq, output=output)
@@ -218,7 +235,7 @@ def main():
         # it
         prereq = None
         if inst.create_checkpoint and inst.simulation.any_supports_checkpointing():
-            checkpointing_inst = inst.copy()
+            checkpointing_inst = copy_instantiation(inst)
             checkpointing_inst.restore_checkpoint = False
             checkpointing_inst.create_checkpoint = True
             inst.create_checkpoint = False
@@ -227,7 +244,7 @@ def main():
             prereq = add_exp(instantiation=checkpointing_inst, rt=rt, prereq=None, args=args)
 
         for index in range(args.firstrun, args.firstrun + args.runs):
-            inst_copy = inst.copy()
+            inst_copy = copy_instantiation(inst)
             inst_copy.preserve_tmp_folder = False
             if index == args.firstrun + args.runs - 1:
                 inst_copy._preserve_checkpoints = False
