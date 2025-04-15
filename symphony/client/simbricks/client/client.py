@@ -158,6 +158,11 @@ class AdminClient:
             raw_json = await resp.json()
             return schemas.ApiNamespace.model_validate(raw_json)
 
+    async def get_ns_by_name(self, ns_name: str) -> schemas.ApiNamespace:
+        async with self._base_client.get(url=self._prefix(f"/name/{ns_name}")) as resp:
+            raw_json = await resp.json()
+            return schemas.ApiNamespace.model_validate(raw_json)
+
     async def get_all_ns(self) -> list[schemas.ApiNamespace]:
         async with self._base_client.get(url=self._prefix("/")) as resp:
             raw_json = await resp.json()
@@ -300,6 +305,11 @@ class NSClient:
     # retrieve namespace ns_id, useful for retrieving a child the current namespace
     async def get_ns(self, ns_id: int) -> schemas.ApiNamespace:
         async with self.get(url=f"/one/{ns_id}") as resp:
+            raw_json = await resp.json()
+            return schemas.ApiNamespace.model_validate(raw_json)
+
+    async def get_ns_by_name(self, ns_name: str) -> schemas.ApiNamespace:
+        async with self.get(url=f"/one/name/{ns_name}") as resp:
             raw_json = await resp.json()
             return schemas.ApiNamespace.model_validate(raw_json)
 
@@ -459,7 +469,9 @@ class SimBricksClient:
     async def set_inst_input_artifact(self, iid: int, uploaded_input_file: str) -> None:
         with open(uploaded_input_file, "rb") as f:
             file_data = {"file": f}
-            async with self._ns_client.put(url=f"/instantiations/input_artifact/{iid}", data=file_data) as _:
+            async with self._ns_client.put(
+                url=f"/instantiations/input_artifact/{iid}", data=file_data
+            ) as _:
                 pass
 
     async def get_inst_input_artifact(self, iid: int, store_path: str) -> None:
@@ -478,7 +490,9 @@ class SimBricksClient:
     ) -> None:
         with open(uploaded_input_file, "rb") as f:
             file_data = {"file": f}
-            async with self._ns_client.put(url=f"/instantiations/input_artifact/{iid}/{fid}", data=file_data) as _:
+            async with self._ns_client.put(
+                url=f"/instantiations/input_artifact/{iid}/{fid}", data=file_data
+            ) as _:
                 pass
 
     async def get_fragment_input_artifact(self, iid: int, fid: int, store_path: str) -> None:
@@ -794,7 +808,9 @@ class RunnerClient:
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventCreate_U]
     ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
         to_create = schemas.ApiEventBundle[schemas.ApiEventCreate_U].model_validate(event_bundle)
-        async with self.post(url="/api/events", json=to_create.model_dump(exclude_none=True)) as resp:
+        async with self.post(
+            url="/api/events", json=to_create.model_dump(exclude_none=True)
+        ) as resp:
             raw_json = await resp.json()
             return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
@@ -802,7 +818,9 @@ class RunnerClient:
         self, to_fetch: schemas.ApiEventBundle[schemas.ApiEventQuery_U]
     ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
         query = schemas.ApiEventBundle[schemas.ApiEventQuery_U].model_validate(to_fetch)
-        async with self.post(url="/api/events/fetch", json=query.model_dump(exclude_none=True)) as resp:
+        async with self.post(
+            url="/api/events/fetch", json=query.model_dump(exclude_none=True)
+        ) as resp:
             raw_json = await resp.json()
             return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
@@ -810,7 +828,9 @@ class RunnerClient:
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventUpdate_U]
     ) -> schemas.ApiEventBundle[schemas.ApiEventRead_U]:
         to_update = schemas.ApiEventBundle[schemas.ApiEventUpdate_U].model_validate(event_bundle)
-        async with self.patch(url="/api/events", json=to_update.model_dump(exclude_none=True)) as resp:
+        async with self.patch(
+            url="/api/events", json=to_update.model_dump(exclude_none=True)
+        ) as resp:
             raw_json = await resp.json()
             return schemas.ApiEventBundle[schemas.ApiEventRead_U].model_validate(raw_json)
 
@@ -818,5 +838,7 @@ class RunnerClient:
         self, event_bundle: schemas.ApiEventBundle[schemas.ApiEventDelete_U]
     ) -> None:
         to_delete = schemas.ApiEventBundle[schemas.ApiEventDelete_U].model_validate(event_bundle)
-        async with self.delete(url="/api/events", json=to_delete.model_dump(exclude_none=True)) as _:
+        async with self.delete(
+            url="/api/events", json=to_delete.model_dump(exclude_none=True)
+        ) as _:
             pass
