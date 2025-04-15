@@ -114,6 +114,12 @@ docker-push-symphony:
 		docker image inspect $$i >/dev/null && docker push $$i ; \
 		done
 
+docker-pull-sims:
+	for i in $(addprefix $(DOCKER_REGISTRY), $(addsuffix $(DOCKER_TAG), \
+		$(DOCKER_IMAGES_SIMS))) ; do \
+		docker pull $$i ; \
+		done
+
 CLEAN := $(REQUIREMENTS_TXT)
 
 include mk/subdir_post.mk
