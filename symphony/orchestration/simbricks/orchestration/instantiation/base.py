@@ -435,22 +435,22 @@ class Instantiation(utils_base.IdObj):
         # TODO: check whether _assigned_fragment is already set?
         self._assigned_fragment = fragment
 
-    # TODO: this needs fixing...
-    def copy(self) -> Instantiation:
-        cop = Instantiation(sim=self.simulation)
-        cop.simulation = copy.deepcopy(
-            self.simulation
-        )  # maybe there is a smarter way of achieving this...
-        cop.output_artifact_name = self.output_artifact_name
-        cop.output_artifact_paths = self.output_artifact_paths
-        cop._create_checkpoint = self._create_checkpoint
-        cop._restore_checkpoint = self._restore_checkpoint
-        cop._preserve_checkpoints = self._preserve_checkpoints
-        cop.preserve_tmp_folder = self.preserve_tmp_folder
-        cop._socket_per_interface = {}
-        cop._sim_dependency = None
-        cop._inf_socktype_assignment = self._inf_socktype_assignment
-        return cop
+    # # TODO: this needs fixing...
+    # def copy(self) -> Instantiation:
+    #     cop = Instantiation(sim=self.simulation)
+    #     cop.simulation = copy.deepcopy(
+    #         self.simulation
+    #     )  # maybe there is a smarter way of achieving this...
+    #     cop.output_artifact_name = self.output_artifact_name
+    #     cop.output_artifact_paths = self.output_artifact_paths
+    #     cop._create_checkpoint = self._create_checkpoint
+    #     cop._restore_checkpoint = self._restore_checkpoint
+    #     cop._preserve_checkpoints = self._preserve_checkpoints
+    #     cop.preserve_tmp_folder = self.preserve_tmp_folder
+    #     cop._socket_per_interface = {}
+    #     cop._sim_dependency = None
+    #     cop._inf_socktype_assignment = self._inf_socktype_assignment
+    #     return cop
 
     async def prepare(self) -> None:
         to_prepare = [self.env.shm_base(), self.env.img_dir()]
