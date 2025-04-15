@@ -29,7 +29,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-utils"
-version = "0.0.5"
+version = "0.1.0"
 description = "simbricks utils"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
