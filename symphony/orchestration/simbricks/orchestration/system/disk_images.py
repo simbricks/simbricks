@@ -29,19 +29,17 @@ import tarfile
 import asyncio
 import typing as tp
 from simbricks.utils import base as utils_base
-from simbricks.orchestration.instantiation import base as inst_base
-from simbricks.orchestration.system import base as sys_base
 
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system import host as sys_host
-    from simbricks.orchestration.simulation import base as sim_base
+    from simbricks.orchestration.system.host import base as sys_host
+    from simbricks.orchestration.instantiation import base as inst_base
+    from simbricks.orchestration.system import base as sys_base
 
 
 class DiskImage(utils_base.IdObj):
-    def __init__(self, h: sys_host.Host) -> None:
+    def __init__(self, system: sys_base.System) -> None:
         super().__init__()
-        self.host: sys_host.Host = h
-        self._qemu_img_exec: str = "sims/external/qemu/build/qemu-img"
+        system._add_disk_image(self)
 
     @abc.abstractmethod
     def available_formats(self) -> list[str]:
@@ -51,21 +49,6 @@ class DiskImage(utils_base.IdObj):
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         raise Exception("must be overwritten")
 
-    async def make_qcow_copy(
-        self, inst: inst_base.Instantiation, format: str, sim: sim_base.Simulator
-    ) -> str:
-        disk_path = pathlib.Path(self.path(inst=inst, format=format))
-        copy_path = inst.env.img_dir(relative_path=f"hdcopy.{self._id}")
-        prep_cmds = [
-            (
-                f"{inst.env.repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -F qcow2 -o "
-                f'backing_file="{disk_path}" '
-                f"{copy_path}"
-            )
-        ]
-        await inst._cmd_executor.exec_simulator_prepare_cmds(sim, prep_cmds)
-        return copy_path
-
     @staticmethod
     def assert_is_file(path: str) -> str:
         if not pathlib.Path(path).is_file():
@@ -74,9 +57,9 @@ class DiskImage(utils_base.IdObj):
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
 
-    async def prepare(self, inst: inst_base.Instantiation) -> None:
+    async def prepare(self, inst: inst_base.Instantiation, host: sys_host.Host) -> None:
         # Find first supported disk image format in order of simulator pref.
-        sim = inst.find_sim_by_spec(self.host)
+        sim = inst.find_sim_by_spec(host)
         format = None
         av_fmt = self.available_formats()
         for f in sim.supported_image_formats():
@@ -89,25 +72,37 @@ class DiskImage(utils_base.IdObj):
 
         await self._prepare_format(inst, format)
 
-    def toJSON(self) -> dict:
-        json_obj = super().toJSON()
-        json_obj["host"] = self.host.id()
-        json_obj["qemu_img_exec"] = self._qemu_img_exec
-        return json_obj
-
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DiskImage:
         instance = super().fromJSON(json_obj)
-        host_id = int(utils_base.get_json_attr_top(json_obj, "host"))
-        instance.host = system.get_comp(host_id)
-        instance._qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
+        system._add_disk_image(instance)
+        return instance
+
+    def add_host(self, host: sys_host.Host) -> None:
+        pass
+
+
+class DummyDiskImage(DiskImage):
+    def __init__(self, system: sys_base.System) -> None:
+        super().__init__(system)
+
+    def available_formats(self) -> list[str]:
+        raise RuntimeError("cannot call abstract method 'available_formats' of DummyDiskImage")
+
+    def path(self, inst: inst_base.Instantiation, format: str) -> str:
+        raise RuntimeError("cannot call abstract method 'path' of DummyDiskImage")
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DummyDiskImage:
+        instance = super().fromJSON(system, json_obj)
+        instance._is_dummy = True
         return instance
 
 
 # Disk image where user just provides a path
 class ExternalDiskImage(DiskImage):
-    def __init__(self, h: sys_host.FullSystemHost, path: str) -> None:
-        super().__init__(h)
+    def __init__(self, system: sys_base.System, path: str) -> None:
+        super().__init__(system)
         self._path = path
         self.formats = ["raw", "qcow2"]
 
@@ -134,8 +129,8 @@ class ExternalDiskImage(DiskImage):
 
 # Disk images shipped with simbricks
 class DistroDiskImage(DiskImage):
-    def __init__(self, h: sys_host.FullSystemHost, name: str) -> None:
-        super().__init__(h)
+    def __init__(self, system: sys_base.System, name: str) -> None:
+        super().__init__(system)
         self.name = name
         self.formats = ["raw", "qcow2"]
 
@@ -169,9 +164,6 @@ class DistroDiskImage(DiskImage):
 
 # Abstract base class for dynamically generated images
 class DynamicDiskImage(DiskImage):
-    def __init__(self, h: sys_host.FullSystemHost) -> None:
-        super().__init__(h)
-
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         return inst.env.dynamic_img_path(self, format)
 
@@ -186,17 +178,12 @@ class DynamicDiskImage(DiskImage):
 
 # Builds the Tar with the commands to run etc.
 class LinuxConfigDiskImage(DynamicDiskImage):
-    def __init__(self, h: sys_host.LinuxHost) -> None:
-        super().__init__(h)
-        self.host: sys_host.LinuxHost
+    def __init__(self, system: sys_base.System, host: sys_host.BaseLinuxHost):
+        super().__init__(system)
+        self.host = host
 
     def available_formats(self) -> list[str]:
         return ["raw"]
-
-    async def make_qcow_copy(
-        self, inst: inst_base.Instantiation, format: str, sim: sim_base.Simulator
-    ) -> str:
-        return self.path(inst=inst, format=format)
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         path = self.path(inst, format)
@@ -221,17 +208,31 @@ class LinuxConfigDiskImage(DynamicDiskImage):
                 tar.addfile(tarinfo=f_i, fileobj=f)
                 f.close()
 
+    def toJSON(self):
+        json_obj = super().toJSON()
+        json_obj["host"] = self.host.id()
+        return json_obj
+
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> LinuxConfigDiskImage:
-        return super().fromJSON(system, json_obj)
+        instance = super().fromJSON(system, json_obj)
+        # NOTE: the host gets set during deserialization of the host, since there is a cyclic
+        # dependency between host and this disk image during deserialization
+        instance.host = None
+        return instance
+
+    def add_host(self, host: sys_host.BaseLinuxHost) -> None:
+        if self.host is not None:
+            raise RuntimeError("tried to set host of LinuxConfigDiskImage twice")
+        self.host = host
 
 
 # This is an additional example: building disk images directly from python
 # Could of course also have a version that generates the packer config from
 # python
 class PackerDiskImage(DynamicDiskImage):
-    def __init__(self, h: sys_host.FullSystemHost, packer_config_path: str) -> None:
-        super().__init__(h)
+    def __init__(self, system: sys_base.System, packer_config_path: str) -> None:
+        super().__init__(system)
         self.config_path = packer_config_path
         self.vars: dict[str, str] = {}
         self._prepared: bool = False

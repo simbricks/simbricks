@@ -23,12 +23,15 @@
 from __future__ import annotations
 
 import math
+import pathlib
+
 import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.system as system
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.system import host as sys_host
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
+from simbricks.orchestration.system import disk_images
 from simbricks.utils import base as utils_base, file as utils_file
 from simbricks.orchestration.instantiation import socket as inst_socket
 
@@ -234,6 +237,7 @@ class QemuSim(HostSim):
         )
         self.name = f"QemuSim-{self._id}"
         self._disks: list[tuple[str, str]] = []  # [(path, format)]
+        self._qemu_img_exec: str = "sims/external/qemu/build/qemu-img"
 
     def resreq_cores(self) -> int:
         return 1
@@ -247,11 +251,29 @@ class QemuSim(HostSim):
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         # disks is created upon invocation of "prepare", hence we do not need to serialize it
+        json_obj["qemu_img_exec"] = self._qemu_img_exec
         return json_obj
 
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> QemuSim:
-        return super().fromJSON(simulation, json_obj)
+        instance = super().fromJSON(simulation, json_obj)
+        instance._qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
+        return instance
+
+    async def _make_qcow_copy(
+        self, inst: inst_base.Instantiation, disk: disk_images.DiskImage, format: str
+    ) -> str:
+        disk_path = pathlib.Path(disk.path(inst=inst, format=format))
+        copy_path = inst.env.img_dir(relative_path=f"hdcopy.{self._id}")
+        prep_cmds = [
+            (
+                f"{inst.env.repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -F qcow2 "
+                f'-o backing_file="{disk_path}" '
+                f"{copy_path}"
+            )
+        ]
+        await inst._cmd_executor.exec_simulator_prepare_cmds(self, prep_cmds)
+        return copy_path
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
@@ -262,18 +284,13 @@ class QemuSim(HostSim):
 
         d = []
         for disk in full_sys_hosts[0].disks:
-            format = (
-                "qcow2"
-                if not isinstance(disk, sys_host.LinuxConfigDiskImage)
-                else "raw"
-            )
-            copy_path = await disk.make_qcow_copy(
-                inst=inst,
-                format=format,
-                sim=self
-            )
-            assert copy_path is not None
-            d.append((copy_path, format))
+            if not isinstance(disk, disk_images.LinuxConfigDiskImage):
+                format = "qcow2"
+                disk_path = await self._make_qcow_copy(inst, disk, format)
+            else:
+                format = "raw"
+                disk_path = disk.path(inst, format)
+            d.append((disk_path, format))
         self._disks = d
 
     def checkpoint_commands(self) -> list[str]:

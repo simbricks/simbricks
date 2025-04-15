@@ -25,11 +25,11 @@ from __future__ import annotations
 import typing as tp
 import abc
 import io
-from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.utils import base as utils_base
 from simbricks.orchestration.system import base as sys_base
 
 if tp.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import base as inst_base
     from simbricks.orchestration.system import host as sys_host
 
 

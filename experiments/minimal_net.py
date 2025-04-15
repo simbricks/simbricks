@@ -6,11 +6,14 @@ from simbricks.orchestration.helpers import simulation as sim_helpers
 
 sys = system.System()
 
+# create disk images
+distro_disk_image = system.DistroDiskImage(sys, "base")
+
 # create a host instance and a NIC instance then install the NIC on the host
 # host0 = system.CorundumLinuxHost(sys)
 host0 = system.I40ELinuxHost(sys)
-host0.add_disk(system.DistroDiskImage(h=host0, name="base"))
-host0.add_disk(system.LinuxConfigDiskImage(h=host0))
+host0.add_disk(distro_disk_image)
+host0.add_disk(system.LinuxConfigDiskImage(sys, host0))
 
 nic0 = system.IntelI40eNIC(sys)
 nic0.add_ipv4("10.0.0.1")
@@ -19,8 +22,8 @@ host0.connect_pcie_dev(nic0)
 
 # create a host instance and a NIC instance then install the NIC on the host
 host1 = system.I40ELinuxHost(sys)
-host1.add_disk(system.DistroDiskImage(h=host1, name="base"))
-host1.add_disk(system.LinuxConfigDiskImage(h=host1))
+host1.add_disk(distro_disk_image)
+host1.add_disk(system.LinuxConfigDiskImage(sys, host1))
 
 nic1 = system.IntelI40eNIC(sys)
 nic1.add_ipv4("10.0.0.2")

@@ -26,3 +26,4 @@ from simbricks.orchestration.system.eth import *
 from simbricks.orchestration.system.mem import *
 from simbricks.orchestration.system.nic import *
 from simbricks.orchestration.system.host import *
+from simbricks.orchestration.system.disk_images import *

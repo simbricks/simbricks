@@ -74,11 +74,16 @@ for rate in iperf_udp_rates:
     sys = system.System()
 
     """
+    create disk images
+    """
+    distro_disk_image = system.DistroDiskImage(sys, "base")
+
+    """
     Create HOST0, the client host in our topology
     """
     host0 = host_sys(sys)
-    host0.add_disk(system.DistroDiskImage(h=host0, name="base"))
-    host0.add_disk(system.LinuxConfigDiskImage(h=host0))
+    host0.add_disk(distro_disk_image)
+    host0.add_disk(system.LinuxConfigDiskImage(sys, host0))
     """
     Create NIC0, and connect it to HOST0
     """
@@ -90,8 +95,8 @@ for rate in iperf_udp_rates:
     Create HOST1, the server host in our topology
     """
     host1 = host_sys(sys)
-    host1.add_disk(system.DistroDiskImage(h=host1, name="base"))
-    host1.add_disk(system.LinuxConfigDiskImage(h=host1))
+    host1.add_disk(distro_disk_image)
+    host1.add_disk(system.LinuxConfigDiskImage(sys, host1))
     """
     Create NIC1, and connect it to HOST1
     """

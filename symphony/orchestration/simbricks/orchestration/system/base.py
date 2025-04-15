@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import uuid
 import typing as tp
+from simbricks.orchestration.system import disk_images
 from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
@@ -39,6 +40,7 @@ class System(utils_base.IdObj):
         self._all_components: dict[int, Component] = {}
         self._all_interfaces: dict[int, Interface] = {}
         self._all_channels: dict[int, Channel] = {}
+        self._all_disk_images: dict[int, disk_images.DiskImage] = {}
         self._parameters: dict[tp.Any, tp.Any] = {}
 
     def _add_component(self, c: Component) -> None:
@@ -72,6 +74,16 @@ class System(utils_base.IdObj):
             raise Exception(f"system does not store channel with id {ident}")
 
         return self._all_channels[ident]
+
+    def _add_disk_image(self, disk_image: disk_images.DiskImage) -> None:
+        assert disk_image.id() not in self._all_disk_images
+        self._all_disk_images[disk_image.id()] = disk_image
+
+    def _get_disk_image(self, ident: int) -> disk_images.DiskImage:
+        if ident not in self._all_disk_images:
+            raise Exception(f"system does not store disk image with id {ident}")
+
+        return self._all_disk_images[ident]
 
     @staticmethod
     def set_latencies(channels: list[Channel], amount: int, ratio: utils_base.Time) -> None:
@@ -119,6 +131,12 @@ class System(utils_base.IdObj):
 
         json_obj["channels"] = channels_json
 
+        disk_images_json = []
+        for disk_image in self._all_disk_images.values():
+            disk_images_json.append(disk_image.toJSON())
+
+        json_obj["disk_images"] = disk_images_json
+
         json_obj["parameters"] = utils_base.dict_to_json(self._parameters)
 
         return json_obj
@@ -130,6 +148,18 @@ class System(utils_base.IdObj):
         instance._all_components = {}
         instance._all_interfaces = {}
         instance._all_channels = {}
+        instance._all_disk_images = {}
+
+        disk_images_json = utils_base.get_json_attr_top(json_obj, "disk_images")
+        for disk_image_json in disk_images_json:
+            disk_image_class = utils_base.get_cls_by_json(disk_image_json, False)
+
+            if enforce_dummies or disk_image_class is None:
+                _ = disk_images.DummyDiskImage.fromJSON(instance, disk_image_json)
+                continue
+
+            utils_base.has_attribute(disk_image_class, "fromJSON")
+            _ = disk_image_class.fromJSON(instance, disk_image_json)
 
         interfaces_json = utils_base.get_json_attr_top(json_obj, "interfaces")
         for inf_json in interfaces_json:
