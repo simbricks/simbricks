@@ -62,7 +62,7 @@ class BaseClient:
     ) -> typing.AsyncIterator[aiohttp.ClientSession]:
         headers = await self._get_headers(overwrite_headers=overwrite_headers)
         timeout = aiohttp.ClientTimeout(total=client_settings().timeout_sec)
-        session = aiohttp.ClientSession(headers=headers, timeout=timeout)
+        session = aiohttp.ClientSession(headers=headers, timeout=timeout, trust_env=True)
         try:
             yield session
         finally:
