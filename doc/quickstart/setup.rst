@@ -51,29 +51,23 @@ You can create and activate a virtual environment as follows:
   python3 -m venv venv
   source venv/bin/activate
 
+After the creation of your SimBricks demo account, you will need to adjust the ``simbricks-client.env`` file located in the top-level directory of the demo repository.
+This is necessary to ensure your SimBricks environment is correctly configured to interact with SimBricks Backend, you need to set some environment vaiables that are used by the :ref:`SimBricks CLI and Client <sec-execution>` to communicate with the Backend.
+Do the following:
 
-**TODO TODO TODO TODOTODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODOTODO**
+- Open the ``simbricks-client.env`` file.
+- Locate the line that sets the NAMESPACE variable.
+- Replace ``<your demo email address>`` with the email address you used to create your demo account.
 
-After creating your SimBricks demo account, you’ll need to adjust the setup.sh file located in the top-level directory of this repository:
-
-    Open the setup.py file.
-    Locate the line that sets the NAMESPACE variable.
-    Replace with the email address you used to create your demo account.
-
-**TODO TODO TODO TODOTODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODOTODO**
-
-Once you’ve updated the setup.py file, run the setup.sh script to set the necessary environment variables:
-
-To ensure your SimBricks environment is correctly configured to interact with SimBricks Backend, you need to set some environment vaiables that are used by the :ref:`SimBricks CLI and Client <sec-execution>` to communicate with the Backend.
-This can simply be done by running the following:
+Once you’ve updated the ``simbricks-client.env`` file, you need to source the simbricks-client.env file in order to set the necessary environment variables.
+This can simply be done by running the following command:
 
 .. code-block:: bash
 
   source simbricks-client.env 
 
-The last required setup step is to install required SimBricks Python Packages
-
-To run the examples given in the repository (or your own virtual prototypes), you need to install the following SimBricks Python packages:
+The last required setup step is to install required SimBricks Python Packages.
+To run the examples given in the repository (or your own virtual prototypes), the following SimBricks packages are required:
 
 - ``simbricks-orchestration``: For creating virtual prototype configurations as shown in the following.
 - ``simbricks-client``: For sending configurations to the SimBricks server via Python.
