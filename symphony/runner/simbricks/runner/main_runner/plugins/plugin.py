@@ -36,3 +36,10 @@ class FragmentRunnerPlugin(abc.ABC):
 
     async def get_events(self) -> tuple[schemas.ApiEventType, schemas.ApiEventBundle]:
         return await utils.get_events(self.read)
+
+
+def get_first_match(key: tp.Any, *params: dict[tp.Any, tp.Any]) -> tp.Any | None:
+    for param in params:
+        if key in param:
+            return param[key]
+    return None
