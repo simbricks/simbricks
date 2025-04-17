@@ -34,7 +34,7 @@ async def ns_ls():
     """List all available namespaces."""
     client = client_provider.admin_client
     namespaces = await client.get_all_ns()
-    print_table_generic("Namespaces", namespaces, "id", "name", "parent_id")
+    print_table_generic("Namespaces", namespaces, "id", "name", "parent_id", "base_path")
 
 
 @app.command()
@@ -43,7 +43,7 @@ async def ns_ls_id(ident: int):
     """List namespace with given id ident."""
     client = client_provider.admin_client
     namespace = await client.get_ns(ns_id=ident)
-    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
 @app.command()
@@ -52,7 +52,7 @@ async def ns_create(name: str, parent_id: Annotated[int, Option(help="optional p
     """Create a new namespace."""
     client = client_provider.admin_client
     namespace = await client.create_ns(parent_id=parent_id, name=name)
-    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
     
 
 @app.command()

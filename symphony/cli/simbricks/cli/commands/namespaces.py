@@ -34,7 +34,7 @@ async def ls():
     client = client_provider.ns_client
 
     namespaces = await client.get_all()
-    print_table_generic("Namespaces", namespaces, "id", "name", "parent_id")
+    print_table_generic("Namespaces", namespaces, "id", "name", "parent_id", "base_path")
 
 
 @app.command()
@@ -44,7 +44,7 @@ async def show(ident: int):
     client = client_provider.ns_client
 
     namespace = await client.get_ns(ident)
-    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
 @app.command()
@@ -54,7 +54,7 @@ async def cur():
     client = client_provider.ns_client
 
     namespace = await client.get_cur()
-    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
 @app.command()
@@ -69,7 +69,7 @@ async def create(name: str):
     assert cur_ns.id
     # create the actual namespace
     namespace = await client.create(parent_id=cur_ns.id, name=name)
-    print_table_generic("Namespace", [namespace], "id", "name", "parent_id")
+    print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
 @app.command()
