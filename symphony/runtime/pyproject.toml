@@ -29,7 +29,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-runtime"
-version = "0.1.0"
+version = "0.1.1"
 description = "simbricks runtime lib required to simulate your virtual prototypes"
 authors  = [
   "Team SimBricks <team@simbricks.io>"

@@ -29,7 +29,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-runner"
-version = "0.1.0"
+version = "0.1.1"
 description = "simbricks runner to self host and run simulations via the SimBricks cloud"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
