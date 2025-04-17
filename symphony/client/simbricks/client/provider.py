@@ -33,8 +33,8 @@ from .settings import client_settings
 
 
 class ClientProvider:
-    def __init__(self, namespace: str = client_settings().namespace):
-        self.namespace = namespace
+    def __init__(self, namespace: str | None = client_settings().namespace):
+        self.namespace: str | None = namespace
         self._base_client: BaseClient | None = None
         self._admin_client: AdminClient = None
         self._org_client: OrgClient = None

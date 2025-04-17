@@ -31,7 +31,7 @@ class ClientSettings(BaseSettings):
     auth_dev_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
 
     organization: str = "SimBricks"
-    namespace: str = "Demo"
+    namespace: str | None = None
     timeout_sec: int = 20
 
 @lru_cache
