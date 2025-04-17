@@ -252,7 +252,7 @@ class NSClient:
         async with self._base_client.get(url="/resolve/default/user") as resp:
             raw_json = await resp.json()
             ns = schemas.ApiNamespace.model_validate(raw_json)
-            self._namespace = ns.name
+            self._namespace = f"{ns.base_path}/{ns.name}"
 
     @contextlib.asynccontextmanager
     async def post(
