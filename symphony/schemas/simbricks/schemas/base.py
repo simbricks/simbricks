@@ -33,6 +33,7 @@ class ApiNamespace(BaseModel):
     id: int | None = None
     parent_id: int | None = None
     name: str
+    base_path: str | None = None
 
 
 ApiNamespaceList_A = TypeAdapter(list[ApiNamespace])
