@@ -238,17 +238,27 @@ class OrgClient:
 
 
 class NSClient:
-    def __init__(self, base_client: BaseClient = BaseClient(), namespace: str = ""):
+    def __init__(self, base_client: BaseClient = BaseClient(), namespace: str | None = None):
         self._base_client: BaseClient = base_client
-        self._namespace = namespace
+        self._namespace: str | None = namespace
 
     def _build_ns_prefix(self, url: str) -> str:
         return f"/ns/{self._namespace}/-{url}"
+
+    async def resolve_default_ns(self) -> None:
+        if self._namespace is not None:
+            return
+
+        async with self._base_client.get(url="/resolve/default/user") as resp:
+            raw_json = await resp.json()
+            ns = schemas.ApiNamespace.model_validate(raw_json)
+            self._namespace = ns.name
 
     @contextlib.asynccontextmanager
     async def post(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+        await self.resolve_default_ns()
         async with self._base_client.post(
             url=self._build_ns_prefix(url=url), data=data, **kwargs
         ) as resp:
@@ -261,6 +271,7 @@ class NSClient:
         data: typing.Any = None,
         **kwargs: typing.Any,
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+        await self.resolve_default_ns()
         async with self._base_client.put(
             url=self._build_ns_prefix(url=url), data=data, **kwargs
         ) as resp:
@@ -270,6 +281,7 @@ class NSClient:
     async def patch(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+        await self.resolve_default_ns()
         async with self._base_client.patch(
             url=self._build_ns_prefix(url=url), data=data, **kwargs
         ) as resp:
@@ -279,7 +291,7 @@ class NSClient:
     async def get(
         self, url: str, data: typing.Any = None, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
-
+        await self.resolve_default_ns()
         async with self._base_client.get(
             url=self._build_ns_prefix(url=url), data=data, **kwargs
         ) as resp:
@@ -289,6 +301,7 @@ class NSClient:
     async def delete(
         self, url: str, **kwargs: typing.Any
     ) -> typing.AsyncIterator[aiohttp.ClientResponse]:
+        await self.resolve_default_ns()
         async with self._base_client.delete(url=self._build_ns_prefix(url=url), **kwargs) as resp:
             yield resp
 
@@ -644,6 +657,7 @@ class RunnerClient:
         async with self.post(url="/started", json=ts) as _:
             pass
 
+    # TODO
     @typing_extensions.deprecated(
         "The `create_runner_event` method is deprectaed; use `create_events` instead."
     )
@@ -658,6 +672,7 @@ class RunnerClient:
             raw_json = await resp.json()
             return schemas.ApiRunnerEvent.model_validate(raw_json)
 
+    # TODO
     @typing_extensions.deprecated(
         "The `delete_runner_event` method is deprectaed; use `delete_events` instead."
     )
@@ -668,6 +683,7 @@ class RunnerClient:
         async with self.delete(url=f"/events/{event_id}") as _:
             pass
 
+    # TODO
     @typing_extensions.deprecated(
         "The `update_runner_event` method is deprecated; use `update_events` istead."
     )
@@ -692,6 +708,7 @@ class RunnerClient:
             raw_json = await resp.json()
             return schemas.ApiRunnerEvent.model_validate(raw_json)
 
+    # TODO
     @typing_extensions.deprecated(
         "The `get_events` method is deprecated; use `fetch_events` istead."
     )
