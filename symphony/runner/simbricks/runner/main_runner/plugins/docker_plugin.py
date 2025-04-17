@@ -1,4 +1,5 @@
 import asyncio
+import re
 import subprocess
 import typing as tp
 
@@ -40,13 +41,52 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
         self, config_params: dict[tp.Any, tp.Any], fragment_params: dict[tp.Any, tp.Any]
     ) -> None:
         print("start simbricks docker fragment executor")
-        self.server = await asyncio.start_server(self.accept_connection, "0.0.0.0")
+
+        default_params: dict[str, tp.Any] = {
+            "listen_ip": "0.0.0.0",
+            "docker_image": "simbricks/simbricks-executor",
+            "docker_pull": False,
+        }
+
+        listen_ip = plugin.get_first_match("listen_ip", config_params, default_params)
+        assert listen_ip is not None
+        self.server = await asyncio.start_server(self.accept_connection, listen_ip)
+
+        docker_image = plugin.get_first_match(
+            "docker_image", fragment_params, config_params, default_params
+        )
+        assert docker_image is not None
+
+        if "docker_image_allow" in config_params:
+            allow_list = config_params["docker_image_allow"]
+            if not isinstance(allow_list, list):
+                raise RuntimeError("invalid format of docker_image_allow list")
+            for allow_exp in allow_list:
+                if re.fullmatch(allow_exp, docker_image) is not None:
+                    break
+            else:
+                raise RuntimeError(f"docker_image is not in allow list")
+
+        if "docker_image_deny" in config_params:
+            deny_list = config_params["docker_image_deny"]
+            if not isinstance(deny_list, list):
+                raise RuntimeError("invalid format of docker_image_deny list")
+            for deny_exp in deny_list:
+                if re.fullmatch(deny_exp, docker_image) is not None:
+                    raise RuntimeError(f"docker_image is in deny list")
+
+        docker_pull = plugin.get_first_match("docker_pull", config_params, default_params)
+        assert isinstance(docker_pull, bool)
+        if docker_pull:
+            pull = subprocess.run(["docker", "pull", docker_image])
+            if pull.returncode != 0:
+                raise RuntimeError(f"docker pull of image {docker_image} failed")
 
         port = self.server.sockets[0].getsockname()[1]
         self.executor = subprocess.Popen([
             "docker", "run", "--rm", "--device=/dev/kvm",
             "--add-host=host.docker.internal:host-gateway",
-            "simbricks/simbricks-executor",
+            docker_image,
             "host.docker.internal", str(port)])
 
         # wait for the fragment executor to connect
