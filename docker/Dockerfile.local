@@ -12,4 +12,4 @@ RUN make -j `nproc` symphony-build
 
 FROM ${REGISTRY}simbricks/simbricks-fullsims${TAG}
 COPY --from=builder /simbricks/symphony/*/dist/*.whl /tmp/
-RUN sudo pip install /tmp/simbricks*.whl
+RUN sudo pip install --force-reinstall /tmp/simbricks*.whl
