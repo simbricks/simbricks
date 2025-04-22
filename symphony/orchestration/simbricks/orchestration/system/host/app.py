@@ -124,6 +124,28 @@ class BaseLinuxApplication(Application):
         return instance
 
 
+class GenericRawCommandApplication(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost, commands: list[str] = []) -> None:
+        super().__init__(h)
+        self.commands: list[str] = commands
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return self.commands
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["commands"] = utils_base.list_tuple_to_json(self.commands)
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict):
+        instance = super().fromJSON(system, json_obj)
+        commands_json = utils_base.get_json_attr_top(json_obj, "commands")
+        instance.commands = utils_base.json_array_to_list(commands_json)
+        return instance
+
+
 class PingClient(BaseLinuxApplication):
     def __init__(self, h: sys_host.LinuxHost, server_ip: str = "192.168.64.1") -> None:
         super().__init__(h)
