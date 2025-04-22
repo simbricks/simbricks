@@ -20,16 +20,21 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration import system
-from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.simulation import channel as sim_chan
-from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.utils import base as utils_base
+from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.instantiation import base as inst
+from simbricks.orchestration.instantiation import fragment as frag
+
 
 def simple_instantiation(
     simulation: sim_base.Simulation,
-) -> inst_base.Instantiation:
-  instance = inst_base.Instantiation(sim=simulation)
-  instance.preserve_tmp_folder = False
-  instance.create_checkpoint = True
-  return instance
+) -> inst.Instantiation:
+    """Create simple instantiation from a simulation.
+    By default, a single Fragment is created as part of which all Simulators are executed"""
+
+    utils_base.has_expected_type(simulation, sim_base.Simulation)
+    instance = inst.Instantiation(simulation)
+    fragment = frag.Fragment()
+    fragment.add_simulators(*simulation.all_simulators())
+    instance.fragments = [fragment]
+    return instance
