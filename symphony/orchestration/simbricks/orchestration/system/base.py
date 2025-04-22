@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import uuid
 import typing as tp
 from simbricks.utils import base as utils_base
 
@@ -32,8 +33,9 @@ if tp.TYPE_CHECKING:
 class System(utils_base.IdObj):
     """Defines System configuration of the whole simulation"""
 
-    def __init__(self) -> None:
+    def __init__(self, name: str = str(uuid.uuid4())) -> None:
         super().__init__()
+        self.name: str = name
         self._all_components: dict[int, Component] = {}
         self._all_interfaces: dict[int, Interface] = {}
         self._all_channels: dict[int, Channel] = {}
@@ -92,6 +94,8 @@ class System(utils_base.IdObj):
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
 
+        json_obj["name"] = self.name
+
         components_json = []
         for _, comp in self._all_components.items():
             utils_base.has_attribute(comp, "toJSON")
@@ -122,6 +126,7 @@ class System(utils_base.IdObj):
     @classmethod
     def fromJSON(cls, json_obj: dict, enforce_dummies: bool = False) -> System:
         instance = super().fromJSON(json_obj)
+        instance.name = utils_base.get_json_attr_top(json_obj, "name")
         instance._all_components = {}
         instance._all_interfaces = {}
         instance._all_channels = {}

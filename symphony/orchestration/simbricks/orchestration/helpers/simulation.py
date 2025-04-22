@@ -61,9 +61,8 @@ def simple_simulation(
 ):
   """Create simple simulation from system. Uses a map from component type to
   simulator type and then creates one simulator per component."""
-  # FIXME: name from system, but system has no name
   simulation = sim_base.Simulation(
-      name="netperf_sysconf", system=system
+      name=f"simulation-{system.name}", system=system
   )
 
   for comp in system._all_components.values():
