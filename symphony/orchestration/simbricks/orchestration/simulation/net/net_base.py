@@ -113,7 +113,7 @@ class WireNet(NetSim):
             pcap_file = inst.env.output_base(
                 relative_path=self._relative_pcap_file_path
             )
-            cmd += " " + pcap_file
+            cmd += " -p " + pcap_file
         return cmd
 
 
@@ -165,7 +165,7 @@ class SwitchNet(NetSim):
             pcap_file = inst.env.output_base(
                 relative_path=self._relative_pcap_file_path
             )
-            cmd += " " + pcap_file
+            cmd += " -p " + pcap_file
 
         sockets = self._get_socks_by_all_comp(inst=inst)
         listen, connect = sim_base.Simulator.split_sockets_by_type(sockets)
