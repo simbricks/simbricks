@@ -36,7 +36,7 @@ CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir) $(EXTRA_CPPFLAGS)
 VERILATOR = verilator
 VFLAGS = +1364-2005ext+v \
     -Wno-WIDTH -Wno-PINMISSING -Wno-LITENDIAN -Wno-IMPLICIT -Wno-SELRANGE \
-    -Wno-CASEINCOMPLETE -Wno-UNSIGNED $(EXTRA_VFLAGS)
+    -Wno-CASEINCOMPLETE -Wno-UNSIGNED --no-timing --timescale 1ps/1ps $(EXTRA_VFLAGS)
 
 
 $(eval $(call subdir,docker))
