@@ -540,6 +540,21 @@ class ApiRunFragmentStateEventCreate(ApiCreateEvent, AbstractApiRunFragmentState
     )
 
 
+class AbstractApiRunFragmentOutputArtifactEvent(AbstractApiRunFragmentEvent):
+    output_artifact: str
+    """
+    The output artifact of the run for this fragment.
+    """
+
+
+class ApiRunFragmentOutputArtifactEventCreate(
+    ApiCreateEvent, AbstractApiRunFragmentOutputArtifactEvent
+):
+    event_discriminator: Literal["ApiRunFragmentOutputArtifactEventCreate"] = (
+        "ApiRunFragmentOutputArtifactEventCreate"
+    )
+
+
 """ ############################################################################
 Simulator related events
 """  ############################################################################
