@@ -31,6 +31,11 @@ symphony-dev:
 	pip install -r $(base_dir)requirements.txt
 	cd $(SYMPHONY_DIR); pip install -r requirements.txt
 
+symphony-version:
+	for m in $(SYMPHONY_MODS); do \
+		(cd $(SYMPHONY_DIR)$$m && poetry version "$(SYMPHONY_VERSION)"); \
+	done
+
 symphony-build:
 	for m in $(SYMPHONY_MODS); do \
 		(cd $(SYMPHONY_DIR)$$m && \
