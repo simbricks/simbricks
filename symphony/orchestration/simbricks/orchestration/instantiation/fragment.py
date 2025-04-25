@@ -50,6 +50,8 @@ class Fragment(utils_base.IdObj):
 
         self.input_artifact_name: str = f"input-artifact-{str(uuid.uuid4())}.zip"
         self.input_artifact_paths: list[str] = []
+        self.output_artifact_name: str = f"output-artifact-{str(uuid.uuid4())}.zip"
+        self.output_artifact_paths: list[str] = []
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -69,6 +71,8 @@ class Fragment(utils_base.IdObj):
 
         json_obj["input_artifact_name"] = self.input_artifact_name
         json_obj["input_artifact_paths"] = self.input_artifact_paths
+        json_obj["output_artifact_name"] = self.output_artifact_name
+        json_obj["output_artifact_paths"] = self.output_artifact_paths
 
         return json_obj
 
@@ -101,6 +105,8 @@ class Fragment(utils_base.IdObj):
 
         instance.input_artifact_name = utils_base.get_json_attr_top(json_obj, "input_artifact_name")
         instance.input_artifact_paths = utils_base.get_json_attr_top(json_obj, "input_artifact_paths")
+        instance.output_artifact_name = utils_base.get_json_attr_top(json_obj, "output_artifact_name")
+        instance.output_artifact_paths = utils_base.get_json_attr_top(json_obj, "output_artifact_paths")
 
         return instance
 

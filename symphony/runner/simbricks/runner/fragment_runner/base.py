@@ -376,10 +376,10 @@ class FragmentRunner(abc.ABC):
 
             output_path = run.inst.env.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
-            if run.inst.create_artifact:
+            if run.inst.assigned_fragment.output_artifact_paths:
                 utils_art.create_artifact(
-                    artifact_name=run.inst.output_artifact_name,
-                    paths_to_include=run.inst.output_artifact_paths,
+                    artifact_name=run.inst.assigned_fragment.output_artifact_name,
+                    paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
                 )
                 # TODO: send artifact to runner using artifact event
                 #await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)
