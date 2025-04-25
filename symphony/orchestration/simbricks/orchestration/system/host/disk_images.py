@@ -26,6 +26,7 @@ import abc
 import io
 import pathlib
 import tarfile
+import asyncio
 import typing as tp
 from simbricks.utils import base as utils_base
 from simbricks.orchestration.instantiation import base as inst_base
@@ -51,10 +52,7 @@ class DiskImage(utils_base.IdObj):
         raise Exception("must be overwritten")
 
     async def make_qcow_copy(
-        self,
-        inst: inst_base.Instantiation,
-        format: str,
-        sim: sim_base.Simulator
+        self, inst: inst_base.Instantiation, format: str, sim: sim_base.Simulator
     ) -> str:
         disk_path = pathlib.Path(self.path(inst=inst, format=format))
         copy_path = inst.env.img_dir(relative_path=f"hdcopy.{self._id}")
@@ -102,9 +100,7 @@ class DiskImage(utils_base.IdObj):
         instance = super().fromJSON(json_obj)
         host_id = int(utils_base.get_json_attr_top(json_obj, "host"))
         instance.host = system.get_comp(host_id)
-        instance._qemu_img_exec = utils_base.get_json_attr_top(
-            json_obj, "qemu_img_exec"
-        )
+        instance._qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
         return instance
 
 
@@ -237,21 +233,48 @@ class PackerDiskImage(DynamicDiskImage):
     def __init__(self, h: sys_host.FullSystemHost, packer_config_path: str) -> None:
         super().__init__(h)
         self.config_path = packer_config_path
+        self.vars: dict[str, str] = {}
+        self._prepared: bool = False
 
     def available_formats(self) -> list[str]:
         return ["raw", "qcow"]
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
-        # TODO: invoke packer to build the image if necessary
-        pass
+        if self._prepared:
+            return
+        self._prepared = True
+
+        # Construct the packer build command
+        command = ["packer", "build"]
+        for key, val in self.vars.items():
+            command.append(f"--var {key}={val}")
+        command.append(self.config_path)
+
+        process = await asyncio.create_subprocess_exec(
+            *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+
+        stdout, stderr = await process.communicate()
+        print(stdout.decode())
+
+        # Check the return code to determine success
+        if process.returncode == 0:
+            print("Packer image built successfully!")
+        else:
+            print(stderr.decode())
+            raise RuntimeError("failed to build image with packer")
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["config_path"] = self.config_path
+        json_obj["vars"] = utils_base.dict_to_json(self.vars)
         return json_obj
 
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> PackerDiskImage:
         instance = super().fromJSON(system, json_obj)
+        instance._prepared = False
         instance.config_path = utils_base.get_json_attr_top(json_obj, "config_path")
+        vars_json = utils_base.get_json_attr_top(json_obj, "vars")
+        instance.vars = utils_base.json_to_dict(vars_json)
         return instance
