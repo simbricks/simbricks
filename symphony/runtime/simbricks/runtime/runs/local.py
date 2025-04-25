@@ -181,7 +181,7 @@ class LocalSimpleRuntime(run_base.Runtime):
         run._output.dump(outpath=output_path)
         if run.instantiation.assigned_fragment.output_artifact_paths:
             utils_art.create_artifact(
-                artifact_name=run.instantiation.assigned_fragment.output_artifact_name,
+                file=run.instantiation.assigned_fragment.output_artifact_name,
                 paths_to_include=run.instantiation.assigned_fragment.output_artifact_paths,
             )
 

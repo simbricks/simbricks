@@ -377,12 +377,22 @@ class FragmentRunner(abc.ABC):
             output_path = run.inst.env.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
             if run.inst.assigned_fragment.output_artifact_paths:
+                output_artifact = io.BytesIO()
                 utils_art.create_artifact(
-                    artifact_name=run.inst.assigned_fragment.output_artifact_name,
+                    file=output_artifact,
                     paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
                 )
-                # TODO: send artifact to runner using artifact event
-                #await self._sb_client.set_run_artifact(run.run_id, run.inst.artifact_name)
+                output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
+                    run_id=run.run_id,
+                    fragment_id=run.inst.assigned_fragment.id(),
+                    output_artifact=base64.b64encode(output_artifact).decode("utf-8"),
+                    output_artifact_name=run.inst.assigned_fragment.output_artifact_name,
+                )
+                event_bundle = schemas.ApiEventBundle()
+                event_bundle.add_event(output_artifact_event)
+                await self._send_event_queue.put(
+                    (schemas.ApiEventType.ApiEventCreate, event_bundle)
+                )
 
             status = schemas.RunState.ERROR if res.failed() else schemas.RunState.COMPLETED
             event = schemas.ApiRunFragmentStateEventCreate(
