@@ -182,10 +182,10 @@ class LocalSimpleRuntime(run_base.Runtime):
         # dump output into a file and then, before cleanup, create an artifact
         output_path = run.instantiation.env.get_simulation_output_path()
         run._output.dump(outpath=output_path)
-        if run.instantiation.create_artifact:
+        if run.instantiation.assigned_fragment.output_artifact_paths:
             utils_art.create_artifact(
-                artifact_name=run.instantiation.output_artifact_name,
-                paths_to_include=run.instantiation.output_artifact_paths,
+                artifact_name=run.instantiation.assigned_fragment.output_artifact_name,
+                paths_to_include=run.instantiation.assigned_fragment.output_artifact_paths,
             )
 
         await sim_executor.cleanup()
