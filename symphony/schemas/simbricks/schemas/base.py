@@ -542,6 +542,7 @@ class ApiRunFragmentStateEventCreate(ApiCreateEvent, AbstractApiRunFragmentState
 
 class AbstractApiRunFragmentOutputArtifactEvent(AbstractApiRunFragmentEvent):
     output_artifact: str
+    output_artifact_name: str
     """
     The output artifact of the run for this fragment.
     """
