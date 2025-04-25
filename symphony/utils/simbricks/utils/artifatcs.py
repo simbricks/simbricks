@@ -46,11 +46,11 @@ def _add_folder_to_zip(zip_file: zipfile.ZipFile, dir_path: str) -> None:
 
 
 # create an artifact containing all files and folders specified as paths.
-def create_artifact(artifact_name: str = "simbricks-artifact.zip", paths_to_include: list[str] = []) -> None:
+def create_artifact(file: str | tp.IO[bytes], paths_to_include: list[str] = []) -> None:
     if len(paths_to_include) < 1:
         return
 
-    with zipfile.ZipFile(artifact_name, "w", zipfile.ZIP_DEFLATED) as zip_file:
+    with zipfile.ZipFile(file, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for path in paths_to_include:
             path_obj = pathlib.Path(path)
             if path_obj.is_file():
