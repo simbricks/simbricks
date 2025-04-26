@@ -385,7 +385,7 @@ class FragmentRunner(abc.ABC):
                 output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
                     run_id=run.run_id,
                     fragment_id=run.inst.assigned_fragment.id(),
-                    output_artifact=base64.b64encode(output_artifact).decode("utf-8"),
+                    output_artifact=base64.b64encode(output_artifact.getvalue()).decode("utf-8"),
                     output_artifact_name=run.inst.assigned_fragment.output_artifact_name,
                 )
                 event_bundle = schemas.ApiEventBundle()
