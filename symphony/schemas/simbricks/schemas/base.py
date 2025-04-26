@@ -726,7 +726,8 @@ ApiEventCreate_U = Annotated[
     | ApiSimulatorStateChangeEventCreate
     | ApiProxyStateChangeEventCreate
     | ApiProxyOutputEventCreate
-    | ApiRunFragmentStateEventCreate,
+    | ApiRunFragmentStateEventCreate
+    | ApiRunFragmentOutputArtifactEventCreate,
     Field(discriminator="event_discriminator"),
 ]
 
