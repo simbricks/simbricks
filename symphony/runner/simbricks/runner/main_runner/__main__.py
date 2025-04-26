@@ -5,6 +5,7 @@ import asyncio
 import base64
 import importlib
 import itertools
+import io
 import json
 import logging
 import traceback
@@ -37,6 +38,7 @@ class MainRun:
         for fragment in fragment_runner_map:
             self.fragment_run_state[fragment] = schemas.RunState.SPAWNED
         self.run_state_callback: EventCallback | None = None
+        self.output_artifact_callback: RunFragmentOutputArtifactCallback | None = None
 
 
 class EventCallback(abc.ABC):
@@ -118,6 +120,28 @@ class RunFragmentStateCallback(EventCallback):
 
     def passthrough(self) -> bool:
         return True
+
+
+class RunFragmentOutputArtifactCallback(EventCallback):
+
+    def __init__(self, handlers, event_type, run_id: int, simbricks_client: client.SimBricksClient):
+        super().__init__(handlers, event_type)
+        self.run_id = run_id
+        self.simbricks_client = simbricks_client
+
+    async def callback(self, event: schemas.ApiEventCreate_U) -> bool:
+        assert isinstance(event, schemas.ApiRunFragmentOutputArtifactEventCreate)
+        if event.run_id != self.run_id:
+            return False
+        output_artifact = io.BytesIO(base64.b64decode(event.output_artifact.encode("utf-8")))
+        output_artifact.name = event.output_artifact_name
+        await self.simbricks_client.set_run_fragment_output_artifact_raw(
+            event.run_id, event.fragment_id, output_artifact
+        )
+        return True
+
+    def passthrough(self) -> bool:
+        return False
 
 
 class FragmentExecutorConfiguration:
@@ -300,6 +324,11 @@ class MainRunner:
         callback = RunFragmentStateCallback(handlers, "ApiRunFragmentStateEventCreate", run)
         run.run_state_callback = callback
 
+        callback = RunFragmentOutputArtifactCallback(
+            handlers, "ApiRunFragmentOutputArtifactEventCreate", run.run_id, self._simbricks_client
+        )
+        run.output_artifact_callback = callback
+
         senders: list[asyncio.Task] = []
         for fragment_id, name in event.fragments:
             fragment_event = event.model_copy()
@@ -452,6 +481,8 @@ class MainRunner:
                 else:
                     if run.run_state_callback is not None:
                         run.run_state_callback.remove_callback()
+                    if run.output_artifact_callback is not None:
+                        run.output_artifact_callback.remove_callback()
                     await self._stop_fragment_runners(run.fragment_runner_map)
                     self._run_map.pop(run_id)
                     LOGGER.debug(f"removed run {run_id} from run_map")
