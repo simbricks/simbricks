@@ -23,6 +23,11 @@
 [tool.black]
 line-length = 100
 
+[tool.pytype]
+inputs = ["simbricks"]
+python_version = "3.10"
+incremental = true
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -38,3 +43,6 @@ homepage = "https://www.simbricks.io/"
 packages = [
   { include = "simbricks" }
 ]
+
+[tool.poetry.dependencies]
+pytype = "2024.10.11"

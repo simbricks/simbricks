@@ -23,6 +23,11 @@
 [tool.black]
 line-length = 100
 
+[tool.pytype]
+inputs = ["simbricks"]
+python_version = "3.10"
+incremental = true
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -44,6 +49,7 @@ simbricks-runner = "simbricks.runner.main_runner.__main__:main"
 simbricks-executor-local = "simbricks.runner.fragment_runner.local.__main__:main"
 
 [tool.poetry.dependencies]
+pytype = "2024.10.11"
 rich = "13.9.4"
 simbricks-orchestration = "*"
 simbricks-runtime = "*"

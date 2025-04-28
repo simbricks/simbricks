@@ -22,10 +22,20 @@
 
 include mk/subdir_pre.mk
 
-SYMPHONY_DIR := $(d)/
+SYMPHONY_DIR := $(d)
 SYMPHONY_MODS := utils orchestration client cli runtime runner local schemas
 
 SYMPHONY_PUBLICATION_REPO ?= testpypi
+
+TYPECHECK_JOBS := 2
+
+typecheck-%:
+	pytype --keep-going --config=$(SYMPHONY_DIR)$*/pyproject.toml --jobs $(TYPECHECK_JOBS)
+
+symphony-typecheck:
+	for mod in $(SYMPHONY_MODS); do \
+		(pytype --keep-going --config=$(SYMPHONY_DIR)$$mod/pyproject.toml --jobs $(TYPECHECK_JOBS)); \
+	done
 
 symphony-dev:
 	pip install -r $(base_dir)requirements.txt

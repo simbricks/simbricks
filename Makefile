@@ -105,7 +105,7 @@ typecheck-python:
 			experiments/simbricks/orchestration/utils/graphlib.py \
 		-- experiments/ results/
 
-lint-python: lint-pylint typecheck-python
+lint-python: lint-pylint
 lint: lint-cpplint lint-clang-format lint-python
 lint-all: lint lint-clang-tidy
 
@@ -126,7 +126,7 @@ help:
 
 .PHONY: all clean clean-external clean-all distclean lint lint-all \
 	lint-cpplint lint-clang-tidy lint-clang-format clang-format help \
-	lint-yapf format-yapf lint-isort format-isort lint-pylint typecheck-python \
+	lint-yapf format-yapf lint-isort format-isort lint-pylint \
 	lint-python
 
 include mk/subdir_post.mk
