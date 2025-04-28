@@ -542,6 +542,11 @@ class SimBricksClient:
             with open(store_path, "wb") as f:
                 f.write(content)
 
+    async def get_all_run_fragments(self, run_id: int) -> list[schemas.ApiRunFragment]:
+        async with self._ns_client.get(url=f"/runs/run_fragments/{run_id}") as resp:
+            raw_json = await resp.json()
+            return schemas.validate_list_type(raw_json, schemas.ApiRunFragment)
+
     async def get_run_console(
         self, run_id: int, filter: schemas.ApiRunOutputFilter
     ) -> schemas.ApiRunOutput:
