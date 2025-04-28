@@ -159,6 +159,23 @@ class ApiRunQuery(BaseModel):
     limit: int | None = None
 
 
+class ApiRunFragment(BaseModel):
+    id: int | None = None
+    run_id: int | None = None
+    runner_id: int | None = None
+    fragment: ApiFragment | None = None
+    state: RunState | None = None
+
+
+class ApiRunFragmentQuery(BaseModel):
+    id: int | None = None
+    run_id: int | None = None
+    runner_id: int | None = None
+    fragment_id: int | None = None
+    state: RunState | None = None
+    limit: int | None = None
+
+
 class ApiResourceGroup(BaseModel):
     id: int | None = None
     label: str | None = None
