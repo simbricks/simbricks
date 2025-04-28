@@ -23,6 +23,7 @@
 # external dependencies
 typer==0.13.1
 rich==13.9.4
+pytype==2024.10.11
 
 # local dependencies
 -e ../orchestration

@@ -45,6 +45,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
+pytype = "2024.10.11"
 simbricks-cli = "*"
 simbricks-client = "*"
 simbricks-orchestration = "*"

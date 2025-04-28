@@ -23,6 +23,7 @@
 # external dependencies
 black==24.10.0
 isort==5.13.2 
+pytype==2024.10.11
 
 # local dependencies
 -e ./cli
