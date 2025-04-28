@@ -379,6 +379,8 @@ class FragmentRunner(abc.ABC):
                 utils_art.create_artifact(
                     file=output_artifact,
                     paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
+                    base_path=pathlib.Path(run.inst.env._work_dir),
+                    check_relative=True,
                 )
                 output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
                     run_id=run.run_id,
