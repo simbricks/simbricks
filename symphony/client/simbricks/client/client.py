@@ -519,27 +519,25 @@ class SimBricksClient:
             content = await resp.read()
             return content
 
-    async def set_run_fragment_output_artifact(
-        self, rid: int, fid: int, uploaded_input_file: str
-    ) -> None:
+    async def set_run_fragment_output_artifact(self, rfid: int, uploaded_input_file: str) -> None:
         with open(uploaded_input_file, "rb") as f:
             file_data = {"file": f}
             async with self._ns_client.put(
-                url=f"/runs/output_artifact/{rid}/{fid}", data=file_data
+                url=f"/runs/output_artifact/{rfid}", data=file_data
             ) as _:
                 pass
 
     async def set_run_fragment_output_artifact_raw(
-        self, rid: int, fid: int, uploaded_data: typing.IO[bytes]
+        self, rfid: int, uploaded_data: typing.IO[bytes]
     ) -> None:
         file_data = {"file": uploaded_data}
         async with self._ns_client.put(
-            url=f"/runs/output_artifact/{rid}/{fid}", data=file_data
+            url=f"/runs/output_artifact/{rfid}", data=file_data
         ) as _:
             pass
 
-    async def get_run_fragment_output_artifact(self, rid: int, fid: int, store_path: str) -> None:
-        async with self._ns_client.post(url=f"/runs/output_artifact/{rid}/{fid}") as resp:
+    async def get_run_fragment_output_artifact(self, rfid: int, store_path: str) -> None:
+        async with self._ns_client.post(url=f"/runs/output_artifact/{rfid}") as resp:
             content = await resp.read()
             with open(store_path, "wb") as f:
                 f.write(content)

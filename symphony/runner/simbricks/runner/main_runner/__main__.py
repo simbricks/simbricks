@@ -115,7 +115,7 @@ class RunFragmentStateCallback(EventCallback):
         assert isinstance(event, schemas.ApiRunFragmentStateEventCreate)
         if event.run_id != self.run.run_id:
             return False
-        self.run.fragment_run_state[event.fragment_id] = event.run_state
+        self.run.fragment_run_state[event.run_fragment_id] = event.run_state
         return True
 
     def passthrough(self) -> bool:
@@ -136,7 +136,7 @@ class RunFragmentOutputArtifactCallback(EventCallback):
         output_artifact = io.BytesIO(base64.b64decode(event.output_artifact.encode("utf-8")))
         output_artifact.name = event.output_artifact_name
         await self.simbricks_client.set_run_fragment_output_artifact_raw(
-            event.run_id, event.fragment_id, output_artifact
+            event.run_fragment_id, output_artifact
         )
         return True
 
@@ -260,7 +260,6 @@ class MainRunner:
         assert name in self._fragment_executor_configs
         config = self._fragment_executor_configs[name]
         runner = config.plugin()
-        # TODO: parse fragment params and give it to runner.start
         await runner.start(config.settings, parameters)
         fragment_runner = FragmentRunner(name, runner)
         fragment_runner.read_task = asyncio.create_task(
@@ -272,16 +271,9 @@ class MainRunner:
     async def _start_run(self, run_id: int, event: schemas.ApiRunEventStartRunRead, update):
         fragment_runner_map: dict[int, FragmentRunner] = {}
 
-        if (event.system is None
-            or event.simulation is None
-            or event.inst is None
-            or event.inst_id is None
-        ):
-            raise RuntimeError("invalid ApiRunEventStartRunRead event")
-
-        sb_sys = sys_base.System.fromJSON(json.loads(event.system), True)
-        sb_sim = sim_base.Simulation.fromJSON(sb_sys, json.loads(event.simulation), True)
-        sb_inst = inst_base.Instantiation.fromJSON(sb_sim, json.loads(event.inst))
+        sb_sys = sys_base.System.fromJSON(json.loads(event.system.sb_json), True)
+        sb_sim = sim_base.Simulation.fromJSON(sb_sys, json.loads(event.simulation.sb_json), True)
+        sb_inst = inst_base.Instantiation.fromJSON(sb_sim, json.loads(event.inst.sb_json))
 
         # get parameters from fragments
         parameters_map: dict[int, dict[tp.Any, tp.Any]] = {}
@@ -291,22 +283,20 @@ class MainRunner:
         # retrieve instantiation input artifacts
         inst_artifact = None
         if sb_inst.input_artifact_paths:
-            inst_artifact = await self._simbricks_client.get_inst_input_artifact_raw(event.inst_id)
+            inst_artifact = await self._simbricks_client.get_inst_input_artifact_raw(event.inst.id)
 
-        api_inst = await self._simbricks_client.get_instantiation(event.inst_id)
-        fragment_id_map: dict[int, int] = {}
-        for fragment in api_inst.fragments:
-            fragment_id_map[fragment.object_id] = fragment.id
-
-        for id, name in event.fragments:
-            if name is None:
-                name = self._available_fragment_executors[0]
-            elif name not in self._fragment_executor_configs:
+        for rf in event.fragments:
+            fragment_executor_tag = rf.fragment.fragment_executor_tag
+            if fragment_executor_tag is None:
+                fragment_executor_tag = self._available_fragment_executors[0]
+            elif fragment_executor_tag not in self._fragment_executor_configs:
                 await self._stop_fragment_runners(fragment_runner_map)
-                raise RuntimeError(f"unsupported fragment runner type {name}")
+                raise RuntimeError(f"unsupported fragment runner type {fragment_executor_tag}")
 
-            fragment_runner = await self._start_fragment_runner(name, parameters_map[id])
-            fragment_runner_map[id] = fragment_runner
+            fragment_runner = await self._start_fragment_runner(
+                fragment_executor_tag, parameters_map[rf.fragment.object_id]
+            )
+            fragment_runner_map[rf.id] = fragment_runner
 
         run = MainRun(run_id, fragment_runner_map)
         self._run_map[run_id] = run
@@ -330,16 +320,16 @@ class MainRunner:
         run.output_artifact_callback = callback
 
         senders: list[asyncio.Task] = []
-        for fragment_id, name in event.fragments:
+        for rf in event.fragments:
             fragment_event = event.model_copy()
-            fragment_event.fragments = [(fragment_id, name)]
+            fragment_event.fragments = [rf]
             if inst_artifact is not None:
                 fragment_event.inst_input_artifact = base64.b64encode(inst_artifact).decode("utf-8")
-            fragment = sb_inst.get_fragment(fragment_id)
+            fragment = sb_inst.get_fragment(rf.fragment.object_id)
             if fragment.input_artifact_paths:
                 fragment_artifact = (
                     await self._simbricks_client.get_fragment_input_artifact_raw(
-                        event.inst_id, fragment_id_map[fragment_id]
+                        event.inst.id, rf.fragment.id
                     )
                 )
                 fragment_event.fragment_input_artifact = (
@@ -348,7 +338,7 @@ class MainRunner:
             event_bundle = schemas.ApiEventBundle()
             event_bundle.add_event(fragment_event)
             senders.append(asyncio.create_task(
-                fragment_runner_map[fragment_id].fragment_runner.send_events(
+                fragment_runner_map[rf.id].fragment_runner.send_events(
                     event_bundle, schemas.ApiEventType.ApiEventRead
                 )
             ))
