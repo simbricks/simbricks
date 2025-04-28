@@ -90,7 +90,7 @@ class ApiInstantiation(BaseModel):
     id: int | None = None
     simulation_id: int | None = None
     sb_json: str | dict | None = None
-    fragments: list[ApiFragment] = []
+    fragments: list[ApiFragment] | None = None
 
 
 ApiInstantiationList_A = TypeAdapter(list[ApiInstantiation])
@@ -491,15 +491,23 @@ class ApiRunEventStartRunRead(ApiRunEventRead):
     run_event_type: RunEventType = RunEventType.START_RUN
     event_discriminator: Literal["ApiRunEventStartRunRead"] = "ApiRunEventStartRunRead"
 
-    fragments: list[tuple[int, str | None]]
+    fragments: list[ApiRunFragment]
     """
-    A list of tuples of fragment IDs and fragment executor tags. Those are the IDs from the Fragment
-    Python objects stored in the instantiation.
+    A list of fragments that should be executed by the runner.
     """
-    inst: Any = None
-    inst_id: int | None = None
-    system: Any = None
-    simulation: Any = None
+    inst: ApiInstantiation
+    """
+    The instantiation for this run. Fragments are set to None, since we already have a list of the
+    relevant run fragments, which contain the necessary fragments, in this event.
+    """
+    system: ApiSystem
+    """
+    The system for this run.
+    """
+    simulation: ApiSimulation
+    """
+    The simulation for this run.
+    """
 
     inst_input_artifact: str | None = None
     fragment_input_artifact: str | None = None
@@ -538,7 +546,7 @@ class AbstractApiRunFragmentEvent(AbstractApiEvent):
     """
     The associated run.
     """
-    fragment_id: int
+    run_fragment_id: int
     """
     The associated fragment.
     """
