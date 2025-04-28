@@ -80,6 +80,22 @@ async def run_con(run_id: int):
 
 @app.command()
 @async_cli()
+async def ls_rf(run_id: Annotated[int, Argument(help="The run id.")]):
+    """List all run fragments of a run."""
+    run_fragments = await client_provider.simbricks_client.get_all_run_fragments(run_id)
+    print_table_generic(
+        "Run Fragments",
+        run_fragments,
+        "id",
+        "run_id",
+        "runner_id",
+        "state",
+        "output_artifact_exists",
+    )
+
+
+@app.command()
+@async_cli()
 async def delete(run_id: int):
     """Delete an individual run."""
     client = client_provider.simbricks_client
