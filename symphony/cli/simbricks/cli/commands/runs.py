@@ -25,7 +25,8 @@ import typing
 from pathlib import Path
 
 import rich
-from typer import Argument, Option, Typer
+from aiohttp import client_exceptions
+from typer import Argument, Option, Typer, Exit
 from typing_extensions import Annotated
 
 import simbricks.utils.load_mod as load_mod
@@ -92,6 +93,31 @@ async def ls_rf(run_id: Annotated[int, Argument(help="The run id.")]):
         "state",
         "output_artifact_exists",
     )
+
+
+@app.command()
+@async_cli()
+async def get_output_artifact(
+    run_fragment_id: Annotated[int, Argument(help="The run fragment id.")],
+    path: Annotated[
+        Path, Argument(help="The path where to store the output artifact.", writable=True)
+    ] = Path("./")
+):
+    """Retrieve the output artifact that is stored for a run fragment."""
+    if path.is_dir():
+        path = path / Path(f"output_artifact_{run_fragment_id}.zip")
+    if not path.parent.exists():
+        raise RuntimeError(f"The path '{path.parent}' does not exist.")
+    try:
+        await client_provider.simbricks_client.get_run_fragment_output_artifact(
+            run_fragment_id, path
+        )
+    except client_exceptions.ClientResponseError as err:
+        if err.status == 404:
+            print(f"Could not retrieve the output artifact for run fragment {run_fragment_id}.")
+            raise Exit(code=1)
+        else:
+            raise
 
 
 @app.command()
