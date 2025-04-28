@@ -62,7 +62,7 @@ TO_CLEAN := $(addsuffix /dist, $(addprefix $(SYMPHONY_DIR), $(SYMPHONY_MODS)))
 symphony-clean:
 	rm -rf $(TO_CLEAN)
 
-.PHONY: symphony-dev symphony-build symphony-publish symphony-clean
+.PHONY: symphony-dev symphony-build symphony-publish symphony-clean symphony-typecheck typecheck-%
 
 CLEAN := $(TO_CLEAN)
 include mk/subdir_post.mk
