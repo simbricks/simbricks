@@ -99,12 +99,6 @@ lint-pylint:
 		--ignore-paths experiments/simbricks/orchestration/utils/graphlib.py \
 	  	experiments/ results/
 
-typecheck-python:
-	pytype -j 0 --keep-going \
-		--exclude experiments/pyexps/ae/ \
-			experiments/simbricks/orchestration/utils/graphlib.py \
-		-- experiments/ results/
-
 lint-python: lint-pylint
 lint: lint-cpplint lint-clang-format lint-python
 lint-all: lint lint-clang-tidy
