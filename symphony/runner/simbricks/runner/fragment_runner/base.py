@@ -234,12 +234,14 @@ class Run:
         inst: inst_base.Instantiation,
         callbacks: RunnerSimulationExecutorCallbacks,
         runner: sim_exec.SimulationExecutor,
+        run_fragment: schemas.ApiRunFragment,
     ) -> None:
         self.run_id: int = run_id
         self.inst: inst_base.Instantiation = inst
         self.callbacks: RunnerSimulationExecutorCallbacks = callbacks
         self.cancelled: bool = False
         self.runner: sim_exec.SimulationExecutor = runner
+        self.run_fragment = run_fragment
         self.exec_task: asyncio.Task | None = None
 
 
@@ -307,16 +309,11 @@ class FragmentRunner(abc.ABC):
             run_workdir = self._workdir / f"run-{run_id}-{str(uuid.uuid4())}"
         run_workdir.mkdir(parents=True)
 
-        if (
-            start_event.inst is None
-            or start_event.system is None
-            or start_event.simulation is None
-        ):
-            raise RuntimeError("start event must contain system, simulation, and instantiation")
-
-        system = sys_base.System.fromJSON(json.loads(start_event.system))
-        simulation = sim_base.Simulation.fromJSON(system, json.loads(start_event.simulation))
-        inst = inst_base.Instantiation.fromJSON(simulation, json.loads(start_event.inst))
+        system = sys_base.System.fromJSON(json.loads(start_event.system.sb_json))
+        simulation = sim_base.Simulation.fromJSON(
+            system, json.loads(start_event.simulation.sb_json)
+        )
+        inst = inst_base.Instantiation.fromJSON(simulation, json.loads(start_event.inst.sb_json))
 
         env = inst_base.InstantiationEnvironment(
             workdir=run_workdir,
@@ -325,7 +322,7 @@ class FragmentRunner(abc.ABC):
             ),  # TODO: we should not set the simbricks dir here
         )  # TODO
         inst.env = env
-        inst.assigned_fragment = inst.get_fragment(start_event.fragments[0][0])
+        inst.assigned_fragment = inst.get_fragment(start_event.fragments[0].fragment.object_id)
 
         # retrieve input artifacts
         input_artifacts_dir = inst.env.input_artifacts_dir()
@@ -353,7 +350,8 @@ class FragmentRunner(abc.ABC):
         )
         await runner.prepare()
 
-        run = Run(run_id=run_id, inst=inst, runner=runner, callbacks=callbacks)
+        assert len(start_event.fragments) == 1
+        run = Run(run_id, inst, callbacks, runner, start_event.fragments[0])
         return run
 
     async def _start_run(self, run: Run) -> None:
@@ -363,7 +361,7 @@ class FragmentRunner(abc.ABC):
 
             event = schemas.ApiRunFragmentStateEventCreate(
                 run_id=run.run_id,
-                fragment_id=run.inst.assigned_fragment.id(),
+                run_fragment_id=run.run_fragment.id,
                 run_state=schemas.RunState.RUNNING
             )
             event_bundle = schemas.ApiEventBundle()
@@ -384,7 +382,7 @@ class FragmentRunner(abc.ABC):
                 )
                 output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
                     run_id=run.run_id,
-                    fragment_id=run.inst.assigned_fragment.id(),
+                    run_fragment_id=run.run_fragment.id,
                     output_artifact=base64.b64encode(output_artifact.getvalue()).decode("utf-8"),
                     output_artifact_name=run.inst.assigned_fragment.output_artifact_name,
                 )
@@ -397,7 +395,7 @@ class FragmentRunner(abc.ABC):
             status = schemas.RunState.ERROR if res.failed() else schemas.RunState.COMPLETED
             event = schemas.ApiRunFragmentStateEventCreate(
                 run_id=run.run_id,
-                fragment_id=run.inst.assigned_fragment.id(),
+                run_fragment_id=run.run_fragment.id,
                 run_state=status
             )
             event_bundle = schemas.ApiEventBundle()
@@ -414,7 +412,7 @@ class FragmentRunner(abc.ABC):
                 sim_task.cancel()
             event = schemas.ApiRunFragmentStateEventCreate(
                 run_id=run.run_id,
-                fragment_id=run.inst.assigned_fragment.id(),
+                run_fragment_id=run.run_fragment.id,
                 run_state=schemas.RunState.CANCELLED
             )
             event_bundle = schemas.ApiEventBundle()
@@ -428,7 +426,7 @@ class FragmentRunner(abc.ABC):
                 sim_task.cancel()
             event = schemas.ApiRunFragmentStateEventCreate(
                 run_id=run.run_id,
-                fragment_id=run.inst.assigned_fragment.id(),
+                run_fragment_id=run.run_fragment.id,
                 run_state=schemas.RunState.ERROR
             )
             event_bundle = schemas.ApiEventBundle()
@@ -505,7 +503,7 @@ class FragmentRunner(abc.ABC):
                             assert len(event.fragments) == 1
                             state_event = schemas.ApiRunFragmentStateEventCreate(
                                 run_id=event.run_id,
-                                fragment_id=event.fragments[0][0],
+                                run_fragment_id=event.fragments[0].id,
                                 run_state=schemas.RunState.ERROR
                             )
                             event_bundle = schemas.ApiEventBundle()
