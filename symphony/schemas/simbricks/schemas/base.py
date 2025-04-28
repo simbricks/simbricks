@@ -165,6 +165,7 @@ class ApiRunFragment(BaseModel):
     runner_id: int | None = None
     fragment: ApiFragment | None = None
     state: RunState | None = None
+    output_artifact_exists: bool | None = None
 
 
 class ApiRunFragmentQuery(BaseModel):
