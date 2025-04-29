@@ -22,7 +22,6 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,corundum))
 $(eval $(call subdir,corundum_bm))
 $(eval $(call subdir,e1000_gem5))
 $(eval $(call subdir,i40e_bm))
