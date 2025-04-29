@@ -43,21 +43,11 @@ RUN apt-get update \
 	wget \
 	nano \
 	vim \
+	verilator \
  && locale-gen en_US.UTF-8 \
  && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /tmp/requirements.txt
-COPY verilator.patch /tmp/
-RUN cd /tmp \
- && git clone -b v4.010 https://github.com/verilator/verilator \
- && cd verilator \
- && patch -p1 < /tmp/verilator.patch \
- && autoupdate \
- && autoconf \
- && ./configure \
- && make -j`nproc` \
- && make install \
- && rm -rf /tmp/verilator
 RUN cd /tmp \
  && git clone https://github.com/apache/thrift.git \
  && cd thrift \

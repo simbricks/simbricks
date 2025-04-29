@@ -36,19 +36,9 @@ RUN apt-get update \
 	wget \
 	nano \
 	vim \
+	verilator \
     psmisc \
  && rm -rf /var/lib/apt/lists/*
-COPY docker/verilator.patch /tmp/
-RUN cd /tmp \
- && git clone -b v4.010 https://github.com/verilator/verilator \
- && cd verilator \
- && patch -p1 < /tmp/verilator.patch \
- && autoupdate \
- && autoconf \
- && ./configure \
- && make -j`nproc` \
- && make install \
- && rm -rf /tmp/verilator
 
 # Add non-root user for vs code devcontainer.
 ARG USERNAME=simbricks
