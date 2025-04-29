@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import asyncio
+import pathlib
 import typing
 
 from simbricks.runtime import simulation_executor as sim_exec
@@ -183,6 +184,8 @@ class LocalSimpleRuntime(run_base.Runtime):
             utils_art.create_artifact(
                 file=run.instantiation.assigned_fragment.output_artifact_name,
                 paths_to_include=run.instantiation.assigned_fragment.output_artifact_paths,
+                base_path=pathlib.Path(run.instantiation.env._work_dir),
+                check_relative=True,
             )
 
         await sim_executor.cleanup()
