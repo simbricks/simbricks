@@ -37,7 +37,7 @@ OBJS := $(srcs_menshen:.cc=.o)
 #$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(d)include/
 
 $(verilator_src_menshen): $(vsrcs_menshen)
-	$(VERILATOR) $(VFLAGS) --cc -O3 \
+	$(VERILATOR) $(VFLAGS) --timescale 1ns/1ps --cc -O3 \
 	    -CFLAGS "-I$(abspath $(lib_dir)) -iquote $(abspath $(base_dir)) -O3 -g -Wall -Wno-maybe-uninitialized -fno-var-tracking-assignments" \
 	    --Mdir $(verilator_dir_menshen) \
 	    -y $(dir_menshen)rtl -y $(dir_menshen)rtl/extract \
