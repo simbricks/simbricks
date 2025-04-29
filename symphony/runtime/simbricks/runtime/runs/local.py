@@ -41,6 +41,7 @@ class LocalSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         super().__init__(instantiation)
         self._instantiation = instantiation
         self._verbose = verbose
+        self._simulation_executor: sim_exec.SimulationExecutor
 
     # ---------------------------------------
     # Callbacks related to whole simulation -
@@ -97,6 +98,7 @@ class LocalSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
 
     async def simulator_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
         await super().simulator_exited(sim, exit_code)
+        await self._simulation_executor.mark_simulator_terminated(sim.id())
         if self._verbose:
             print(f"- [{sim.full_name()}] exited with code {exit_code}")
 
@@ -163,6 +165,7 @@ class LocalSimpleRuntime(run_base.Runtime):
             sim_executor = sim_exec.SimulationExecutor(
                 run.instantiation, callbacks, self._verbose, self._profile_int
             )
+            callbacks._simulation_executor = sim_executor
             await sim_executor.prepare()
         except asyncio.CancelledError:
             # it is safe to just exit here because we are not running any
