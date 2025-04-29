@@ -22,8 +22,10 @@
 
 from __future__ import annotations
 
+import abc
 import math
 import pathlib
+import shutil
 
 import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.system as system
@@ -40,13 +42,18 @@ class HostSim(sim_base.Simulator):
 
     def __init__(self, simulation: sim_base.Simulation, executable: str, name=""):
         super().__init__(simulation=simulation, executable=executable, name=name)
+        self._disk_images: dict[
+            sys_host.FullSystemHost, list[tuple[disk_images.DiskImage, str]]
+        ] = {}
 
     def toJSON(self) -> dict:
         return super().toJSON()
 
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> Gem5Sim:
-        return super().fromJSON(simulation, json_obj)
+        instance = super().fromJSON(simulation, json_obj)
+        instance._disk_images = {}
+        return instance
 
     def full_name(self) -> str:
         return "host." + self.name
@@ -59,6 +66,27 @@ class HostSim(sim_base.Simulator):
 
     def supported_image_formats(self) -> list[str]:
         raise Exception("implement me")
+
+    @abc.abstractmethod
+    async def copy_disk_image(
+        self, inst: inst_base.Instantiation, disk_image: disk_images.DiskImage, ident: str
+    ) -> str:
+        pass
+
+    async def prepare(self, inst: inst_base.Instantiation):
+        await super().prepare(inst)
+
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)
+
+        for host in full_sys_hosts:
+            host_disks = []
+            for i, disk in enumerate(host.disks):
+                if disk.needs_copy:
+                    copy_path = await self.copy_disk_image(inst, disk, f"{host.id()}.{i}")
+                    host_disks.append((disk, copy_path))
+                else:
+                    host_disks.append((disk, disk.path(inst, disk.find_format(self))))
+            self._disk_images[host] = host_disks
 
     def supported_socket_types(
         self, interface: system.Interface
@@ -117,6 +145,11 @@ class Gem5Sim(HostSim):
         instance._sys_clock = utils_base.get_json_attr_top(json_obj, "_sys_clock")
         return instance
 
+    async def copy_disk_image(
+        self, inst: inst_base.Instantiation, disk_image: disk_images.DiskImage, ident: str
+    ):
+        return disk_image.path(inst, disk_image.find_format(self))
+
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         await super().prepare(inst=inst)
         utils_file.mkdir(inst.env.cpdir_sim(sim=self))
@@ -148,8 +181,11 @@ class Gem5Sim(HostSim):
             f"--checkpoint-dir={inst.env.cpdir_sim(sim=self)} "
             f"--kernel={inst.env.repo_base('images/vmlinux')} "
         )
-        for disk in host_spec.disks:
-            cmd += f"--disk-image={disk.path(inst=inst, format='raw')} "
+
+        assert host_spec in self._disk_images
+        for disk in self._disk_images[host_spec]:
+            cmd += f"--disk-image={disk[1]} "
+
         cmd += (
             f"--cpu-type={cpu_type} --mem-size={host_spec.memory}MB "
             f"--num-cpus={host_spec.cores} "
@@ -236,7 +272,6 @@ class QemuSim(HostSim):
             executable="sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64",
         )
         self.name = f"QemuSim-{self._id}"
-        self._disks: list[tuple[str, str]] = []  # [(path, format)]
         self._qemu_img_exec: str = "sims/external/qemu/build/qemu-img"
 
     def resreq_cores(self) -> int:
@@ -246,7 +281,7 @@ class QemuSim(HostSim):
         return 1024
 
     def supported_image_formats(self) -> list[str]:
-        return ["raw", "qcow"]
+        return ["qcow2", "raw"]
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -261,10 +296,10 @@ class QemuSim(HostSim):
         return instance
 
     async def _make_qcow_copy(
-        self, inst: inst_base.Instantiation, disk: disk_images.DiskImage, format: str
+        self, inst: inst_base.Instantiation, disk: disk_images.DiskImage, format: str, ident: str
     ) -> str:
         disk_path = pathlib.Path(disk.path(inst=inst, format=format))
-        copy_path = inst.env.img_dir(relative_path=f"hdcopy.{self._id}")
+        copy_path = inst.env.img_dir(relative_path=f"hdcopy.{self._id}.{ident}")
         prep_cmds = [
             (
                 f"{inst.env.repo_base(relative_path=self._qemu_img_exec)} create -f qcow2 -F qcow2 "
@@ -275,23 +310,22 @@ class QemuSim(HostSim):
         await inst._cmd_executor.exec_simulator_prepare_cmds(self, prep_cmds)
         return copy_path
 
-    async def prepare(self, inst: inst_base.Instantiation) -> None:
-        await super().prepare(inst=inst)
+    async def _make_raw_copy(
+        self, inst: inst_base.Instantiation, disk: disk_images.DiskImage, format: str, ident: str
+    ) -> str:
+        disk_path = pathlib.Path(disk.path(inst=inst, format=format))
+        copy_path = inst.env.img_dir(relative_path=f"hdcopy.{self._id}.{ident}")
+        shutil.copy2(disk_path, copy_path)
+        return copy_path
 
-        full_sys_hosts = self.filter_components_by_type(ty=sys_host.FullSystemHost)
-        if len(full_sys_hosts) != 1:
-            raise Exception("QEMU only supports simulating 1 FullSystemHost")
-
-        d = []
-        for disk in full_sys_hosts[0].disks:
-            if not isinstance(disk, disk_images.LinuxConfigDiskImage):
-                format = "qcow2"
-                disk_path = await self._make_qcow_copy(inst, disk, format)
-            else:
-                format = "raw"
-                disk_path = disk.path(inst, format)
-            d.append((disk_path, format))
-        self._disks = d
+    async def copy_disk_image(
+        self, inst: inst_base.Instantiation, disk_image: disk_images.DiskImage, ident: str
+    ) -> str:
+        format = disk_image.find_format(self)
+        if format == "qcow2":
+            return await self._make_qcow_copy(inst, disk_image, format, ident)
+        else:
+            return await self._make_raw_copy(inst, disk_image, format, ident)
 
     def checkpoint_commands(self) -> list[str]:
         return []
@@ -321,8 +355,10 @@ class QemuSim(HostSim):
         if host_spec.kcmd_append is not None:
             kcmd_append = " " + host_spec.kcmd_append
 
-        for index, disk in enumerate(self._disks):
-            cmd += f"-drive file={disk[0]},if=ide,index={index},media=disk,driver={disk[1]} "
+        assert host_spec in self._disk_images
+        for index, disk in enumerate(self._disk_images[host_spec]):
+            format = disk[0].find_format(self)
+            cmd += f"-drive file={disk[1]},if=ide,index={index},media=disk,driver={format} "
         cmd += (
             '-append "earlyprintk=ttyS0 console=ttyS0 root=/dev/sda1 '
             f'init=/home/ubuntu/guestinit.sh rw{kcmd_append}" '

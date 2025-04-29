@@ -34,12 +34,14 @@ if tp.TYPE_CHECKING:
     from simbricks.orchestration.system.host import base as sys_host
     from simbricks.orchestration.instantiation import base as inst_base
     from simbricks.orchestration.system import base as sys_base
+    from simbricks.orchestration.simulation import host as sim_host
 
 
 class DiskImage(utils_base.IdObj):
     def __init__(self, system: sys_base.System) -> None:
         super().__init__()
         system._add_disk_image(self)
+        self.needs_copy = True
 
     @abc.abstractmethod
     def available_formats(self) -> list[str]:
@@ -57,12 +59,11 @@ class DiskImage(utils_base.IdObj):
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
 
-    async def prepare(self, inst: inst_base.Instantiation, host: sys_host.Host) -> None:
+    def find_format(self, host: sim_host.HostSim) -> str:
         # Find first supported disk image format in order of simulator pref.
-        sim = inst.find_sim_by_spec(host)
         format = None
         av_fmt = self.available_formats()
-        for f in sim.supported_image_formats():
+        for f in host.supported_image_formats():
             if f in av_fmt:
                 format = f
                 break
@@ -70,11 +71,23 @@ class DiskImage(utils_base.IdObj):
         if format is None:
             raise Exception("No supported image format found")
 
+        return format
+
+    async def prepare(self, inst: inst_base.Instantiation, host: sys_host.Host) -> None:
+        sim = inst.find_sim_by_spec(host)
+        format = self.find_format(sim)
+
         await self._prepare_format(inst, format)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["needs_copy"] = self.needs_copy
+        return json_obj
 
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DiskImage:
         instance = super().fromJSON(json_obj)
+        instance.needs_copy = utils_base.get_json_attr_top(json_obj, "needs_copy")
         system._add_disk_image(instance)
         return instance
 
@@ -181,6 +194,7 @@ class LinuxConfigDiskImage(DynamicDiskImage):
     def __init__(self, system: sys_base.System, host: sys_host.BaseLinuxHost):
         super().__init__(system)
         self.host = host
+        self.needs_copy = False
 
     def available_formats(self) -> list[str]:
         return ["raw"]
@@ -238,7 +252,7 @@ class PackerDiskImage(DynamicDiskImage):
         self._prepared: bool = False
 
     def available_formats(self) -> list[str]:
-        return ["raw", "qcow"]
+        return ["raw", "qcow2"]
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         if self._prepared:
