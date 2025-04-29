@@ -52,8 +52,3 @@ class IntelI40eNIC(SimplePCIeNIC):
 class IntelE1000NIC(SimplePCIeNIC):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-
-
-class CorundumNIC(SimplePCIeNIC):
-    def __init__(self, s: base.System) -> None:
-        super().__init__(s)
