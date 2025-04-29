@@ -222,38 +222,3 @@ class CorundumBMNICSim(NICSim):
             if self.log_file:
                 cmd += f" {self.log_file}"
         return cmd
-
-
-class CorundumVerilatorNICSim(NICSim):
-
-    def __init__(self, simulation: sim_base.Simulation):
-        super().__init__(
-            simulation=simulation,
-            executable="sims/nic/corundum/corundum_verilator",
-        )
-        self.name = f"CorundumVerilatorNICSim-{self._id}"
-        self.clock_freq = 250  # MHz
-
-    def resreq_mem(self) -> int:
-        # this is a guess
-        return 512
-
-    def toJSON(self) -> dict:
-        json_obj = super().toJSON()
-        json_obj["clock_freq"] = self.clock_freq
-        return json_obj
-
-    @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
-        instance = super().fromJSON(simulation, json_obj)
-        instance.clock_freq = utils_base.get_json_attr_top(json_obj, "clock_freq")
-        return instance
-
-    def add(self, nic: sys_nic.CorundumNIC):
-        utils_base.has_expected_type(nic, sys_nic.CorundumNIC)
-        super().add(nic)
-
-    def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        cmd = super().run_cmd(inst=inst)
-        cmd += f" {self.clock_freq}"
-        return cmd
