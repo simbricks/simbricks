@@ -319,17 +319,3 @@ class I40ELinuxHost(LinuxHost):
     def __init__(self, sys) -> None:
         super().__init__(sys)
         self.drivers.append("i40e")
-
-
-class CorundumLinuxHost(LinuxHost):
-    def __init__(self, sys) -> None:
-        super().__init__(sys)
-        self.drivers.append("/tmp/guest/mqnic.ko")
-
-    def config_files(self, inst: instantiation.Instantiation) -> tp.Dict[str, tp.IO]:
-        m = {
-            "mqnic.ko": open(
-                f"{inst.env.repo_base(relative_path='images/mqnic/mqnic.ko')}", "rb"
-            )
-        }
-        return {**m, **super().config_files(inst=inst)}
