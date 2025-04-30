@@ -22,19 +22,25 @@
 
 
 import aiohttp
-import datetime
 import typing
-import typing_extensions
 import contextlib
 import json
-import warnings
-from simbricks.utils import base as utils_base
 from .auth import Token, TokenProvider
 from .settings import client_settings
 from simbricks.orchestration import system
 from simbricks.orchestration import simulation
 from simbricks.orchestration import instantiation
 from simbricks.schemas import base as schemas
+
+
+@contextlib.contextmanager
+def non_close_file(handle: typing.IO):
+    close_fn = handle.close
+    handle.close = lambda: None
+    try:
+        yield handle
+    finally:
+        handle.close = close_fn
 
 
 class BaseClient:
@@ -480,12 +486,13 @@ class SimBricksClient:
             return schemas.ApiRunList_A.validate_python(raw_json)
 
     async def set_inst_input_artifact(self, iid: int, uploaded_input_file: str) -> None:
-        with open(uploaded_input_file, "rb") as f:
-            file_data = {"file": f}
-            async with self._ns_client.put(
-                url=f"/instantiations/input_artifact/{iid}", data=file_data
-            ) as _:
-                pass
+        with open(uploaded_input_file, "rb") as file:
+            with non_close_file(file) as f:
+                file_data = {"file": f}
+                async with self._ns_client.put(
+                    url=f"/instantiations/input_artifact/{iid}", data=file_data
+                ) as _:
+                    pass
 
     async def get_inst_input_artifact(self, iid: int, store_path: str) -> None:
         async with self._ns_client.post(url=f"/instantiations/input_artifact/{iid}") as resp:
@@ -501,12 +508,13 @@ class SimBricksClient:
     async def set_fragment_input_artifact(
         self, iid: int, fid: int, uploaded_input_file: str
     ) -> None:
-        with open(uploaded_input_file, "rb") as f:
-            file_data = {"file": f}
-            async with self._ns_client.put(
-                url=f"/instantiations/input_artifact/{iid}/{fid}", data=file_data
-            ) as _:
-                pass
+        with open(uploaded_input_file, "rb") as file:
+            with non_close_file(file) as f:
+                file_data = {"file": f}
+                async with self._ns_client.put(
+                    url=f"/instantiations/input_artifact/{iid}/{fid}", data=file_data
+                ) as _:
+                    pass
 
     async def get_fragment_input_artifact(self, iid: int, fid: int, store_path: str) -> None:
         async with self._ns_client.post(url=f"/instantiations/input_artifact/{iid}/{fid}") as resp:
@@ -520,21 +528,23 @@ class SimBricksClient:
             return content
 
     async def set_run_fragment_output_artifact(self, rfid: int, uploaded_input_file: str) -> None:
-        with open(uploaded_input_file, "rb") as f:
+        with open(uploaded_input_file, "rb") as file:
+            with non_close_file(file) as f:
+                file_data = {"file": f}
+                async with self._ns_client.put(
+                    url=f"/runs/output_artifact/{rfid}", data=file_data
+                ) as _:
+                    pass
+
+    async def set_run_fragment_output_artifact_raw(
+        self, rfid: int, uploaded_data: typing.IO[bytes]
+    ) -> None:
+        with non_close_file(uploaded_data) as f:
             file_data = {"file": f}
             async with self._ns_client.put(
                 url=f"/runs/output_artifact/{rfid}", data=file_data
             ) as _:
                 pass
-
-    async def set_run_fragment_output_artifact_raw(
-        self, rfid: int, uploaded_data: typing.IO[bytes]
-    ) -> None:
-        file_data = {"file": uploaded_data}
-        async with self._ns_client.put(
-            url=f"/runs/output_artifact/{rfid}", data=file_data
-        ) as _:
-            pass
 
     async def get_run_fragment_output_artifact(self, rfid: int, store_path: str) -> None:
         async with self._ns_client.post(url=f"/runs/output_artifact/{rfid}") as resp:
