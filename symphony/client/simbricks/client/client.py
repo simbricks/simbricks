@@ -36,7 +36,7 @@ from simbricks.schemas import base as schemas
 @contextlib.contextmanager
 def non_close_file(handle: typing.IO):
     close_fn = handle.close
-    handle.close = lambda: None
+    handle.close = lambda: handle.seek(0)
     try:
         yield handle
     finally:
