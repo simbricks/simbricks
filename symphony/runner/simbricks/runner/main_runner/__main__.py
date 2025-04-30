@@ -480,7 +480,8 @@ class MainRunner:
             fetched_events_bundle = await self._rc.fetch_events(event_query_bundle)
 
             LOGGER.debug(
-                f"events fetched ({len(fetched_events_bundle.events)}): {fetched_events_bundle.events}"
+                f"events fetched ({len(fetched_events_bundle.events)}): "
+                f"{ {name: len(events) for name, events in fetched_events_bundle.events.items()} }"
             )
 
             update_events_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()

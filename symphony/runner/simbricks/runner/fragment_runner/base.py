@@ -562,7 +562,10 @@ class FragmentRunner(abc.ABC):
                 LOGGER.warning(f"received events of unexpected type {event_type.value}")
                 continue
 
-            LOGGER.debug(f"events fetched ({len(event_bundle.events)}): {event_bundle.events}")
+            LOGGER.debug(
+                f"events fetched ({len(event_bundle.events)}): "
+                f"{ {name: len(events) for name, events in event_bundle.events.items()} }"
+            )
 
             update_events_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
             for key, events in event_bundle.events.items():
