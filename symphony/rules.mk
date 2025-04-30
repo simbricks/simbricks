@@ -26,6 +26,13 @@ SYMPHONY_DIR := $(d)
 SYMPHONY_MODS := utils orchestration client cli runtime runner local schemas
 
 SYMPHONY_PUBLICATION_REPO ?= testpypi
+USE_PYPI_REPO := n
+
+ifeq ($(USE_PYPI_REPO), y)
+REPO_OPTION :=
+else
+REPO_OPTION := -r $(SYMPHONY_PUBLICATION_REPO)
+endif
 
 TYPECHECK_JOBS := 2
 
@@ -55,7 +62,7 @@ symphony-build:
 symphony-publish:
 	for m in $(SYMPHONY_MODS); do \
 		(cd $(SYMPHONY_DIR)$$m && \
-		poetry publish -r $(SYMPHONY_PUBLICATION_REPO)); \
+		poetry publish $(REPO_OPTION)); \
 	done
 
 TO_CLEAN := $(addsuffix /dist, $(addprefix $(SYMPHONY_DIR), $(SYMPHONY_MODS)))
