@@ -330,13 +330,15 @@ class FragmentRunner(abc.ABC):
         if inst.input_artifact_paths:
             assert start_event.inst_input_artifact is not None
             inst_artifact = base64.b64decode(start_event.inst_input_artifact.encode("utf-8"))
-            utils_art.unpack_artifact(io.BytesIO(inst_artifact), input_artifacts_dir)
+            with io.BytesIO(inst_artifact) as inst_artifact_bytes:
+                utils_art.unpack_artifact(inst_artifact_bytes, input_artifacts_dir)
         if inst.assigned_fragment.input_artifact_paths:
             assert start_event.fragment_input_artifact is not None
             fragment_artifact = base64.b64decode(
                 start_event.fragment_input_artifact.encode("utf-8")
             )
-            utils_art.unpack_artifact(io.BytesIO(fragment_artifact), input_artifacts_dir)
+            with io.BytesIO(fragment_artifact) as fragment_artifact_bytes:
+                utils_art.unpack_artifact(fragment_artifact_bytes, input_artifacts_dir)
 
         return inst
 
@@ -375,24 +377,26 @@ class FragmentRunner(abc.ABC):
             output_path = run.inst.env.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
             if run.inst.assigned_fragment.output_artifact_paths:
-                output_artifact = io.BytesIO()
-                utils_art.create_artifact(
-                    file=output_artifact,
-                    paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
-                    base_path=pathlib.Path(run.inst.env._work_dir),
-                    check_relative=True,
-                )
-                output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
-                    run_id=run.run_id,
-                    run_fragment_id=run.run_fragment.id,
-                    output_artifact=base64.b64encode(output_artifact.getvalue()).decode("utf-8"),
-                    output_artifact_name=run.inst.assigned_fragment.output_artifact_name,
-                )
-                event_bundle = schemas.ApiEventBundle()
-                event_bundle.add_event(output_artifact_event)
-                await self._send_event_queue.put(
-                    (schemas.ApiEventType.ApiEventCreate, event_bundle)
-                )
+                with io.BytesIO() as output_artifact:
+                    utils_art.create_artifact(
+                        file=output_artifact,
+                        paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
+                        base_path=pathlib.Path(run.inst.env._work_dir),
+                        check_relative=True,
+                    )
+                    output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
+                        run_id=run.run_id,
+                        run_fragment_id=run.run_fragment.id,
+                        output_artifact=base64.b64encode(
+                            output_artifact.getvalue()
+                        ).decode("utf-8"),
+                        output_artifact_name=run.inst.assigned_fragment.output_artifact_name,
+                    )
+                    event_bundle = schemas.ApiEventBundle()
+                    event_bundle.add_event(output_artifact_event)
+                    await self._send_event_queue.put(
+                        (schemas.ApiEventType.ApiEventCreate, event_bundle)
+                    )
 
             status = schemas.RunState.ERROR if res.failed() else schemas.RunState.COMPLETED
             event = schemas.ApiRunFragmentStateEventCreate(

@@ -133,11 +133,11 @@ class RunFragmentOutputArtifactCallback(EventCallback):
         assert isinstance(event, schemas.ApiRunFragmentOutputArtifactEventCreate)
         if event.run_id != self.run_id:
             return False
-        output_artifact = io.BytesIO(base64.b64decode(event.output_artifact.encode("utf-8")))
-        output_artifact.name = event.output_artifact_name
-        await self.simbricks_client.set_run_fragment_output_artifact_raw(
-            event.run_fragment_id, output_artifact
-        )
+        with io.BytesIO(base64.b64decode(event.output_artifact.encode("utf-8"))) as output_artifact:
+            output_artifact.name = event.output_artifact_name
+            await self.simbricks_client.set_run_fragment_output_artifact_raw(
+                event.run_fragment_id, output_artifact
+            )
         return True
 
     def passthrough(self) -> bool:
