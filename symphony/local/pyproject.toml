@@ -49,5 +49,5 @@ simbricks-run = "simbricks.local.__main__:main"
 
 [tool.poetry.dependencies]
 pytype = "2024.10.11"
-simbricks-orchestration = "*"
-simbricks-runtime = "*"
+simbricks-orchestration = ">=0.3.2"
+simbricks-runtime = ">=0.3.2"
