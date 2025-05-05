@@ -120,7 +120,13 @@ def get_json_attr_top(json_obj: dict, attr: str) -> tp.Any:
 
 def get_cls_from_type_module(type_name: str, module_name: str, required: bool) -> tp.Any:
 
-    if importlib.util.find_spec(module_name) is None:
+    spec = None
+    try:
+        spec = importlib.util.find_spec(module_name)
+    except (ModuleNotFoundError, ValueError):
+        pass
+
+    if spec is None:
         if required:
             raise Exception(f'could not load module "{module_name}"')
         return None
