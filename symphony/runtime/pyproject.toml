@@ -27,6 +27,7 @@ line-length = 100
 inputs = ["simbricks"]
 python_version = "3.10"
 incremental = true
+pythonpath = "../utils:../schemas:../runtime:../runner:../orchestration:../local:../client:../cli"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
