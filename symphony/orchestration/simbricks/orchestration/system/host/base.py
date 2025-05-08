@@ -316,6 +316,13 @@ class I40ELinuxHost(LinuxHost):
         self.drivers.append("i40e")
 
 
+class E1000LinuxHost(LinuxHost):
+
+    def __init__(self, sys) -> None:
+        super().__init__(sys)
+        self.drivers.append("e1000")
+
+
 class CorundumLinuxHost(LinuxHost):
     def __init__(self, sys) -> None:
         super().__init__(sys)
