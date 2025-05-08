@@ -51,16 +51,19 @@ class NICSim(PCIDevSim):
     def __init__(self, simulation: sim_base.Simulation, executable: str, name: str = "") -> None:
         super().__init__(simulation=simulation, executable=executable, name=name)
         self.mac: str | None = None
+        self.log_file: str | None = None
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["mac"] = self.mac
+        json_obj["log_file"] = self.log_file
         return json_obj
 
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> NICSim:
         instance = super().fromJSON(simulation, json_obj)
         instance.mac = utils_base.get_json_attr_top(json_obj, "mac")
+        instance.log_file = utils_base.get_json_attr_top(json_obj, "log_file")
         return instance
 
     def full_name(self) -> str:
@@ -100,16 +103,16 @@ class NICSim(PCIDevSim):
 
         socket = inst.get_socket(interface=nic_device._pci_if)
         assert socket is not None and socket._type == inst_socket.SockType.LISTEN
-        params_url = self.get_parameters_url(inst, socket, sync=run_sync,
-                                             latency=pci_latency,
-                                             sync_period=sync_period)
+        params_url = self.get_parameters_url(
+            inst, socket, sync=run_sync, latency=pci_latency, sync_period=sync_period
+        )
         cmd += f"{params_url} "
 
         socket = inst.get_socket(interface=nic_device._eth_if)
         assert socket is not None and socket._type == inst_socket.SockType.LISTEN
-        params_url = self.get_parameters_url(inst, socket, sync=run_sync,
-                                             latency=pci_latency,
-                                             sync_period=sync_period)
+        params_url = self.get_parameters_url(
+            inst, socket, sync=run_sync, latency=eth_latency, sync_period=sync_period
+        )
         cmd += f"{params_url} "
 
         cmd += f"{self._start_tick} "
@@ -128,18 +131,19 @@ class I40eNicSim(NICSim):
             executable="sims/nic/i40e_bm/i40e_bm",
         )
         self.name = f"NICSim-{self._id}"
-        self.log_file: str | None = None
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["log_file"] = self.log_file
         return json_obj
 
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> I40eNicSim:
         instance = super().fromJSON(simulation, json_obj)
-        instance.log_file = utils_base.get_json_attr_top(json_obj, "log_file")
         return instance
+
+    def add(self, nic: sys_nic.IntelI40eNIC):
+        utils_base.has_expected_type(nic, sys_nic.IntelI40eNIC)
+        super().add(nic)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst)
@@ -150,6 +154,44 @@ class I40eNicSim(NICSim):
         return cmd
 
 
+class E1000NIC(NICSim):
+
+    def __init__(self, simulation: sim_base.Simulation):
+        super().__init__(
+            simulation=simulation,
+            executable="sims/nic/e1000_gem5/e1000_gem5",
+        )
+        self.name = f"NICSim-{self._id}"
+        self.debug: bool = False
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["debug"] = self.debug
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> E1000NIC:
+        instance = super().fromJSON(simulation, json_obj)
+        instance.debug = utils_base.get_json_attr_top(json_obj, "debug")
+        return instance
+
+    def add(self, nic: sys_nic.IntelE1000NIC):
+        utils_base.has_expected_type(nic, sys_nic.IntelE1000NIC)
+        super().add(nic)
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        cmd = super().run_cmd(inst)
+        if self.mac:
+            cmd += " " + ("".join(reversed(self.mac.split(":"))))
+            if self.log_file:
+                cmd += f" {self.log_file}"
+
+        if self.debug:
+            cmd = f"env E1000_DEBUG=1 {cmd}"
+
+        return cmd
+
+
 class CorundumBMNICSim(NICSim):
     def __init__(self, simulation: sim_base.Simulation):
         super().__init__(
@@ -157,18 +199,19 @@ class CorundumBMNICSim(NICSim):
             executable="sims/nic/corundum_bm/corundum_bm",
         )
         self.name = f"CorundumBMNICSim-{self._id}"
-        self.log_file: str | None = None
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["log_file"] = self.log_file
         return json_obj
 
     @classmethod
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> CorundumBMNICSim:
         instance = super().fromJSON(simulation, json_obj)
-        instance.log_file = utils_base.get_json_attr_top(json_obj, "log_file")
         return instance
+
+    def add(self, nic: sys_nic.CorundumNIC):
+        utils_base.has_expected_type(nic, sys_nic.CorundumNIC)
+        super().add(nic)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst)
@@ -203,6 +246,10 @@ class CorundumVerilatorNICSim(NICSim):
         instance = super().fromJSON(simulation, json_obj)
         instance.clock_freq = utils_base.get_json_attr_top(json_obj, "clock_freq")
         return instance
+
+    def add(self, nic: sys_nic.CorundumNIC):
+        utils_base.has_expected_type(nic, sys_nic.CorundumNIC)
+        super().add(nic)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
