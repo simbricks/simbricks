@@ -313,13 +313,35 @@ class LinuxHost(BaseLinuxHost):
 
 
 class I40ELinuxHost(LinuxHost):
-    def __init__(self, sys) -> None:
+    def __init__(self, sys: base.System) -> None:
         super().__init__(sys)
         self.drivers.append("i40e")
 
 
+<<<<<<< HEAD
 class E1000LinuxHost(LinuxHost):
 
     def __init__(self, sys) -> None:
         super().__init__(sys)
         self.drivers.append("e1000")
+=======
+class CorundumLinuxHost(LinuxHost):
+    def __init__(self, sys: base.System) -> None:
+        super().__init__(sys)
+        self.drivers.append("/tmp/guest/mqnic.ko")
+
+    def config_files(self, inst: instantiation.Instantiation) -> tp.Dict[str, tp.IO]:
+        m = {
+            "mqnic.ko": open(
+                f"{inst.env.repo_base(relative_path='images/mqnic/mqnic.ko')}", "rb"
+            )
+        }
+        return {**m, **super().config_files(inst=inst)}
+
+
+class NVMeLinuxHost(LinuxHost):
+
+    def __init__(self, sys: base.System) -> None:
+        super().__init__(sys)
+        self.drivers.append('nvme')
+>>>>>>> fe82585c (symphony/orchestration/system: added NVMeSSD pci device)

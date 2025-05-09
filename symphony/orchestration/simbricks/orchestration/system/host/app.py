@@ -145,6 +145,27 @@ class GenericRawCommandApplication(BaseLinuxApplication):
         return instance
 
 
+class NVMEFsTest(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost) -> None:
+        super().__init__(h)
+
+    def toJSON(self) -> dict:
+        return super().toJSON()
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict):
+        return super().fromJSON(system, json_obj)
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return [
+            "mount -t proc proc /proc",
+            "mkfs.ext3 /dev/nvme0n1",
+            "mount /dev/nvme0n1 /mnt",
+            "dd if=/dev/urandom of=/mnt/foo bs=1024 count=1024",
+        ]
+
+
 class PingClient(BaseLinuxApplication):
     def __init__(self, h: sys_host.LinuxHost, server_ip: str = "192.168.64.1") -> None:
         super().__init__(h)
