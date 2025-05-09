@@ -231,6 +231,6 @@ def json_to_dict(json_obj: dict, required: bool = True) -> dict:
 ET = tp.TypeVar("ET", bound=enum.Enum)
 
 
-def enum_subs(enum_class: tp.Type[ET], *exclude_values: tuple[ET]) -> list[ET]:
+def enum_subs(enum_class: tp.Type[ET], *exclude_values: ET) -> list[ET]:
     res = list(filter(lambda ty: ty not in exclude_values, enum_class))
     return res
