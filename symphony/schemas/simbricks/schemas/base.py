@@ -823,7 +823,7 @@ class ApiEventBundle(BaseModel, Generic[BundleEventUnion_T]):
             self.events[event.event_discriminator] = []
         self.events[event.event_discriminator].append(event)
 
-    def add_events(self, *args: tuple[BundleEventUnion_T]):
+    def add_events(self, *args: BundleEventUnion_T):
         for event in args:
             self.add_event(event)
 
@@ -848,12 +848,11 @@ Target_Class_T = TypeVar("Target_Class_T")
 
 
 def convert_validate_type(
-    source: list[Source_Class_T], target: Type[Target_Class_T]
+    source: list[BaseModel], target: Type[Target_Class_T]
 ) -> list[Target_Class_T]:
     assert isinstance(target, type) and issubclass(target, BaseModel)
     converted = []
     for mod in source:
-        assert isinstance(mod, BaseModel)
         dump = mod.model_dump()
         conv = target.model_validate(dump)
         converted.append(conv)
