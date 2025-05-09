@@ -35,7 +35,7 @@
  #include "lib/utils/log.h"
  #include "lib/utils/util.hpp"
  
- #define AXIS_DEBUG 0
+//  #define AXIS_DEBUG 0
  
  namespace simbricks {
  
@@ -473,7 +473,7 @@
     * adapter,this method shall be called to copy the packet data into the
     * SimBricks message buffer.
     */
-   void write(uint8_t *destination, size_t *len) noexcept {
+   void write(uint8_t *destination, size_t *len, uint8_t &user) noexcept {
  #ifdef AXIS_DEBUG
      sim_log::LogInfo("AXISSubordinate write\n");
  #endif
@@ -485,6 +485,7 @@
        std::terminate();
      }
      packet_buf_.assign(destination, len);
+     user = *tuser_;
    }
  };
  
