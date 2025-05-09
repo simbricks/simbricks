@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import uuid
 import typing as tp
+import typing_extensions as tpe
+
 from simbricks.orchestration.system import disk_images
 from simbricks.utils import base as utils_base
 
@@ -142,7 +144,7 @@ class System(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, json_obj: dict, enforce_dummies: bool = False) -> System:
+    def fromJSON(cls, json_obj: dict, enforce_dummies: bool = False) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance.name = utils_base.get_json_attr_top(json_obj, "name")
         instance._all_components = {}
@@ -242,7 +244,7 @@ class Component(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: System, json_obj: dict) -> Component:
+    def fromJSON(cls, system: System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance.name = utils_base.get_json_attr_top_or_none(json_obj, "name")
         instance.parameters = utils_base.json_to_dict(
@@ -273,7 +275,7 @@ class DummyComponent(Component):
         super().__init__(s)
 
     @classmethod
-    def fromJSON(cls, system: System, json_obj: dict) -> DummyComponent:
+    def fromJSON(cls, system: System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance._is_dummy = True
         return instance
@@ -335,7 +337,7 @@ class Interface(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: System, json_obj: dict) -> Interface:
+    def fromJSON(cls, system: System, json_obj: dict) -> tpe.Self:
         """
         Deserializes an Interface from its JSON representation.
 
@@ -361,7 +363,7 @@ class DummyInterface(Interface):
         super().__init__(c)
 
     @classmethod
-    def fromJSON(cls, system: System, json_obj: dict) -> DummyInterface:
+    def fromJSON(cls, system: System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance._is_dummy = True
         return instance
@@ -411,7 +413,7 @@ class Channel(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: System, json_obj: dict) -> Channel:
+    def fromJSON(cls, system: System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance.latency = int(utils_base.get_json_attr_top(json_obj, "latency"))
         instance.parameters = utils_base.json_to_dict(

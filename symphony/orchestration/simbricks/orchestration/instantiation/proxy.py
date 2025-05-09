@@ -25,6 +25,7 @@ from __future__ import annotations
 import abc
 import shlex
 import typing
+import typing_extensions as tpe
 
 from simbricks.orchestration.helpers import exceptions
 from simbricks.orchestration.instantiation import socket as inst_socket
@@ -77,7 +78,7 @@ class Proxy(utils_base.IdObj, abc.ABC):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, json_obj: dict, simulation: sim_base.Simulation) -> Proxy:
+    def fromJSON(cls, json_obj: dict, simulation: sim_base.Simulation) -> tpe.Self:
         instance = super().fromJSON(json_obj)
 
         interface_ids = utils_base.get_json_attr_top(json_obj, "interfaces")
@@ -228,7 +229,7 @@ class ProxyPair(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, json_obj: dict, instantiation: inst_base.Instantiation) -> ProxyPair:
+    def fromJSON(cls, json_obj: dict, instantiation: inst_base.Instantiation) -> tpe.Self:
         instance = super().fromJSON(json_obj)
 
         instantiation_id = utils_base.get_json_attr_top(json_obj, "instantiation")

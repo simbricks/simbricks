@@ -22,6 +22,8 @@
 
 from __future__ import annotations
 
+import typing_extensions as tpe
+
 from simbricks.orchestration.system import base
 from simbricks.utils import base as utils_base
 
@@ -76,7 +78,7 @@ class PCIeSimpleDevice(base.Component):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> PCIeSimpleDevice:
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system=system, json_obj=json_obj)
         inf_id = int(utils_base.get_json_attr_top(json_obj, "pci_if"))
         instance._pci_if = system.get_inf(inf_id)

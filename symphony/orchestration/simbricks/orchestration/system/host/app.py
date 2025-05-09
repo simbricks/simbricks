@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import typing as tp
+import typing_extensions as tpe
 import abc
 import io
 from simbricks.utils import base as utils_base
@@ -48,7 +49,7 @@ class Application(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict):
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         host_id = utils_base.get_json_attr_top(json_obj, "host")
         instance.host = system.get_comp(host_id)
@@ -117,7 +118,7 @@ class BaseLinuxApplication(Application):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict):
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.start_delay = utils_base.get_json_attr_top_or_none(json_obj, "start_delay")
         instance.end_delay = utils_base.get_json_attr_top_or_none(json_obj, "end_delay")
@@ -139,7 +140,7 @@ class GenericRawCommandApplication(BaseLinuxApplication):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict):
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         commands_json = utils_base.get_json_attr_top(json_obj, "commands")
         instance.commands = utils_base.json_array_to_list(commands_json)
@@ -160,7 +161,7 @@ class PingClient(BaseLinuxApplication):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict):
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.server_ip = utils_base.get_json_attr_top(json_obj, "server_ip")
         return instance
@@ -184,7 +185,7 @@ class Sleep(BaseLinuxApplication):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> Sleep:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.infinite = bool(utils_base.get_json_attr_top(json_obj, "infinite"))
         instance.delay = float(utils_base.get_json_attr_top(json_obj, "delay"))
@@ -199,7 +200,7 @@ class NetperfServer(BaseLinuxApplication):
         return ["netserver", "sleep infinity"]
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         return super().fromJSON(system, json_obj)
 
 
@@ -229,7 +230,7 @@ class NetperfClient(BaseLinuxApplication):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfClient:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.server_ip = utils_base.get_json_attr_top(json_obj, "server_ip")
         instance.duration_tp = int(utils_base.get_json_attr_top(json_obj, "duration_tp"))
@@ -250,7 +251,7 @@ class IperfTCPServer(BaseLinuxApplication):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         return super().fromJSON(system, json_obj)
 
 
@@ -267,7 +268,7 @@ class IperfUDPServer(BaseLinuxApplication):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         return super().fromJSON(system, json_obj)
 
 
@@ -289,7 +290,7 @@ class IperfTCPClient(BaseLinuxApplication):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.server_ip = utils_base.get_json_attr_top(json_obj, "server_ip")
         instance.procs = utils_base.get_json_attr_top(json_obj, "procs")
@@ -316,7 +317,7 @@ class IperfUDPClient(BaseLinuxApplication):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> NetperfServer:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.server_ip = utils_base.get_json_attr_top(json_obj, "server_ip")
         instance.rate = utils_base.get_json_attr_top(json_obj, "rate")

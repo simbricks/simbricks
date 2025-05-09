@@ -22,6 +22,8 @@
 
 from __future__ import annotations
 
+import typing_extensions as tpe
+
 from simbricks.orchestration.system import base
 from simbricks.utils import base as utils_base
 
@@ -82,7 +84,7 @@ class MemSimpleDevice(base.Component):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> MemSimpleDevice:
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         mem_if_id = int(utils_base.get_json_attr_top(json_obj, "mem_if"))
         addr = utils_base.get_json_attr_top(json_obj, "addr")

@@ -22,6 +22,8 @@
 
 from __future__ import annotations
 
+import typing_extensions as tpe
+
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import eth as sys_eth
@@ -58,7 +60,7 @@ class NICSim(PCIDevSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> NICSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance.mac = utils_base.get_json_attr_top(json_obj, "mac")
         return instance
@@ -136,7 +138,7 @@ class I40eNicSim(NICSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> I40eNicSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance.log_file = utils_base.get_json_attr_top(json_obj, "log_file")
         return instance
@@ -165,7 +167,7 @@ class CorundumBMNICSim(NICSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> CorundumBMNICSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance.log_file = utils_base.get_json_attr_top(json_obj, "log_file")
         return instance
@@ -199,7 +201,7 @@ class CorundumVerilatorNICSim(NICSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> CorundumVerilatorNICSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance.clock_freq = utils_base.get_json_attr_top(json_obj, "clock_freq")
         return instance

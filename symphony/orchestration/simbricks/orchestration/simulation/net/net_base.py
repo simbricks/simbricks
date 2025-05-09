@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import pathlib
+import typing_extensions as tpe
 
 from simbricks.orchestration import system
 from simbricks.orchestration.instantiation import base as inst_base
@@ -62,7 +63,7 @@ class NetSim(sim_base.Simulator):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> NetSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         return super().fromJSON(simulation, json_obj)
 
 
@@ -92,7 +93,7 @@ class WireNet(NetSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> WireNet:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance._relative_pcap_file_path = utils_base.get_json_attr_top(json_obj, "relative_pcap_file_path") 
         return instance
@@ -144,7 +145,7 @@ class SwitchNet(NetSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> SwitchNet:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance._relative_pcap_file_path = utils_base.get_json_attr_top(json_obj, "relative_pcap_file_path") 
         return instance
@@ -199,7 +200,7 @@ class MemSwitchNet(SwitchNet):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> MemSwitchNet:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         # TODO: FIXME
         return instance
@@ -238,7 +239,7 @@ class SimpleNS3Sim(NetSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> SimpleNS3Sim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance._ns3_run_script = utils_base.get_json_attr_top(
             json_obj, "ns3_run_script"
@@ -284,9 +285,7 @@ class NS3DumbbellNet(SimpleNS3Sim):
         return json_obj
 
     @classmethod
-    def fromJSON(
-        cls, simulation: sim_base.Simulation, json_obj: dict
-    ) -> NS3DumbbellNet:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         left_id = int(utils_base.get_json_attr_top(json_obj, "left"))
         instance._left = json_obj["left"] = simulation.system.get_comp(left_id)
@@ -334,7 +333,7 @@ class NS3BridgeNet(SimpleNS3Sim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> NS3BridgeNet:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         # TODO: FIXME
         return instance
@@ -372,9 +371,7 @@ class NS3Net(SimpleNS3Sim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls,
-                 simulation: sim_base.Simulation,
-                 json_obj: dict) -> NS3Net:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance.use_file = utils_base.get_json_attr_top(json_obj, "use_file")
         instance.global_conf = ns3_comps.NS3GlobalConfig.fromJSON(

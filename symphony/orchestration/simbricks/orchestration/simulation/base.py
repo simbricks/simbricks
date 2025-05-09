@@ -25,6 +25,7 @@ from __future__ import annotations
 import abc
 import asyncio
 import typing as tp
+import typing_extensions as tpe
 import simbricks.orchestration.system as sys_conf
 import simbricks.orchestration.instantiation.base as inst_base
 import simbricks.orchestration.instantiation.socket as inst_socket
@@ -114,7 +115,7 @@ class Simulator(utils_base.IdObj, abc.ABC):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: Simulation, json_obj: dict) -> Simulator:
+    def fromJSON(cls, simulation: Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance.name = utils_base.get_json_attr_top(json_obj, "name")
         instance._executable = utils_base.get_json_attr_top(json_obj, "executable")
@@ -351,7 +352,7 @@ class DummySimulator(Simulator):
         raise Exception("DummySimulator does not implement supported_socket_types")
 
     @classmethod
-    def fromJSON(cls, simulation: Simulation, json_obj: dict) -> DummySimulator:
+    def fromJSON(cls, simulation: Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance._is_dummy = True
         return instance
@@ -427,7 +428,7 @@ class Simulation(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_conf.System, json_obj: dict, enforce_dummies: bool = False) -> Simulation:
+    def fromJSON(cls, system: sys_conf.System, json_obj: dict, enforce_dummies: bool = False) -> tpe.Self:
         """
         Deserializes a Simulation.
 

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import functools
 import typing
+import typing_extensions as tpe
 import uuid
 
 from simbricks.orchestration.instantiation import proxy
@@ -77,7 +78,7 @@ class Fragment(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, json_obj: dict, simulation: sim_base.Simulation) -> Fragment:
+    def fromJSON(cls, json_obj: dict, simulation: sim_base.Simulation) -> tpe.Self:
         instance = super().fromJSON(json_obj)
 
         instance._fragment_executor_tag = utils_base.get_json_attr_top(
