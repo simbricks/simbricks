@@ -9,7 +9,7 @@ class FragmentRunnerPlugin(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def name() -> str:
-        pass # pytype: disable=bad-return-type
+        raise RuntimeError("cannot call 'name' on abstract FragmentRunnerPlugin")
 
     @abc.abstractmethod
     async def start(
