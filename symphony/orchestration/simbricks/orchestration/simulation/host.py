@@ -26,6 +26,7 @@ import abc
 import math
 import pathlib
 import shutil
+import typing_extensions as tpe
 
 import simbricks.orchestration.simulation.base as sim_base
 import simbricks.orchestration.system as system
@@ -50,7 +51,7 @@ class HostSim(sim_base.Simulator):
         return super().toJSON()
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> Gem5Sim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance._disk_images = {}
         return instance
@@ -131,7 +132,7 @@ class Gem5Sim(HostSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> Gem5Sim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance.cpu_type_cp = utils_base.get_json_attr_top(json_obj, "cpu_type_cp")
         instance.cpu_type = utils_base.get_json_attr_top(json_obj, "cpu_type")
@@ -290,7 +291,7 @@ class QemuSim(HostSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> QemuSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance._qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
         return instance

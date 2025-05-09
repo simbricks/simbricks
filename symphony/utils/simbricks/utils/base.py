@@ -25,6 +25,7 @@ import importlib.util
 import itertools
 import importlib
 import typing as tp
+import typing_extensions as tpe
 import enum
 
 
@@ -47,7 +48,7 @@ class IdObj(abc.ABC):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, json_obj):
+    def fromJSON(cls, json_obj) -> tpe.Self:
         instance = cls.__new__(cls)
         instance._id = get_json_attr_top(json_obj, "id")
         instance._is_dummy = bool(get_json_attr_top(json_obj, "is_dummy"))

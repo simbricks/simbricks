@@ -25,6 +25,7 @@ from __future__ import annotations
 import copy
 import pathlib
 import typing
+import typing_extensions as tpe
 import uuid
 
 from simbricks.orchestration.helpers import exceptions
@@ -271,7 +272,7 @@ class Instantiation(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, sim: sim_base.Simulation, json_obj: dict) -> Instantiation:
+    def fromJSON(cls, sim: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
 
         simulation_id = int(utils_base.get_json_attr_top(json_obj, "simulation"))

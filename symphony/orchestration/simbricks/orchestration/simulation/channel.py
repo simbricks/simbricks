@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import typing_extensions as tpe
 
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as system_base
@@ -50,7 +51,7 @@ class Channel(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> Channel:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance._synchronized = bool(utils_base.get_json_attr_top(json_obj, "synchronized"))
         instance.sync_period = int(utils_base.get_json_attr_top(json_obj, "sync_period"))

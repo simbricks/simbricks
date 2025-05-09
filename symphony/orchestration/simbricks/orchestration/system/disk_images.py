@@ -28,6 +28,8 @@ import pathlib
 import tarfile
 import asyncio
 import typing as tp
+import typing_extensions as tpe
+
 from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
@@ -85,7 +87,7 @@ class DiskImage(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DiskImage:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance.needs_copy = utils_base.get_json_attr_top(json_obj, "needs_copy")
         system._add_disk_image(instance)
@@ -106,7 +108,7 @@ class DummyDiskImage(DiskImage):
         raise RuntimeError("cannot call abstract method 'path' of DummyDiskImage")
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DummyDiskImage:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance._is_dummy = True
         return instance
@@ -133,7 +135,7 @@ class ExternalDiskImage(DiskImage):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DiskImage:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance._path = utils_base.get_json_attr_top(json_obj, "path")
         instance.formats = utils_base.get_json_attr_top(json_obj, "formats")
@@ -168,7 +170,7 @@ class DistroDiskImage(DiskImage):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DiskImage:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.name = utils_base.get_json_attr_top(json_obj, "name")
         instance.formats = utils_base.get_json_attr_top(json_obj, "formats")
@@ -185,7 +187,7 @@ class DynamicDiskImage(DiskImage):
         pass
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> DynamicDiskImage:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         return super().fromJSON(system, json_obj)
 
 
@@ -228,7 +230,7 @@ class LinuxConfigDiskImage(DynamicDiskImage):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> LinuxConfigDiskImage:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         # NOTE: the host gets set during deserialization of the host, since there is a cyclic
         # dependency between host and this disk image during deserialization
@@ -286,7 +288,7 @@ class PackerDiskImage(DynamicDiskImage):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> PackerDiskImage:
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance._prepared = False
         instance.config_path = utils_base.get_json_attr_top(json_obj, "config_path")

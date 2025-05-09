@@ -22,6 +22,8 @@
 
 from __future__ import annotations
 
+import typing_extensions as tpe
+
 from simbricks.orchestration.system import base
 from simbricks.orchestration.system import pcie
 from simbricks.orchestration.system import eth
@@ -71,7 +73,7 @@ class SimplePCIeNIC(base.Component):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> SimplePCIeNIC:
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance._ip = utils_base.get_json_attr_top(json_obj, "ip")
         eth_inf_id = int(utils_base.get_json_attr_top(json_obj, "eth_if"))

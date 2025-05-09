@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import typing as tp
+import typing_extensions as tpe
 import io
 import asyncio
 from simbricks.orchestration.system import base as base
@@ -57,7 +58,7 @@ class Host(base.Component):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> Host:
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system=system, json_obj=json_obj)
         instance.applications = []
 
@@ -103,7 +104,7 @@ class FullSystemHost(Host):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> FullSystemHost:
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.memory = int(utils_base.get_json_attr_top(json_obj, "memory"))
         instance.cores = int(utils_base.get_json_attr_top(json_obj, "cores"))
@@ -224,7 +225,7 @@ class BaseLinuxHost(FullSystemHost):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> BaseLinuxHost:
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.load_modules = utils_base.get_json_attr_top(json_obj, "load_modules")
         instance.kcmd_append = utils_base.get_json_attr_top(json_obj, "kcmd_append")
@@ -303,7 +304,7 @@ class LinuxHost(BaseLinuxHost):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> LinuxHost:
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.drivers = utils_base.get_json_attr_top(json_obj, "drivers")
         instance.hostname = utils_base.get_json_attr_top(json_obj, "hostname")
