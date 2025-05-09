@@ -48,7 +48,9 @@ async def ns_ls_id(ident: int):
 
 @app.command()
 @async_cli()
-async def ns_create(name: str, parent_id: Annotated[int, Option(help="optional parent namesapce")] = None):
+async def ns_create(
+    name: str, parent_id: Annotated[int | None, Option(help="optional parent namesapce")] = None
+):
     """Create a new namespace."""
     client = client_provider.admin_client
     namespace = await client.create_ns(parent_id=parent_id, name=name)
