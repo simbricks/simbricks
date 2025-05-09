@@ -187,41 +187,41 @@ def dict_to_json(data: dict) -> dict:
     return json_obj
 
 
-def _json_obj_to_dict(obj: tp.Any) -> tp.Any:
+def _json_obj_to_dict(obj: tp.Any, required: bool) -> tp.Any:
     if _has_base_type(obj):
         return obj
     elif isinstance(obj, list):
-        return json_array_to_list(obj)
+        return json_array_to_list(obj, required)
     elif isinstance(obj, dict):
-        return _json_dict_to_obj(obj)
+        return _json_dict_to_obj(obj, required)
     else:
         raise ValueError(f"cannot parse object with type {type(obj)} from json")
 
 
-def _json_dict_to_obj(json_obj: dict) -> tp.Any:
+def _json_dict_to_obj(json_obj: dict, required: bool) -> tp.Any:
     if "type" in json_obj and "module" in json_obj:
         # this seems to be a Python object that was converted to JSON
-        cls = get_cls_from_type_module(json_obj["type"], json_obj["module"])
+        cls = get_cls_from_type_module(json_obj["type"], json_obj["module"], required)
         has_attribute(cls, "fromJSON")
         return cls.fromJSON(json_obj)
     else:
         # this seems to be a plain dict
-        return json_to_dict(json_obj)
+        return json_to_dict(json_obj, required)
 
 
-def json_array_to_list(array: list) -> list:
+def json_array_to_list(array: list, required: bool = True) -> list:
     data = []
     for element in array:
-        data.append(_json_obj_to_dict(element))
+        data.append(_json_obj_to_dict(element, required))
 
     return data
 
 
-def json_to_dict(json_obj: dict) -> dict:
+def json_to_dict(json_obj: dict, required: bool = True) -> dict:
     data = {}
     for key, value in json_obj.items():
-        key_dict = _json_obj_to_dict(key)
-        value_dict = _json_obj_to_dict(value)
+        key_dict = _json_obj_to_dict(key, required)
+        value_dict = _json_obj_to_dict(value, required)
         assert key_dict not in data
         data[key_dict] = value_dict
 
