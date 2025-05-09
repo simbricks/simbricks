@@ -249,7 +249,7 @@ class FragmentRunner(abc.ABC):
 
     def __init__(
         self, base_url: str,
-        workdir: str,
+        workdir: pathlib.Path,
         namespace: str,
         ident: int,
         polling_delay_sec: int,
@@ -257,7 +257,7 @@ class FragmentRunner(abc.ABC):
         verbose: bool,
     ):
         self._base_url: str = base_url
-        self._workdir: pathlib.Path = pathlib.Path(workdir).resolve()
+        self._workdir: pathlib.Path = workdir.resolve()
         self._polling_delay_sec: int = polling_delay_sec
         self._namespace: str = namespace
         self._ident: int = ident
