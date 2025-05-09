@@ -47,6 +47,47 @@ class PCIDevSim(sim_base.Simulator):
         return {inst_socket.SockType.LISTEN}
 
 
+class FEMUSim(PCIDevSim):
+
+    def __init__(self, simulation: sim_base.Simulation) -> None:
+        super().__init__(
+            simulation=simulation, executable="sims/external/femu/femu-simbricks", name=""
+        )
+        self.name = f"FEMUSim-{self._id}"
+
+    def toJSON(self) -> dict:
+        return super().toJSON()
+
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> FEMUSim:
+        return super().fromJSON(simulation, json_obj)
+
+    def add(self, nic: sys_pcie.NVMeSSD):
+        utils_base.has_expected_type(nic, sys_pcie.NVMeSSD)
+        super().add(nic)
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        cmd = f"{inst.env.repo_base(relative_path=self._executable)} "
+
+        nvm_devices = self.filter_components_by_type(ty=sys_pcie.PCIeSimpleDevice)
+        assert len(nvm_devices) == 1
+        nvm_dev = nvm_devices[0]
+        socket = inst.get_socket(interface=nvm_dev._pci_if)
+
+        pci_channels = sim_base.Simulator.filter_channels_by_sys_type(
+            self.get_channels(), sys_pcie.PCIeChannel
+        )
+        pci_latency, pci_sync_period, pci_run_sync = (
+            sim_base.Simulator.get_unique_latency_period_sync(pci_channels)
+        )
+        params_url = self.get_parameters_url(
+            inst, socket, sync=pci_run_sync, latency=pci_latency, sync_period=pci_sync_period
+        )
+        cmd += f"{params_url} "
+
+        return cmd
+
+
 class NICSim(PCIDevSim):
     """Base class for NIC simulators."""
 

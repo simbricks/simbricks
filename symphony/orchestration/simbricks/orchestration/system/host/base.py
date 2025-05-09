@@ -318,13 +318,11 @@ class I40ELinuxHost(LinuxHost):
         self.drivers.append("i40e")
 
 
-<<<<<<< HEAD
 class E1000LinuxHost(LinuxHost):
 
     def __init__(self, sys) -> None:
         super().__init__(sys)
         self.drivers.append("e1000")
-=======
 class CorundumLinuxHost(LinuxHost):
     def __init__(self, sys: base.System) -> None:
         super().__init__(sys)
@@ -344,4 +342,3 @@ class NVMeLinuxHost(LinuxHost):
     def __init__(self, sys: base.System) -> None:
         super().__init__(sys)
         self.drivers.append('nvme')
->>>>>>> fe82585c (symphony/orchestration/system: added NVMeSSD pci device)
