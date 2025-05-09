@@ -54,7 +54,7 @@ class DiskImage(utils_base.IdObj):
         raise Exception("must be overwritten")
 
     @staticmethod
-    def assert_is_file(path: str) -> str:
+    def assert_is_file(path: str) -> None:
         if not pathlib.Path(path).is_file():
             raise Exception(f"path={path} must be a file")
 
@@ -77,7 +77,7 @@ class DiskImage(utils_base.IdObj):
 
     async def prepare(self, inst: inst_base.Instantiation, host: sys_host.Host) -> None:
         sim = inst.find_sim_by_spec(host)
-        format = self.find_format(sim)
+        format = self.find_format(sim) # pytype: disable=wrong-arg-types
 
         await self._prepare_format(inst, format)
 

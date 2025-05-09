@@ -128,7 +128,7 @@ class NS3Base(utils_base.IdObj):
         pass
 
     @staticmethod
-    def get_parameter(comp: sys_base.Component | sys_base.Channel,
+    def get_parameter(comp: sys_base.Component | sys_base.Channel | app.Application,
                       key: str,
                       default: str = '') -> str:
         if key in comp.parameters:

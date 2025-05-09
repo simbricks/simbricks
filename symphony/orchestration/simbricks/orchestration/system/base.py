@@ -290,7 +290,7 @@ class Interface(utils_base.IdObj):
 
     def __init__(self, c: Component) -> None:
         super().__init__()
-        self.component: Component | None = c
+        self.component: Component = c
         c.system._add_interface(self)
         self.channel: Channel | None = None
 

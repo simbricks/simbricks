@@ -54,15 +54,17 @@ class InstantiationEnvironment(utils_base.IdObj):
         simbricksdir: pathlib.Path,
     ):
         super().__init__()
-        self._simbricks_dir: str = simbricksdir.resolve()
-        self._work_dir: str = workdir.resolve()
-        self._output_base: str = pathlib.Path(f"{self._work_dir}/output").resolve()
-        self._tmp_dir: str = pathlib.Path(f"{self._work_dir}/tmp").resolve()
-        self._img_dir: str = pathlib.Path(f"{self._tmp_dir}/imgs").resolve()
-        self._cp_dir: str = pathlib.Path(f"{self._tmp_dir}/checkpoints").resolve()
-        self._shm_base: str = pathlib.Path(f"{self._tmp_dir}/shm").resolve()
-        self._proxy_dir = pathlib.Path(f"{self._tmp_dir}/proxies").resolve()
-        self._input_artifacts_dir = pathlib.Path(f"{self._work_dir}/input_artifacts").resolve()
+        self._simbricks_dir: str = simbricksdir.resolve().as_posix()
+        self._work_dir: str = workdir.resolve().as_posix()
+        self._output_base: str = pathlib.Path(f"{self._work_dir}/output").resolve().as_posix()
+        self._tmp_dir: str = pathlib.Path(f"{self._work_dir}/tmp").resolve().as_posix()
+        self._img_dir: str = pathlib.Path(f"{self._tmp_dir}/imgs").resolve().as_posix()
+        self._cp_dir: str = pathlib.Path(f"{self._tmp_dir}/checkpoints").resolve().as_posix()
+        self._shm_base: str = pathlib.Path(f"{self._tmp_dir}/shm").resolve().as_posix()
+        self._proxy_dir: str = pathlib.Path(f"{self._tmp_dir}/proxies").resolve().as_posix()
+        self._input_artifacts_dir: str = (
+            pathlib.Path(f"{self._work_dir}/input_artifacts").resolve().as_posix()
+        )
 
     # --------------------------------------------------
     # Read-only accessor functions for path properties -

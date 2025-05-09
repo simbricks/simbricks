@@ -59,9 +59,6 @@ class Channel(utils_base.IdObj):
         instance.sys_channel = simulation.system.get_chan(chan_id)
         return instance
 
-    def full_name(self) -> str:
-        return "channel." + self.name
-
     def set_sync_period(
         self, amount: int, ratio: utils_base.Time = utils_base.Time.Nanoseconds
     ) -> None:
