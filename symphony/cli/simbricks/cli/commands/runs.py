@@ -110,7 +110,7 @@ async def get_output_artifact(
         raise RuntimeError(f"The path '{path.parent}' does not exist.")
     try:
         await client_provider.simbricks_client.get_run_fragment_output_artifact(
-            run_fragment_id, path
+            run_fragment_id, path.as_posix()
         )
     except client_exceptions.ClientResponseError as err:
         if err.status == 404:
@@ -143,7 +143,7 @@ async def submit(
 ):
     """Submit a SimBricks python simulation script to run."""
 
-    experiment_mod = load_mod.load_module(module_path=path)
+    experiment_mod = load_mod.load_module(module_path=path.as_posix())
     instantiations: list[inst_base.Instantiation] = experiment_mod.instantiations
 
     run_id = None
