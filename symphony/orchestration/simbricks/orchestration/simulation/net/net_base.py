@@ -188,7 +188,7 @@ class MemSwitchNet(SwitchNet):
         super().__init__(
             simulation=simulation,
             executable="sims/mem/memswitch/memswitch",
-            relative_pcap_file_path=relative_pcap_file_path,
+            relative_pcap_filepath=relative_pcap_file_path,
         )
         self.name = f"MemSwitchNet-{self._id}"
         """AS_ID,VADDR_START,VADDR_END,MEMNODE_MAC,PHYS_START."""
@@ -385,13 +385,13 @@ class NS3Net(SimpleNS3Sim):
     def supported_socket_types(
         self, interface: sys_base.Interface
     ) -> set[inst_socket.SockType]:
-        return [inst_socket.SockType.CONNECT, inst_socket.SockType.LISTEN]
+        return {inst_socket.SockType.CONNECT, inst_socket.SockType.LISTEN}
 
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = super().run_cmd(inst=inst)
 
-        ns3_components: map[sys_base.Component, ns3_comps.NS3Component] = {}
+        ns3_components: dict[sys_base.Component, ns3_comps.NS3Component] = {}
         ns3c: set[ns3_comps.NS3Component] = set()
 
         # TODO: with the current abstraction we connect hosts directly to

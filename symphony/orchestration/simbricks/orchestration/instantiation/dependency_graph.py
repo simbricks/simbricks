@@ -140,7 +140,7 @@ def build_simulation_dependency_graph(
     SimBricks connection has to be started first since it creates the SHM queue.
     """
     # the actual dependency graph
-    dep_graph: SimulationDependencyGraph = {}
+    dep_graph: SimulationDependencyGraph = SimulationDependencyGraph({})
     # lookup dicts from components that should be started to their corresponding graph nodes
     nodes_sim: dict[sim_base.Simulator, SimulationDependencyNode] = {}
     nodes_proxy: dict[inst_proxy.Proxy, SimulationDependencyNode] = {}

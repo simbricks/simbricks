@@ -112,11 +112,12 @@ class Proxy(utils_base.IdObj, abc.ABC):
         pass
 
     def sockets_wait(self, inst: inst_base.Instantiation) -> set[inst_socket.Socket]:
-        wait_sockets = []
+        wait_sockets = set()
         for iface in self._interfaces:
             socket = inst.get_socket(iface)
-            if inst.get_interface_socktype == inst_socket.SockType.LISTEN:
-                wait_sockets.append(socket)
+            if inst.get_interface_socktype(iface) == inst_socket.SockType.LISTEN:
+                assert socket is not None
+                wait_sockets.add(socket)
         return wait_sockets
 
     async def wait_ready(self) -> None:
@@ -141,7 +142,7 @@ class DummyProxy(Proxy):
     async def read_listening_info(self) -> None:
         pass
 
-    async def run_cmd(self, inst: inst_base.Instantiation, runner_ip: str) -> str:
+    def run_cmd(self, inst: inst_base.Instantiation, runner_ip: str) -> str:
         raise NotImplementedError("function run_cmd() should not be called for DummyProxy")
 
 
@@ -172,7 +173,9 @@ class TCPProxy(Proxy):
                 cmd_args.append("-L")
             else:
                 cmd_args.append("-C")
-            cmd_args.append(inst.get_socket(interface)._path)
+            socket = inst.get_socket(interface)
+            assert socket is not None
+            cmd_args.append(socket._path)
 
         if self._ip is None or self._port is None:
             raise RuntimeError("Ip and port of proxy must be not None")
@@ -190,8 +193,8 @@ class TCPProxy(Proxy):
 
 
 class RDMAProxy(Proxy):
-    def __init__(self, ready_file, port_ip_file):
-        super().__init__(ready_file, port_ip_file)
+    def __init__(self):
+        super().__init__()
         # TODO: Implement this
         raise NotImplementedError("TODO: Implement this")
 

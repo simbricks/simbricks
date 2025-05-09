@@ -62,11 +62,9 @@ class HostSim(sim_base.Simulator):
     def add(self, host: sys_host.Host):
         super().add(host)
 
-    def config_str(self) -> str:
-        return []
-
+    @abc.abstractmethod
     def supported_image_formats(self) -> list[str]:
-        raise Exception("implement me")
+        pass
 
     @abc.abstractmethod
     async def copy_disk_image(
