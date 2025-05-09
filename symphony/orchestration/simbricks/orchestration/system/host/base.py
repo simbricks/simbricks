@@ -311,13 +311,13 @@ class LinuxHost(BaseLinuxHost):
 
 
 class I40ELinuxHost(LinuxHost):
-    def __init__(self, sys) -> None:
+    def __init__(self, sys: base.System) -> None:
         super().__init__(sys)
         self.drivers.append("i40e")
 
 
 class CorundumLinuxHost(LinuxHost):
-    def __init__(self, sys) -> None:
+    def __init__(self, sys: base.System) -> None:
         super().__init__(sys)
         self.drivers.append("/tmp/guest/mqnic.ko")
 
@@ -328,3 +328,10 @@ class CorundumLinuxHost(LinuxHost):
             )
         }
         return {**m, **super().config_files(inst=inst)}
+
+
+class NVMeLinuxHost(LinuxHost):
+
+    def __init__(self, sys: base.System) -> None:
+        super().__init__(sys)
+        self.drivers.append('nvme')

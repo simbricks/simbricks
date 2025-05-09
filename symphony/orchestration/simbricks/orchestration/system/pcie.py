@@ -63,7 +63,7 @@ class PCIeSimpleDevice(base.Component):
 
     def add_if(self, interface: PCIeDeviceInterface) -> None:
         utils_base.has_expected_type(interface, PCIeDeviceInterface)
-        if self._pci_if:
+        if hasattr(self, "_pci_if") and self._pci_if:
             raise Exception(
                 f"you overwrite PCIeSimpleDevice._pci_if. ({self._pci_if.id()} -> {interface.id()})"
             )
@@ -81,3 +81,16 @@ class PCIeSimpleDevice(base.Component):
         inf_id = int(utils_base.get_json_attr_top(json_obj, "pci_if"))
         instance._pci_if = system.get_inf(inf_id)
         return instance
+
+
+class NVMeSSD(PCIeSimpleDevice):
+
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
+
+    def toJSON(self) -> dict:
+        return super().toJSON()
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> NVMeSSD:
+        return super().fromJSON(system, json_obj)
