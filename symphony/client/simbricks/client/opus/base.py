@@ -53,7 +53,7 @@ class ConsoleLineGenerator:
         self._proxies_seen_until_id: int | None = None
         self._follow = follow
 
-    async def _fetch_next_output(self) -> list[str, str]:
+    async def _fetch_next_output(self) -> list[tuple[str, str]]:
         filter = schemas.ApiRunOutputFilter(
             simulator_seen_until_line_id=self._simulators_seen_until_id,
             proxy_seen_until_line_id=self._proxies_seen_until_id,
