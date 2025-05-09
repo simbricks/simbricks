@@ -91,10 +91,11 @@ ns-3-clean:
 $(d)femu:
 	git clone https://github.com/simbricks/femu.git $@
 
-$(d)femu/ready: $(d)femu $(lib_nicif)
+$(d)femu/ready: $(d)femu $(lib_nicif) $(lib_parser)
 	cd $< && make EXTRA_LDFLAGS="-L$(abspath $(lib_dir))/simbricks/nicif/ \
 	      -L$(abspath $(lib_dir))/simbricks/pcie/ \
-	      -L$(abspath $(lib_dir))/simbricks/base/ "\
+	      -L$(abspath $(lib_dir))/simbricks/base/ \
+	      -L$(abspath $(lib_dir))/simbricks/parser/ "\
 	    EXTRA_CPPFLAGS=-I$(abspath $(lib_dir))
 	touch $@
 
