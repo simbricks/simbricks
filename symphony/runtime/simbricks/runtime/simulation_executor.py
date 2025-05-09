@@ -56,7 +56,7 @@ class SimulationExecutorCallbacks:
         )
 
     @property
-    def output(self) -> output.SimulationOutput:
+    def simulation_output(self) -> output.SimulationOutput:
         return self._output
 
     # ---------------------------------------
@@ -350,7 +350,7 @@ class SimulationExecutor:
         while True:
             try:
                 await asyncio.shield(terminate_collect_task)
-                return self._callbacks.output
+                return self._callbacks.simulation_output
             except asyncio.CancelledError as e:
                 print(e)
 

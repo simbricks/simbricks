@@ -39,13 +39,13 @@ class Run:
         self,
         instantiation: inst_base.Instantiation,
         prereq: Run | None = None,
-        output: output.SimulationOutput | None = None,
+        simulation_output: output.SimulationOutput | None = None,
         job_id: int | None = None,
         cp: bool = False,
     ):
         self.instantiation: inst_base.Instantiation = instantiation
         self._run_nr = next(self.__run_nr)
-        self._output: output.SimulationOutput | None = output
+        self._output: output.SimulationOutput | None = simulation_output
         self._prereq: Run | None = prereq
         self.checkpoint: bool = cp
 
