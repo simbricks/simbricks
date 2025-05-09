@@ -64,9 +64,19 @@ class PCIeSimpleDevice(base.Component):
         self.ifs.append(self._pci_if)
 
     def add_if(self, interface: PCIeDeviceInterface) -> None:
+<<<<<<< HEAD
         raise Exception(
             f"you overwrite PCIeSimpleDevice._pci_if. ({self._pci_if.id()} -> {interface.id()})"
         )
+=======
+        utils_base.has_expected_type(interface, PCIeDeviceInterface)
+        if hasattr(self, "_pci_if") and self._pci_if:
+            raise Exception(
+                f"you overwrite PCIeSimpleDevice._pci_if. ({self._pci_if.id()} -> {interface.id()})"
+            )
+        self._pci_if = interface
+        super().add_if(interface)
+>>>>>>> fe82585c (symphony/orchestration/system: added NVMeSSD pci device)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -79,3 +89,16 @@ class PCIeSimpleDevice(base.Component):
         inf_id = int(utils_base.get_json_attr_top(json_obj, "pci_if"))
         instance._pci_if = system.get_inf(inf_id)
         return instance
+
+
+class NVMeSSD(PCIeSimpleDevice):
+
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
+
+    def toJSON(self) -> dict:
+        return super().toJSON()
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> NVMeSSD:
+        return super().fromJSON(system, json_obj)
