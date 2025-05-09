@@ -164,7 +164,7 @@ class LocalSimpleRuntime(run_base.Runtime):
         try:
             callbacks = LocalSimulationExecutorCallbacks(run.instantiation, self._verbose)
             sim_executor = sim_exec.SimulationExecutor(
-                run.instantiation, callbacks, self._verbose, self._profile_int
+                run.instantiation, callbacks, self._verbose, "", self._profile_int
             )
             callbacks._simulation_executor = sim_executor
             await sim_executor.prepare()
@@ -244,9 +244,11 @@ class LocalParallelRuntime(run_base.Runtime):
     async def do_run(self, run: run_base.Run) -> run_base.Run | None:
         """Actually executes `run`."""
         try:
-            sim_executor = sim_exec.SimulationExecutor(run.instantiation, self._verbose)
-            if self._profile_int is not None:
-                sim_executor._profile_int = self._profile_int
+            callbacks = LocalSimulationExecutorCallbacks(run.instantiation, self._verbose)
+            sim_executor = sim_exec.SimulationExecutor(
+                run.instantiation, callbacks, self._verbose, "", self._profile_int
+            )
+            callbacks._simulation_executor = sim_executor
             await sim_executor.prepare()
         except asyncio.CancelledError:
             # it is safe to just exit here because we are not running any
@@ -292,7 +294,7 @@ class LocalParallelRuntime(run_base.Runtime):
             enough_cores = True
 
         if self._mem is not None:
-            enough_mem = (self.mem - self.mem_used) >= simulation.resreq_mem()
+            enough_mem = (self._mem - self._mem_used) >= simulation.resreq_mem()
         else:
             enough_mem = True
 

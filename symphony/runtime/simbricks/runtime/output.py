@@ -79,10 +79,12 @@ class SimulationOutput:
         self._simulator_output: collections.defaultdict[sim_base.Simulator, list[ProcessOutput]] = (
             collections.defaultdict(list)
         )
-        self._proxy_output: collections.defaultdict[inst_proxy.Proxy, list[ProcessOutput]] = {}
+        self._proxy_output: collections.defaultdict[inst_proxy.Proxy, list[ProcessOutput]] = (
+            collections.defaultdict(list)
+        )
 
     def is_ended(self) -> bool:
-        return self._end_time or self._interrupted
+        return self._end_time is not None or self._interrupted
 
     def set_start(self) -> None:
         self._start_time = time.time()

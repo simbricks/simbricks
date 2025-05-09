@@ -27,6 +27,7 @@ import shlex
 import signal
 import typing
 from asyncio.subprocess import Process
+from collections import abc
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import proxy as inst_proxy
@@ -86,7 +87,7 @@ class CommandExecutor:
             await self._stderr_cb(ls)
 
     async def _consume_stream_loop(
-        self, stream: asyncio.StreamReader, consume_fn: typing.Callable[[bytes], None]
+        self, stream: asyncio.StreamReader, consume_fn: abc.Callable[[bytes], abc.Awaitable[None]]
     ) -> None:
         while True:
             bs = await stream.read(8192)

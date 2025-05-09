@@ -175,7 +175,7 @@ def add_exp(
     instantiation.assigned_fragment = instantiation.fragments[0]
 
     output = sim_out.SimulationOutput(instantiation.simulation)
-    run = runs_base.Run(instantiation=instantiation, prereq=prereq, output=output)
+    run = runs_base.Run(instantiation=instantiation, prereq=prereq, simulation_output=output)
     rt.add_run(run)
     return run
 
