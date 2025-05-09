@@ -130,15 +130,6 @@ async def delete(run_id: int):
 
 @app.command()
 @async_cli()
-async def update(run_id: int, updates: str):
-    """Update run with the 'updates' json string."""
-    client = client_provider.simbricks_client
-    json_updates = json.loads(updates)
-    await client.update_run(run_id, updates=json_updates)
-
-
-@app.command()
-@async_cli()
 async def submit(
     path: Annotated[Path, Argument(help="Python simulation script to submit.")],
     follow: Annotated[
