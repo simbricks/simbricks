@@ -168,11 +168,12 @@ class FragmentRunner:
         self.update_event_handlers.clear()
         self.delete_event_handlers.clear()
         self.query_event_handlers.clear()
-        self.read_task.cancel()
-        try:
-            await self.read_task
-        except asyncio.CancelledError:
-            pass
+        if self.read_task is not None:
+            self.read_task.cancel()
+            try:
+                await self.read_task
+            except asyncio.CancelledError:
+                pass
         await self.fragment_runner.stop()
 
 
@@ -420,7 +421,7 @@ class MainRunner:
         self,
         events: list[schemas.ApiRunnerEventRead],
         updates: schemas.ApiEventBundle[schemas.ApiEventUpdate_U],
-    ) -> schemas.ApiEventBundle[schemas.ApiEventUpdate_U]:
+    ) -> None:
         events = schemas.ApiRunnerEventRead_List_A.validate_python(events)
         for event in events:
             update = schemas.ApiRunnerEventUpdate(id=event.id, runner_id=self._ident)

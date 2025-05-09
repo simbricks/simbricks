@@ -34,14 +34,14 @@ class LocalRunner(runner_base.FragmentRunner):
 
     def __init__(
         self,
-        base_url,
-        workdir,
-        namespace,
-        ident,
-        polling_delay_sec,
-        runner_ip,
-        runner_port,
-        verbose,
+        base_url: str,
+        workdir: pathlib.Path,
+        namespace: str,
+        ident: int,
+        polling_delay_sec: int,
+        runner_ip: str,
+        runner_port: int,
+        verbose: bool,
     ):
         super().__init__(base_url, workdir, namespace, ident, polling_delay_sec, runner_ip, verbose)
         self.reader: asyncio.StreamReader

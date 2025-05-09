@@ -9,7 +9,7 @@ class FragmentRunnerPlugin(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def name() -> str:
-        pass
+        pass # pytype: disable=bad-return-type
 
     @abc.abstractmethod
     async def start(
