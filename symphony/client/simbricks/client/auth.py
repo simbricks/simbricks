@@ -19,12 +19,12 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+from __future__ import annotations
 
 import json
 import aiohttp
 import time
 import os
-from typing_extensions import Self
 from .settings import client_settings
 
 
@@ -58,7 +58,7 @@ class Token:
             json.dump(self.toJSON(), fh)
 
     @staticmethod
-    def load_token(filename: str) -> Self | None:
+    def load_token(filename: str) -> Token | None:
         if os.path.isfile(filename):
             with open(filename) as fh:
                 json_token = json.load(fh)
@@ -72,7 +72,7 @@ class Token:
         return None
 
     @staticmethod
-    def parse_from_resp(json_obj) -> Self:
+    def parse_from_resp(json_obj) -> Token:
         access_valid_until = int(time.time()) - 10 + int(json_obj["expires_in"])
         refresh_valid_until = (
             int(time.time()) - 10 + int(json_obj["refresh_expires_in"])
