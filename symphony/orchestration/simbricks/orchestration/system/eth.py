@@ -56,7 +56,7 @@ class EthSimpleNIC(base.Component):
 
     def add_if(self, interface: EthInterface) -> None:
         utils_base.has_expected_type(interface, EthInterface)
-        if hasattr(self, "_eth_if") and self._eth_if:
+        if self._eth_if:
             raise Exception(
                 f"you overwrite EthSimpleNIC._eth_if ({self._eth_if.id()} -> {interface.id()}) "
             )

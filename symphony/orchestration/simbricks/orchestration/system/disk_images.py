@@ -90,7 +90,6 @@ class DiskImage(utils_base.IdObj):
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance.needs_copy = utils_base.get_json_attr_top(json_obj, "needs_copy")
-        system._add_disk_image(instance)
         return instance
 
     def add_host(self, host: sys_host.Host) -> None:
