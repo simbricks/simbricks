@@ -55,6 +55,8 @@ farmem_mod := $(farmem_dir)/farmem.ko
 m5_bin := $(d)m5
 guest_init := $(d)/scripts/guestinit.sh
 
+.PHONY: build-images build-images-min convert-images-raw retrieve-kernel
+
 build-images: $(IMAGES) $(RAW_IMAGES) $(vmlinux) $(bz_image) $(mqnic_mod) \
   $(farmem_mod)
 
@@ -66,6 +68,8 @@ convert-images-raw:
 	for i in $(IMAGES); do \
 	    [ -f $$i ] || continue; \
 	    $(QEMU_IMG) convert -f qcow2 -O raw $$i $${i}.raw ; done
+
+retrieve-kernel: $(kernel_dir)/.config
 
 ################################################
 # Disk image
