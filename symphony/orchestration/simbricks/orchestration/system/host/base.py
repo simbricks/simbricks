@@ -66,7 +66,8 @@ class Host(base.Component):
         for app_json in applications_json:
             app_class = utils_base.get_cls_by_json(app_json)
             utils_base.has_attribute(app_class, "fromJSON")
-            app = app_class.fromJSON(system, app_json)
+            app: app.Application = app_class.fromJSON(system, app_json)
+            app.host = instance
             instance.add_app(app)
 
         return instance

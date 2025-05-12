@@ -51,8 +51,6 @@ class Application(utils_base.IdObj):
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
-        host_id = utils_base.get_json_attr_top(json_obj, "host")
-        instance.host = system.get_comp(host_id)
         instance.parameters = utils_base.json_to_dict(
             utils_base.get_json_attr_top(json_obj, "parameters")
         )
