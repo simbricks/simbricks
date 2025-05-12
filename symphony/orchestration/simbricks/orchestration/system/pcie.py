@@ -61,16 +61,12 @@ class PCIeSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
         self._pci_if: PCIeDeviceInterface = PCIeDeviceInterface(self)
-        super().add_if(self._pci_if)
+        self.ifs.append(self._pci_if)
 
     def add_if(self, interface: PCIeDeviceInterface) -> None:
-        utils_base.has_expected_type(interface, PCIeDeviceInterface)
-        if self._pci_if:
-            raise Exception(
-                f"you overwrite PCIeSimpleDevice._pci_if. ({self._pci_if.id()} -> {interface.id()})"
-            )
-        self._pci_if = interface
-        super().add_if(interface)
+        raise Exception(
+            f"you overwrite PCIeSimpleDevice._pci_if. ({self._pci_if.id()} -> {interface.id()})"
+        )
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()

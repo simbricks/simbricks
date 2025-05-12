@@ -48,20 +48,21 @@ class EthSimpleNIC(base.Component):
         super().__init__(s)
         self._ip: str | None = None
         self._eth_if: EthInterface = EthInterface(self)
-        super().add_if(self._eth_if)
+        self.ifs.append(self._eth_if)
 
     def add_ipv4(self, ip: str) -> None:
         assert self._ip is None
         self._ip = ip
 
     def add_if(self, interface: EthInterface) -> None:
-        utils_base.has_expected_type(interface, EthInterface)
-        if self._eth_if:
-            raise Exception(
-                f"you overwrite EthSimpleNIC._eth_if ({self._eth_if.id()} -> {interface.id()}) "
-            )
-        self._eth_if = interface
-        super().add_if(self._eth_if)
+        raise Exception(
+            f"you overwrite EthSimpleNIC._eth_if ({self._eth_if.id()} -> {interface.id()}) "
+        )
+
+    def connect_eth_peer_if(self, peer_i: EthInterface) -> EthChannel:
+        if self._eth_if.is_connected():
+            raise Exception("NIC interface already connected")
+        return EthChannel(peer_i, self._eth_if)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
