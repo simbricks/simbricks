@@ -61,19 +61,15 @@ class MemSimpleDevice(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
         self._mem_if: MemDeviceInterface = MemDeviceInterface(c=self)
-        super().add_if(self._mem_if)
+        self.ifs.append(self._mem_if)
         self._addr = 0xE000000000000000
         self._size = 1024 * 1024 * 1024  # 1GB
         self._as_id = 0
 
     def add_if(self, interface: MemDeviceInterface) -> None:
-        utils_base.has_expected_type(interface, MemDeviceInterface)
-        if self._mem_if:
-            raise Exception(
-                f"you overwrite MemDeviceInterface._mem_if ({self._mem_if.id()} -> {interface.id()}) "
-            )
-        self._mem_if = interface
-        super().add_if(self._mem_if)
+        raise Exception(
+            f"you overwrite MemDeviceInterface._mem_if ({self._mem_if.id()} -> {interface.id()}) "
+        )
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
