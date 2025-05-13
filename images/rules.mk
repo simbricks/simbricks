@@ -69,7 +69,8 @@ convert-images-raw:
 	    [ -f $$i ] || continue; \
 	    $(QEMU_IMG) convert -f qcow2 -O raw $$i $${i}.raw ; done
 
-retrieve-kernel: $(kernel_dir)/.config
+prep-mods: $(kernel_dir)/.config
+	$(MAKE) -C $(kernel_dir) prepare_modules
 
 ################################################
 # Disk image
