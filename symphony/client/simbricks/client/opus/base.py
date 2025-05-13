@@ -168,6 +168,8 @@ async def submit_run(instantiation_id: int) -> int:
 
 
 async def create_run(instantiation: instantiation.Instantiation) -> int:
+    instantiation.finalize_validate()
+
     simulation = instantiation.simulation
     system = simulation.system
 

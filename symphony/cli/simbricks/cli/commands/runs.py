@@ -148,7 +148,6 @@ async def submit(
 
     run_id = None
     for sb_inst in instantiations:
-        sb_inst.finalize_validate()
         run_id = await opus_base.create_run(instantiation=sb_inst)
         run = await client_provider.simbricks_client.get_run(run_id=run_id)
         assert run_id == run.id
