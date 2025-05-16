@@ -35,7 +35,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-cli"
-version = "0.3.3"
+version = "0.3.4"
 description = "simbricks cli tool for communication with the SimBricks cloud"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
