@@ -35,7 +35,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-cli"
-version = "0.3.2"
+version = "0.3.3"
 description = "simbricks cli tool for communication with the SimBricks cloud"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -52,5 +52,5 @@ simbricks-cli = "simbricks.cli.__main__:main"
 pytype = "2024.10.11"
 typer = "0.13.1"
 rich = "13.9.4"
-simbricks-client = ">=0.3.2"
-simbricks-orchestration = ">=0.3.2"
+simbricks-client = ">=0.3.3"
+simbricks-orchestration = ">=0.3.3"

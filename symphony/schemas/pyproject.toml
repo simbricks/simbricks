@@ -35,7 +35,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-schemas"
-version = "0.3.2"
+version = "0.3.3"
 description = "SimBricks public schemas used to interact with the SimBricks backend and for inter runner communication"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
