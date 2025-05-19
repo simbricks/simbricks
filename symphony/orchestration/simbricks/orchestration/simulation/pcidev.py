@@ -75,8 +75,13 @@ class NICSim(PCIDevSim):
         assert len(self._components) < 1
         super().add(nic)
 
-    def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        channels = self.get_channels()
+    def _nic_params(
+        self,
+        inst: inst_base.Instantiation,
+        nic_device: sys_nic.SimplePCIeNIC
+    ) -> str:
+        # Get simulation channels for this nic
+        channels = [self._get_channel(c) for c in nic_device.channels()]
 
         pci_channels = sim_base.Simulator.filter_channels_by_sys_type(
             channels, sys_pcie.PCIeChannel
@@ -97,18 +102,12 @@ class NICSim(PCIDevSim):
         run_sync = eth_run_sync
         sync_period = min(pci_sync_period, eth_sync_period)
 
-        cmd = f"{inst.env.repo_base(relative_path=self._executable)} "
-
-        nic_devices = self.filter_components_by_type(ty=sys_nic.SimplePCIeNIC)
-        assert len(nic_devices) == 1
-        nic_device = nic_devices[0]
-
         socket = inst.get_socket(interface=nic_device._pci_if)
         assert socket is not None and socket._type == inst_socket.SockType.LISTEN
         params_url = self.get_parameters_url(
             inst, socket, sync=run_sync, latency=pci_latency, sync_period=sync_period
         )
-        cmd += f"{params_url} "
+        cmd = f"{params_url} "
 
         socket = inst.get_socket(interface=nic_device._eth_if)
         assert socket is not None and socket._type == inst_socket.SockType.LISTEN
@@ -122,6 +121,18 @@ class NICSim(PCIDevSim):
         if self.extra_args is not None:
             cmd += " " + self.extra_args
 
+        return cmd
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        channels = self.get_channels()
+
+        cmd = f"{inst.env.repo_base(relative_path=self._executable)} "
+
+        nic_devices = self.filter_components_by_type(ty=sys_nic.SimplePCIeNIC)
+        assert len(nic_devices) == 1
+        nic_device = nic_devices[0]
+
+        cmd += self._nic_params(inst, nic_device)
         return cmd
 
 
