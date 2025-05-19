@@ -187,6 +187,7 @@ class Simulator(utils_base.IdObj):
         sync: bool | None = None,
         latency: int | None = None,
         sync_period: int | None = None,
+        pool_id: int | None = None
     ) -> str:
         if not channel and (sync == None or latency == None or sync_period == None):
             raise ValueError(
@@ -209,8 +210,11 @@ class Simulator(utils_base.IdObj):
                 f":sync_interval={sync_period}"
             )
         else:
+            pool = inst.env.get_simulator_shm_pool_path(self)
+            if pool_id is not None:
+                pool += f"-{pool_id}"
             return (
-                f"listen:{socket._path}:{inst.env.get_simulator_shm_pool_path(self)}:sync={sync_str}"
+                f"listen:{socket._path}:{pool}:sync={sync_str}"
                 f":latency={latency}:sync_interval={sync_period}"
             )
 
