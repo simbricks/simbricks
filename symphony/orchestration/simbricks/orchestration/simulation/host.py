@@ -275,6 +275,34 @@ class Gem5Sim(HostSim):
         return cmd
 
 
+class Gem5MultiSim(Gem5Sim):
+
+    def __init__(self, simulation: sim_base.Simulation):
+        super().__init__(simulation)
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.BaseLinuxHost)
+
+        cmd = f"{inst.env.repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.env.get_simulator_output_dir(sim=self)} "
+        cmd += " ".join(self.extra_main_args)
+        cmd += f" {inst.env.repo_base('sims/external/gem5/configs/simbricks/simbricks_multi.py')}"
+
+        first = True
+        for host_spec in full_sys_hosts:
+            if not first:
+                cmd += " ---"
+            else:
+                first = False
+
+            cmd += " " + self._host_run_params(inst, host_spec)
+
+            # Add output prefix if host has an assigned name
+            if host_spec.name:
+                cmd += f"--termprefix='{host_spec.name}: ' "
+
+        return cmd
+
+
 class QemuSim(HostSim):
 
     def __init__(self, simulation: sim_base.Simulation) -> None:
