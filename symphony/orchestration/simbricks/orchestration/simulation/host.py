@@ -159,20 +159,16 @@ class Gem5Sim(HostSim):
     def cleanup_commands(self) -> list[str]:
         return ["m5 exit"]
 
-    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+    def _host_run_params(
+        self,
+        inst: inst_base.Instantiation,
+        host_spec: sys_host.BaseLinuxHost
+    ) -> str:
         cpu_type = self.cpu_type
         if inst.create_checkpoint:
             cpu_type = self.cpu_type_cp
 
-        full_sys_hosts = self.filter_components_by_type(ty=sys_host.BaseLinuxHost)
-        if len(full_sys_hosts) != 1:
-            raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
-        host_spec = full_sys_hosts[0]
-
-        cmd = f"{inst.env.repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.env.get_simulator_output_dir(sim=self)} "
-        cmd += " ".join(self.extra_main_args)
-        cmd += (
-            f" {inst.env.repo_base('sims/external/gem5/configs/simbricks/simbricks.py')} --caches --l2cache "
+        cmd = ("--caches --l2cache "
             "--l1d_size=32kB --l1i_size=32kB --l2_size=32MB "
             "--l1d_assoc=8 --l1i_assoc=8 --l2_assoc=16 "
             f"--cacheline_size=64 --cpu-clock={host_spec.cpu_freq}"
@@ -259,6 +255,22 @@ class Gem5Sim(HostSim):
         #     cmd += ' '
 
         cmd += " ".join(self.extra_config_args)
+        return cmd
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        cpu_type = self.cpu_type
+        if inst.create_checkpoint:
+            cpu_type = self.cpu_type_cp
+
+        full_sys_hosts = self.filter_components_by_type(ty=sys_host.BaseLinuxHost)
+        if len(full_sys_hosts) != 1:
+            raise Exception("Gem5Sim only supports simulating 1 FullSystemHost")
+        host_spec = full_sys_hosts[0]
+
+        cmd = f"{inst.env.repo_base(f'{self._executable}.{self._variant}')} --outdir={inst.env.get_simulator_output_dir(sim=self)} "
+        cmd += " ".join(self.extra_main_args)
+        cmd += f" {inst.env.repo_base('sims/external/gem5/configs/simbricks/simbricks.py')} "
+        cmd += self._host_run_params(inst, host_spec)
 
         return cmd
 
