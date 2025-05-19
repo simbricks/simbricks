@@ -72,7 +72,6 @@ class NICSim(PCIDevSim):
         return "nic." + self.name
 
     def add(self, nic: sys_nic.SimplePCIeNIC):
-        assert len(self._components) < 1
         super().add(nic)
 
     def _nic_params(
@@ -105,14 +104,16 @@ class NICSim(PCIDevSim):
         socket = inst.get_socket(interface=nic_device._pci_if)
         assert socket is not None and socket._type == inst_socket.SockType.LISTEN
         params_url = self.get_parameters_url(
-            inst, socket, sync=run_sync, latency=pci_latency, sync_period=sync_period
+            inst, socket, sync=run_sync, latency=pci_latency, sync_period=sync_period,
+            pool_id=nic_device.id()
         )
         cmd = f"{params_url} "
 
         socket = inst.get_socket(interface=nic_device._eth_if)
         assert socket is not None and socket._type == inst_socket.SockType.LISTEN
         params_url = self.get_parameters_url(
-            inst, socket, sync=run_sync, latency=eth_latency, sync_period=sync_period
+            inst, socket, sync=run_sync, latency=eth_latency, sync_period=sync_period,
+            pool_id=nic_device.id()
         )
         cmd += f"{params_url} "
 
@@ -129,10 +130,17 @@ class NICSim(PCIDevSim):
         cmd = f"{inst.env.repo_base(relative_path=self._executable)} "
 
         nic_devices = self.filter_components_by_type(ty=sys_nic.SimplePCIeNIC)
-        assert len(nic_devices) == 1
-        nic_device = nic_devices[0]
+        assert len(nic_devices) >= 1
 
-        cmd += self._nic_params(inst, nic_device)
+        first = True
+        for nic_device in nic_devices:
+            if not first:
+                cmd += "-- "
+            else:
+                first = False
+
+            cmd += self._nic_params(inst, nic_device)
+
         return cmd
 
 
