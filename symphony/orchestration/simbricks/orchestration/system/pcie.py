@@ -86,9 +86,6 @@ class NVMeSSD(PCIeSimpleDevice):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
 
-    def toJSON(self) -> dict:
-        return super().toJSON()
-
     @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> NVMeSSD:
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         return super().fromJSON(system, json_obj)

@@ -150,11 +150,8 @@ class NVMEFsTest(BaseLinuxApplication):
     def __init__(self, h: sys_host.LinuxHost) -> None:
         super().__init__(h)
 
-    def toJSON(self) -> dict:
-        return super().toJSON()
-
     @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict):
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         return super().fromJSON(system, json_obj)
 
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:

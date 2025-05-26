@@ -55,11 +55,8 @@ class FEMUSim(PCIDevSim):
         )
         self.name = f"FEMUSim-{self._id}"
 
-    def toJSON(self) -> dict:
-        return super().toJSON()
-
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> FEMUSim:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         return super().fromJSON(simulation, json_obj)
 
     def add(self, nic: sys_pcie.NVMeSSD):
@@ -213,7 +210,7 @@ class E1000NIC(NICSim):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> E1000NIC:
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance.debug = utils_base.get_json_attr_top(json_obj, "debug")
         return instance
