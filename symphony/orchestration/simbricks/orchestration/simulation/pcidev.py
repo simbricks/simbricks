@@ -192,33 +192,3 @@ class E1000NIC(NICSim):
             cmd = f"env E1000_DEBUG=1 {cmd}"
 
         return cmd
-
-
-class CorundumBMNICSim(NICSim):
-    def __init__(self, simulation: sim_base.Simulation):
-        super().__init__(
-            simulation=simulation,
-            executable="sims/nic/corundum_bm/corundum_bm",
-        )
-        self.name = f"CorundumBMNICSim-{self._id}"
-
-    def toJSON(self) -> dict:
-        json_obj = super().toJSON()
-        return json_obj
-
-    @classmethod
-    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
-        instance = super().fromJSON(simulation, json_obj)
-        return instance
-
-    def add(self, nic: sys_nic.CorundumNIC):
-        utils_base.has_expected_type(nic, sys_nic.CorundumNIC)
-        super().add(nic)
-
-    def run_cmd(self, inst: inst_base.Instantiation) -> str:
-        cmd = super().run_cmd(inst)
-        if self.mac:
-            cmd += " " + ("".join(reversed(self.mac.split(":"))))
-            if self.log_file:
-                cmd += f" {self.log_file}"
-        return cmd
