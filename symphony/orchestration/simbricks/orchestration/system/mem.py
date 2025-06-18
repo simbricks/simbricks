@@ -41,7 +41,7 @@ class MemDeviceInterface(base.Interface):
 
     def connect(self, c: base.Channel) -> None:
         # Note AK: a bit ugly, but I think we can't get around a rt check here
-        if not c is isinstance(c, MemChannel):
+        if not isinstance(c, MemChannel):
             raise TypeError("MemDeviceInterface only connects to MemChannel")
         super().connect(c)
 
@@ -65,6 +65,7 @@ class MemSimpleDevice(base.Component):
         self._addr = 0xE000000000000000
         self._size = 1024 * 1024 * 1024  # 1GB
         self._as_id = 0
+        self._load_elf: str | None = None
 
     def add_if(self, interface: MemDeviceInterface) -> None:
         raise Exception(
@@ -77,6 +78,7 @@ class MemSimpleDevice(base.Component):
         json_obj["addr"] = self._addr
         json_obj["size"] = self._size
         json_obj["as_id"] = self._as_id
+        json_obj["load_elf"] = self._load_elf
         return json_obj
 
     @classmethod
@@ -86,8 +88,9 @@ class MemSimpleDevice(base.Component):
         addr = utils_base.get_json_attr_top(json_obj, "addr")
         size = utils_base.get_json_attr_top(json_obj, "size")
         as_id = utils_base.get_json_attr_top(json_obj, "as_id")
-        instance.mem_if = system.get_inf(mem_if_id)
-        instance.addr = addr
-        instance.size = size
-        instance.as_id = as_id
+        instance._mem_if = system.get_inf(mem_if_id)
+        instance._addr = addr
+        instance._size = size
+        instance._as_id = as_id
+        instance._load_elf = utils_base.get_json_attr_top_or_none(json_obj, "load_elf")
         return instance

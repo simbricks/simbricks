@@ -25,3 +25,4 @@ from simbricks.orchestration.simulation.pcidev import *
 from simbricks.orchestration.simulation.host import *
 from simbricks.orchestration.simulation.channel import *
 from simbricks.orchestration.simulation.net import *
+from simbricks.orchestration.simulation.mem import *
