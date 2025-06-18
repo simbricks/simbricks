@@ -23,6 +23,7 @@
  */
 
 #include <fcntl.h>
+#include <libelf.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -181,6 +182,68 @@ void PollH2M(struct SimbricksMemIf *memif, uint64_t cur_ts) {
   SimbricksMemIfH2MInDone(memif, msg);
 }
 
+bool LoadElf(const char *elf_file) {
+  elf_version(EV_CURRENT);
+
+  int fd = open(elf_file, O_RDONLY);
+  Elf *elf = elf_begin(fd, ELF_C_READ, NULL);
+  if (!elf) {
+    fprintf(stderr, "failed to load elf: %s\n", elf_errmsg(elf_errno()));
+    return false;
+  }
+
+  size_t file_size;
+  const char *raw_data = elf_rawfile(elf, &file_size);
+
+  size_t ident_size;
+  const char* ident = elf_getident(elf, &ident_size);
+  bool is_64 = ident[EI_CLASS] == ELFCLASS64;
+
+  size_t hdr_num;
+  if (elf_getphdrnum(elf, &hdr_num)) {
+    fprintf(stderr, "failed to get phdnum\n");
+    return false;
+  }
+
+  if (is_64) {
+    Elf64_Phdr *phdr = elf64_getphdr(elf);
+
+    for (size_t i = 0; i < hdr_num; ++i) {
+      if (phdr[i].p_type != PT_LOAD) {
+        continue;
+      }
+      if (phdr[i].p_filesz == 0) {
+        continue;
+      }
+      
+      if (phdr[i].p_vaddr + phdr[i].p_filesz > size) {
+        fprintf(stderr, "elf does not fit inside memory\n");
+        return false;
+      }
+      memcpy(mem_array + phdr[i].p_vaddr, raw_data + phdr[i].p_offset, phdr[i].p_memsz);
+    }
+  } else {
+    Elf32_Phdr *phdr = elf32_getphdr(elf);
+
+    for (size_t i = 0; i < hdr_num; ++i) {
+      if (phdr[i].p_type != PT_LOAD) {
+        continue;
+      }
+      if (phdr[i].p_filesz == 0) {
+        continue;
+      }
+      
+      if (phdr[i].p_vaddr + phdr[i].p_filesz > size) {
+        fprintf(stderr, "elf does not fit inside memory\n");
+        return false;
+      }
+      memcpy(mem_array + phdr[i].p_vaddr, raw_data + phdr[i].p_offset, phdr[i].p_memsz);
+    }
+  }
+
+  return true;
+}
+
 int main(int argc, char *argv[]) {
   signal(SIGINT, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
@@ -190,13 +253,14 @@ int main(int argc, char *argv[]) {
   const char *shmPath;
   struct SimbricksBaseIfParams memParams;
   struct SimbricksMemIf memif;
+  const char *elf_file = NULL;
 
   SimbricksMemIfDefaultParams(&memParams);
 
-  if (argc < 6 || argc > 10) {
+  if (argc < 6 || argc > 11) {
     fprintf(stderr,
             "Usage: basicmem [SIZE] [BASE-ADDR] [ASID] [MEM-SOCKET] "
-            "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [MEM-LATENCY]\n");
+            "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [MEM-LATENCY] [ELF]\n");
     return -1;
   }
   if (argc >= 8)
@@ -205,6 +269,8 @@ int main(int argc, char *argv[]) {
     memParams.sync_interval = strtoull(argv[8], NULL, 0) * 1000ULL;
   if (argc >= 10)
     memParams.link_latency = strtoull(argv[9], NULL, 0) * 1000ULL;
+  if (argc >= 11)
+    elf_file = argv[10];
 
   size = strtoull(argv[1], NULL, 0);
   base_addr = strtoull(argv[2], NULL, 0);
@@ -214,9 +280,16 @@ int main(int argc, char *argv[]) {
   memParams.sync_mode = kSimbricksBaseIfSyncOptional;
   memParams.blocking_conn = true;
 
-  mem_array = (uint8_t *)malloc(size * sizeof(uint8_t));
+  mem_array = (uint8_t *)calloc(size, sizeof(uint8_t));
   if (!mem_array) {
     perror("no array allocated\n");
+  }
+
+  if (elf_file != NULL) {
+    if (!LoadElf(elf_file)) {
+      fprintf(stderr, "faild to load ELF binary %s\n", elf_file);
+      return EXIT_FAILURE;
+    }
   }
 
   if (!MemifInit(&memif, shmPath, &memParams)) {
