@@ -216,11 +216,11 @@ bool LoadElf(const char *elf_file) {
         continue;
       }
       
-      if (phdr[i].p_vaddr + phdr[i].p_filesz > size) {
+      if (phdr[i].p_vaddr + phdr[i].p_memsz > size) {
         fprintf(stderr, "elf does not fit inside memory\n");
         return false;
       }
-      memcpy(mem_array + phdr[i].p_vaddr, raw_data + phdr[i].p_offset, phdr[i].p_memsz);
+      memcpy(mem_array + phdr[i].p_vaddr, raw_data + phdr[i].p_offset, phdr[i].p_filesz);
     }
   } else {
     Elf32_Phdr *phdr = elf32_getphdr(elf);
@@ -233,13 +233,16 @@ bool LoadElf(const char *elf_file) {
         continue;
       }
       
-      if (phdr[i].p_vaddr + phdr[i].p_filesz > size) {
+      if (phdr[i].p_vaddr + phdr[i].p_memsz > size) {
         fprintf(stderr, "elf does not fit inside memory\n");
         return false;
       }
-      memcpy(mem_array + phdr[i].p_vaddr, raw_data + phdr[i].p_offset, phdr[i].p_memsz);
+      memcpy(mem_array + phdr[i].p_vaddr, raw_data + phdr[i].p_offset, phdr[i].p_filesz);
     }
   }
+
+  elf_end(elf);
+  close(fd);
 
   return true;
 }
