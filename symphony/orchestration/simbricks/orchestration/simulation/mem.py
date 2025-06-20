@@ -73,3 +73,47 @@ class BasicMem(sim_base.Simulator):
             cmd += f" {mem_dev._load_elf}"
 
         return cmd
+
+class BasicInterconnect(sim_base.Simulator):
+    def __init__(self, simulation: sim_base.Simulation) -> None:
+        super().__init__(
+            simulation=simulation, executable="sims/mem/interconnect/interconnect", name=""
+        )
+        self.name = f"interconnect-{self._id}"
+
+    def supported_socket_types(self, interface: sys_base.Interface) -> set[inst_socket.SockType]:
+        return {inst_socket.SockType.LISTEN, inst_socket.SockType.CONNECT}
+
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
+        return super().fromJSON(simulation, json_obj)
+
+    def add(self, ic: sys_mem.MemInterconnect):
+        utils_base.has_expected_type(ic, sys_mem.MemInterconnect)
+        super().add(ic)
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        cmd = f"{inst.env.repo_base(relative_path=self._executable)} "
+
+        interconnects = self.filter_components_by_type(ty=sys_mem.MemInterconnect)
+        assert len(interconnects) == 1
+        ic = interconnects[0]
+
+        shm = inst.env.get_simulator_shm_pool_path(self)
+        cmd += f"-p {shm} "
+
+        for intf in ic.interfaces():
+            socket = inst.get_socket(interface=intf)
+            chan = self._get_channel(intf.channel)
+            params_url = self.get_parameters_url(
+                inst, socket, sync=chan._synchronized, latency=intf.channel.latency, sync_period=chan.sync_period
+            )
+
+            if isinstance(intf, sys_mem.MemHostInterface):
+                cmd += f"-d {intf.id()}={params_url} "
+            elif isinstance(intf, sys_mem.MemDeviceInterface):
+                cmd += f"-h {params_url} "
+
+        for r in ic._routes:
+            cmd += f"-m {r['vaddr']},{r['vaddr'] + r['len']},{r['paddr']},{r['dev']} "
+        return cmd

@@ -9,6 +9,7 @@ __pycache__/
 _vimrc_local.vim
 lib/test/parser_test
 sims/mem/basicmem/basicmem
+sims/mem/interconnect/interconnect
 sims/mem/memnic/memnic
 sims/mem/memswitch/memswitch
 sims/mem/netmem/netmem

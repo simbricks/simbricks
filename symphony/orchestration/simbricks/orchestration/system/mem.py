@@ -94,3 +94,46 @@ class MemSimpleDevice(base.Component):
         instance._as_id = as_id
         instance._load_elf = utils_base.get_json_attr_top_or_none(json_obj, "load_elf")
         return instance
+
+
+class MemInterconnect(base.Component):
+    def __init__(self, s: base.System):
+        super().__init__(s)
+        self._routes: list[dict] = []
+
+
+    def add_if(self, interface: MemDeviceInterface | MemHostInterface) -> None:
+        super().add_if(interface)
+
+    def connect_host(self, peer_if: MemHostInterface) -> MemChannel:
+        our_if = MemDeviceInterface(self)
+        self.add_if(our_if)
+        mc = MemChannel(peer_if, our_if)
+        return mc
+
+    def connect_device(self, peer_if: MemDeviceInterface) -> MemChannel:
+        our_if = MemHostInterface(self)
+        self.add_if(our_if)
+        mc = MemChannel(our_if, peer_if)
+        return mc
+
+    def add_route(self, dev: MemHostInterface, vaddr: int, len: int, paddr: int = 0):
+        assert dev in self.interfaces()
+        self._routes.append({
+            'dev': dev.id(),
+            'vaddr': vaddr,
+            'len': len,
+            'paddr': paddr,
+        })
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["routes"] = self._routes
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        routes = utils_base.get_json_attr_top(json_obj, "routes")
+        instance._routes = routes
+        return instance
