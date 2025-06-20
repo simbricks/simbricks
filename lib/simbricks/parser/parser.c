@@ -181,3 +181,97 @@ void SimbricksParametersFree(struct SimbricksAdapterParams *params) {
     free(params->shm_path);
     free(params);
 }
+
+int SimbricksParametersEstablish(struct SimBricksBaseIfEstablishData *ifs,
+                                 const char **urls, size_t n,
+                                 struct SimbricksBaseIfSHMPool *pool,
+                                 const char *pool_path) {
+  int ret = 0;
+  size_t i;
+  struct SimbricksAdapterParams *params[n];
+  struct SimbricksBaseIfParams bparams[n];
+
+  // first parse all
+  memset(params, 0, sizeof(params));
+  for (i = 0; i < n; i++) {
+    params[i] = SimbricksParametersParse(urls[i]);
+    if (!params[i]) {
+      fprintf(stderr, "SimBricksParametersEstablish: error in %zu'th url: %s\n",
+              i, urls[i]);
+      ret = -1;
+      goto exit_params;
+    }
+  }
+
+  // Apply parsed parameters
+  for (i = 0; i < n; i++) {
+    struct SimbricksAdapterParams *ap = params[i];
+    struct SimbricksBaseIfParams *bps = &bparams[i];
+    // initialize with defaults set in base if by caller
+    *bps = ifs[i].base_if->params;
+
+    bps->blocking_conn = false;
+    bps->sock_path = ap->socket_path;
+    if (ap->sync) {
+      bps->sync_mode = kSimbricksBaseIfSyncRequired;
+      if (ap->link_latency_set)
+        bps->link_latency = ap->link_latency;
+      if (ap->sync_interval_set)
+        bps->sync_interval = ap->sync_interval;
+    } else {
+      bps->sync_mode = kSimbricksBaseIfSyncDisabled;
+    }
+  }
+
+  // Allocate mempool if needed
+  memset(pool, 0, sizeof(*pool));
+  size_t mempoolsize = 0;
+  for (i = 0; i < n; i++)
+    if (params[i]->listen)
+      mempoolsize += SimbricksBaseIfSHMSize(&bparams[i]);
+  if (mempoolsize > 0) {
+    if (SimbricksBaseIfSHMPoolCreate(pool, pool_path, mempoolsize)) {
+      ret = -1;
+      goto exit_params;
+    }
+  }
+
+  // Prepare each interface
+  for (i = 0; i < n; i++) {
+    struct SimbricksBaseIf *in = ifs[i].base_if;
+    if (SimbricksBaseIfInit(in, &bparams[i])) {
+      ret = -1;
+      goto exit_mempool;
+    }
+
+    if (params[i]->listen) {
+      if (SimbricksBaseIfListen(in, pool)) {
+        ret = -1;
+        goto exit_mempool;
+      }
+    } else {
+      if (SimbricksBaseIfConnect(in)) {
+        ret = -1;
+        goto exit_mempool;
+      }
+    }
+  }
+
+  // Establish connections
+  if (SimBricksBaseIfEstablish(ifs, n)) {
+    ret = -1;
+    goto exit_mempool;
+  }
+
+exit_mempool:
+  if (mempoolsize && ret != 0) {
+    SimbricksBaseIfSHMPoolUnlink(pool);
+    SimbricksBaseIfSHMPoolUnmap(pool);
+  }
+exit_params:
+  // free parameter metadata
+  for (i = 0; i < n; i++)
+    if (params[i])
+      SimbricksParametersFree(params[i]);
+  return ret;
+}
