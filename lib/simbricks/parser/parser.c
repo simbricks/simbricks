@@ -230,6 +230,15 @@ int SimbricksParametersEstablish(struct SimBricksBaseIfEstablishData *ifs,
     if (params[i]->listen)
       mempoolsize += SimbricksBaseIfSHMSize(&bparams[i]);
   if (mempoolsize > 0) {
+    // if pool path is not set, grab from an URL
+    if (!pool_path) {
+      for (i = 0; i < n; i++) {
+        if (params[i]->listen) {
+          pool_path = params[i]->shm_path;
+          break;
+        }
+      }
+    }
     if (SimbricksBaseIfSHMPoolCreate(pool, pool_path, mempoolsize)) {
       ret = -1;
       goto exit_params;
