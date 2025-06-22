@@ -117,3 +117,32 @@ class BasicInterconnect(sim_base.Simulator):
         for r in ic._routes:
             cmd += f"-m {r['vaddr']},{r['vaddr'] + r['len']},{r['paddr']},{r['dev']} "
         return cmd
+
+
+class MemTerminal(sim_base.Simulator):
+
+    def __init__(self, simulation: sim_base.Simulation) -> None:
+        super().__init__(
+            simulation=simulation, executable="sims/mem/terminal/terminal", name=""
+        )
+        self.name = f"terminal-{self._id}"
+
+    def supported_socket_types(self, interface: sys_base.Interface) -> set[inst_socket.SockType]:
+        return {inst_socket.SockType.LISTEN}
+
+    @classmethod
+    def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
+        return super().fromJSON(simulation, json_obj)
+
+    def add(self, mem: sys_mem.MemTerminal):
+        utils_base.has_expected_type(mem, sys_mem.MemTerminal)
+        super().add(mem)
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        assert len(self.components()) == 1
+        mem_devices = self.filter_components_by_type(ty=sys_mem.MemTerminal)
+        mem_dev = mem_devices[0]
+
+        url = self.get_interface_url(inst, mem_dev._mem_if)
+        cmd = f"{inst.env.repo_base(relative_path=self._executable)} {url}"
+        return cmd

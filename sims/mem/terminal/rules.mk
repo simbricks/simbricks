@@ -1,4 +1,4 @@
-# Copyright 2022 Max Planck Institute for Software Systems, and
+# Copyright 2025 Max Planck Institute for Software Systems, and
 # National University of Singapore
 #
 # Permission is hereby granted, free of charge, to any person obtaining
@@ -22,11 +22,16 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,basicmem))
-$(eval $(call subdir,memnic))
-$(eval $(call subdir,memswitch))
-$(eval $(call subdir,netmem))
-$(eval $(call subdir,interconnect))
-$(eval $(call subdir,terminal))
+bin_terminal := $(d)terminal
 
+OBJS := $(d)terminal.o
+
+$(OBJS): CPPFLAGS := -g $(CPPFLAGS) -I$(d)include/
+
+$(bin_terminal): $(OBJS)  $(lib_parser) $(lib_mem) $(lib_base)
+
+$(bin_terminal): LDFLAGS := -g $(LDFLAGS)
+
+CLEAN := $(bin_terminal) $(OBJS)
+ALL := $(bin_terminal)
 include mk/subdir_post.mk
