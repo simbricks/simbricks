@@ -214,6 +214,17 @@ class Simulator(utils_base.IdObj):
                 f":latency={latency}:sync_interval={sync_period}"
             )
 
+    def get_interface_url(
+        self,
+        inst: inst_base.Instantiation,
+        intf: sys_conf.Interface,
+    ) -> str:
+            socket = inst.get_socket(interface=intf)
+            chan = self._get_channel(intf.channel)
+            return self.get_parameters_url(
+                inst, socket, sync=chan._synchronized, latency=intf.channel.latency, sync_period=chan.sync_period
+            )
+
     def components(self) -> set[sys_conf.Component]:
         return self._components
 

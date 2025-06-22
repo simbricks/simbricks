@@ -137,3 +137,27 @@ class MemInterconnect(base.Component):
         routes = utils_base.get_json_attr_top(json_obj, "routes")
         instance._routes = routes
         return instance
+
+
+class MemTerminal(base.Component):
+    def __init__(self, s: base.System):
+        super().__init__(s)
+        self._mem_if: MemDeviceInterface = MemDeviceInterface(c=self)
+        self.ifs.append(self._mem_if)
+
+    def add_if(self, interface: MemDeviceInterface) -> None:
+        raise Exception(
+            f"you overwrite MemDeviceInterface._mem_if ({self._mem_if.id()} -> {interface.id()}) "
+        )
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["mem_if"] = self._mem_if.id()
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        mem_if_id = int(utils_base.get_json_attr_top(json_obj, "mem_if"))
+        instance._mem_if = system.get_inf(mem_if_id)
+        return instance
