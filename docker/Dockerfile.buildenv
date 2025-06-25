@@ -51,6 +51,7 @@ RUN pip install --no-cache-dir --upgrade -r /tmp/requirements.txt
 RUN cd /tmp \
  && git clone https://github.com/apache/thrift.git \
  && cd thrift \
+ && git switch 0.22.0 \
  && ./bootstrap.sh \
  && ./configure \
  && make -j`nproc` \
