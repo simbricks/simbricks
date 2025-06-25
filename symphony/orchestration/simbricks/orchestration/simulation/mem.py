@@ -58,6 +58,7 @@ class BasicMem(sim_base.Simulator):
         assert len(mem_devices) == 1
         mem_dev = mem_devices[0]
         socket = inst.get_socket(interface=mem_dev._mem_if)
+        assert socket is not None
         shm = inst.env.get_simulator_shm_pool_path(self)
         mem_channels = sim_base.Simulator.filter_channels_by_sys_type(
             self.get_channels(), sys_mem.MemChannel
@@ -105,6 +106,7 @@ class BasicInterconnect(sim_base.Simulator):
         for intf in ic.interfaces():
             socket = inst.get_socket(interface=intf)
             chan = self._get_channel(intf.channel)
+            assert chan is not None
             params_url = self.get_parameters_url(
                 inst, socket, sync=chan._synchronized, latency=intf.channel.latency, sync_period=chan.sync_period
             )
