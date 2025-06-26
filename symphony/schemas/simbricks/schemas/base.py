@@ -247,6 +247,33 @@ class ApiRunnerEventQuery(BaseModel):
 
 
 class RunComponentState(str, enum.Enum):
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            ranking = {
+                RunComponentState.UNKNOWN: 1,
+                RunComponentState.PREPARING: 2,
+                RunComponentState.STARTING: 3,
+                RunComponentState.RUNNING: 4,
+                RunComponentState.TERMINATED: 5,
+            }
+            return ranking[self] > ranking[other]
+        return NotImplemented
+
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            return self > other or self == other
+        return NotImplemented
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return not (self >= other)
+        return NotImplemented
+
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            return not (self > other)
+        return NotImplemented
+
     UNKNOWN = "unknown"
     PREPARING = "preparing"
     STARTING = "starting"
