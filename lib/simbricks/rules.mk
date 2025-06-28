@@ -81,6 +81,12 @@ $(lib_pkg): $(lib_simbricks)
     # cleanup
 	rm -r $(pkg_dir)
 
+	@echo "Finished building debian package"
+
+package: $(lib_pkg)
+
+.PHONY: package
+
 CLEAN := $(lib_simbricks) $(lib_pkg)
 ALL := $(lib_simbricks)
 include mk/subdir_post.mk
