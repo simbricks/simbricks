@@ -13,6 +13,8 @@ sims/mem/interconnect/interconnect
 sims/mem/memnic/memnic
 sims/mem/memswitch/memswitch
 sims/mem/netmem/netmem
+sims/mem/terminal/terminal
+sims/mem/vnc/vnc
 sims/nic/corundum/corundum_verilator
 sims/nic/corundum/obj_dir
 sims/nic/e1000_gem5/e1000_gem5
