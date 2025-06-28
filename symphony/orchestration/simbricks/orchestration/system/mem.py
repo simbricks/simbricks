@@ -161,3 +161,45 @@ class MemTerminal(base.Component):
         mem_if_id = int(utils_base.get_json_attr_top(json_obj, "mem_if"))
         instance._mem_if = system.get_inf(mem_if_id)
         return instance
+
+
+class MemVnc(base.Component):
+    def __init__(self, s: base.System):
+        super().__init__(s)
+        self._mem_if: MemDeviceInterface = MemDeviceInterface(c=self)
+        self.ifs.append(self._mem_if)
+        self._width = 800
+        self._height = 600
+        self._samples_per_pixel = 3
+        self._bytes_per_pixel = 4
+        self._host = ""
+        self._port = 5900
+
+    def add_if(self, interface: MemDeviceInterface) -> None:
+        raise Exception(
+            f"you overwrite MemDeviceInterface._mem_if ({self._mem_if.id()} -> {interface.id()}) "
+        )
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["mem_if"] = self._mem_if.id()
+        json_obj["width"] = self._width
+        json_obj["height"] = self._height
+        json_obj["samples_per_pixel"] = self._samples_per_pixel
+        json_obj["bytes_per_pixel"] = self._bytes_per_pixel
+        json_obj["host"] = self._host
+        json_obj["port"] = self._port
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        mem_if_id = int(utils_base.get_json_attr_top(json_obj, "mem_if"))
+        instance._mem_if = system.get_inf(mem_if_id)
+        instance._width = utils_base.get_json_attr_top(json_obj, "width")
+        instance._height = utils_base.get_json_attr_top(json_obj, "height")
+        instance._samples_per_pixel = utils_base.get_json_attr_top(json_obj, "samples_per_pixel")
+        instance._bytes_per_pixel = utils_base.get_json_attr_top(json_obj, "bytes_per_pixel")
+        instance._host = utils_base.get_json_attr_top(json_obj, "host")
+        instance._port = utils_base.get_json_attr_top(json_obj, "port")
+        return instance
