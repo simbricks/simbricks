@@ -172,7 +172,7 @@ class MemVnc(base.Component):
         self._height = 600
         self._samples_per_pixel = 3
         self._bytes_per_pixel = 4
-        self._host = ""
+        self._host = "127.0.0.1"
         self._port = 5900
 
     def add_if(self, interface: MemDeviceInterface) -> None:
