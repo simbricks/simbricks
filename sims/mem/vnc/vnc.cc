@@ -87,7 +87,11 @@ static uint64_t Read(uint64_t addr, uint16_t len) {
 
 static void Write(uint64_t addr, uint16_t len, uint64_t val) {
   if ((addr & 3) == 0 && addr < vnc_screen.size) {
-    memcpy(vnc_screen.rfbScreen->frameBuffer, &val, len);
+    memcpy(vnc_screen.rfbScreen->frameBuffer + addr, &val, len);
+    uint64_t pos = addr / 4;
+    int x = pos % vnc_screen.width;
+    int y = pos / vnc_screen.width;
+    rfbMarkRectAsModified(vnc_screen.rfbScreen, x, y, x+1, y+1);
   } else {
     std::cerr << "encountered invalid write at address " << std::hex << addr << std::dec << "\n";
   }
@@ -198,6 +202,8 @@ int main(int argc, char *argv[]) {
   vnc_screen.size = width * height * bytes_per_pixel;
   vnc_screen.rfbScreen = rfbScreen;
 
+  rfbRunEventLoop(rfbScreen, -1, TRUE);
+
   signal(SIGINT, sigint_handler);
   signal(SIGTERM, sigint_handler);
   signal(SIGUSR1, sigusr1_handler);
@@ -214,7 +220,6 @@ int main(int argc, char *argv[]) {
       next_ts = SimbricksBaseIfInTimestamp(&memif.base);
     } while (!exiting && next_ts <= cur_ts);
     cur_ts = next_ts;
-    rfbProcessEvents(rfbScreen, -1);
   }
 
   rfbShutdownServer(rfbScreen, TRUE);
