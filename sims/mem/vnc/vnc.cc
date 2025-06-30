@@ -86,7 +86,7 @@ static uint64_t Read(uint64_t addr, uint16_t len) {
 }
 
 static void Write(uint64_t addr, uint16_t len, uint64_t val) {
-  if ((addr & 3) == 0 && addr < vnc_screen.size) {
+  if ((addr % vnc_screen.bytes_per_pixel) == 0 && addr < vnc_screen.size) {
     memcpy(vnc_screen.rfbScreen->frameBuffer + addr, &val, len);
     uint64_t pos = addr / 4;
     int x = pos % vnc_screen.width;
