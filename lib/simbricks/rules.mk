@@ -39,7 +39,7 @@ $(lib_simbricks): $(libsimbricks_objs)
 
 
 pkg_name := simbricks-core-dev
-pkg_version := 0.0.1
+pkg_version := 0.3.6
 pkg_arch := amd64
 pkg_build_dir := /tmp
 pkg := $(pkg_name)_$(pkg_version)_$(pkg_arch)
@@ -48,7 +48,6 @@ pkg_debian_dir := $(pkg_dir)/DEBIAN
 pkg_control_file := $(pkg_debian_dir)/control
 pkg_lib_dir := $(pkg_dir)/usr/lib/simbricks
 pkg_header_dir := $(pkg_dir)/usr/include/simbricks
-lib_folders := axi base mem network nicbm nicif parser pcie
 
 lib_pkg := $(lib_dir)$(pkg).deb
 
