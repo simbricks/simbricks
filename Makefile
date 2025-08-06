@@ -29,8 +29,8 @@ base_dir := $(d)./
 CPPLINT ?= cpplint
 CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
-CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu11 $(EXTRA_CFLAGS)
-CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu++17 $(EXTRA_CXXFLAGS)
+CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu11 -g $(EXTRA_CFLAGS)
+CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu++20 -g $(EXTRA_CXXFLAGS)
 CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir) $(EXTRA_CPPFLAGS)
 
 VERILATOR = verilator
@@ -45,6 +45,7 @@ $(eval $(call subdir,sims))
 $(eval $(call subdir,dist))
 $(eval $(call subdir,doc))
 $(eval $(call subdir,images))
+$(eval $(call subdir,symphony))
 
 
 all: $(ALL_ALL)
@@ -98,13 +99,7 @@ lint-pylint:
 		--ignore-paths experiments/simbricks/orchestration/utils/graphlib.py \
 	  	experiments/ results/
 
-typecheck-python:
-	pytype -j 0 --keep-going \
-		--exclude experiments/pyexps/ae/ \
-			experiments/simbricks/orchestration/utils/graphlib.py \
-		-- experiments/ results/
-
-lint-python: lint-pylint typecheck-python
+lint-python: lint-pylint
 lint: lint-cpplint lint-clang-format lint-python
 lint-all: lint lint-clang-tidy
 
@@ -125,7 +120,7 @@ help:
 
 .PHONY: all clean clean-external clean-all distclean lint lint-all \
 	lint-cpplint lint-clang-tidy lint-clang-format clang-format help \
-	lint-yapf format-yapf lint-isort format-isort lint-pylint typecheck-python \
+	lint-yapf format-yapf lint-isort format-isort lint-pylint \
 	lint-python
 
 include mk/subdir_post.mk

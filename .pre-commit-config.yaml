@@ -2,11 +2,11 @@ exclude: ^experiments/simbricks/orchestration/utils/graphlib.py$
 repos:
   - repo: local
     hooks:
-      - id: format-isort
-        name: format-isort
-        language: python
-        entry: make format-isort
-        pass_filenames: false
+      #- id: format-isort
+      # name: format-isort
+      # language: python
+      # entry: make format-isort
+      # pass_filenames: false
       - id: format-yapf
         name: format-yapf
         language: python
@@ -19,8 +19,8 @@ repos:
         args:
           [
             --in-place,
-            --wrap-summaries=80,
-            --wrap-descriptions=80,
+            --wrap-summaries=100,
+            --wrap-descriptions=100,
             --pre-summary-newline,
           ]
   - repo: https://github.com/pre-commit/pre-commit-hooks

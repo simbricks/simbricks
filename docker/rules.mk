@@ -26,53 +26,57 @@ include mk/subdir_pre.mk
 DOCKER_REGISTRY ?= docker.io/
 DOCKER_TAG ?= :latest
 
-DOCKER_IMAGES := simbricks/simbricks-build simbricks/simbricks-base \
-  simbricks/simbricks simbricks/simbricks-runenv simbricks/simbricks-min \
-  simbricks/simbricks-dist-worker simbricks/simbricks-gem5opt
+DOCKER_IMAGES_SIMS := simbricks/simbricks-build simbricks/simbricks-runenv \
+  simbricks/simbricks-sims simbricks/simbricks-fullsims
+
+DOCKER_IMAGES_SYMPHONY := simbricks/simbricks-local simbricks/simbricks-runner \
+  simbricks/simbricks-executor
 
 REQUIREMENTS_TXT := $(d)requirements.txt
 
 $(REQUIREMENTS_TXT):
 	cat requirements.txt doc/requirements.txt > $@
 
-docker-images: $(REQUIREMENTS_TXT)
+docker-images-sims: $(REQUIREMENTS_TXT)
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.buildenv docker
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-base$(DOCKER_TAG) \
-		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
-		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.base .
-	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks$(DOCKER_TAG) \
-		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
-		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile .
-	docker build -t \
 		$(DOCKER_REGISTRY)simbricks/simbricks-runenv$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.runenv docker
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-min$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-sims$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.min docker
+		-f docker/Dockerfile.sims .
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-dist-worker$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-fullsims$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.dist-worker docker
+		-f docker/Dockerfile.full .
 
-docker-images-debug:
+docker-images-symphony: $(REQUIREMENTS_TXT)
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-gem5opt$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks/simbricks-local$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
-		-f docker/Dockerfile.gem5opt docker
+		-f docker/Dockerfile.local .
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-runner$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
+		-f docker/Dockerfile.runner .
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks/simbricks-executor$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
+		-f docker/Dockerfile.executor .
+
+docker-images: docker-images-sims docker-images-symphony
 
 docker-images-tofino:
 	docker build -t $(DOCKER_REGISTRY)simbricks/simbricks-tofino$(DOCKER_TAG) \
@@ -80,18 +84,40 @@ docker-images-tofino:
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.tofino .
 
-docker-retag:
-	for i in $(DOCKER_IMAGES) ; do \
+
+docker-retag-sims:
+	for i in $(DOCKER_IMAGES_SIMS) ; do \
 		docker image inspect \
 		  $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) >/dev/null && \
 		docker tag $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) \
 			$(DOCKER_REGISTRY)$${i}$(DOCKER_TAG) ; \
 		done
 
-docker-push:
+docker-retag-symphony:
+	for i in $(DOCKER_IMAGES_SYMPHONY) ; do \
+		docker image inspect \
+		  $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) >/dev/null && \
+		docker tag $(DOCKER_REGISTRY_FROM)$${i}$(DOCKER_TAG_FROM) \
+			$(DOCKER_REGISTRY)$${i}$(DOCKER_TAG) ; \
+		done
+
+
+docker-push-sims:
 	for i in $(addprefix $(DOCKER_REGISTRY), $(addsuffix $(DOCKER_TAG), \
-		$(DOCKER_IMAGES))) ; do \
+		$(DOCKER_IMAGES_SIMS))) ; do \
 		docker image inspect $$i >/dev/null && docker push $$i ; \
+		done
+
+docker-push-symphony:
+	for i in $(addprefix $(DOCKER_REGISTRY), $(addsuffix $(DOCKER_TAG), \
+		$(DOCKER_IMAGES_SYMPHONY))) ; do \
+		docker image inspect $$i >/dev/null && docker push $$i ; \
+		done
+
+docker-pull-sims:
+	for i in $(addprefix $(DOCKER_REGISTRY), $(addsuffix $(DOCKER_TAG), \
+		$(DOCKER_IMAGES_SIMS))) ; do \
+		docker pull $$i ; \
 		done
 
 CLEAN := $(REQUIREMENTS_TXT)

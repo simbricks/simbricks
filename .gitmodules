@@ -1,15 +1,15 @@
 [submodule "sims/external/gem5"]
 	path = sims/external/gem5
-	url = https://github.com/simbricks/gem5.git
+	url = https://github.com/hsadok/simbricks_gem5.git
 [submodule "sims/external/qemu"]
 	path = sims/external/qemu
-	url = https://github.com/simbricks/qemu.git
+	url = https://github.com/hsadok/simbricks_qemu.git
 [submodule "sims/external/ns-3"]
 	path = sims/external/ns-3
-	url = https://github.com/simbricks/ns-3.git
+	url = https://github.com/hsadok/simbricks_ns-3.git
 [submodule "sims/external/femu"]
 	path = sims/external/femu
-	url = https://github.com/simbricks/femu.git
+	url = https://github.com/hsadok/simbricks_femu.git
 [submodule "sims/external/bmv2"]
 	path = sims/external/bmv2
-	url = https://github.com/simbricks/bmv2.git
+	url = https://github.com/hsadok/simbricks_bmv2.git

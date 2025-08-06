@@ -15,5 +15,5 @@ jobs:
         python-version: '3.10'
         architecture: 'x64'
         cache: pip
-    - run: pip install -r requirements.txt
-    - run: make typecheck-python
+    - run: make symphony-dev
+    - run: make symphony-typecheck

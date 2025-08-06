@@ -25,7 +25,7 @@
 # recurse into subdirectory (one parameter, subdirectory name)
 define subdir
 cur_dir := $$(d)$(1)/
-$(if $(filter $(abspath .),$(abspath $$(d)$(1))),,include $$(cur_dir)rules.mk)
+$(if $(filter $(abspath .),$(abspath $$(d)$(1))),,-include $$(cur_dir)rules.mk)
 endef
 
 

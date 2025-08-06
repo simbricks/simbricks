@@ -1,0 +1,5 @@
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks/simbricks-runner${TAG}
+COPY docker/run_local_executor.sh /run_local_executor.sh
+ENTRYPOINT ["/run_local_executor.sh"]

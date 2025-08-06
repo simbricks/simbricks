@@ -38,6 +38,8 @@ extern const char *ib_devname;
 extern bool ib_connect;
 extern uint8_t ib_port;
 extern int ib_sgid_idx;
+extern char *listen_info_file_path;
+extern char *listen_ready_file_path;
 
 int RdmaListen(struct sockaddr_in *addr);
 int RdmaConnect(struct sockaddr_in *addr);

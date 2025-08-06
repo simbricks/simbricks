@@ -8,7 +8,7 @@ apt-get -y install \
     iputils-ping \
     lbzip2 \
     netperf \
-    netcat \
+    netcat-openbsd \
     ethtool \
     tcpdump \
     pciutils \

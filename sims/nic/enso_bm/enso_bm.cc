@@ -90,7 +90,76 @@ void dma_read::done() {
   delete this;
 }
 
-rx_pipeline::rx_pipeline(enso_bm *context) {
+message_processor::message_processor(enso_bm *context) {
+  context_ = context;
+}
+
+message_processor::~message_processor() {
+}
+
+void message_processor::enqueue_packet(const uint8_t *data, size_t len,
+                                       uint32_t pipe_id) {
+  const headers::eth_hdr *eth =
+      reinterpret_cast<const headers::eth_hdr *>(data);
+  const headers::ip_hdr *ip =
+      reinterpret_cast<const headers::ip_hdr *>(eth + 1);
+  const headers::udp_hdr *udp =
+      reinterpret_cast<const headers::udp_hdr *>(ip + 1);
+  const MsgHeader *msg_header = reinterpret_cast<const MsgHeader *>(udp + 1);
+
+  uint32_t msg_id = msg_header->msg_id;
+  uint32_t total_length = msg_header->total_length;
+  uint32_t offset = msg_header->offset;
+
+  // Entire message (+ header) must be able to fit in a single pipe.
+  assert(total_length < (ENSO_PIPE_SIZE - 2) * 64);
+
+  uint32_t header_strip_offset = sizeof(headers::eth_hdr) +
+                                 sizeof(headers::ip_hdr) +
+                                 sizeof(headers::udp_hdr);
+
+  uint32_t payload_len = le_to_be_16(ip->len) - sizeof(headers::ip_hdr) -
+                         sizeof(headers::udp_hdr) - sizeof(MsgHeader);
+
+  assert(offset + payload_len > offset);  // Check for overflow.
+  assert(offset + payload_len <= total_length);
+
+  assert((payload_len + sizeof(MsgHeader)) == (len - header_strip_offset));
+
+  auto it = message_state_.find(pipe_id);
+  if (it == message_state_.end()) {
+    // New message.
+    assert(offset == 0);
+  } else {
+    // Existing message.
+    assert(msg_id == it->second.msg_id);
+    assert(total_length == it->second.total_length);
+    assert(offset == it->second.offset);
+
+    // Only keep the message header in the first packet.
+    header_strip_offset += sizeof(MsgHeader);
+  }
+
+  // Strip headers.
+  data += header_strip_offset;
+  len -= header_strip_offset;
+
+  if (offset + payload_len == total_length) {
+    // Last packet in message.
+    if (it != message_state_.end()) {
+      message_state_.erase(it);
+    }
+  } else {
+    assert((len & 0x3f) == 0);  // Must be 64-byte aligned.
+
+    offset += payload_len;  // Next expected offset.
+    message_state_[pipe_id] = {msg_id, total_length, offset};
+  }
+
+  context_->DmaData(data, len, pipe_id);
+}
+
+rx_pipeline::rx_pipeline(enso_bm *context) : message_processor_(context) {
   context_ = context;
 }
 
@@ -120,6 +189,11 @@ void rx_pipeline::set_fallback_queues(uint32_t fallback_queues,
   fallback_queue_mask_ = fallback_queue_mask;
 }
 
+void rx_pipeline::set_queue_extra_processing(uint32_t enso_pipe_id,
+                                             ExtraProcessing extra_processing) {
+  queue_extra_processing_[enso_pipe_id] = extra_processing;
+}
+
 void rx_pipeline::reset() {
   flow_table_.clear();
   fallback_queues_ = 0;
@@ -139,8 +213,13 @@ void rx_pipeline::flow_director(const uint8_t *data, size_t len) {
   if (ip->proto == IP_PROTO_TCP) {
     const headers::tcp_hdr *tcp =
         reinterpret_cast<const headers::tcp_hdr *>(ip + 1);
-    tuple = {be_to_le_16(tcp->dest), be_to_le_16(tcp->src),
-             be_to_le_32(ip->dest), be_to_le_32(ip->src)};
+
+    if (TCPH_FLAGS(tcp) & TCP_SYN) {
+      tuple = {be_to_le_16(tcp->dest), 0, be_to_le_32(ip->dest), 0};
+    } else {
+      tuple = {be_to_le_16(tcp->dest), be_to_le_16(tcp->src),
+               be_to_le_32(ip->dest), be_to_le_32(ip->src)};
+    }
   } else if (ip->proto == IP_PROTO_UDP) {
     const headers::udp_hdr *udp =
         reinterpret_cast<const headers::udp_hdr *>(ip + 1);
@@ -185,7 +264,32 @@ void rx_pipeline::flow_director(const uint8_t *data, size_t len) {
   context_->log << "RX: Sending packet to enso pipe " << pipe_id
                 << logger::endl;
 #endif
-  context_->DmaData(data, len, pipe_id);
+
+  // Apply any extra processing to packet.
+  extra_processing(data, len, pipe_id);
+}
+
+void rx_pipeline::extra_processing(const uint8_t *data, size_t len,
+                                   uint32_t pipe_id) {
+  // Check if packet requires extra processing.
+  auto it = queue_extra_processing_.find(pipe_id);
+  ExtraProcessing extra_processing;
+  if (it == queue_extra_processing_.end()) {
+    extra_processing = ExtraProcessing::kNone;
+  } else {
+    extra_processing = it->second;
+  }
+
+  switch (extra_processing) {
+    case ExtraProcessing::kNone:
+      context_->DmaData(data, len, pipe_id);
+      break;
+    case ExtraProcessing::kMessage:
+      message_processor_.enqueue_packet(data, len, pipe_id);
+      break;
+    default:
+      assert(false);
+  }
 }
 
 enso_bm::dma_read_tx_notif::dma_read_tx_notif(enso_bm *context,
@@ -278,9 +382,10 @@ void tx_pipeline::enqueue_data(const uint8_t *data, size_t len) {
   while (missing_len > 0) {
     if (incomplete_pkt_len_ != 0) {
       // Append incomplete packet to current data.
-      int32_t missing_pkt_len = total_pkt_len_ - incomplete_pkt_len_;
+      uint32_t aligned_pkt_len = (total_pkt_len_ + 63) & ~63;
+      int32_t missing_pkt_len = aligned_pkt_len - incomplete_pkt_len_;
 
-      assert(missing_pkt_len > missing_len);
+      assert(missing_pkt_len <= missing_len);
 
       memcpy(incomplete_pkt_buf_ + incomplete_pkt_len_, cur_data,
              missing_pkt_len);
@@ -301,10 +406,13 @@ void tx_pipeline::enqueue_data(const uint8_t *data, size_t len) {
         reinterpret_cast<const headers::eth_hdr *>(cur_data);
     const headers::ip_hdr *ip =
         reinterpret_cast<const headers::ip_hdr *>(eth + 1);
+    assert(eth->type == le_to_be_16(0x0800));  // Must be IPv4.
+
     size_t packet_length = le_to_be_16(ip->len) + sizeof(headers::eth_hdr);
     size_t aligned_length = (packet_length + 63) & ~63;
+    assert(aligned_length > 0);
 
-    if (static_cast<int32_t>(packet_length) > missing_len) {
+    if (static_cast<int32_t>(aligned_length) > missing_len) {
       // Incomplete packet.
       memcpy(incomplete_pkt_buf_, cur_data, missing_len);
       total_pkt_len_ = packet_length;
@@ -744,6 +852,10 @@ void enso_bm::process_config(config::config *config) {
       process_fallback_queues_config(
           reinterpret_cast<config::fallback_queue *>(config));
       break;
+    case config::QUEUE_EXTRA_PROCESSING_CONFIG_ID:
+      process_queue_extra_processing_config(
+          reinterpret_cast<config::queue_extra_processing *>(config));
+      break;
     default:
       log << "Invalid configuration ID: " << config_id << logger::endl;
       break;
@@ -772,10 +884,18 @@ void enso_bm::process_rate_limit_config(
 }
 
 void enso_bm::process_fallback_queues_config(
-    [[maybe_unused]] config::fallback_queue *fallback_queues) {
+    config::fallback_queue *fallback_queues) {
   rx_pipeline_.enable_rr = fallback_queues->enable_rr;
   rx_pipeline_.set_fallback_queues(fallback_queues->nb_fallback_queues,
                                    fallback_queues->fallback_queue_mask);
+}
+
+void enso_bm::process_queue_extra_processing_config(
+    config::queue_extra_processing *extra_processing) {
+  rx_pipeline_.set_queue_extra_processing(
+      extra_processing->enso_pipe_id,
+      static_cast<rx_pipeline::ExtraProcessing>(
+          extra_processing->extra_processing_type));
 }
 
 void enso_bm::reset() {

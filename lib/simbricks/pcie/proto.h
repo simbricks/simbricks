@@ -211,7 +211,7 @@ struct SimbricksProtoPcieH2DReadcomp {
   uint64_t req_id;
   uint8_t pad[40];
   uint64_t timestamp;
-  uint8_t pad_[7];
+  uint8_t pad__[7];
   uint8_t own_type;
   uint8_t data[];
 } __attribute__((packed));

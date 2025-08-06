@@ -51,6 +51,12 @@ struct four_tuple {
   }
 };
 
+struct MsgHeader {
+  uint32_t msg_id;        // Unique message ID.
+  uint32_t total_length;  // In bytes.
+  uint32_t offset;        // In bytes.
+} __attribute__((__packed__));
+
 class logger : public std::ostream {
  public:
   static const char endl = '\n';

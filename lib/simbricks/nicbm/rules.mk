@@ -26,7 +26,7 @@ lib_nicbm := $(d)libnicbm.a
 
 OBJS := $(addprefix $(d),nicbm.o multinic.o)
 
-$(lib_nicbm): $(OBJS)
+$(lib_nicbm): $(OBJS) $(libparser_objs)
 
 CLEAN := $(lib_nicbm) $(OBJS)
 include mk/subdir_post.mk

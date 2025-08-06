@@ -9,7 +9,7 @@ cp -r --parents \
   ../gem5-new/
 #`find build -name \*.py` \
 cd ..
-git submodule deinit -f gem5
+test -f .git && git submodule deinit -f gem5
 rm -rf ../../.git/modules/sims/external/gem5
 rm -rf gem5
 mv gem5-new gem5

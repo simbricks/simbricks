@@ -33,6 +33,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <unordered_map>
 #include <utility>
@@ -105,8 +106,23 @@ class dma_read : public dma_base {
   logger &log_;
 };
 
+class message_processor {
+ public:
+  explicit message_processor(enso_bm *context);
+  virtual ~message_processor();
+  void enqueue_packet(const uint8_t *data, size_t len, uint32_t pipe_id);
+
+ private:
+  enso_bm *context_;
+
+  // Maps pipe ID to message state.
+  std::unordered_map<uint32_t, MsgHeader> message_state_;
+};
+
 class rx_pipeline {
  public:
+  enum class ExtraProcessing { kNone = 0, kMessage = 1 };
+
   bool enable_rr = false;
 
   explicit rx_pipeline(enso_bm *context);
@@ -117,6 +133,8 @@ class rx_pipeline {
                             uint32_t enso_pipe_id);
   void set_fallback_queues(uint32_t fallback_queues,
                            uint32_t fallback_queue_mask);
+  void set_queue_extra_processing(uint32_t enso_pipe_id,
+                                  ExtraProcessing extra_processing);
 
   void reset();
 
@@ -126,8 +144,13 @@ class rx_pipeline {
   uint32_t fallback_queues_ = 0;
   uint32_t fallback_queue_mask_ = 0;
   uint32_t next_queue_ = 0;  // Used for round-robin.
+  message_processor message_processor_;
+
+  std::unordered_map<uint32_t, ExtraProcessing> queue_extra_processing_;
 
   void flow_director(const uint8_t *data, size_t len);
+
+  void extra_processing(const uint8_t *data, size_t len, uint32_t pipe_id);
 };
 
 class tx_pipeline {
@@ -258,6 +281,9 @@ class enso_bm : public nicbm::Runner::Device {
   void process_rate_limit_config(config::rate_limit *queue);
 
   void process_fallback_queues_config(config::fallback_queue *fallback_queues);
+
+  void process_queue_extra_processing_config(
+      config::queue_extra_processing *extra_processing);
 
   void reset();
 };

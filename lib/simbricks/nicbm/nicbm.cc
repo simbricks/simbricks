@@ -99,6 +99,7 @@ static void sigusr2_handler(int dummy) {
 volatile union SimbricksProtoPcieD2H *Runner::D2HAlloc() {
   if (SimbricksBaseIfInTerminated(&nicif_.pcie.base)) {
     sim_log::LogError("Runner::D2HAlloc: peer already terminated\n");
+    sim_log::FlushLog();
     abort();
   }
 
@@ -143,7 +144,7 @@ void Runner::IssueDma(DMAOp &op) {
 #ifdef DEBUG_NICBM
     sim_log::LogInfo(
         log_,
-        "main_time = %lu: nicbm: issuing dma op %p addr %lx len %zu pending "
+        "main_time = %lu: nicbm: issuing dma op %p addr 0x%lx len %zu pending "
         "%zu\n",
         main_time_, &op, op.dma_addr_, op.len_, dma_pending_);
 #endif
@@ -152,8 +153,8 @@ void Runner::IssueDma(DMAOp &op) {
 #ifdef DEBUG_NICBM
     sim_log::LogInfo(
         log_,
-        "main_time = %lu: nicbm: enqueuing dma op %p addr %lx len %zu pending "
-        "%zu\n",
+        "main_time = %lu: nicbm: enqueuing dma op %p addr 0x%lx len %zu pending"
+        " %zu\n",
         main_time_, &op, op.dma_addr_, op.len_, dma_pending_);
 #endif
     dma_queue_.push_back(&op);
@@ -179,7 +180,7 @@ void Runner::DmaDo(DMAOp &op) {
 #ifdef DEBUG_NICBM
   sim_log::LogInfo(
       log_,
-      "main_time = %lu: nicbm: executing dma op %p addr %lx len %zu pending "
+      "main_time = %lu: nicbm: executing dma op %p addr 0x%lx len %zu pending "
       "%zu\n",
       main_time_, &op, op.dma_addr_, op.len_, dma_pending_);
 #endif
@@ -192,6 +193,7 @@ void Runner::DmaDo(DMAOp &op) {
           "issue_dma: write too big (%zu), can only fit up "
           "to (%zu)\n",
           op.len_, maxlen - sizeof(*write));
+      sim_log::FlushLog();
       abort();
     }
 
@@ -215,8 +217,9 @@ void Runner::DmaDo(DMAOp &op) {
     volatile struct SimbricksProtoPcieD2HRead *read = &msg->read;
     if (maxlen < sizeof(struct SimbricksProtoPcieH2DReadcomp) + op.len_) {
       sim_log::LogError(
-          "issue_dma: write too big (%zu), can only fit up to (%zu)\n", op.len_,
+          "issue_dma: read too big (%zu), can only fit up to (%zu)\n", op.len_,
           maxlen - sizeof(struct SimbricksProtoPcieH2DReadcomp));
+      sim_log::FlushLog();
       abort();
     }
 
@@ -347,7 +350,7 @@ void Runner::H2DReadcomp(volatile struct SimbricksProtoPcieH2DReadcomp *rc) {
 #ifdef DEBUG_NICBM
   sim_log::LogInfo(
       log_,
-      "main_time = %lu: nicbm: completed dma read op %p addr %lx len %zu\n",
+      "main_time = %lu: nicbm: completed dma read op %p addr 0x%lx len %zu\n",
       main_time_, op, op->dma_addr_, op->len_);
 #endif
 
@@ -364,7 +367,7 @@ void Runner::H2DWritecomp(volatile struct SimbricksProtoPcieH2DWritecomp *wc) {
 #ifdef DEBUG_NICBM
   sim_log::LogInfo(
       log_,
-      "main_time = %lu: nicbm: completed dma write op %p addr %lx len %zu\n",
+      "main_time = %lu: nicbm: completed dma write op %p addr 0x%lx len %zu\n",
       main_time_, op, op->dma_addr_, op->len_);
 #endif
 
@@ -553,7 +556,9 @@ int Runner::NicIfInit() {
                             &dintro_);
 }
 
-Runner::Runner(Device &dev) : main_time_(0), dev_(dev), events_(EventCmp()) {
+Runner::Runner(Device &dev)
+  : main_time_(0), dev_(dev), events_(EventCmp()), pcieAdapterParams_(nullptr),
+    netAdapterParams_(nullptr) {
   // mac_addr = lrand48() & ~(3ULL << 46);
   runners.push_back(this);
   dma_pending_ = 0;
@@ -574,31 +579,67 @@ Runner::Runner(Device &dev) : main_time_(0), dev_(dev), events_(EventCmp()) {
   SimbricksPcieIfDefaultParams(&pcieParams_);
 }
 
+Runner::~Runner() {
+  SimbricksParametersFree(pcieAdapterParams_);
+  SimbricksParametersFree(netAdapterParams_);
+}
+
+static enum SimbricksBaseIfSyncMode GetSyncMode(bool sync) {
+  if (sync)
+    return kSimbricksBaseIfSyncRequired;
+  else
+    return kSimbricksBaseIfSyncDisabled;
+}
+
 int Runner::ParseArgs(int argc, char *argv[]) {
-  if (argc < 4 || argc > 11) {
-    sim_log::LogError(
-        "Usage: corundum_bm PCI-SOCKET ETH-SOCKET "
-        "SHM [SYNC-MODE] [START-TICK] [SYNC-PERIOD] [PCI-LATENCY] "
-        "[ETH-LATENCY] [MAC-ADDR] [LOG-FILE-PATH]\n");
+  if (pcieAdapterParams_ || netAdapterParams_) {
+    sim_log::LogError("Arguments are already parsed\n");
     return -1;
   }
+  if (argc < 3 || argc > 6) {
+    sim_log::LogError(
+        "Usage: corundum_bm PCI-PARAMS ETH-PARAMS "
+        "[START-TICK] [MAC-ADDR] [LOG-FILE-PATH]\n");
+    return -1;
+  }
+  if (argc >= 4)
+    main_time_ = strtoull(argv[3], NULL, 0);
+  if (argc >= 5)
+    mac_addr_ = strtoull(argv[4], NULL, 16);
   if (argc >= 6)
-    main_time_ = strtoull(argv[5], NULL, 0);
-  if (argc >= 7)
-    netParams_.sync_interval = pcieParams_.sync_interval =
-        strtoull(argv[6], NULL, 0) * 1000ULL;
-  if (argc >= 8)
-    pcieParams_.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
-  if (argc >= 9)
-    netParams_.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
-  if (argc >= 10)
-    mac_addr_ = strtoull(argv[9], NULL, 16);
-  if (argc >= 11)
-    log_ = sim_log::Log::createLog(argv[10]);
+    log_ = sim_log::Log::createLog(argv[5]);
 
-  pcieParams_.sock_path = argv[1];
-  netParams_.sock_path = argv[2];
-  shmPath_ = argv[3];
+  pcieAdapterParams_ = SimbricksParametersParse(argv[1]);
+  netAdapterParams_ = SimbricksParametersParse(argv[2]);
+
+  if (!(pcieAdapterParams_ && netAdapterParams_)) {
+    sim_log::LogError("Failed to parse PCIe or Ethernet parameters\n");
+    return -1;
+  }
+
+  if (!(pcieAdapterParams_->listen && netAdapterParams_->listen)) {
+    sim_log::LogError("Nicbm currently only supports listening adapters\n");
+    return -1;
+  }
+
+  pcieParams_.sock_path = pcieAdapterParams_->socket_path;
+  netParams_.sock_path = netAdapterParams_->socket_path;
+  // Since the NIC interface uses a single shared memory pool for both pcie and
+  // net interface, we just take the shm path provided for the pcie adapter here
+  shmPath_ = pcieAdapterParams_->shm_path;
+
+  pcieParams_.sync_mode = GetSyncMode(pcieAdapterParams_->sync);
+  netParams_.sync_mode = GetSyncMode(netAdapterParams_->sync);
+
+  if (pcieAdapterParams_->sync_interval_set)
+    pcieParams_.sync_interval = pcieAdapterParams_->sync_interval * 1000ULL;
+  if (netAdapterParams_->sync_interval_set)
+    netParams_.sync_interval = netAdapterParams_->sync_interval * 1000ULL;
+  if (pcieAdapterParams_->link_latency_set)
+    pcieParams_.link_latency = pcieAdapterParams_->link_latency * 1000ULL;
+  if (netAdapterParams_->link_latency_set)
+    netParams_.link_latency = netAdapterParams_->link_latency * 1000ULL;
+
   return 0;
 }
 

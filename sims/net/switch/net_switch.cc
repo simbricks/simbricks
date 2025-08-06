@@ -173,13 +173,17 @@ class NetPort {
       return kRxPollFail;
 
     uint8_t type = SimbricksNetIfInType(&netif_, rx_);
-    if (type == SIMBRICKS_PROTO_NET_MSG_PACKET) {
+    switch (type) {
+    case SIMBRICKS_PROTO_NET_MSG_PACKET:
       data = (const void *)rx_->packet.data;
       len = rx_->packet.len;
       return kRxPollSuccess;
-    } else if (type == SIMBRICKS_PROTO_MSG_TYPE_SYNC) {
+    case SIMBRICKS_PROTO_MSG_TYPE_SYNC:
       return kRxPollSync;
-    } else {
+    case SIMBRICKS_PROTO_MSG_TYPE_TERMINATE:
+      fprintf(stderr, "switch_pkt: peer terminated\n");
+      abort();
+    default:
       fprintf(stderr, "switch_pkt: unsupported type=%u\n", type);
       abort();
     }

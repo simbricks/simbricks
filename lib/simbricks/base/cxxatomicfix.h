@@ -26,8 +26,8 @@
 #define SIMBRICKS_BASE_CXXATOMICFIX_H_
 
 /**
- * FIXME: This is a worklaround till we fix all simbricks headers to be
- * compatible with C++, elliminating the need for extern "C", making it possible
+ * FIXME: This is a workaround till we fix all simbricks headers to be
+ * compatible with C++, eliminating the need for extern "C", making it possible
  * to include this in the generic header where we use the atomics.
  *
  * until then, this needs to be included before the generic header.

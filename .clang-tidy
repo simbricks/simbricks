@@ -2,6 +2,7 @@
 Checks: >
   -*,
   bugprone-*,
+  -bugprone-easily-swappable-parameters,
   clang-diagnostic-*,
   -clang-diagnostic-unused-command-line-argument,
   google-*,
@@ -10,6 +11,7 @@ Checks: >
   -misc-noexcept*,
   -misc-unused-parameters,
   -misc-non-private-member-variables-in-classes,
+  -misc-use-anonymous-namespace,
   modernize-*,
   -modernize-avoid-c-arrays,
   -modernize-deprecated-headers,
@@ -27,8 +29,8 @@ Checks: >
   -readability-magic-numbers,
   -readability-qualified-auto,
   -readability-uppercase-literal-suffix,
+  -readability-identifier-length,
 WarningsAsErrors: false
-AnalyzeTemporaryDtors: false
 FormatStyle:     file
 CheckOptions:
   - key:             bugprone-assert-side-effect.AssertMacros

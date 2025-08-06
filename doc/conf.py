@@ -15,7 +15,7 @@
 import os
 import sys
 
-sys.path.append(os.path.abspath('../experiments'))
+sys.path.append(os.path.abspath('../symphony'))
 sys.path.append(os.path.abspath('.'))
 from external_links import *
 
@@ -45,7 +45,7 @@ extensions = [
     'breathe',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
-    'sphinx.ext.extlinks'
+    'sphinx.ext.extlinks',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -86,12 +86,12 @@ numfig = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinx_rtd_theme'
+html_theme = 'pydata_sphinx_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#
 # html_theme_options = {}
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -111,8 +111,8 @@ html_static_path = ['_static']
 
 html_logo = 'simbricks-text-horizontal.svg'
 html_theme_options = {
-    'logo_only': True,
-    'display_version': False,
+    # 'logo_only': True,
+    # 'display_version': False,
 }
 
 html_css_files = [

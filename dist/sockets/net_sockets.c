@@ -34,6 +34,7 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <simbricks/base/proto.h>
@@ -90,6 +91,9 @@ size_t shm_size = 256 * 1024 * 1024ULL;  // 256MB
 static bool mode_listen = false;
 static struct sockaddr_in addr;
 
+static char *listen_info_file_path = NULL;
+static char *listen_ready_file_path = NULL;
+
 static int epfd = -1;
 static int sockfd = -1;
 static int msg_id = 0;
@@ -102,7 +106,7 @@ pthread_spinlock_t freelist_spin;
 
 static void PrintUsage() {
   fprintf(stderr,
-          "Usage: net_sockets [OPTIONS] IP PORT\n"
+          "Usage: net_sockets [OPTIONS] IP PORT LISTEN-INFO-FILE LISTEN-READY-FILE\n"
           "    -l: Listen instead of connecting on socket\n"
           "    -L LISTEN-SOCKET: listening socket for a simulator\n"
           "    -C CONN-SOCKET: connecting socket for a simulator\n"
@@ -147,7 +151,7 @@ static int ParseArgs(int argc, char *argv[]) {
     }
   }
 
-  if (optind + 2 != argc) {
+  if (optind + 4 != argc) {
     PrintUsage();
     return 1;
   }
@@ -158,6 +162,9 @@ static int ParseArgs(int argc, char *argv[]) {
     PrintUsage();
     return 1;
   }
+
+  listen_info_file_path = argv[optind + 2];
+  listen_ready_file_path = argv[optind + 3];
 
   return 0;
 }
@@ -246,29 +253,53 @@ static int SockInitCommon() {
 static int SockListen(struct sockaddr_in *addr) {
   int lfd;
   if ((lfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-    perror("RdmaIBListen: socket failed");
+    perror("SockListen: socket failed");
     return 1;
   }
 
   int flag;
   flag = 1;
   if (setsockopt(lfd, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag))) {
-    perror("RdmaIBListen: setsockopt reuseport faild");
+    perror("SockListen: setsockopt reuseport faild");
     return 1;
   }
 
   if (bind(lfd, (struct sockaddr *)addr, sizeof(*addr))) {
-    perror("RdmaIBListen: bind failed");
+    perror("SockListen: bind failed");
+    return 1;
+  }
+
+  // retrieve assigned port number
+  socklen_t addr_len = sizeof(*addr);
+  if (getsockname(lfd, (struct sockaddr *)addr, &addr_len)) {
+    perror("SockListen: getsockname failed");
     return 1;
   }
 
   if (listen(lfd, 1)) {
-    perror("RdmaIBListen: listen");
+    perror("SockListen: listen");
     return 1;
   }
 
+  // write port number to file
+  FILE *info_file = fopen(listen_info_file_path, "w");
+  if (!info_file) {
+      perror("SockListen: opening info_file failed");
+      return 1;
+  }
+  fprintf(info_file, "%d\n", ntohs(addr->sin_port));
+  fclose(info_file);
+  
+  // create another file to indicate ready
+  FILE *ready_file = fopen(listen_ready_file_path, "w");
+  if (!ready_file) {
+      perror("SockListen: opening ready_file failed");
+      return 1;
+  }
+  fclose(ready_file);
+
   if ((sockfd = accept(lfd, NULL, 0)) < 0) {
-    perror("RdmaIBListen: accept failed");
+    perror("SockListen: accept failed");
     return 1;
   }
   close(lfd);
@@ -278,12 +309,12 @@ static int SockListen(struct sockaddr_in *addr) {
 
 static int SockConnect(struct sockaddr_in *addr) {
   if ((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-    perror("RdmaIBConnect: socket failed");
+    perror("SockConnect: socket failed");
     return 1;
   }
 
   if (connect(sockfd, (struct sockaddr *)addr, sizeof(*addr))) {
-    perror("RdmaIBConnect: connect failed");
+    perror("SockConnect: connect failed");
   }
 
   return SockInitCommon();

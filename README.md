@@ -6,6 +6,17 @@
 [![Chat on Slack](https://img.shields.io/badge/slack-Chat-brightgreen)](https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA)
 [![MIT License](https://img.shields.io/github/license/simbricks/simbricks)](https://github.com/simbricks/simbricks/blob/main/LICENSE.md)
 
+## TLDR
+To start using this repo to develop or run simulations using VS Code, first make sure you have the "Dev Containers" extension installed, then open the command palette (Ctrl+Shift+P) and select "Dev Containers: Reopen in Container".
+
+This will automatically build the dev image, compile the code and build all the necessary images. The whole process can take about an hour.
+
+After everything is done you can run a simulation inside the dev container. For example:
+
+```Shell
+simbricks-run --verbose --force experiments/enso_echo.py
+```
+
 ## What is SimBricks?
 
 SimBricks is an open-source simulation framework for intricate HW-SW systems
@@ -128,9 +139,12 @@ required. Now you are ready to build the docker images (depending on your system
 this will likely take 15-45 minutes):
 
 ```Shell
-git clone https://github.com/simbricks/simbricks.git
+# If you have not already, clone the SimBricks repository:
+git clone https://github.com/hsadok/simbricks.git
 cd simbricks
-make docker-images
+
+# These environment variables are used to avoid using the docker registry image.
+DOCKER_REGISTRY="" DOCKER_TAG="" make docker-images
 ```
 
 This will build a number of Docker images and tag them locally, including the

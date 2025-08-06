@@ -1,0 +1,429 @@
+# Copyright 2024 Max Planck Institute for Software Systems, and
+# National University of Singapore
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+from __future__ import annotations
+
+import typing as tp
+import typing_extensions as tpe
+import abc
+import io
+from simbricks.utils import base as utils_base
+from simbricks.orchestration.system import base as sys_base
+
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import base as inst_base
+    from simbricks.orchestration.system import host as sys_host
+
+
+class Application(utils_base.IdObj):
+    def __init__(self, h: sys_host.Host) -> None:
+        super().__init__()
+        self.host: sys_host.Host = h
+        self.wait: bool = False
+        self.parameters: dict[tp.Any, tp.Any] = {}
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['host'] = self.host.id()
+        json_obj['parameters'] = utils_base.dict_to_json(self.parameters)
+        json_obj['wait'] = self.wait
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(json_obj)
+        instance.parameters = utils_base.json_to_dict(
+            utils_base.get_json_attr_top(json_obj, 'parameters')
+        )
+        instance.wait = bool(utils_base.get_json_attr_top(json_obj, 'wait'))
+        return instance
+
+
+# Note AK: Maybe we can factor most of the duplicate calls with the host out
+# into a separate module.
+class BaseLinuxApplication(Application):
+    def __init__(self, h: sys_host.LinuxHost) -> None:
+        super().__init__(h)
+        self.start_delay: float | None = None
+        self.end_delay: float | None = None
+
+    @abc.abstractmethod
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        """Commands to run on node."""
+        raise Exception('must be overwritten')
+
+    def cleanup_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        """Commands to run to cleanup node."""
+        if self.end_delay is None:
+            return []
+        else:
+            return [f"sleep {self.start_delay}"]
+
+    def config_files(self, inst: inst_base.Instantiation) -> dict[str, tp.IO]:
+        """
+        Additional files to put inside the node, which are mounted under `/tmp/guest/`.
+
+        Specified in the following format: `filename_inside_node`:
+        `IO_handle_of_file`
+        """
+        return {}
+
+    def prepare_pre_cp(self, inst: inst_base.Instantiation) -> list[str]:
+        """Commands to run to prepare node before checkpointing."""
+        return []
+
+    def prepare_post_cp(self, inst: inst_base.Instantiation) -> list[str]:
+        """Commands to run to prepare node after checkpoint restore."""
+        if self.end_delay is None:
+            return []
+        else:
+            return [f"sleep {self.end_delay}"]
+
+    def strfile(self, s: str) -> io.BytesIO:
+        """
+        Helper function to convert a string to an IO handle for usage in `config_files()`.
+
+        Using this, you can create a file with the string as its content on the simulated node.
+        """
+        return io.BytesIO(bytes(s, encoding='UTF-8'))
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['start_delay'] = self.start_delay
+        json_obj['end_delay'] = self.end_delay
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.start_delay = utils_base.get_json_attr_top_or_none(json_obj, 'start_delay')
+        instance.end_delay = utils_base.get_json_attr_top_or_none(json_obj, 'end_delay')
+        return instance
+
+
+class GenericRawCommandApplication(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost, commands: list[str] = []) -> None:
+        super().__init__(h)
+        self.commands: list[str] = commands
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return self.commands
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['commands'] = utils_base.list_tuple_to_json(self.commands)
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        commands_json = utils_base.get_json_attr_top(json_obj, 'commands')
+        instance.commands = utils_base.json_array_to_list(commands_json)
+        return instance
+
+
+class NVMEFsTest(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost) -> None:
+        super().__init__(h)
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        return super().fromJSON(system, json_obj)
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return [
+            'mount -t proc proc /proc',
+            'mkfs.ext3 /dev/nvme0n1',
+            'mount /dev/nvme0n1 /mnt',
+            'dd if=/dev/urandom of=/mnt/foo bs=1024 count=1024',
+        ]
+
+
+class PingClient(BaseLinuxApplication):
+    def __init__(self, h: sys_host.LinuxHost, server_ip: str = '192.168.64.1') -> None:
+        super().__init__(h)
+        self.server_ip: str = server_ip
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
+        return [f"ping {self.server_ip} -c 10"]
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['server_ip'] = self.server_ip
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.server_ip = utils_base.get_json_attr_top(json_obj, 'server_ip')
+        return instance
+
+
+class Sleep(BaseLinuxApplication):
+    def __init__(self, h: sys_host.LinuxHost, delay: float = 10, infinite: bool = False) -> None:
+        super().__init__(h)
+        self.infinite: bool = infinite
+        self.delay: float = delay
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        if self.infinite:
+            return [f"sleep infinity"]
+        return [f"sleep {self.delay}"]
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['infinite'] = self.infinite
+        json_obj['delay'] = self.delay
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.infinite = bool(utils_base.get_json_attr_top(json_obj, 'infinite'))
+        instance.delay = float(utils_base.get_json_attr_top(json_obj, 'delay'))
+        return instance
+
+
+class NetperfServer(BaseLinuxApplication):
+    def __init__(self, h: sys_host.LinuxHost) -> None:
+        super().__init__(h)
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return ['netserver', 'sleep infinity']
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        return super().fromJSON(system, json_obj)
+
+
+class NetperfClient(BaseLinuxApplication):
+    def __init__(self, h: sys_host.LinuxHost, server_ip: str = '192.168.64.1') -> None:
+        super().__init__(h)
+        self.server_ip: str = server_ip
+        self.duration_tp: int = 10
+        self.duration_lat: int = 10
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return [
+            'netserver',
+            'sleep 0.5',
+            f"netperf -H {self.server_ip} -l {self.duration_tp}",
+            (
+                f"netperf -H {self.server_ip} -l {self.duration_lat} -t TCP_RR"
+                ' -- -o mean_latency,p50_latency,p90_latency,p99_latency'
+            ),
+        ]
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['server_ip'] = self.server_ip
+        json_obj['duration_tp'] = self.duration_tp
+        json_obj['duration_lat'] = self.duration_lat
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.server_ip = utils_base.get_json_attr_top(json_obj, 'server_ip')
+        instance.duration_tp = int(utils_base.get_json_attr_top(json_obj, 'duration_tp'))
+        instance.duration_lat = int(utils_base.get_json_attr_top(json_obj, 'duration_lat'))
+        return instance
+
+
+class IperfTCPServer(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost) -> None:
+        super().__init__(h)
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return ['iperf -s -l 32M -w 32M']
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        return super().fromJSON(system, json_obj)
+
+
+class IperfUDPServer(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost) -> None:
+        super().__init__(h)
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        return ['iperf -s -u']
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        return super().fromJSON(system, json_obj)
+
+
+class IperfTCPClient(BaseLinuxApplication):
+
+    def __init__(self, h: sys_host.LinuxHost, server_ip: str = '10.0.0.1', procs: int = 1) -> None:
+        super().__init__(h)
+        self.server_ip: str = server_ip
+        self.procs: int = procs
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        cmds = [f"iperf -l 32M -w 32M  -c {self.server_ip} -i 1 -P {self.procs}"]
+        return cmds
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['server_ip'] = self.server_ip
+        json_obj['procs'] = self.procs
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.server_ip = utils_base.get_json_attr_top(json_obj, 'server_ip')
+        instance.procs = utils_base.get_json_attr_top(json_obj, 'procs')
+        return instance
+
+
+class IperfUDPClient(BaseLinuxApplication):
+
+    def __init__(
+        self, h: sys_host.LinuxHost, server_ip: str = '10.0.0.1', rate: str = '150m'
+    ) -> None:
+        super().__init__(h)
+        self.server_ip: str = server_ip
+        self.rate: str = rate
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
+        cmds = [f"iperf -c {self.server_ip} -i 1 -u -b {self.rate}"]
+        return cmds
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['server_ip'] = self.server_ip
+        json_obj['rate'] = self.rate
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.server_ip = utils_base.get_json_attr_top(json_obj, 'server_ip')
+        instance.rate = utils_base.get_json_attr_top(json_obj, 'rate')
+        return instance
+
+
+class EnsoEchoServer(BaseLinuxApplication):
+
+    def __init__(self, host: sys_host.EnsoHost) -> None:
+        super().__init__(host)
+        self.threads = 1
+        self.queues = 2
+        self.cycles = 0
+        self.time = 20
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
+        return [
+            f'cd {self.host.enso_dir}',
+            (
+                f'./build/software/examples/echo {self.threads}'
+                f' {self.queues} {self.cycles}'
+            ),
+        ]
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['threads'] = self.threads
+        json_obj['queues'] = self.queues
+        json_obj['cycles'] = self.cycles
+        json_obj['time'] = self.time
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.threads = utils_base.get_json_attr_top(json_obj, 'threads')
+        instance.queues = utils_base.get_json_attr_top(json_obj, 'queues')
+        instance.cycles = utils_base.get_json_attr_top(json_obj, 'cycles')
+        instance.time = utils_base.get_json_attr_top(json_obj, 'time')
+        return instance
+
+
+class EnsoGen(BaseLinuxApplication):
+
+    def __init__(self, host: sys_host.EnsoHost) -> None:
+        super().__init__(host)
+        self.start_delay = 5
+        self.end_delay = 5
+
+        self.pcap = '{enso_dir}/scripts/sample_pcaps/2_64_1_2.pcap'
+        self.count = 10
+        self.rate = 100  # Gbps
+        self.pcie_dev: tp.Optional[str] = None
+        self.enso_dir = host.enso_dir
+
+    def run_cmds(self, inst: inst_base.Instantiation) -> tp.List[str]:
+        pcap_path = self.pcap
+        if '{enso_dir}' in pcap_path:
+            pcap_path = pcap_path.format(enso_dir=self.enso_dir)
+        cmd = (
+            f'sudo ./scripts/ensogen.sh {pcap_path} {self.rate} '
+            f'--count {self.count} '
+        )
+
+        if self.pcie_dev is not None:
+            cmd += f'--pcie-addr {self.pcie_dev} '
+
+        return [
+            f'cd {self.enso_dir}',
+            f'sleep {self.start_delay}',
+            cmd,
+            f'sleep {self.end_delay}'
+        ]
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj['start_delay'] = self.start_delay
+        json_obj['end_delay'] = self.end_delay
+        json_obj['pcap'] = self.pcap
+        json_obj['count'] = self.count
+        json_obj['rate'] = self.rate
+        json_obj['pcie_dev'] = self.pcie_dev
+        json_obj['enso_dir'] = self.enso_dir
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.start_delay = utils_base.get_json_attr_top_or_none(json_obj, 'start_delay')
+        instance.end_delay = utils_base.get_json_attr_top_or_none(json_obj, 'end_delay')
+        instance.pcap = utils_base.get_json_attr_top(json_obj, 'pcap')
+        instance.count = utils_base.get_json_attr_top(json_obj, 'count')
+        instance.rate = utils_base.get_json_attr_top(json_obj, 'rate')
+        instance.pcie_dev = utils_base.get_json_attr_top_or_none(json_obj, 'pcie_dev')
+        instance.enso_dir = utils_base.get_json_attr_top_or_none(json_obj, 'enso_dir')
+        return instance

@@ -1,6 +1,6 @@
 ARG REGISTRY=
 ARG TAG=:latest
-FROM ubuntu:focal
+FROM ubuntu:noble
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive \
     TZ=Europe/Berlin \
@@ -36,23 +36,13 @@ RUN apt-get update \
 	wget \
 	nano \
 	vim \
+	verilator \
     psmisc \
  && rm -rf /var/lib/apt/lists/*
-COPY docker/verilator.patch /tmp/
-RUN cd /tmp \
- && git clone -b v4.010 https://github.com/verilator/verilator \
- && cd verilator \
- && patch -p1 < /tmp/verilator.patch \
- && autoupdate \
- && autoconf \
- && ./configure \
- && make -j`nproc` \
- && make install \
- && rm -rf /tmp/verilator
 
 # Add non-root user for vs code devcontainer.
 ARG USERNAME=simbricks
-ARG USER_UID=1000
+ARG USER_UID=2000
 ARG USER_GID=$USER_UID
 RUN groupadd --gid $USER_GID $USERNAME \
  && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME --shell /bin/bash \

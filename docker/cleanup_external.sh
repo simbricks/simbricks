@@ -7,7 +7,7 @@ mv sims/external/qemu/build/{qemu-img,qemu-system-x86_64,pc-bios} \
 mv sims/external/qemu/pc-bios/ \
 	sims/external/qemu-new/
 rm -rf sims/external/qemu
-git submodule deinit -f sims/external/qemu
+test -f .git && git submodule deinit -f sims/external/qemu
 rm -rf .git/modules/sims/external/qemu
 rm -rf sims/external/qemu
 mv sims/external/qemu-new sims/external/qemu

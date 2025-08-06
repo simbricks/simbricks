@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <arpa/inet.h>
+
 #include <stdint.h>
 
 namespace headers {

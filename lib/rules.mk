@@ -25,5 +25,6 @@ include mk/subdir_pre.mk
 lib_dir := $(d)
 
 $(eval $(call subdir,simbricks))
+$(eval $(call subdir,test))
 
 include mk/subdir_post.mk

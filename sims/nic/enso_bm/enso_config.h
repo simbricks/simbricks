@@ -41,7 +41,8 @@ enum config_id {
   FLOW_TABLE_CONFIG_ID = 1,
   TIMESTAMP_CONFIG_ID = 2,
   RATE_LIMIT_CONFIG_ID = 3,
-  FALLBACK_QUEUES_CONFIG_ID = 4
+  FALLBACK_QUEUES_CONFIG_ID = 4,
+  QUEUE_EXTRA_PROCESSING_CONFIG_ID = 5,
 };
 
 struct __attribute__((__packed__)) config {
@@ -85,6 +86,14 @@ struct __attribute__((__packed__)) fallback_queue {
   uint32_t fallback_queue_mask;
   uint64_t enable_rr;
   uint8_t pad[32];
+};
+
+struct __attribute__((__packed__)) queue_extra_processing {
+  uint64_t signal;
+  uint64_t config_id;
+  uint32_t enso_pipe_id;
+  uint32_t extra_processing_type;
+  uint8_t pad[40];
 };
 
 }  // namespace config
