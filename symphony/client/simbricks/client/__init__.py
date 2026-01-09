@@ -20,4 +20,15 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from .client import BaseClient, AdminClient, NSClient, SimBricksClient, RunnerClient
+from .org import OrgClient, org_client
+from .admin import AdminClient, admin_client
+from .namespace import (
+    NSClient,
+    SimBricksClient,
+    RunnerClient,
+    ResourceGroupClient,
+    ns_client,
+    simb_client,
+    runner_client,
+    rg_client,
+)

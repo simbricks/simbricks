@@ -25,7 +25,6 @@ import datetime
 import itertools
 import random
 import typing
-import pydantic
 
 import rich
 import rich.color
@@ -34,35 +33,54 @@ import rich.text
 import rich.console
 
 from simbricks.orchestration import instantiation, simulation, system
-from simbricks.schemas import base as schemas
 from simbricks.utils import artifatcs as utils_artifacts
 
-from .. import client, provider
+from ..namespace import simb_client, SimBricksClient
+from ..openapi.client.sim_bricks_api_client.models import (
+    RunState,
+    PaginationLinks,
+    RunOutput,
+    RunOutputSimulatorsType0,
+)
 
 
-async def still_running(run_id: int) -> bool:
-    run = await provider.client_provider.simbricks_client.get_run(run_id)
-    return run.state == schemas.RunState.PENDING or run.state == schemas.RunState.RUNNING
+async def still_running(run_id: str) -> bool:
+    run = await simb_client().get_run(run_id)
+    return run.state == RunState.PENDING or run.state == RunState.RUNNING
 
 
 class ConsoleLineGenerator:
-    def __init__(self, run_id: int, follow: bool):
-        self._sb_client: client.SimBricksClient = provider.client_provider.simbricks_client
-        self._run_id: int = run_id
-        self._simulators_seen_until_id: int | None = None
+    def __init__(self, run_id: str, follow: bool):
+        self._sb_client: SimBricksClient = simb_client()
+        self._run_id: str = run_id
+        self._cursor_next: datetime.datetime | None = None
         self._proxies_seen_until_id: int | None = None
         self._follow = follow
 
     async def _fetch_next_output(self) -> list[tuple[str, str]]:
-        filter = schemas.ApiRunOutputFilter(
-            simulator_seen_until_line_id=self._simulators_seen_until_id,
-            proxy_seen_until_line_id=self._proxies_seen_until_id,
+        output = await self._sb_client.get_run_console(
+            run_id=self._run_id,
+            cursor_next=self._cursor_next,
+            cursor_prev=None,
+            limit=None,
+            wait=None,
         )
-        output = await self._sb_client.get_run_console(self._run_id, filter=filter)
+
+        if isinstance(output.links, PaginationLinks):
+            self._cursor_next = datetime.datetime.fromisoformat(output.links.next_)
 
         lines = []
-        for simulator_id, simulator in output.simulators.items():
-            for _, output_lines in simulator.commands.items():
+        if not isinstance(output.data, RunOutput):
+            return lines
+
+        # TODO: handle proxy output as well
+        assert output.data.simulators and isinstance(
+            output.data.simulators, RunOutputSimulatorsType0
+        )
+        simulators: RunOutputSimulatorsType0 = output.data.simulators
+
+        for simulator_id, simulator in simulators.additional_properties.items():
+            for _, output_lines in simulator.commands.additional_properties.items():
                 for output_line in output_lines:
                     assert output_line.id is not None
                     lines.append((simulator.name, output_line.output))
@@ -109,7 +127,7 @@ class ComponentOutputPrettyPrinter:
         self._console.print(prefix_pretty, line_pretty)
 
 
-async def follow_run(run_id: int) -> None:
+async def follow_run(run_id: str) -> None:
     line_gen = ConsoleLineGenerator(run_id=run_id, follow=True)
     console = rich.console.Console()
     pretty_printer = ComponentOutputPrettyPrinter(console)
@@ -121,22 +139,22 @@ async def follow_run(run_id: int) -> None:
         console.log(f"Run {run_id} finished")
 
 
-async def submit_system(system: system.System) -> int:
-    sys = await provider.client_provider.simbricks_client.create_system(system)
+async def submit_system(system: system.System) -> str:
+    sys = await simb_client().create_system(system)
     assert sys.id
     return sys.id
 
 
-async def submit_simulation(system_id: int, simulation: simulation.Simulation) -> int:
-    sim = await provider.client_provider.simbricks_client.create_simulation(system_id, simulation)
+async def submit_simulation(system_id: str, simulation: simulation.Simulation) -> str:
+    sim = await simb_client().create_simulation(system_id, simulation)
     assert sim.id
     return sim.id
 
 
 async def submit_instantiation(
-    simulation_id: int, instantiation: instantiation.Instantiation
-) -> int:
-    simbricks_client = provider.client_provider.simbricks_client
+    simulation_id: str, instantiation: instantiation.Instantiation
+) -> str:
+    simbricks_client = simb_client()
 
     inst = await simbricks_client.create_instantiation(simulation_id, instantiation)
 
@@ -161,13 +179,13 @@ async def submit_instantiation(
     return inst.id
 
 
-async def submit_run(instantiation_id: int) -> int:
-    run = await provider.client_provider.simbricks_client.create_run(instantiation_id)
+async def submit_run(instantiation_id: str) -> str:
+    run = await simb_client().create_run(instantiation_id)
     assert run.id
     return run.id
 
 
-async def create_run(instantiation: instantiation.Instantiation) -> int:
+async def create_run(instantiation: instantiation.Instantiation) -> str:
     instantiation.finalize_validate()
 
     simulation = instantiation.simulation
@@ -179,46 +197,3 @@ async def create_run(instantiation: instantiation.Instantiation) -> int:
 
     run_id = await submit_run(instantiation_id=inst_id)
     return run_id
-
-
-T = typing.TypeVar("T")
-
-
-async def create_event(rc: client.RunnerClient, event: schemas.ApiEventCreate_U) -> None:
-    create_bundle = schemas.ApiEventBundle[schemas.ApiEventCreate_U]()
-    create_bundle.add_event(event)
-
-    await rc.create_events(create_bundle)
-
-
-async def update_event(rc: client.RunnerClient, event: schemas.ApiEventUpdate_U) -> None:
-    update_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
-    update_bundle.add_event(event)
-
-    await rc.update_events(update_bundle)
-
-
-async def fetch_events(
-    rc: client.RunnerClient, query: schemas.ApiEventQuery_U, expected: T
-) -> list[T]:
-    query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
-    query_bundle.add_event(query)
-
-    result_read_bundle = await rc.fetch_events(query_bundle)
-
-    if result_read_bundle.empty():
-        return []
-
-    if "event_discriminator" not in expected.model_fields:
-        raise Exception("unable to determine 'event dirciminator'")
-    discr: str = expected.model_fields["event_discriminator"].default
-
-    if discr not in result_read_bundle.events:
-        raise Exception(
-            f"could not fetch the required event type {discr} from {result_read_bundle}"
-        )
-    events = result_read_bundle.events[discr]
-
-    adapter = pydantic.TypeAdapter(list[T])
-    result_list = adapter.validate_python(events)
-    return result_list
