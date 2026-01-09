@@ -43,7 +43,7 @@ class Fragment(utils_base.IdObj):
         super().__init__()
 
         self._fragment_executor_tag = fragment_executor_tag
-        self._runner_tags = set() if runner_tags is None else runner_tags
+        self.runner_tags = set() if runner_tags is None else runner_tags
         """Only execute this fragment on runner that has all given labels."""
         self._proxies: set[proxy.Proxy] = set()
         self._simulators: set[sim_base.Simulator] = set()
@@ -64,7 +64,7 @@ class Fragment(utils_base.IdObj):
         json_obj["proxies"] = proxy_json
 
         json_obj["fragment_executor_tag"] = self._fragment_executor_tag
-        json_obj["runner_tags"] = list(self._runner_tags)
+        json_obj["runner_tags"] = list(self.runner_tags)
         json_obj["simulators"] = list(map(lambda sim: sim.id(), self._simulators))
         json_obj["parameters"] = utils_base.dict_to_json(self._parameters)
         json_obj["cores_required"] = self.cores_required
@@ -84,7 +84,7 @@ class Fragment(utils_base.IdObj):
         instance._fragment_executor_tag = utils_base.get_json_attr_top(
             json_obj, "fragment_executor_tag"
         )
-        instance._runner_tags = set(utils_base.get_json_attr_top(json_obj, "runner_tags"))
+        instance.runner_tags = set(utils_base.get_json_attr_top(json_obj, "runner_tags"))
 
         proxies_json = utils_base.get_json_attr_top(json_obj, "proxies")
         instance._proxies = set()
@@ -126,10 +126,10 @@ class Fragment(utils_base.IdObj):
     @staticmethod
     def merged(*fragments: Fragment) -> Fragment:
         def compare_labels(a: Fragment, b: Fragment) -> bool:
-            if len(a._runner_tags) != len(b._runner_tags):
+            if len(a.runner_tags) != len(b.runner_tags):
                 return False
-            for label in a._runner_tags:
-                if label not in b._runner_tags:
+            for label in a.runner_tags:
+                if label not in b.runner_tags:
                     return False
             return True
 
@@ -141,7 +141,7 @@ class Fragment(utils_base.IdObj):
             ):
                 raise RuntimeError("cannot merge fragments with different fragment executor tags "
                                    "or different runner tags")
-        merged_fragment = Fragment(fragments[0]._fragment_executor_tag, fragments[0]._runner_tags)
+        merged_fragment = Fragment(fragments[0]._fragment_executor_tag, fragments[0].runner_tags)
         proxies = set()
         simulators = set()
         for fragment in fragments:
