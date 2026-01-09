@@ -1,6 +1,6 @@
 from typer import Typer, Option
 from typing import Annotated
-from simbricks.client.provider import client_provider
+from simbricks.client import org_client
 from simbricks.client.settings import client_settings
 from ..utils import async_cli, print_table_generic
 
@@ -23,7 +23,7 @@ async def amain(
 @async_cli()
 async def members():
     """List organization members."""
-    members = await client_provider.org_client.get_members(organization)
+    members = await org_client().get_members(organization)
 
     print_table_generic("Members", members, "username", "first_name", "last_name")
 
@@ -32,7 +32,7 @@ async def members():
 @async_cli()
 async def invite(email: str, first_name: str, last_name: str):
     """Invite a new user."""
-    await client_provider.org_client.invite_member(organization, email, first_name, last_name)
+    await org_client().invite_member(organization, email, first_name, last_name)
 
 
 @app.command()
@@ -44,21 +44,22 @@ async def guest(
     generate_token: Annotated[str, Option(help='File name to store an auth token into, if specified.', show_default=False)] = ''
     ):
     """Create a new guest user."""
-    await client_provider.org_client.create_guest(organization, email, first_name, last_name)
+    client = org_client()
+    await client.create_guest(organization, email, first_name, last_name)
     if generate_token:
-        tok = await client_provider.org_client.guest_token(organization, email)
+        tok = await client.guest_token(organization, email)
         tok.store_token(generate_token)
 
 @app.command()
 @async_cli()
 async def guest_token(email: str, filename: str):
     """Generate token for guest account."""
-    tok = await client_provider.org_client.guest_token(organization, email)
+    tok = await org_client().guest_token(organization, email)
     tok.store_token(filename)
 
 @app.command()
 @async_cli()
 async def guest_link(email: str, filename: str):
     """Generate magic login link for guest account."""
-    link = await client_provider.org_client.guest_magic_link(organization, email)
+    link = await org_client().guest_magic_link(organization, email)
     print(link)

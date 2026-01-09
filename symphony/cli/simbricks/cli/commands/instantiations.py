@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from typer import Typer
-from simbricks.client.provider import client_provider
+from simbricks.client import simb_client
 from ..utils import async_cli
 from ..utils import print_table_generic
 
@@ -32,21 +32,21 @@ app = Typer(help="Managing SimBricks Instantiations.")
 @async_cli()
 async def ls():
     """List Instantiations."""
-    insts = await client_provider.simbricks_client.get_instantiations()
-    print_table_generic("Instantiations", insts, "id", "simulation_id", "fragments")
+    insts = await simb_client().get_instantiations()
+    print_table_generic("Instantiations", insts.data, "id", "simulation_id", "fragments")
 
 
 @app.command()
 @async_cli()
-async def show(inst_id: int):
+async def show(inst_id: str):
     """Show individual Instantiation."""
-    inst = await client_provider.simbricks_client.get_instantiation(instantiation_id=inst_id)
+    inst = await simb_client().get_instantiation(inst_id)
+    print(inst)
     print_table_generic("Instantiations", [inst], "id", "simulation_id", "fragments")
 
 
 @app.command()
 @async_cli()
-async def delete(inst_id: int):
+async def rm(inst_id: str):
     """Delete an individual Instantiation."""
-    client = client_provider.simbricks_client
-    await client.delete_instantiation(inst_id=inst_id)
+    await simb_client().delete_instantiation(inst_id=inst_id)

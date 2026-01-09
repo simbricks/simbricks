@@ -34,7 +34,6 @@ from simbricks.cli.commands import (
     instantiations,
     runners,
 )
-from simbricks.client.provider import client_provider
 from simbricks.client.settings import client_settings
 from simbricks.cli.utils import async_cli
 
@@ -50,13 +49,17 @@ app.add_typer(instantiations.app, name="insts")
 app.add_typer(runners.app, name="runners")
 app.add_typer(rg.app, name="rg")
 
+namespace: str = ""
+
 
 @app.callback()
 @async_cli()
 async def amain(
     ns: Annotated[str, Option(help="Namespace to operate in.")] = client_settings().namespace,
 ):
-    client_provider.namespace = ns
+    global namespace
+    namespace = ns
+    # TODO
 
 
 def main():
