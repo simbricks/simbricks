@@ -21,10 +21,12 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
+import httpx
 import json
 import aiohttp
 import time
 import os
+from typing_extensions import Self
 from .settings import client_settings
 
 
@@ -74,18 +76,15 @@ class Token:
     @staticmethod
     def parse_from_resp(json_obj) -> Token:
         access_valid_until = int(time.time()) - 10 + int(json_obj["expires_in"])
-        refresh_valid_until = (
-            int(time.time()) - 10 + int(json_obj["refresh_expires_in"])
-        )
+        refresh_valid_until = int(time.time()) - 10 + int(json_obj["refresh_expires_in"])
 
         return Token(
             access_token=json_obj["access_token"],
             refresh_token=json_obj["refresh_token"],
-            session_state='',
+            session_state="",
             access_valid_until=access_valid_until,
             refresh_valid_until=refresh_valid_until,
         )
-
 
 
 class TokenClient:
@@ -146,13 +145,8 @@ class TokenClient:
                         )  # TODO: handel gracefully
 
                     json_resp = await resp.json()
-                    if (
-                        "error" in json_resp
-                        and json_resp["error"] != "authorization_pending"
-                    ):
-                        raise Exception(
-                            f"error retrievening retrieving token: {json_resp}"
-                        )
+                    if "error" in json_resp and json_resp["error"] != "authorization_pending":
+                        raise Exception(f"error retrievening retrieving token: {json_resp}")
                     elif "error" not in json_resp:
                         token = Token.parse_from_resp(json_obj=json_resp)
                         break
@@ -250,3 +244,44 @@ class TokenProvider:
         await self._refresh_token()
         self._token = await self._toke_client.resource_token(self._token, ticket)
         self._token.store_token(self._toke_filepath)
+
+
+class SimBricksAuth(httpx.Auth):
+
+    prefix: str = "Bearer"
+    auth_header_name: str = "Authorization"
+    retry: bool = True
+    auth_401_header_name: str = "WWW-Authenticate"
+
+    def __init__(self, token_provider: TokenProvider):
+        self._token_provider = token_provider
+
+    def sync_auth_flow(self, request: httpx.Request):
+        raise RuntimeError(f"Cannot use sync authentication with {Self.__class__.__qualname__}")
+
+    async def _update_token_on_req(self, request: httpx.Request) -> None:
+        # set access token in request header
+        access_token = await self._token_provider.access_token()
+        request.headers[self.auth_header_name] = f"{self.prefix} {access_token}"
+
+    async def async_auth_flow(self, request: httpx.Request):
+        # set access token
+        await self._update_token_on_req(request)
+        response = yield request
+
+        # If the server issues a 401 response, we need to refresh the token
+        if response.status_code == 401 and self.auth_401_header_name in response.headers and self.retry:
+            wwa = response.headers[self.auth_401_header_name]
+            parts = wwa.split(",")
+            ticket = None
+            for p in parts:
+                p = p.strip()
+                if p.startswith('ticket="'):
+                    ticket = p[8:-1]
+
+            if ticket is not None:
+                # refresh token using the token provider, for this, the ticket from the responsse is needed.
+                await self._token_provider.resource_token(ticket)
+                # update headers once again
+                await self._update_token_on_req(request)
+                yield request
