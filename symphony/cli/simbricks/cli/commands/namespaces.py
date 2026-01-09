@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from typer import Typer
-from simbricks.client.provider import client_provider
+from simbricks.client import ns_client
 from ..utils import async_cli, print_table_generic, print_members_table
 
 app = Typer(help="Managing SimBricks namespaces.")
@@ -31,19 +31,15 @@ app = Typer(help="Managing SimBricks namespaces.")
 @async_cli()
 async def ls():
     """List available namespaces."""
-    client = client_provider.ns_client
-
-    namespaces = await client.get_all()
-    print_table_generic("Namespaces", namespaces, "id", "name", "parent_id", "base_path")
+    namespaces = await ns_client().get_all()
+    print_table_generic("Namespaces", namespaces.data, "id", "name", "parent_id", "base_path")
 
 
 @app.command()
 @async_cli()
-async def show(ident: int):
+async def show(name: str):
     """List namespace with given id ident."""
-    client = client_provider.ns_client
-
-    namespace = await client.get_ns(ident)
+    namespace = await ns_client().get_ns_by_name(name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
@@ -51,9 +47,7 @@ async def show(ident: int):
 @async_cli()
 async def cur():
     """List current namespace."""
-    client = client_provider.ns_client
-
-    namespace = await client.get_cur()
+    namespace = await ns_client().get_cur()
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
@@ -61,34 +55,23 @@ async def cur():
 @async_cli()
 async def create(name: str):
     """Create a new namespace."""
-
-    client = client_provider.ns_client
-
-    # create namespace relative to current namespace
-    cur_ns = await client.get_cur()
-    assert cur_ns.id
-    # create the actual namespace
-    namespace = await client.create(parent_id=cur_ns.id, name=name)
+    namespace = await ns_client().create_child_ns(name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
 @app.command()
 @async_cli()
-async def delete(ident: int):
+async def rm(name: str):
     """Delete a namespace."""
-
-    client = client_provider.ns_client
-    await client.delete_ns(ident)
-    print(f"Deleted namespace with id {ident}.")
+    await ns_client().delete_ns(name)
+    print(f"Deleted namespace {name}.")
 
 
 @app.command()
 @async_cli()
 async def members():
     """List all members."""
-
-    client = client_provider.ns_client
-    members = await client.get_members()
+    members = await ns_client().get_members()
     print_members_table(members)
 
 
@@ -96,7 +79,5 @@ async def members():
 @async_cli()
 async def member_add(user: str, role: str):
     """Add member to namespace."""
-
-    client = client_provider.ns_client
-    members = await client.add_member(role, user)
+    members = await ns_client().add_member(role, user)
     print(f"Added user {user} with role {role}.")

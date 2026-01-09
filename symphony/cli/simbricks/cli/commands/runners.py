@@ -22,9 +22,8 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
-from simbricks.client.provider import client_provider
+from simbricks.client import runner_client
 from ..utils import async_cli, print_table_generic
-from simbricks.schemas import base as schemas
 from simbricks.client.opus import base as opus_base
 
 app = Typer(help="Managing SimBricks runners.")
@@ -34,17 +33,25 @@ app = Typer(help="Managing SimBricks runners.")
 @async_cli()
 async def ls():
     """List runners."""
-    runners = await client_provider.runner_client(-1).list_runners()
+    runners = await runner_client(-1).list_runners()
     print_table_generic(
-        "Runners", runners, "id", "label", "tags", "plugin_tags", "namespace_id", "resource_group_id", "status"
+        "Runners",
+        runners.data,
+        "id",
+        "label",
+        "tags",
+        "plugin_tags",
+        "namespace_id",
+        "resource_group_id",
+        "status",
     )
 
 
 @app.command()
 @async_cli()
-async def show(runner_id: int):
+async def show(runner_id: str):
     """Show individual runner."""
-    runner = await client_provider.runner_client(runner_id).get_runner()
+    runner = await runner_client(runner_id).get_runner()
     print_table_generic(
         "Runners", [runner], "id", "label", "tags", "namespace_id", "resource_group_id", "status"
     )
@@ -52,17 +59,17 @@ async def show(runner_id: int):
 
 @app.command()
 @async_cli()
-async def delete(runner_id: int):
+async def rm(runner_id: str):
     """Delete an individual runner."""
-    await client_provider.runner_client(runner_id).delete_runner()
+    await runner_client(runner_id).delete_runner()
 
 
 @app.command()
 @async_cli()
-async def create(resource_group_id: int, label: str, tags: list[str]):
+async def create(resource_group_id: str, label: str, tags: list[str]):
     """Update a runner with the the given label and tags."""
-    runner = await client_provider.runner_client(-1).create_runner(
-        resource_group_id=resource_group_id, label=label, tags=tags
+    runner = await runner_client(-1).create_runner(
+        resource_group_id, label, tags
     )
     print_table_generic(
         "Runner", [runner], "id", "label", "tags", "namespace_id", "resource_group_id", "status"
@@ -71,103 +78,19 @@ async def create(resource_group_id: int, label: str, tags: list[str]):
 
 @app.command()
 @async_cli()
-async def create_event(
-    runner_id: int,
-):
-    """Send a heartbeat event to a runner."""
-
-    to_create = schemas.ApiRunnerEventCreate(
-        runner_id=runner_id,
-        event_status=schemas.ApiEventStatus.PENDING,
-        runner_event_type=schemas.RunnerEventType.heartbeat,
-    )
-    bundle = schemas.ApiEventBundle[schemas.ApiEventCreate_U]()
-    bundle.add_events(to_create)
-
-    result_bundle = await client_provider.runner_client(runner_id).create_events(bundle)
-
-    print_table_generic(
-        "Event",
-        result_bundle.events["ApiRunnerEventRead"],
-        "id",
-        "runner_id",
-        "event_status",
-        "runner_event_type",
-    )
-
-
-@app.command()
-@async_cli()
-async def delete_event(runner_id: int, event_id: int):
-    """Delete a runner event."""
-
-    to_delete = schemas.ApiRunnerEventDelete(id=event_id, runner_id=runner_id)
-    bundle = schemas.ApiEventBundle[schemas.ApiEventDelete_U]()
-    bundle.add_event(to_delete)
-
-    await client_provider.runner_client(runner_id).delete_events(bundle)
-
-
-@app.command()
-@async_cli()
-async def update_event(
-    event_id: int,
-    runner_id: int,
-    event_status: Annotated[
-        schemas.ApiEventStatus | None,
-        Option("--status", "-s", help="Status to set (PENDING, COMPLETED, CANCELLED, ERROR)."),
-    ] = None,
-):
-    """Update a runner event."""
-
-    to_update = schemas.ApiRunnerEventUpdate(id=event_id, runner_id=runner_id)
-    if event_status:
-        to_update.event_status = event_status
-    bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
-    bundle.add_event(to_update)
-
-    event_bundle = await client_provider.runner_client(runner_id).update_events(bundle)
-
-    print_table_generic(
-        "Events",
-        event_bundle.events["ApiRunnerEventRead"],
-        "id",
-        "runner_id",
-        "event_status",
-        "runner_event_type",
-    )
+async def rm_event(runner_id: str, event_id: str):
+    """Delete all events to runner up to and including the specified event."""
+    await runner_client(runner_id).delete_retrieved_events_until_event(event_id)
 
 
 @app.command()
 @async_cli()
 async def ls_events(
-    runner_id: int,
-    id: Annotated[
-        int | None, Option("--ident", "-i", help="A specific event id to filter for.")
-    ] = None,
-    status: Annotated[
-        schemas.ApiEventStatus | None,
-        Option("--status", "-s", help="Filter for status (PENDING, CANCELLED, ERROR)."),
-    ] = None,
+    runner_id: str,
     limit: Annotated[int | None, Option("--limit", "-l", help="Limit results.")] = None,
 ):
-    """List runner related events"""
-    query = schemas.ApiRunnerEventQuery(runner_ids=[runner_id])
-    if id:
-        query.ids = [id]
-    if status:
-        query.event_status = [status]
-    if limit:
-        query.limit = limit
+    """List events going from backend to runner."""
+    rc = runner_client(runner_id)
+    events = await rc.retrieve_events(limit=limit)  # TODO: add missing parameters
 
-    rc = client_provider.runner_client(runner_id)
-    events = await opus_base.fetch_events(rc, query, schemas.ApiRunnerEventRead)
-
-    print_table_generic(
-        "Events",
-        events,
-        "id",
-        "runner_id",
-        "event_status",
-        "runner_event_type",
-    )
+    print_table_generic("Events", events.data, "id", "__class__", "produced_at")

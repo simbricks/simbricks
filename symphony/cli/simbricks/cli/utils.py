@@ -50,10 +50,15 @@ def print_table_generic(title: str, to_print, *args):
 
     for val in to_print:
         row = []
-        if hasattr(val, "__getitem__"):
-            row = [str(val[key]) for key in args]
-        else:
-            row = [str(getattr(val, key)) for key in args]
+
+        for key in args:
+            if hasattr(val, key):
+                row.append(str(getattr(val, key)))
+            # elif hasattr(val, "__getitem__"):
+            #     row.append(str(val[key]))
+            else:
+                raise Exception(f"could not find attribute {key}")
+
         table.add_row(*row)
 
     console = Console()

@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from typer import Typer
-from simbricks.client.provider import client_provider
+from simbricks.client import simb_client
 from ..utils import async_cli
 from ..utils import print_table_generic
 
@@ -32,21 +32,20 @@ app = Typer(help="Managing SimBricks Systems.")
 @async_cli()
 async def ls():
     """List Systems."""
-    systems = await client_provider.simbricks_client.get_systems()
-    print_table_generic("Systems", systems, "id")
+    systems = await simb_client().get_systems()
+    print_table_generic("Systems", systems.data, "id")
 
 
 @app.command()
 @async_cli()
-async def show(system_id: int):
+async def show(system_id: str):
     """Show individual System."""
-    system = await client_provider.simbricks_client.get_system(system_id=system_id)
+    system = await simb_client().get_system(system_id=system_id)
     print_table_generic("Systems", [system], "id")
 
 
 @app.command()
 @async_cli()
-async def delete(system_id: int):
+async def rm(system_id: str):
     """Delete an individual run."""
-    client = client_provider.simbricks_client
-    await client.delete_system(sys_id=system_id)
+    await simb_client().delete_system(sys_id=system_id)

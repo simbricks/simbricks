@@ -22,7 +22,7 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
-from simbricks.client.provider import client_provider
+from simbricks.client import admin_client
 from ..utils import async_cli, print_table_generic
 
 app = Typer(help="SimBricks admin commands.")
@@ -32,42 +32,38 @@ app = Typer(help="SimBricks admin commands.")
 @async_cli()
 async def ns_ls():
     """List all available namespaces."""
-    client = client_provider.admin_client
-    namespaces = await client.get_all_ns()
-    print_table_generic("Namespaces", namespaces, "id", "name", "parent_id", "base_path")
+    namespaces = await admin_client().get_all_ns()
+    print_table_generic("Namespaces", namespaces.data, "id", "name", "parent_id", "base_path")
 
 
 @app.command()
 @async_cli()
-async def ns_ls_id(ident: int):
+async def ns_show(ident: str):
     """List namespace with given id ident."""
-    client = client_provider.admin_client
-    namespace = await client.get_ns(ns_id=ident)
+    namespace = await admin_client().get_ns(ns_id=ident)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
 @app.command()
 @async_cli()
 async def ns_create(
-    name: str, parent_id: Annotated[int | None, Option(help="optional parent namesapce")] = None
+    name: str, parent_id: Annotated[str | None, Option(help="optional parent namesapce")] = None
 ):
     """Create a new namespace."""
-    client = client_provider.admin_client
-    namespace = await client.create_ns(parent_id=parent_id, name=name)
+    namespace = await admin_client().create_ns(parent_id, name=name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
     
 
 @app.command()
 @async_cli()
-async def ns_delete(ident: int):
+async def ns_rm(ident: str):
     """Delete a namespace."""
-    client = client_provider.admin_client
-    await client.delete(ns_id=ident)
+    await admin_client().delete(ns_id=ident)
     print(f"Deleted namespace with id {ident}.")
 
 
 @app.command()
 @async_cli()
-async def schedule(namespace_id: int):
+async def schedule(namespace_id: str):
     """Trigger run scheduling manually for a namespace."""
-    await client_provider.admin_client.schedule_ns(namespace_id)
+    await admin_client().schedule_ns(namespace_id)
