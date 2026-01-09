@@ -27,7 +27,7 @@ line-length = 100
 inputs = ["simbricks"]
 python_version = "3.10"
 incremental = true
-pythonpath = "../utils:../schemas:../runtime:../runner:../orchestration:../local:../client:../cli"
+pythonpath = "../utils:../runtime:../runner:../orchestration:../local:../client:../cli"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -51,4 +51,3 @@ aiohttp = "3.9.5"
 pydantic-settings = "2.6.1"
 rich = "13.9.4"
 simbricks-orchestration = ">=0.3.6"
-simbricks-schemas = ">=0.3.6"
