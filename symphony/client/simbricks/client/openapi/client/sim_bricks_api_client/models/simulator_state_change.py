@@ -18,18 +18,18 @@ T = TypeVar("T", bound="SimulatorStateChange")
 class SimulatorStateChange:
     """
     Attributes:
+        state (RunComponentState):
         simulator_id (int):
         run_id (int):
-        simulator_state (RunComponentState):
         id (None | str | Unset): API Object id
         produced_at (datetime.datetime | Unset):
         simulator_name (None | str | Unset):
         command (None | str | Unset):
     """
 
+    state: RunComponentState
     simulator_id: int
     run_id: int
-    simulator_state: RunComponentState
     id: None | str | Unset = UNSET
     produced_at: datetime.datetime | Unset = UNSET
     simulator_name: None | str | Unset = UNSET
@@ -37,11 +37,11 @@ class SimulatorStateChange:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        state = self.state.value
+
         simulator_id = self.simulator_id
 
         run_id = self.run_id
-
-        simulator_state = self.simulator_state.value
 
         id: None | str | Unset
         if isinstance(self.id, Unset):
@@ -69,9 +69,9 @@ class SimulatorStateChange:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
+                "state": state,
                 "simulator_id": simulator_id,
                 "run_id": run_id,
-                "simulator_state": simulator_state,
             }
         )
         if id is not UNSET:
@@ -88,11 +88,11 @@ class SimulatorStateChange:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
+        state = RunComponentState(d.pop("state"))
+
         simulator_id = d.pop("simulator_id")
 
         run_id = d.pop("run_id")
-
-        simulator_state = RunComponentState(d.pop("simulator_state"))
 
         def _parse_id(data: object) -> None | str | Unset:
             if data is None:
@@ -129,9 +129,9 @@ class SimulatorStateChange:
         command = _parse_command(d.pop("command", UNSET))
 
         simulator_state_change = cls(
+            state=state,
             simulator_id=simulator_id,
             run_id=run_id,
-            simulator_state=simulator_state,
             id=id,
             produced_at=produced_at,
             simulator_name=simulator_name,

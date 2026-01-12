@@ -63,8 +63,9 @@ __simbricks_auth = SimBricksAuth(__token_provider)
 
 
 @contextlib.asynccontextmanager
-async def base_client() -> typing.AsyncIterator[AuthenticatedClient]:
-    base_url = client_settings().base_url
+async def base_client(
+    base_url: str = client_settings().base_url,
+) -> typing.AsyncIterator[AuthenticatedClient]:
 
     access_token = await __token_provider.access_token()
 
