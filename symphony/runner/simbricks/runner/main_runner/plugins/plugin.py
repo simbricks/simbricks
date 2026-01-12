@@ -2,7 +2,8 @@ import abc
 import typing as tp
 
 from simbricks.runner import utils
-from simbricks.schemas import base as schemas
+from simbricks.client.namespace import EventToRunner_U, EventFromRunner_U
+
 
 class FragmentRunnerPlugin(abc.ABC):
 
@@ -29,12 +30,10 @@ class FragmentRunnerPlugin(abc.ABC):
     async def write(self, data: bytes) -> None:
         pass
 
-    async def send_events(
-        self, events: schemas.ApiEventBundle, event_type: schemas.ApiEventType
-    ) -> None:
-        await utils.send_events(self.write, events, event_type)
+    async def send_events(self, events: list[EventToRunner_U] | list[EventToRunner_U]) -> None:
+        await utils.send_events(self.write, events)
 
-    async def get_events(self) -> tuple[schemas.ApiEventType, schemas.ApiEventBundle]:
+    async def get_events(self) -> list[EventToRunner_U] | list[EventToRunner_U]:
         return await utils.get_events(self.read)
 
 
