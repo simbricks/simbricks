@@ -17,6 +17,7 @@ class RunFragment:
     """RunFragment
 
     Attributes:
+        id (None | str | Unset): API Object id
         run_id (None | str | Unset): API Object id
         fragment_id (None | str | Unset): API Object id
         runner_id (None | str | Unset): API Object id
@@ -24,6 +25,7 @@ class RunFragment:
         state (None | RunState | Unset):
     """
 
+    id: None | str | Unset = UNSET
     run_id: None | str | Unset = UNSET
     fragment_id: None | str | Unset = UNSET
     runner_id: None | str | Unset = UNSET
@@ -32,6 +34,12 @@ class RunFragment:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        id: None | str | Unset
+        if isinstance(self.id, Unset):
+            id = UNSET
+        else:
+            id = self.id
+
         run_id: None | str | Unset
         if isinstance(self.run_id, Unset):
             run_id = UNSET
@@ -67,6 +75,8 @@ class RunFragment:
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({})
+        if id is not UNSET:
+            field_dict["id"] = id
         if run_id is not UNSET:
             field_dict["run_id"] = run_id
         if fragment_id is not UNSET:
@@ -83,6 +93,15 @@ class RunFragment:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
+
+        def _parse_id(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        id = _parse_id(d.pop("id", UNSET))
 
         def _parse_run_id(data: object) -> None | str | Unset:
             if data is None:
@@ -138,6 +157,7 @@ class RunFragment:
         state = _parse_state(d.pop("state", UNSET))
 
         run_fragment = cls(
+            id=id,
             run_id=run_id,
             fragment_id=fragment_id,
             runner_id=runner_id,

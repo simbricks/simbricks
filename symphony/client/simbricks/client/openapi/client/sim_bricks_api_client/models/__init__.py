@@ -28,6 +28,7 @@ from .org_guest_cred import OrgGuestCred
 from .org_guest_magic_link_resp import OrgGuestMagicLinkResp
 from .org_invite import OrgInvite
 from .pagination_links import PaginationLinks
+from .proxy_changed_state import ProxyChangedState
 from .proxy_output import ProxyOutput
 from .proxy_state_change import ProxyStateChange
 from .resource_group import ResourceGroup
@@ -60,6 +61,7 @@ from .runs_state_changes_list_200_response import RunsStateChangesList200Respons
 from .simulation import Simulation
 from .simulation_sigusr_1 import SimulationSigusr1
 from .simulations_list_200_response import SimulationsList200Response
+from .simulator_changed_state import SimulatorChangedState
 from .simulator_output import SimulatorOutput
 from .simulator_state_change import SimulatorStateChange
 from .start_run_req import StartRunReq
@@ -91,6 +93,7 @@ __all__ = (
     "OrgGuestMagicLinkResp",
     "OrgInvite",
     "PaginationLinks",
+    "ProxyChangedState",
     "ProxyOutput",
     "ProxyStateChange",
     "ResourceGroup",
@@ -123,6 +126,7 @@ __all__ = (
     "Simulation",
     "SimulationSigusr1",
     "SimulationsList200Response",
+    "SimulatorChangedState",
     "SimulatorOutput",
     "SimulatorStateChange",
     "StartRunReq",

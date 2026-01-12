@@ -11,8 +11,10 @@ from ..types import UNSET, Unset
 if TYPE_CHECKING:
     from ..models.kill_run_req import KillRunReq
     from ..models.pagination_links import PaginationLinks
+    from ..models.proxy_changed_state import ProxyChangedState
     from ..models.runner_heartbeat_req import RunnerHeartbeatReq
     from ..models.simulation_sigusr_1 import SimulationSigusr1
+    from ..models.simulator_changed_state import SimulatorChangedState
     from ..models.start_run_req import StartRunReq
 
 
@@ -24,11 +26,23 @@ class RunnersToEventsList200Response:
     """RunnersToEventsList200Response
 
     Attributes:
-        data (list[KillRunReq | RunnerHeartbeatReq | SimulationSigusr1 | StartRunReq] | None | Unset):
+        data (list[KillRunReq | ProxyChangedState | RunnerHeartbeatReq | SimulationSigusr1 | SimulatorChangedState |
+            StartRunReq] | None | Unset):
         links (None | PaginationLinks | Unset):
     """
 
-    data: list[KillRunReq | RunnerHeartbeatReq | SimulationSigusr1 | StartRunReq] | None | Unset = UNSET
+    data: (
+        list[
+            KillRunReq
+            | ProxyChangedState
+            | RunnerHeartbeatReq
+            | SimulationSigusr1
+            | SimulatorChangedState
+            | StartRunReq
+        ]
+        | None
+        | Unset
+    ) = UNSET
     links: None | PaginationLinks | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -36,6 +50,8 @@ class RunnersToEventsList200Response:
         from ..models.kill_run_req import KillRunReq
         from ..models.pagination_links import PaginationLinks
         from ..models.runner_heartbeat_req import RunnerHeartbeatReq
+        from ..models.simulation_sigusr_1 import SimulationSigusr1
+        from ..models.simulator_changed_state import SimulatorChangedState
         from ..models.start_run_req import StartRunReq
 
         data: list[dict[str, Any]] | None | Unset
@@ -50,6 +66,10 @@ class RunnersToEventsList200Response:
                 elif isinstance(data_type_0_item_data, StartRunReq):
                     data_type_0_item = data_type_0_item_data.to_dict()
                 elif isinstance(data_type_0_item_data, KillRunReq):
+                    data_type_0_item = data_type_0_item_data.to_dict()
+                elif isinstance(data_type_0_item_data, SimulationSigusr1):
+                    data_type_0_item = data_type_0_item_data.to_dict()
+                elif isinstance(data_type_0_item_data, SimulatorChangedState):
                     data_type_0_item = data_type_0_item_data.to_dict()
                 else:
                     data_type_0_item = data_type_0_item_data.to_dict()
@@ -81,15 +101,28 @@ class RunnersToEventsList200Response:
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.kill_run_req import KillRunReq
         from ..models.pagination_links import PaginationLinks
+        from ..models.proxy_changed_state import ProxyChangedState
         from ..models.runner_heartbeat_req import RunnerHeartbeatReq
         from ..models.simulation_sigusr_1 import SimulationSigusr1
+        from ..models.simulator_changed_state import SimulatorChangedState
         from ..models.start_run_req import StartRunReq
 
         d = dict(src_dict)
 
         def _parse_data(
             data: object,
-        ) -> list[KillRunReq | RunnerHeartbeatReq | SimulationSigusr1 | StartRunReq] | None | Unset:
+        ) -> (
+            list[
+                KillRunReq
+                | ProxyChangedState
+                | RunnerHeartbeatReq
+                | SimulationSigusr1
+                | SimulatorChangedState
+                | StartRunReq
+            ]
+            | None
+            | Unset
+        ):
             if data is None:
                 return data
             if isinstance(data, Unset):
@@ -103,7 +136,14 @@ class RunnersToEventsList200Response:
 
                     def _parse_data_type_0_item(
                         data: object,
-                    ) -> KillRunReq | RunnerHeartbeatReq | SimulationSigusr1 | StartRunReq:
+                    ) -> (
+                        KillRunReq
+                        | ProxyChangedState
+                        | RunnerHeartbeatReq
+                        | SimulationSigusr1
+                        | SimulatorChangedState
+                        | StartRunReq
+                    ):
                         try:
                             if not isinstance(data, dict):
                                 raise TypeError()
@@ -128,11 +168,27 @@ class RunnersToEventsList200Response:
                             return data_type_0_item_type_2
                         except (TypeError, ValueError, AttributeError, KeyError):
                             pass
+                        try:
+                            if not isinstance(data, dict):
+                                raise TypeError()
+                            data_type_0_item_type_3 = SimulationSigusr1.from_dict(data)
+
+                            return data_type_0_item_type_3
+                        except (TypeError, ValueError, AttributeError, KeyError):
+                            pass
+                        try:
+                            if not isinstance(data, dict):
+                                raise TypeError()
+                            data_type_0_item_type_4 = SimulatorChangedState.from_dict(data)
+
+                            return data_type_0_item_type_4
+                        except (TypeError, ValueError, AttributeError, KeyError):
+                            pass
                         if not isinstance(data, dict):
                             raise TypeError()
-                        data_type_0_item_type_3 = SimulationSigusr1.from_dict(data)
+                        data_type_0_item_type_5 = ProxyChangedState.from_dict(data)
 
-                        return data_type_0_item_type_3
+                        return data_type_0_item_type_5
 
                     data_type_0_item = _parse_data_type_0_item(data_type_0_item_data)
 
@@ -141,7 +197,19 @@ class RunnersToEventsList200Response:
                 return data_type_0
             except (TypeError, ValueError, AttributeError, KeyError):
                 pass
-            return cast(list[KillRunReq | RunnerHeartbeatReq | SimulationSigusr1 | StartRunReq] | None | Unset, data)
+            return cast(
+                list[
+                    KillRunReq
+                    | ProxyChangedState
+                    | RunnerHeartbeatReq
+                    | SimulationSigusr1
+                    | SimulatorChangedState
+                    | StartRunReq
+                ]
+                | None
+                | Unset,
+                data,
+            )
 
         data = _parse_data(d.pop("data", UNSET))
 

@@ -124,6 +124,8 @@ from simbricks.client.openapi.client.sim_bricks_api_client.models import (
     RunFragment,
     RunnerStarted,
     SimulationSigusr1,
+    SimulatorChangedState,
+    ProxyChangedState,
 )
 from simbricks.client.openapi.client.sim_bricks_api_client.types import File
 from simbricks.orchestration.system import System as OrchSystem
@@ -143,11 +145,19 @@ EventFromRunner_U = (
     | FragmentOutputArtifact
 )
 
-EventToRunner_U = RunnerHeartbeatReq | StartRunReq | KillRunReq | SimulationSigusr1
+EventToRunner_U = (
+    RunnerHeartbeatReq
+    | StartRunReq
+    | KillRunReq
+    | SimulationSigusr1
+    | SimulatorChangedState
+    | ProxyChangedState
+)
 
 
 class NSClient:
-    def __init__(self, namespace_path: str | None = None):
+    def __init__(self, base_url: str, namespace_path: str | None = None):
+        self.base_url: str = base_url
         self.namespace_path: str | None = namespace_path
 
     def __build_ns_path(self, ns_base_path: str, ns_name: str) -> str:
@@ -157,7 +167,7 @@ class NSClient:
         if self.namespace_path is not None:
             return
 
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             ns: Namespace = await resolve_default_ns.asyncio(client=client)
             self.namespace_path = self.__build_ns_path(ns.base_path, ns.name)
 
@@ -174,50 +184,50 @@ class NSClient:
         to_create = Namespace(
             name=relative_name,
         )
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             ns = await create_child_ns.asyncio(self.namespace_path, client=client, body=to_create)
             ns = validate_response_model(ns, Namespace)
             return ns
 
     async def delete_ns(self, ns_name: str) -> None:
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             to_delete = self.__build_ns_path(self.namespace_path, ns_name)
             await delete_ns_by_path.asyncio(to_delete, client=client)
 
     async def get_ns_by_name(self, ns_name: str) -> Namespace:
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             to_get = self.__build_ns_path(self.namespace_path, ns_name)
             ns = await ns_by_path.asyncio(to_get, client=client)
             ns = validate_response_model(ns, Namespace)
             return ns
 
     async def get_cur(self) -> Namespace:
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             ns = await ns_by_path.asyncio(self.namespace_path, client=client)
             ns = validate_response_model(ns, Namespace)
             return ns
 
     # recursively retrieve all namespaces beginning with the current including all children
     async def get_all(self) -> NamespacesList200Response:
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             namespaces = await list_child_ns.asyncio(self.namespace_path, client=client)
             namespaces = validate_response_model(namespaces, NamespacesList200Response)
             return namespaces
 
     async def get_members(self) -> dict[str, list[dict]]:
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             raise NotImplementedError()
         # async with self.get(url="/members") as resp:
         #     return await resp.json()
 
     async def get_role_members(self, role: str) -> list[dict]:
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             raise NotImplementedError()
         # async with self.get(url=f"/members/{role}") as resp:
         #     return await resp.json()
 
     async def add_member(self, role: str, username: str) -> None:
-        async with base_client() as client:
+        async with base_client(self.base_url) as client:
             raise NotImplementedError()
         # req_json = {"username": username}
         # async with self.post(url=f"/members/{role}", json=req_json) as resp:
@@ -226,7 +236,7 @@ class NSClient:
 
 class SimBricksClient:
 
-    def __init__(self, ns_client: NSClient = NSClient()) -> None:
+    def __init__(self, ns_client: NSClient) -> None:
         self._ns_client: NSClient = ns_client
 
     async def create_system(self, system: OrchSystem) -> ApiSystem:
@@ -234,24 +244,24 @@ class SimBricksClient:
         sys_sb_json = json.dumps(system.toJSON())
         to_create = ApiSystem(sb_json=sys_sb_json)
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             sys = await create_sys.asyncio(
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             return sys
 
     async def delete_system(self, sys_id: str) -> None:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await delete_sys.asyncio(self._ns_client.namespace_path, sys_id, client=client)
 
     async def get_systems(self) -> SystemsList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             systems = await list_sys.asyncio(self._ns_client.namespace_path, client=client)
             systems = validate_response_model(systems, SystemsList200Response)
             return systems
 
     async def get_system(self, sys_id: str) -> ApiSystem:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             sys = await get_sys.asyncio(self._ns_client.namespace_path, sys_id, client=client)
             return sys
 
@@ -260,23 +270,23 @@ class SimBricksClient:
         sim_sb_json = json.dumps(simulation.toJSON())
         to_create = ApiSimulation(system_id=system_id, sb_json=sim_sb_json)
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             sim = await create_sim.asyncio(
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             return sim
 
     async def delete_simulation(self, sim_id: str) -> None:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await delete_sim.asyncio(self._ns_client.namespace_path, sim_id, client=client)
 
     async def get_simulation(self, sim_id: int) -> ApiSimulation:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             sim = await get_sim.asyncio(self._ns_client.namespace_path, sim_id, client=client)
             return sim
 
     async def get_simulations(self) -> SimulationsList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             sims = await list_sim.asyncio(self._ns_client.namespace_path, client=client)
             sims = validate_response_model(sims, SimulationsList200Response)
             return sims
@@ -298,23 +308,23 @@ class SimBricksClient:
             simulation_id=sim_id, sb_json=inst_sb_json, fragments=api_fragments
         )
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             inst = await create_inst.asyncio(
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             return inst
 
     async def delete_instantiation(self, inst_id: str) -> None:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await delete_inst.asyncio(self._ns_client.namespace_path, inst_id, client=client)
 
     async def get_instantiation(self, inst_id: str) -> ApiInstantiation:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             inst = await get_inst.asyncio(self._ns_client.namespace_path, inst_id, client=client)
             return inst
 
     async def get_instantiations(self) -> InstantitionsList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             insts = await list_inst.asyncio(self._ns_client.namespace_path, client=client)
             insts = validate_response_model(insts, InstantitionsList200Response)
             return insts
@@ -323,14 +333,14 @@ class SimBricksClient:
 
         to_create = Run(instantiation_id=inst_id, state=RunState.SPAWNED)
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             run = await create_run.asyncio(
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             return run
 
     async def delete_run(self, rid: int) -> None:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await delete_run.asyncio(self._ns_client.namespace_path, rid, client=client)
 
     async def update_run(
@@ -343,19 +353,19 @@ class SimBricksClient:
 
         update = Run(instantiation_id=instantiation_id, state=state, output=output)
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             run = await update_run.asyncio(
                 self._ns_client.namespace_path, rid, client=client, body=update
             )
             return run
 
     async def get_run(self, rid: str) -> Run:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             run = await get_run_by_id.asyncio(self._ns_client.namespace_path, rid, client=client)
             return run
 
     async def get_runs(self) -> RunsList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             runs = await list_runs.asyncio(self._ns_client.namespace_path, client=client)
             runs = validate_response_model(runs, RunsList200Response)
             return runs
@@ -368,7 +378,7 @@ class SimBricksClient:
             artifact_file = File(fd)
             artifact = InstArt(file=artifact_file)
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await inst_set_input_artifact.asyncio(
                 self._ns_client.namespace_path,
                 inst_id,
@@ -378,7 +388,7 @@ class SimBricksClient:
 
     async def get_inst_input_artifact(self, inst_id: str, store_path: str) -> None:
         # TODO: FIXME
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             content = await inst_get_input_artifact.asyncio(
                 self._ns_client.namespace_path, inst_id, client=client
             )
@@ -387,7 +397,7 @@ class SimBricksClient:
 
     async def get_inst_input_artifact_raw(self, inst_id: str) -> bytes:
         # TODO: FIXME
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             content = await inst_get_input_artifact.asyncio(
                 self._ns_client.namespace_path, inst_id, client=client
             )
@@ -402,7 +412,7 @@ class SimBricksClient:
             artifact_file = File(fd)
             artifact = InstFragArt(file=artifact_file)
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await inst_set_fragment_input_artifact.asyncio(
                 self._ns_client.namespace_path, inst_id, frag_id, client=client, body=artifact
             )
@@ -411,7 +421,7 @@ class SimBricksClient:
         self, inst_id: str, frag_id: str, store_path: str
     ) -> None:
         # TODO: FIXME
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             content = await inst_get_fragment_input_artifact.asyncio(
                 self._ns_client.namespace_path, inst_id, frag_id, client=client
             )
@@ -420,7 +430,7 @@ class SimBricksClient:
 
     async def get_fragment_input_artifact_raw(self, inst_id: str, frag_id: str) -> bytes:
         # TODO: FIXME
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             content = await inst_get_fragment_input_artifact.asyncio(
                 self._ns_client.namespace_path, inst_id, frag_id, client=client
             )
@@ -436,7 +446,7 @@ class SimBricksClient:
             artifact_file = File(fd)
             artifact = RunFragOutArt(file=artifact_file)
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await set_run_frag_out_artifact.asyncio(
                 self._ns_client.namespace_path, run_id, frag_id, client=client, body=artifact
             )
@@ -444,7 +454,7 @@ class SimBricksClient:
     async def get_run_fragment_output_artifact(
         self, run_id: str, frag_id: str, store_path: str
     ) -> None:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             content = await get_run_frag_out_artifact.asyncio(
                 self._ns_client.namespace_path, run_id, frag_id, client=client
             )
@@ -452,7 +462,7 @@ class SimBricksClient:
                 fd.write(content)
 
     async def get_all_run_fragments(self, run_id: str) -> RunsFragmentsList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             fragments = await list_run_frags.asyncio(
                 self._ns_client.namespace_path, run_id, client=client
             )
@@ -467,7 +477,7 @@ class SimBricksClient:
         limit: int | None = None,
         wait: int | None = None,
     ) -> RunsConsoleList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             console = await get_run_console.asyncio(
                 self._ns_client.namespace_path,
                 run_id,
@@ -482,7 +492,7 @@ class SimBricksClient:
 
 class ResourceGroupClient:
 
-    def __init__(self, ns_client) -> None:
+    def __init__(self, ns_client: NSClient) -> None:
         self._ns_client: NSClient = ns_client
 
     async def create_rg(
@@ -495,7 +505,7 @@ class ResourceGroupClient:
             available_memory=available_memory,
         )
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             rg = await create_rg.asyncio(
                 self._ns_client.namespace_path, client=client, body=to_create
             )
@@ -519,19 +529,19 @@ class ResourceGroupClient:
             memory_left=memory_left,
         )
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             rg = await update_rg.asyncio(
                 self._ns_client.namespace_path, rg_id, client=client, body=update
             )
             return rg
 
     async def get_rg(self, rg_id: str) -> ResourceGroup:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             rg = await get_rg.asyncio(self._ns_client.namespace_path, rg_id, client=client)
             return rg
 
     async def get_all_rg(self) -> ResourceGroupsList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             rgs = await list_rg.asyncio(self._ns_client.namespace_path, client=client)
             rgs = validate_response_model(rgs, ResourceGroupsList200Response)
             return rgs
@@ -539,7 +549,7 @@ class ResourceGroupClient:
 
 class RunnerClient:
 
-    def __init__(self, ns_client, id: str) -> None:
+    def __init__(self, ns_client: NSClient, id: str) -> None:
         self._ns_client: NSClient = ns_client
         self.runner_id = id
 
@@ -552,33 +562,33 @@ class RunnerClient:
             tags=tags,
         )
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             runner = await create_runner.asyncio(
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             return runner
 
     async def delete_runner(self) -> None:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await delete_runner.asyncio(
                 self._ns_client.namespace_path, self.runner_id, client=client
             )
 
     async def get_runner(self) -> Runner:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             runner = await get_runner.asyncio(
                 self._ns_client.namespace_path, self.runner_id, client=client
             )
             return runner
 
     async def list_runners(self) -> RunnersList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             runners = await list_runner.asyncio(self._ns_client.namespace_path, client=client)
             runners = validate_response_model(runners, RunnersList200Response)
             return runners
 
-    async def submit_events(self, *events: EventFromRunner_U) -> RunnersFromEventsList200Response:
-        return await self.submit_events(list(events))
+    async def submit_event(self, event: EventFromRunner_U) -> RunnersFromEventsList200Response:
+        return await self.submit_events([event])
 
     async def submit_events(
         self, events: list[EventFromRunner_U]
@@ -586,7 +596,7 @@ class RunnerClient:
 
         request_body = RunnersFromEventsCreateRequest(data=events)
 
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             submitted_events = await create_events_from_runner.asyncio(
                 self._ns_client.namespace_path, self.runner_id, client=client, body=request_body
             )
@@ -604,7 +614,7 @@ class RunnerClient:
         after: datetime | None = None,
         before: datetime | None = None,
     ) -> RunnersToEventsList200Response:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             events = await get_events_to_runner.asyncio(
                 self._ns_client.namespace_path,
                 self.runner_id,
@@ -620,7 +630,7 @@ class RunnerClient:
             return events
 
     async def delete_retrieved_events_until_event(self, event_id: str) -> None:
-        async with base_client() as client:
+        async with base_client(self._ns_client.base_url) as client:
             await delete_events_to_runner.asyncio(
                 self._ns_client.namespace_path,
                 self.runner_id,
@@ -629,20 +639,20 @@ class RunnerClient:
             )
 
 
-def ns_client(namespace_path: str | None = client_settings().namespace) -> NSClient:
-    return NSClient(namespace_path)
+def ns_client(
+    base_url: str = client_settings().base_url,
+    namespace_path: str | None = client_settings().namespace,
+) -> NSClient:
+    return NSClient(base_url, namespace_path)
 
 
-def simb_client() -> SimBricksClient:
-    nsc = ns_client()
-    return SimBricksClient(nsc)
+def simb_client(ns_client: NSClient = ns_client()) -> SimBricksClient:
+    return SimBricksClient(ns_client)
 
 
-def rg_client() -> ResourceGroupClient:
-    nsc = ns_client()
-    return ResourceGroupClient(nsc)
+def rg_client(ns_client: NSClient = ns_client()) -> ResourceGroupClient:
+    return ResourceGroupClient(ns_client)
 
 
-def runner_client(runner_id: str) -> RunnerClient:
-    nsc = ns_client()
-    return RunnerClient(nsc, runner_id)
+def runner_client(runner_id: str, ns_client: NSClient = ns_client()) -> RunnerClient:
+    return RunnerClient(ns_client, runner_id)
