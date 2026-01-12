@@ -35,7 +35,7 @@ class RunnerSettings(BaseSettings):
     )
 
     namespace: str = "foo/bar/baz"
-    runner_id: int = 1
+    runner_id: str = "1"
 
     runner_ip: str = "127.0.0.1"
 
@@ -43,7 +43,9 @@ class RunnerSettings(BaseSettings):
     log_level: str = "DEBUG"
     polling_delay_sec: int = Field(default=10, gt=5, lt=60)
 
-    configuration_file: str = ""
+    configuration_file: str = (
+        "./symphony/runner/simbricks/runner/main_runner/runner_config_example.yaml"
+    )
 
 
 @lru_cache

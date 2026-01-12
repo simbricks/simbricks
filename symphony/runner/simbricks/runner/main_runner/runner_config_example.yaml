@@ -1,0 +1,3 @@
+fragment_executors:
+  - base_executor:
+      plugin: simbricks.runner.main_runner.plugins.local_plugin

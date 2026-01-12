@@ -17,8 +17,29 @@ from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import utils as runner_utils
 from simbricks.runtime import simulation_executor as sim_exec
-from simbricks.schemas import base as schemas
+
 from simbricks.utils import artifatcs as utils_art
+from simbricks.client.openapi.client.sim_bricks_api_client.models import (
+    RunComponentState,
+    RunFragment,
+    RunState,
+    # events from runner
+    SimulatorStateChange,
+    SimulatorOutput,
+    ProxyStateChange,
+    ProxyOutput,
+    FragmentStateChange,
+    # events to runner
+    ProxyChangedState,
+    SimulatorChangedState,
+    StartRunReq,
+    SimulationSigusr1,
+    KillRunReq,
+)
+from simbricks.client.namespace import (
+    EventFromRunner_U,
+    EventToRunner_U,
+)
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import proxy as inst_proxy
@@ -29,7 +50,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     def __init__(
         self,
         instantiation: inst_base.Instantiation,
-        send_queue: asyncio.Queue[tuple[schemas.ApiEventType, schemas.ApiEventBundle]],
+        send_queue: asyncio.Queue[EventFromRunner_U],
         run_id: int,
     ):
         super().__init__(instantiation)
@@ -66,40 +87,34 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         simulator_id: int,
         sim_name: str | None = None,
         cmd: str | None = None,
-        state: schemas.RunComponentState | None = None,
+        state: RunComponentState | None = None,
     ) -> None:
-        event = schemas.ApiSimulatorStateChangeEventCreate(
+        event = SimulatorStateChange(
             run_id=self._run_id,
             simulator_id=simulator_id,
-            simulator_state=state,
+            state=state,
             simulator_name=sim_name,
             command=cmd,
         )
-
-        event_bundle = schemas.ApiEventBundle()
-        event_bundle.add_event(event)
-        await self._send_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
+        await self._send_queue.put(event)
 
     async def _send_out_simulator_events(
         self, simulator_id: int, lines: list[str], stderr: bool
     ) -> None:
-        event_bundle = schemas.ApiEventBundle[schemas.ApiSimulatorOutputEventCreate]()
         for line in lines:
-            event = schemas.ApiSimulatorOutputEventCreate(
+            event = SimulatorOutput(
                 run_id=self._run_id,
                 simulator_id=simulator_id,
                 output=line,
                 is_stderr=stderr,
-                output_generated_at=datetime.datetime.now()
+                produced_at=datetime.datetime.now(),
             )
-            event_bundle.add_event(event)
-
-        await self._send_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
+            await self._send_queue.put(event)
 
     async def simulator_prepare_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
         await self._send_state_simulator_event(
-            sim.id(), sim.full_name(), cmd, schemas.RunComponentState.PREPARING
+            sim.id(), sim.full_name(), cmd, RunComponentState.PREPARING
         )
 
     async def simulator_prepare_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
@@ -122,19 +137,19 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def simulator_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
         await self._send_state_simulator_event(
-            sim.id(), sim.full_name(), cmd, schemas.RunComponentState.STARTING
+            sim.id(), sim.full_name(), cmd, RunComponentState.STARTING
         )
 
     async def simulator_ready(self, sim: sim_base.Simulator) -> None:
         # TODO: Due to coroutine scheduling, simulator might have already been terminated and
         # simulator_exited was already called
-        await self._send_state_simulator_event(sim.id(), state=schemas.RunComponentState.RUNNING)
+        await self._send_state_simulator_event(sim.id(), state=RunComponentState.RUNNING)
 
     async def simulator_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
         LOGGER.debug(f"- [{sim.full_name()}] exited with code {exit_code}")
         # Report exit code to backend. Right now, we just do this as a line of console output.
         await self._send_out_simulator_events(sim.id(), [f"exited with code {exit_code}"], False)
-        await self._send_state_simulator_event(sim.id(), state=schemas.RunComponentState.TERMINATED)
+        await self._send_state_simulator_event(sim.id(), state=RunComponentState.TERMINATED)
 
     async def simulator_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
         for line in lines:
@@ -154,46 +169,39 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         self,
         proxy_id: int,
         proxy_name: str,
-        state: schemas.RunComponentState,
+        state: RunComponentState,
         proxy_ip: str,
         proxy_port: int,
         proxy_cmd: str | None = None,
     ) -> None:
-        event = schemas.ApiProxyStateChangeEventCreate(
+        event = ProxyStateChange(
             run_id=self._run_id,
             proxy_name=proxy_name,
             proxy_id=proxy_id,
-            proxy_state=state,
-            proxy_ip=proxy_ip,
-            proxy_port=proxy_port,
+            state=state,
+            ip=proxy_ip,
+            port=proxy_port,
             command=proxy_cmd,
         )
-
-        event_bundle = schemas.ApiEventBundle()
-        event_bundle.add_event(event)
-        await self._send_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
+        await self._send_queue.put(event)
 
     async def _send_out_proxy_events(self, proxy_id: int, lines: list[str], stderr: bool) -> None:
-        event_bundle = schemas.ApiEventBundle[schemas.ApiProxyOutputEventCreate]()
         for line in lines:
-            event = schemas.ApiProxyOutputEventCreate(
+            event = ProxyOutput(
                 run_id=self._run_id,
                 proxy_id=proxy_id,
                 output=line,
                 is_stderr=stderr,
-                output_generated_at=datetime.datetime.now()
+                produced_at=datetime.datetime.now(),
             )
-            event_bundle.add_event(event)
-
-        await self._send_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
+            await self._send_queue.put(event)
 
     async def proxy_started(self, proxy: inst_proxy.Proxy, cmd: str) -> None:
         LOGGER.debug(f"+ [{proxy.name}] {cmd}")
-
         await self._send_state_proxy_event(
             proxy.id(),
             proxy.name,
-            schemas.RunComponentState.STARTING,
+            RunComponentState.STARTING,
             proxy._ip,
             proxy._port,
             proxy_cmd=cmd,
@@ -204,7 +212,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         await self._send_state_proxy_event(
             proxy.id(),
             proxy.name,
-            schemas.RunComponentState.RUNNING,
+            RunComponentState.RUNNING,
             proxy._ip,
             proxy._port,
         )
@@ -213,7 +221,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         LOGGER.debug(f"- [{proxy.name}] exited with code {exit_code}")
         await self._send_out_proxy_events(proxy.id(), [f"exited with code {exit_code}"], False)
         await self._send_state_proxy_event(
-            proxy.id(), proxy.name, schemas.RunComponentState.TERMINATED, proxy._ip, proxy._port
+            proxy.id(), proxy.name, RunComponentState.TERMINATED, proxy._ip, proxy._port
         )
 
     async def proxy_stdout(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
@@ -234,7 +242,7 @@ class Run:
         inst: inst_base.Instantiation,
         callbacks: RunnerSimulationExecutorCallbacks,
         runner: sim_exec.SimulationExecutor,
-        run_fragment: schemas.ApiRunFragment,
+        run_fragment: RunFragment,
     ) -> None:
         self.run_id: int = run_id
         self.inst: inst_base.Instantiation = inst
@@ -248,7 +256,8 @@ class Run:
 class FragmentRunner(abc.ABC):
 
     def __init__(
-        self, base_url: str,
+        self,
+        base_url: str,
         workdir: pathlib.Path,
         namespace: str,
         ident: int,
@@ -264,9 +273,7 @@ class FragmentRunner(abc.ABC):
         self._runner_ip: str = runner_ip
         self._verbose: bool = verbose
 
-        self._send_event_queue = asyncio.Queue[
-            tuple[schemas.ApiEventType, schemas.ApiEventBundle]
-        ]()
+        self._send_event_queue = asyncio.Queue[EventFromRunner_U]()
 
         self._run_map: dict[int, Run] = {}
 
@@ -284,29 +291,36 @@ class FragmentRunner(abc.ABC):
     async def write(self, data: bytes) -> None:
         pass
 
-    async def send_events(
-        self, events: schemas.ApiEventBundle, event_type: schemas.ApiEventType
-    ) -> None:
-        await runner_utils.send_events(self.write, events, event_type)
+    async def send_events(self, events: list[EventToRunner_U] | list[EventFromRunner_U]) -> None:
+        await runner_utils.send_events(self.write, events)
 
-    async def get_events(self) -> tuple[schemas.ApiEventType, schemas.ApiEventBundle]:
+    async def get_events(self) -> list[EventToRunner_U] | list[EventFromRunner_U]:
         return await runner_utils.get_events(self.read)
-    
-    async def _assemble_inst(
-        self, run_id: int, start_event: schemas.ApiRunEventStartRunRead
-    ) -> inst_base.Instantiation:
-        LOGGER.debug(f"fetch and assemble instantiation related to run {run_id}")
+
+    async def _enqueue_fragment_state_change(
+        self, run_id: int, run_fragment_id: int, run_state: RunState
+    ) -> None:
+        event = FragmentStateChange(
+            run_id=run_id,
+            run_fragment_id=run_fragment_id,
+            run_state=run_state,
+            produced_at=datetime.datetime.now(),
+        )
+        await self._send_event_queue.put(event)
+
+    async def _assemble_inst(self, start_event: StartRunReq) -> inst_base.Instantiation:
+        LOGGER.debug(f"fetch and assemble instantiation related to run {start_event.run_id}")
 
         # For now we expect to always have exactly one fragment per runner
         if len(start_event.fragments) != 1:
             raise RuntimeError("There must be exactly one fragment assigned to a runner")
 
-        run_workdir = self._workdir / f"run-{run_id}"
+        run_workdir = self._workdir / f"run-{start_event.run_id}"
         if run_workdir.exists():
             LOGGER.warning(
                 f"the directory {run_workdir} already exists, will create a new one using a uuid"
             )
-            run_workdir = self._workdir / f"run-{run_id}-{str(uuid.uuid4())}"
+            run_workdir = self._workdir / f"run-{start_event.run_id}-{str(uuid.uuid4())}"
         run_workdir.mkdir(parents=True)
 
         system = sys_base.System.fromJSON(json.loads(start_event.system.sb_json))
@@ -320,40 +334,41 @@ class FragmentRunner(abc.ABC):
             simbricksdir=pathlib.Path(
                 "/simbricks"
             ),  # TODO: we should not set the simbricks dir here
-        )  # TODO
+        )
         inst.env = env
         inst.assigned_fragment = inst.get_fragment(start_event.fragments[0].fragment.object_id)
 
         # retrieve input artifacts
         input_artifacts_dir = inst.env.input_artifacts_dir()
         pathlib.Path(input_artifacts_dir).mkdir(parents=True, exist_ok=True)
-        if inst.input_artifact_paths:
-            assert start_event.inst_input_artifact is not None
-            inst_artifact = base64.b64decode(start_event.inst_input_artifact.encode("utf-8"))
-            with io.BytesIO(inst_artifact) as inst_artifact_bytes:
-                utils_art.unpack_artifact(inst_artifact_bytes, input_artifacts_dir)
-        if inst.assigned_fragment.input_artifact_paths:
-            assert start_event.fragment_input_artifact is not None
-            fragment_artifact = base64.b64decode(
-                start_event.fragment_input_artifact.encode("utf-8")
-            )
-            with io.BytesIO(fragment_artifact) as fragment_artifact_bytes:
-                utils_art.unpack_artifact(fragment_artifact_bytes, input_artifacts_dir)
+        # TODO: Handle input artifacts properly
+        # if inst.input_artifact_paths:
+        #     assert start_event.inst_input_artifact is not None
+        #     inst_artifact = base64.b64decode(start_event.inst_input_artifact.encode("utf-8"))
+        #     with io.BytesIO(inst_artifact) as inst_artifact_bytes:
+        #         utils_art.unpack_artifact(inst_artifact_bytes, input_artifacts_dir)
+        # if inst.assigned_fragment.input_artifact_paths:
+        #     assert start_event.fragment_input_artifact is not None
+        #     fragment_artifact = base64.b64decode(
+        #         start_event.fragment_input_artifact.encode("utf-8")
+        #     )
+        #     with io.BytesIO(fragment_artifact) as fragment_artifact_bytes:
+        #         utils_art.unpack_artifact(fragment_artifact_bytes, input_artifacts_dir)
 
         return inst
 
-    async def _prepare_run(self, run_id: int, start_event: schemas.ApiRunEventStartRunRead) -> Run:
-        LOGGER.debug(f"prepare run {run_id}")
+    async def _prepare_run(self, start_event: StartRunReq) -> Run:
+        LOGGER.debug(f"prepare run {start_event.run_id}")
 
-        inst = await self._assemble_inst(run_id, start_event)
-        callbacks = RunnerSimulationExecutorCallbacks(inst, self._send_event_queue, run_id)
-        runner = sim_exec.SimulationExecutor(
-            inst, callbacks, self._verbose, self._runner_ip
+        inst = await self._assemble_inst(start_event)
+        callbacks = RunnerSimulationExecutorCallbacks(
+            inst, self._send_event_queue, start_event.run_id
         )
+        runner = sim_exec.SimulationExecutor(inst, callbacks, self._verbose, self._runner_ip)
         await runner.prepare()
 
         assert len(start_event.fragments) == 1
-        run = Run(run_id, inst, callbacks, runner, start_event.fragments[0])
+        run = Run(start_event.run_id, inst, callbacks, runner, start_event.fragments[0])
         return run
 
     async def _start_run(self, run: Run) -> None:
@@ -361,14 +376,9 @@ class FragmentRunner(abc.ABC):
         try:
             LOGGER.info(f"start run {run.run_id}")
 
-            event = schemas.ApiRunFragmentStateEventCreate(
-                run_id=run.run_id,
-                run_fragment_id=run.run_fragment.id,
-                run_state=schemas.RunState.RUNNING
+            await self._enqueue_fragment_state_change(
+                run.run_id, run.run_fragment.id, RunState.RUNNING
             )
-            event_bundle = schemas.ApiEventBundle()
-            event_bundle.add_event(event)
-            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
 
             # TODO: allow for proper checkpointing run
             sim_task = asyncio.create_task(run.runner.run())
@@ -376,37 +386,34 @@ class FragmentRunner(abc.ABC):
 
             output_path = run.inst.env.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
-            if run.inst.assigned_fragment.output_artifact_paths:
-                with io.BytesIO() as output_artifact:
-                    utils_art.create_artifact(
-                        file=output_artifact,
-                        paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
-                        base_path=pathlib.Path(run.inst.env._work_dir),
-                        check_relative=True,
-                    )
-                    output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
-                        run_id=run.run_id,
-                        run_fragment_id=run.run_fragment.id,
-                        output_artifact=base64.b64encode(
-                            output_artifact.getvalue()
-                        ).decode("utf-8"),
-                        output_artifact_name=run.inst.assigned_fragment.output_artifact_name,
-                    )
-                    event_bundle = schemas.ApiEventBundle()
-                    event_bundle.add_event(output_artifact_event)
-                    await self._send_event_queue.put(
-                        (schemas.ApiEventType.ApiEventCreate, event_bundle)
-                    )
 
-            status = schemas.RunState.ERROR if res.failed() else schemas.RunState.COMPLETED
-            event = schemas.ApiRunFragmentStateEventCreate(
-                run_id=run.run_id,
-                run_fragment_id=run.run_fragment.id,
-                run_state=status
-            )
-            event_bundle = schemas.ApiEventBundle()
-            event_bundle.add_event(event)
-            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
+            # TODO: handle output artifacts properly
+            # if run.inst.assigned_fragment.output_artifact_paths:
+            #     with io.BytesIO() as output_artifact:
+            #         utils_art.create_artifact(
+            #             file=output_artifact,
+            #             paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
+            #             base_path=pathlib.Path(run.inst.env._work_dir),
+            #             check_relative=True,
+            #         )
+
+            #         # TODO: FIXME
+            #         output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
+            #             run_id=run.run_id,
+            #             run_fragment_id=run.run_fragment.id,
+            #             output_artifact=base64.b64encode(output_artifact.getvalue()).decode(
+            #                 "utf-8"
+            #             ),
+            #             output_artifact_name=run.inst.assigned_fragment.output_artifact_name,
+            #         )
+            #         event_bundle = schemas.ApiEventBundle()
+            #         event_bundle.add_event(output_artifact_event)
+            #         await self._send_event_queue.put(
+            #             (schemas.ApiEventType.ApiEventCreate, event_bundle)
+            #         )
+
+            status = RunState.ERROR if res.failed() else RunState.COMPLETED
+            await self._enqueue_fragment_state_change(run.run_id, run.run_fragment.id, status)
 
             await run.runner.cleanup()
 
@@ -414,30 +421,25 @@ class FragmentRunner(abc.ABC):
 
         except asyncio.CancelledError:
             LOGGER.debug("_start_sim handle cancelled error")
+
             if sim_task:
                 sim_task.cancel()
-            event = schemas.ApiRunFragmentStateEventCreate(
-                run_id=run.run_id,
-                run_fragment_id=run.run_fragment.id,
-                run_state=schemas.RunState.CANCELLED
+
+            await self._enqueue_fragment_state_change(
+                run.run_id, run.run_fragment.id, RunState.CANCELLED
             )
-            event_bundle = schemas.ApiEventBundle()
-            event_bundle.add_event(event)
-            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
+
             LOGGER.info(f"cancelled execution of run {run.run_id}")
 
         except Exception as ex:
             LOGGER.debug("_start_sim handle error")
             if sim_task:
                 sim_task.cancel()
-            event = schemas.ApiRunFragmentStateEventCreate(
-                run_id=run.run_id,
-                run_fragment_id=run.run_fragment.id,
-                run_state=schemas.RunState.ERROR
+
+            await self._enqueue_fragment_state_change(
+                run.run_id, run.run_fragment.id, RunState.ERROR
             )
-            event_bundle = schemas.ApiEventBundle()
-            event_bundle.add_event(event)
-            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
+
             LOGGER.error(f"error while executing run {run.run_id}: {ex}")
 
     async def _cancel_all_tasks(self) -> None:
@@ -451,165 +453,100 @@ class FragmentRunner(abc.ABC):
             except asyncio.CancelledError:
                 pass
 
-    async def _handle_general_run_events(
-        self,
-        events: list[schemas.ApiRunEventRead],
-        updates: schemas.ApiEventBundle[schemas.ApiEventUpdate_U],
-    ) -> None:
-        events = schemas.validate_list_type(events, schemas.ApiRunEventRead)
-        for event in events:
-            update = schemas.ApiRunEventUpdate(
-                id=event.id, runner_id=self._ident, run_id=event.run_id
-            )
-            run_id = event.run_id
-            match event.run_event_type:
-                case schemas.RunEventType.KILL:
-                    if run_id and not run_id in self._run_map:
-                        update.event_status = schemas.ApiEventStatus.CANCELLED
-                    else:
-                        run = self._run_map[run_id]
-                        run.exec_task.cancel()
-                        await run.exec_task
-                        update.event_status = schemas.ApiEventStatus.COMPLETED
-                        LOGGER.debug(f"executed kill to cancel execution of run {run_id}")
-                case schemas.RunEventType.SIMULATION_STATUS:
-                    if not run_id or not run_id in self._run_map:
-                        update.event_status = schemas.ApiEventStatus.CANCELLED
-                    else:
-                        run = self._run_map[run_id]
-                        await run.runner.sigusr1()
-                        update.event_status = schemas.ApiEventStatus.COMPLETED
-                        LOGGER.debug(f"send sigusr1 to run {run_id}")
-                case schemas.RunEventType.START_RUN:
-                    assert event.event_discriminator == "ApiRunEventStartRunRead"
-                    event = schemas.ApiRunEventStartRunRead.model_validate(event)
-                    if run_id in self._run_map:
-                        LOGGER.debug(
-                            f"cannot start run, run with id {run_id} is already being executed"
-                        )
-                        update.event_status = schemas.ApiEventStatus.CANCELLED
-                    else:
-                        try:
-                            # The await here is deliberate, we want to make sure that we block here
-                            # and do not poll for / process further events before the run is fully
-                            # set up.
+    async def _handle_kill_run(self, event: KillRunReq) -> None:
+        if event.run_id and not event.run_id in self._run_map:
+            return
 
-                            # For example, we need this property when dealing with distributed
-                            # simulations. Other runners might send events to us, so we need the
-                            # necessary data structures to handle them to be fully set up.
-                            run = await self._prepare_run(run_id, event)
+        run = self._run_map[event.run_id]
+        run.exec_task.cancel()
+        await run.exec_task
 
-                            run.exec_task = asyncio.create_task(self._start_run(run=run))
-                            self._run_map[run_id] = run
-                            update.event_status = schemas.ApiEventStatus.COMPLETED
-                            LOGGER.debug(f"started execution of run {run_id}")
-                        except Exception:
-                            trace = traceback.format_exc()
-                            LOGGER.error(f"could not prepare run {run_id}: {trace}")
-                            assert len(event.fragments) == 1
-                            state_event = schemas.ApiRunFragmentStateEventCreate(
-                                run_id=event.run_id,
-                                run_fragment_id=event.fragments[0].id,
-                                run_state=schemas.RunState.ERROR
-                            )
-                            event_bundle = schemas.ApiEventBundle()
-                            event_bundle.add_event(state_event)
-                            await self._send_event_queue.put((schemas.ApiEventType.ApiEventCreate, event_bundle))
-                            update.event_status = schemas.ApiEventStatus.ERROR
+        LOGGER.debug(f"executed kill to cancel execution of run {event.run_id}")
+        LOGGER.info(f"handled run related event {event.id}")
 
-            updates.add_event(update)
-            LOGGER.info(f"handled run related event {event.id}")
+    async def _handle_sigusr1(self, event: SimulationSigusr1) -> None:
+        if not event.run_id or not event.run_id in self._run_map:
+            return
 
-    async def _handle_proxy_ready_run_events(
-        self, events: list[schemas.ApiProxyStateChangeEventRead]
-    ) -> None:
-        for event in events:
-            # TODO: FIXME proxy related events are currently not stored in the db, hence there is no
-            # point in updating an event itself. NOTE however that events are send to the backend in
-            # order to trigger a state change on the proxy db object. Similarly one can query for
-            # events that return the state of a proxy.
+        run = self._run_map[event.run_id]
+        await run.runner.sigusr1()
 
-            run_id = event.run_id
-            if run_id and not run_id in self._run_map:
-                continue
+        LOGGER.debug(f"send sigusr1 to run {event.run_id}")
+        LOGGER.info(f"handled run related event {event.id}")
 
-            run = self._run_map[run_id]
-            await run.runner.mark_external_proxies_running(
-                event.proxy_id, event.proxy_ip, event.proxy_port
-            )
-            LOGGER.debug(
-                f"processed ApiProxyReadyRunEventRead for proxy {event.proxy_id} and marked it ready"
+    async def _handle_start_run(self, event: StartRunReq) -> None:
+        if event.run_id in self._run_map:
+            LOGGER.debug(f"cannot start run, run with id {event.run_id} is already being executed")
+            return
+
+        try:
+            # The await here is deliberate, we want to make sure that we block here
+            # and do not poll for / process further events before the run is fully
+            # set up.
+
+            # For example, we need this property when dealing with distributed
+            # simulations. Other runners might send events to us, so we need the
+            # necessary data structures to handle them to be fully set up.
+            run = await self._prepare_run(event)
+
+            run.exec_task = asyncio.create_task(self._start_run(run=run))
+            self._run_map[event.run_id] = run
+            LOGGER.debug(f"started execution of run {event.run_id}")
+
+        except Exception:
+            trace = traceback.format_exc()
+            LOGGER.error(f"could not prepare run {event.run_id}: {trace}")
+
+            assert len(event.fragments) == 1
+            await self._enqueue_fragment_state_change(
+                event.run_id, event.fragments[0].id, RunState.ERROR
             )
 
-    async def _handle_simulator_state_change_events(
-        self, events: list[schemas.ApiSimulatorStateChangeEventRead]
-    ) -> None:
-        # TODO: FIXME the same applies here as for _handle_proxy_ready_run_events
-        for event in events:
-            run_id = event.run_id
-            if run_id not in self._run_map:
-                continue
+        LOGGER.info(f"handled run related event {event.id}")
 
-            run = self._run_map[run_id]
-            await run.runner.mark_simulator_terminated(event.simulator_id)
-            LOGGER.debug(f"marked simulator {event.simulator_id} as terminated")
+    async def _handle_proxy_ready_run_event(self, event: ProxyChangedState) -> None:
+        run_id = event.run_id
+        if run_id and not run_id in self._run_map:
+            return
+
+        run = self._run_map[run_id]
+        await run.runner.mark_external_proxies_running(event.proxy_id, event.ip, event.port)
+        LOGGER.debug(f"processed ProxyChangedState for proxy {event.proxy_id} and marked it ready")
+
+    async def _handle_simulator_state_change_event(self, event: SimulatorChangedState) -> None:
+        run_id = event.run_id
+        if run_id not in self._run_map:
+            return
+
+        run = self._run_map[run_id]
+        await run.runner.mark_simulator_terminated(event.simulator_id)
+        LOGGER.debug(f"marked simulator {event.simulator_id} as terminated")
 
     async def _handle_events(self) -> None:
         while True:
-            event_type, event_bundle = await self.get_events()
+            events = await self.get_events()
 
-            if event_type != schemas.ApiEventType.ApiEventRead:
-                LOGGER.warning(f"received events of unexpected type {event_type.value}")
-                continue
+            LOGGER.debug(f"events fetched ({events})")
 
-            LOGGER.debug(
-                f"events fetched ({len(event_bundle.events)}): "
-                f"{ {name: len(events) for name, events in event_bundle.events.items()} }"
-            )
-
-            update_events_bundle = schemas.ApiEventBundle[schemas.ApiEventUpdate_U]()
-            for key, events in event_bundle.events.items():
-                match key:
-                    # handle events related to a run that is currently being executed
-                    case ("ApiRunEventStartRunRead" | "ApiRunEventRead"):
-                        await self._handle_general_run_events(events, update_events_bundle)
-                    # handle events notifying us that proxy on other runner became ready
-                    case "ApiProxyStateChangeEventRead":
-                        await self._handle_proxy_ready_run_events(events)
-                    case "ApiSimulatorStateChangeEventRead":
-                        await self._handle_simulator_state_change_events(events)
+            for event in events:
+                match event:
+                    case KillRunReq():
+                        await self._handle_kill_run(event)
+                    case SimulationSigusr1():
+                        await self._handle_sigusr1(event)
+                    case StartRunReq():
+                        await self._handle_start_run(events)
+                    case ProxyChangedState():
+                        await self._handle_proxy_ready_run_event(event)
+                    case SimulatorChangedState():
+                        await self._handle_simulator_state_change_event(event)
                     case _:
-                        LOGGER.error(f"encountered not yet handled event type {key}")
-
-            if not update_events_bundle.empty():
-                await self._send_event_queue.put(
-                    (schemas.ApiEventType.ApiEventUpdate, update_events_bundle)
-                )
+                        LOGGER.error(f"encountered not yet handled event type {event}")
 
     async def _worker_loop(self):
+
+        # TODO: Is there now a better place to do this?
         while True:
-            # fetch all events not handled yet
-            event_query_bundle = schemas.ApiEventBundle[schemas.ApiEventQuery_U]()
-
-            if self._run_map:
-                # query events indicating that proxies are now ready
-                state_change_q = schemas.ApiProxyStateChangeEventQuery(
-                    run_ids=list(self._run_map.keys()),
-                    proy_states=[schemas.RunComponentState.RUNNING],
-                )
-                event_query_bundle.add_event(state_change_q)
-
-                for id, run in self._run_map.items():
-                    simulator_term_q = schemas.ApiSimulatorStateChangeEventQuery(
-                        run_ids=[id],
-                        simulator_ids=list(run.runner._wait_sims.keys()),
-                        simulator_states=[schemas.RunComponentState.TERMINATED],
-                    )
-                    event_query_bundle.add_event(simulator_term_q)
-
-            await self._send_event_queue.put(
-                (schemas.ApiEventType.ApiEventQuery, event_query_bundle)
-            )
 
             for run_id in list(self._run_map.keys()):
                 run = self._run_map[run_id]
@@ -624,8 +561,8 @@ class FragmentRunner(abc.ABC):
 
     async def _send_loop(self):
         while True:
-            event_type, event_bundle = await self._send_event_queue.get()
-            await self.send_events(event_bundle, event_type)
+            event = await self._send_event_queue.get()
+            await self.send_events([event])
 
     async def run(self) -> None:
         LOGGER.info("STARTED FRAGMENT EXECUTOR")
