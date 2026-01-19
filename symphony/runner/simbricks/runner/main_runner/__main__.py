@@ -29,6 +29,8 @@ from simbricks.client.openapi.client.sim_bricks_api_client.models import (
     RunnerHeartbeatReq,
     StartRunReq,
     SimulationSigusr1,
+    SimulatorChangedState,
+    ProxyChangedState,
     # events from runner
     RunnerStarted,
     RunnerHeartbeat,
@@ -178,6 +180,7 @@ class MainRunner:
         fragment_map: dict[str, Fragment] = {}
         for frag in start_run_event.inst.fragments:
             frag: Fragment = frag
+            assert frag.id
             fragment_map[frag.id] = frag
 
         # retrieve instantiation input artifacts
@@ -187,7 +190,7 @@ class MainRunner:
                 start_run_event.inst.id
             )
 
-        fragment_runner_map: dict[int, FragmentRunner] = {}
+        fragment_runner_map: dict[str, FragmentRunner] = {}
         for rf in start_run_event.fragments:
             assert rf.fragment_id in fragment_map
             frag = fragment_map[rf.fragment_id]
@@ -258,24 +261,19 @@ class MainRunner:
 
     async def _handel_events(self) -> None:
 
-        cursor_next: str | None = None
-
         while True:
 
             for run_id in list(self._run_map.keys()):
                 run = self._run_map[run_id]
                 for fragment_state in run.fragment_run_state.values():
-                    if fragment_state < RunState.COMPLETED:
+                    if fragment_state in [RunState.SPAWNED, RunState.PENDING, RunState.RUNNING]:
                         break
                 else:
-                    if run.run_state_callback is not None:
-                        run.run_state_callback.remove_callback()
-                    if run.output_artifact_callback is not None:
-                        run.output_artifact_callback.remove_callback()
                     await self._stop_fragment_runners(run.fragment_runner_map)
                     self._run_map.pop(run_id)
                     LOGGER.debug(f"removed run {run_id} from run_map")
 
+            cursor_next: str | None = None
             # fetch all events not handled yet
             fetched_events_bundle = await self._rc.retrieve_events(cursor_next=cursor_next)
 
@@ -291,17 +289,6 @@ class MainRunner:
                         heartbeat = RunnerHeartbeat()
                         await self._rc.submit_event(heartbeat)
                         LOGGER.debug(f"heartbeat sent")
-
-                    case KillRunReq():
-                        if event.run_id not in self._run_map:
-                            LOGGER.info(f"Cannot kill run {event.run_id} as not in run map")
-                            continue
-
-                        await self._send_events_aggregate_updates(event)
-                        LOGGER.debug(
-                            "send kill event to fragment runners to "
-                            f"cancel execution of run {run_id}"
-                        )
 
                     case StartRunReq():
                         if event.run_id in self._run_map:
@@ -319,18 +306,25 @@ class MainRunner:
                             run_error = RunStatus(run_id=event.run_id, run_state=RunState.ERROR)
                             await self._rc.submit_event(run_error)
 
-                    case SimulationSigusr1():
+                    case (
+                        KillRunReq()
+                        | SimulationSigusr1()
+                        | SimulatorChangedState()
+                        | ProxyChangedState()
+                    ):
                         if event.run_id not in self._run_map:
-                            LOGGER.debug(f"No run {event.run_id} to send sigusr1 to")
+                            LOGGER.info(
+                                f"Cannot send kill /sigusr1 / simulator state change to run {event.run_id} as not in run map"
+                            )
                             continue
 
                         await self._send_events_aggregate_updates(event)
-                        LOGGER.debug(
-                            f"send simulation status events to fragment runners of run {event.run_id}"
-                        )
+                        LOGGER.debug("send passthrough event to all fragment runners")
 
                     case _:
-                        LOGGER.error(f"encountered not yet handled event type {event}")
+                        LOGGER.error(
+                            f"encountered not yet handled event type: {event} {type(event)}"
+                        )
 
             if cursor_next is not None:
                 await self._rc.delete_retrieved_events_until_event(cursor_next)
@@ -353,17 +347,16 @@ class MainRunner:
             for event in frag_runner_event.events:
                 match event:
                     case (
-                        SimulatorStateChange()
-                        | SimulatorOutput()
+                        SimulatorOutput()
+                        | SimulatorStateChange()
                         | ProxyStateChange()
                         | ProxyOutput()
+                        | FragmentOutputArtifact()
                     ):
                         pass
                     case FragmentStateChange():
                         run = self._run_map[event.run_id]
                         run.fragment_run_state[event.run_fragment_id] = event.run_state
-                    case FragmentOutputArtifact():
-                        await self._submit_fragment_output_atifact(event)
                     case _:
                         raise Exception(
                             f"_handle_fragment_runner_events unkown event type: {event}"
@@ -494,6 +487,7 @@ LOGGER = setup_logger()
 
 def main():
     try:
+        LOGGER.info("Hello, starting the runner...")
         asyncio.run(amain())
     except KeyboardInterrupt:
         LOGGER.info("received keyboard interrupt, shutting down...")
