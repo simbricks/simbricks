@@ -18,7 +18,7 @@ from simbricks.orchestration.system import base as sys_base
 from simbricks.runner.main_runner import settings
 from simbricks.runner.main_runner.plugins import plugin
 from simbricks.runner.main_runner.plugins import plugin_loader
-from simbricks.utils import base as utils_base
+from simbricks.runner import utils as runner_utils
 from simbricks.client.namespace import EventToRunner_U, EventFromRunner_U
 from simbricks.client.openapi.client.sim_bricks_api_client.models import (
     Fragment,
@@ -184,7 +184,7 @@ class MainRunner:
             fragment_map[frag.id] = frag
 
         # retrieve instantiation input artifacts
-        inst_artifact = None
+        inst_artifact: bytes | None = None
         if sb_inst.input_artifact_paths:
             inst_artifact = await self._simbricks_client.get_inst_input_artifact_raw(
                 start_run_event.inst.id
@@ -223,20 +223,23 @@ class MainRunner:
                 id=start_run_event.id,
             )
 
-            #     if inst_artifact is not None:
-            #         # TODO: FIXME
-            #         start_fragment_event.inst_input_artifact = base64.b64encode(inst_artifact).decode("utf-8")
+            # set instantiation specific artifact
+            if inst_artifact is not None:
+                start_fragment_event[runner_utils.START_RUN_ADD_INST_ART] = base64.b64encode(
+                    inst_artifact
+                ).decode("utf-8")
 
-            #     fragment = fragment_map[rf.fragment_id]
-            #     fragment = sb_inst.get_fragment(fragment.object_id)
-            #     if fragment.input_artifact_paths:
-            #         fragment_artifact = await self._simbricks_client.get_fragment_input_artifact_raw(
-            #             start_run_event.inst.id, rf.fragment.id
-            #         )
-            #         # TODO: FIXME
-            #         start_fragment_event.fragment_input_artifact = base64.b64encode(fragment_artifact).decode(
-            #             "utf-8"
-            #         )
+            # set fragment specific artifact
+            assert rf.fragment_id in fragment_map
+            fragment = fragment_map[rf.fragment_id]
+            inst_fragment = sb_inst.get_fragment(fragment.object_id)
+            if inst_fragment.input_artifact_paths:
+                fragment_artifact = await self._simbricks_client.get_fragment_input_artifact_raw(
+                    start_run_event.inst.id, rf.fragment_id
+                )
+                start_fragment_event[runner_utils.START_RUN_ADD_FRAG_ART] = base64.b64encode(
+                    fragment_artifact
+                ).decode("utf-8")
 
             senders.append(
                 asyncio.create_task(
@@ -330,15 +333,6 @@ class MainRunner:
                 await self._rc.delete_retrieved_events_until_event(cursor_next)
 
             await asyncio.sleep(self._polling_delay_sec)
-
-    async def _submit_fragment_output_atifact(self, event: FragmentOutputArtifact) -> None:
-        # TODO: FIXME submit artifact
-        # with io.BytesIO(base64.b64decode(event.output_artifact.encode("utf-8"))) as output_artifact:
-        #     output_artifact.name = event.output_artifact_name
-        #     await self.simbricks_client.set_run_fragment_output_artifact_raw(
-        #         event.run_fragment_id, output_artifact
-        #     )
-        pass
 
     async def _handle_fragment_runner_events(self):
         while True:
@@ -479,6 +473,7 @@ def setup_logger() -> logging.Logger:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     logger = logging.getLogger(__name__)
+    logging.getLogger("httpx").disabled = True
     return logger
 
 
