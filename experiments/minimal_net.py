@@ -52,6 +52,15 @@ simulation = sim_helpers.simple_simulation(
 instantiation = inst_helpers.simple_instantiation(simulation)
 fragment = inst.Fragment()
 fragment.add_simulators(*simulation.all_simulators())
+
+
 instantiation.fragments = [fragment]
+
+# potentially set input artifacts
+# fragment.input_artifact_paths = ["experiments/minimal_net.py"]
+# instantiation.input_artifact_paths = ["experiments/minimal_net_dist.py"]
+
+# potentially collect output artifacts
+# fragment.output_artifact_paths = ["output"]
 
 instantiations = [instantiation]
