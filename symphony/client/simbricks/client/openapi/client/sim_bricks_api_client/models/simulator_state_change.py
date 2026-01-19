@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -20,18 +20,20 @@ class SimulatorStateChange:
     Attributes:
         state (RunComponentState):
         simulator_id (int):
-        run_id (int):
+        run_id (str):
         id (None | str | Unset): API Object id
         produced_at (datetime.datetime | Unset):
+        discriminator (Literal['SimulatorStateChange'] | Unset):  Default: 'SimulatorStateChange'.
         simulator_name (None | str | Unset):
         command (None | str | Unset):
     """
 
     state: RunComponentState
     simulator_id: int
-    run_id: int
+    run_id: str
     id: None | str | Unset = UNSET
     produced_at: datetime.datetime | Unset = UNSET
+    discriminator: Literal["SimulatorStateChange"] | Unset = "SimulatorStateChange"
     simulator_name: None | str | Unset = UNSET
     command: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -52,6 +54,8 @@ class SimulatorStateChange:
         produced_at: str | Unset = UNSET
         if not isinstance(self.produced_at, Unset):
             produced_at = self.produced_at.isoformat()
+
+        discriminator = self.discriminator
 
         simulator_name: None | str | Unset
         if isinstance(self.simulator_name, Unset):
@@ -78,6 +82,8 @@ class SimulatorStateChange:
             field_dict["id"] = id
         if produced_at is not UNSET:
             field_dict["produced_at"] = produced_at
+        if discriminator is not UNSET:
+            field_dict["discriminator"] = discriminator
         if simulator_name is not UNSET:
             field_dict["simulator_name"] = simulator_name
         if command is not UNSET:
@@ -110,6 +116,10 @@ class SimulatorStateChange:
         else:
             produced_at = isoparse(_produced_at)
 
+        discriminator = cast(Literal["SimulatorStateChange"] | Unset, d.pop("discriminator", UNSET))
+        if discriminator != "SimulatorStateChange" and not isinstance(discriminator, Unset):
+            raise ValueError(f"discriminator must match const 'SimulatorStateChange', got '{discriminator}'")
+
         def _parse_simulator_name(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -134,6 +144,7 @@ class SimulatorStateChange:
             run_id=run_id,
             id=id,
             produced_at=produced_at,
+            discriminator=discriminator,
             simulator_name=simulator_name,
             command=command,
         )

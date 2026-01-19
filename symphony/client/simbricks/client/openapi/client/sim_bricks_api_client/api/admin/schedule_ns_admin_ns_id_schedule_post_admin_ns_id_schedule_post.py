@@ -12,7 +12,7 @@ from ...types import Response
 
 
 def _get_kwargs(
-    ns_id: int,
+    ns_id: str,
 ) -> dict[str, Any]:
     _kwargs: dict[str, Any] = {
         "method": "post",
@@ -73,14 +73,14 @@ def _build_response(
 
 
 def sync_detailed(
-    ns_id: int,
+    ns_id: str,
     *,
     client: AuthenticatedClient,
 ) -> Response[Any | HTTPValidationError | InlineObject]:
     """Schedule Ns
 
     Args:
-        ns_id (int):
+        ns_id (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -102,14 +102,14 @@ def sync_detailed(
 
 
 def sync(
-    ns_id: int,
+    ns_id: str,
     *,
     client: AuthenticatedClient,
 ) -> Any | HTTPValidationError | InlineObject | None:
     """Schedule Ns
 
     Args:
-        ns_id (int):
+        ns_id (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -126,14 +126,14 @@ def sync(
 
 
 async def asyncio_detailed(
-    ns_id: int,
+    ns_id: str,
     *,
     client: AuthenticatedClient,
 ) -> Response[Any | HTTPValidationError | InlineObject]:
     """Schedule Ns
 
     Args:
-        ns_id (int):
+        ns_id (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -153,14 +153,14 @@ async def asyncio_detailed(
 
 
 async def asyncio(
-    ns_id: int,
+    ns_id: str,
     *,
     client: AuthenticatedClient,
 ) -> Any | HTTPValidationError | InlineObject | None:
     """Schedule Ns
 
     Args:
-        ns_id (int):
+        ns_id (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

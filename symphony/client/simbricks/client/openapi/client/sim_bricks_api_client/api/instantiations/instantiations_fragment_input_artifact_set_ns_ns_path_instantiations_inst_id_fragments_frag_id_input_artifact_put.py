@@ -11,7 +11,7 @@ from ...models.body_instantiations_fragment_input_artifact_set_ns_ns_path_instan
 )
 from ...models.http_validation_error import HTTPValidationError
 from ...models.inline_object import InlineObject
-from ...types import UNSET, Response, Unset
+from ...types import Response
 
 
 def _get_kwargs(
@@ -19,8 +19,7 @@ def _get_kwargs(
     inst_id: str,
     frag_id: str,
     *,
-    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut
-    | Unset = UNSET,
+    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut,
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
 
@@ -33,10 +32,7 @@ def _get_kwargs(
         ),
     }
 
-    if not isinstance(body, Unset):
-        _kwargs["data"] = body.to_dict()
-
-    headers["Content-Type"] = "application/x-www-form-urlencoded"
+    _kwargs["files"] = body.to_multipart()
 
     _kwargs["headers"] = headers
     return _kwargs
@@ -96,8 +92,7 @@ def sync_detailed(
     frag_id: str,
     *,
     client: AuthenticatedClient,
-    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut
-    | Unset = UNSET,
+    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut,
 ) -> Response[Any | HTTPValidationError | InlineObject]:
     """Set input artifact for an instantiation fragment
 
@@ -106,7 +101,7 @@ def sync_detailed(
         inst_id (str):
         frag_id (str):
         body (BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragI
-            dInputArtifactPut | Unset):
+            dInputArtifactPut):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -136,8 +131,7 @@ def sync(
     frag_id: str,
     *,
     client: AuthenticatedClient,
-    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut
-    | Unset = UNSET,
+    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut,
 ) -> Any | HTTPValidationError | InlineObject | None:
     """Set input artifact for an instantiation fragment
 
@@ -146,7 +140,7 @@ def sync(
         inst_id (str):
         frag_id (str):
         body (BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragI
-            dInputArtifactPut | Unset):
+            dInputArtifactPut):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -171,8 +165,7 @@ async def asyncio_detailed(
     frag_id: str,
     *,
     client: AuthenticatedClient,
-    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut
-    | Unset = UNSET,
+    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut,
 ) -> Response[Any | HTTPValidationError | InlineObject]:
     """Set input artifact for an instantiation fragment
 
@@ -181,7 +174,7 @@ async def asyncio_detailed(
         inst_id (str):
         frag_id (str):
         body (BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragI
-            dInputArtifactPut | Unset):
+            dInputArtifactPut):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -209,8 +202,7 @@ async def asyncio(
     frag_id: str,
     *,
     client: AuthenticatedClient,
-    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut
-    | Unset = UNSET,
+    body: BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragIdInputArtifactPut,
 ) -> Any | HTTPValidationError | InlineObject | None:
     """Set input artifact for an instantiation fragment
 
@@ -219,7 +211,7 @@ async def asyncio(
         inst_id (str):
         frag_id (str):
         body (BodyInstantiationsFragmentInputArtifactSetNsNsPathInstantiationsInstIdFragmentsFragI
-            dInputArtifactPut | Unset):
+            dInputArtifactPut):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

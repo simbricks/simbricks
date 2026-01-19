@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -22,10 +22,11 @@ class ProxyStateChange:
         port (int):
         state (RunComponentState):
         proxy_id (int):
-        run_id (int):
+        run_id (str):
         proxy_name (str):
         id (None | str | Unset): API Object id
         produced_at (datetime.datetime | Unset):
+        discriminator (Literal['ProxyStateChange'] | Unset):  Default: 'ProxyStateChange'.
         command (None | str | Unset):
     """
 
@@ -33,10 +34,11 @@ class ProxyStateChange:
     port: int
     state: RunComponentState
     proxy_id: int
-    run_id: int
+    run_id: str
     proxy_name: str
     id: None | str | Unset = UNSET
     produced_at: datetime.datetime | Unset = UNSET
+    discriminator: Literal["ProxyStateChange"] | Unset = "ProxyStateChange"
     command: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -63,6 +65,8 @@ class ProxyStateChange:
         if not isinstance(self.produced_at, Unset):
             produced_at = self.produced_at.isoformat()
 
+        discriminator = self.discriminator
+
         command: None | str | Unset
         if isinstance(self.command, Unset):
             command = UNSET
@@ -85,6 +89,8 @@ class ProxyStateChange:
             field_dict["id"] = id
         if produced_at is not UNSET:
             field_dict["produced_at"] = produced_at
+        if discriminator is not UNSET:
+            field_dict["discriminator"] = discriminator
         if command is not UNSET:
             field_dict["command"] = command
 
@@ -121,6 +127,10 @@ class ProxyStateChange:
         else:
             produced_at = isoparse(_produced_at)
 
+        discriminator = cast(Literal["ProxyStateChange"] | Unset, d.pop("discriminator", UNSET))
+        if discriminator != "ProxyStateChange" and not isinstance(discriminator, Unset):
+            raise ValueError(f"discriminator must match const 'ProxyStateChange', got '{discriminator}'")
+
         def _parse_command(data: object) -> None | str | Unset:
             if data is None:
                 return data
@@ -139,6 +149,7 @@ class ProxyStateChange:
             proxy_name=proxy_name,
             id=id,
             produced_at=produced_at,
+            discriminator=discriminator,
             command=command,
         )
 
