@@ -4,6 +4,8 @@ from collections import abc
 
 from simbricks.client.namespace import EventFromRunner_U, EventToRunner_U
 
+START_RUN_ADD_INST_ART = "inst_input_artifact"
+START_RUN_ADD_FRAG_ART = "fragment_input_artifact"
 
 def __event_to_dict(event: EventToRunner_U | EventToRunner_U) -> dict:
     assert hasattr(event, "to_dict")
@@ -34,7 +36,8 @@ async def send_events(
 ) -> None:
     events = [__event_to_dict(event) for event in events]
     events_json = json.dumps(events)
-    data = bytes(f"{len(events_json):12x},{events_json}", encoding="utf-8")
+    payload = f",{events_json}"
+    data = bytes(f"{len(payload):12x}{payload}", encoding="utf-8")
     await write(data)
 
 
@@ -61,7 +64,7 @@ async def get_events(
     if separator == -1:
         raise RuntimeError("invalid format of event bundle payload")
 
-    events_json = json.loads(payload[separator + 1 :])
+    events_json = json.loads(payload[separator + 1:])
     events = [__event_from_dict(event) for event in events_json]
 
     return events
