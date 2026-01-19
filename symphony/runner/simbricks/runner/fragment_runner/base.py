@@ -30,6 +30,7 @@ from simbricks.client.openapi.client.sim_bricks_api_client.models import (
     ProxyStateChange,
     ProxyOutput,
     FragmentStateChange,
+    FragmentOutputArtifact,
     # events to runner
     ProxyChangedState,
     SimulatorChangedState,
@@ -358,19 +359,24 @@ class FragmentRunner(abc.ABC):
         # retrieve input artifacts
         input_artifacts_dir = inst.env.input_artifacts_dir()
         pathlib.Path(input_artifacts_dir).mkdir(parents=True, exist_ok=True)
-        # TODO: Handle input artifacts properly
-        # if inst.input_artifact_paths:
-        #     assert start_event.inst_input_artifact is not None
-        #     inst_artifact = base64.b64decode(start_event.inst_input_artifact.encode("utf-8"))
-        #     with io.BytesIO(inst_artifact) as inst_artifact_bytes:
-        #         utils_art.unpack_artifact(inst_artifact_bytes, input_artifacts_dir)
-        # if inst.assigned_fragment.input_artifact_paths:
-        #     assert start_event.fragment_input_artifact is not None
-        #     fragment_artifact = base64.b64decode(
-        #         start_event.fragment_input_artifact.encode("utf-8")
-        #     )
-        #     with io.BytesIO(fragment_artifact) as fragment_artifact_bytes:
-        #         utils_art.unpack_artifact(fragment_artifact_bytes, input_artifacts_dir)
+
+        # instantiation specific input artifact
+        if inst.input_artifact_paths:
+            assert runner_utils.START_RUN_ADD_INST_ART in start_event
+            inst_artifact = base64.b64decode(
+                start_event[runner_utils.START_RUN_ADD_INST_ART].encode("utf-8")
+            )
+            with io.BytesIO(inst_artifact) as inst_artifact_bytes:
+                utils_art.unpack_artifact(inst_artifact_bytes, input_artifacts_dir)
+
+        # fragment specific input artifact
+        if inst.assigned_fragment.input_artifact_paths:
+            assert runner_utils.START_RUN_ADD_FRAG_ART in start_event
+            fragment_artifact = base64.b64decode(
+                start_event[runner_utils.START_RUN_ADD_FRAG_ART].encode("utf-8")
+            )
+            with io.BytesIO(fragment_artifact) as fragment_artifact_bytes:
+                utils_art.unpack_artifact(fragment_artifact_bytes, input_artifacts_dir)
 
         return inst
 
@@ -404,30 +410,23 @@ class FragmentRunner(abc.ABC):
             output_path = run.inst.env.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
 
-            # TODO: handle output artifacts properly
-            # if run.inst.assigned_fragment.output_artifact_paths:
-            #     with io.BytesIO() as output_artifact:
-            #         utils_art.create_artifact(
-            #             file=output_artifact,
-            #             paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
-            #             base_path=pathlib.Path(run.inst.env._work_dir),
-            #             check_relative=True,
-            #         )
+            # handle output artifacts properly
+            if run.inst.assigned_fragment.output_artifact_paths:
+                with io.BytesIO() as output_artifact:
+                    utils_art.create_artifact(
+                        file=output_artifact,
+                        paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
+                        base_path=pathlib.Path(run.inst.env._work_dir),
+                        check_relative=True,
+                    )
 
-            #         # TODO: FIXME
-            #         output_artifact_event = schemas.ApiRunFragmentOutputArtifactEventCreate(
-            #             run_id=run.run_id,
-            #             run_fragment_id=run.run_fragment.id,
-            #             output_artifact=base64.b64encode(output_artifact.getvalue()).decode(
-            #                 "utf-8"
-            #             ),
-            #             output_artifact_name=run.inst.assigned_fragment.output_artifact_name,
-            #         )
-            #         event_bundle = schemas.ApiEventBundle()
-            #         event_bundle.add_event(output_artifact_event)
-            #         await self._send_event_queue.put(
-            #             (schemas.ApiEventType.ApiEventCreate, event_bundle)
-            #         )
+                    output_artifact_event = FragmentOutputArtifact(
+                        artifact=base64.b64encode(output_artifact.getvalue()).decode("utf-8"),
+                        artifact_name=run.inst.assigned_fragment.output_artifact_name,
+                        run_fragment_id=run.run_fragment.id,
+                        run_id=run.run_id,
+                    )
+                    await self._send_event_queue.put(output_artifact_event)
 
             status = RunState.ERROR if res.failed() else RunState.COMPLETED
             await self._enqueue_fragment_state_change(run.run_id, run.run_fragment.id, status)
