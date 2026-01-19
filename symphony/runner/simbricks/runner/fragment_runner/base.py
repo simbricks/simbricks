@@ -23,6 +23,7 @@ from simbricks.client.openapi.client.sim_bricks_api_client.models import (
     RunComponentState,
     RunFragment,
     RunState,
+    Fragment,
     # events from runner
     SimulatorStateChange,
     SimulatorOutput,
@@ -141,15 +142,20 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         )
 
     async def simulator_ready(self, sim: sim_base.Simulator) -> None:
+        LOGGER.debug(f"- [{sim.full_name()}] is ready")
         # TODO: Due to coroutine scheduling, simulator might have already been terminated and
         # simulator_exited was already called
-        await self._send_state_simulator_event(sim.id(), state=RunComponentState.RUNNING)
+        await self._send_state_simulator_event(
+            sim.id(), sim.full_name(), state=RunComponentState.RUNNING
+        )
 
     async def simulator_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
         LOGGER.debug(f"- [{sim.full_name()}] exited with code {exit_code}")
         # Report exit code to backend. Right now, we just do this as a line of console output.
         await self._send_out_simulator_events(sim.id(), [f"exited with code {exit_code}"], False)
-        await self._send_state_simulator_event(sim.id(), state=RunComponentState.TERMINATED)
+        await self._send_state_simulator_event(
+            sim.id(), sim.full_name(), state=RunComponentState.TERMINATED
+        )
 
     async def simulator_stdout(self, sim: sim_base.Simulator, lines: list[str]) -> None:
         for line in lines:
@@ -238,13 +244,13 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
 class Run:
     def __init__(
         self,
-        run_id: int,
+        run_id: str,
         inst: inst_base.Instantiation,
         callbacks: RunnerSimulationExecutorCallbacks,
         runner: sim_exec.SimulationExecutor,
         run_fragment: RunFragment,
     ) -> None:
-        self.run_id: int = run_id
+        self.run_id: str = run_id
         self.inst: inst_base.Instantiation = inst
         self.callbacks: RunnerSimulationExecutorCallbacks = callbacks
         self.cancelled: bool = False
@@ -275,7 +281,7 @@ class FragmentRunner(abc.ABC):
 
         self._send_event_queue = asyncio.Queue[EventFromRunner_U]()
 
-        self._run_map: dict[int, Run] = {}
+        self._run_map: dict[str, Run] = {}
 
         self._worker_tasks: list[asyncio.Task] = []
 
@@ -298,7 +304,7 @@ class FragmentRunner(abc.ABC):
         return await runner_utils.get_events(self.read)
 
     async def _enqueue_fragment_state_change(
-        self, run_id: int, run_fragment_id: int, run_state: RunState
+        self, run_id: str, run_fragment_id: str, run_state: RunState
     ) -> None:
         event = FragmentStateChange(
             run_id=run_id,
@@ -329,6 +335,14 @@ class FragmentRunner(abc.ABC):
         )
         inst = inst_base.Instantiation.fromJSON(simulation, json.loads(start_event.inst.sb_json))
 
+        # build inst fragments map
+        # NOTE: do not use the parsed simbricks instantiation
+        fragment_map: dict[str, Fragment] = {}
+        for frag in start_event.inst.fragments:
+            frag: Fragment = frag
+            assert frag.id
+            fragment_map[frag.id] = frag
+
         env = inst_base.InstantiationEnvironment(
             workdir=run_workdir,
             simbricksdir=pathlib.Path(
@@ -336,7 +350,10 @@ class FragmentRunner(abc.ABC):
             ),  # TODO: we should not set the simbricks dir here
         )
         inst.env = env
-        inst.assigned_fragment = inst.get_fragment(start_event.fragments[0].fragment.object_id)
+
+        assert len(start_event.fragments) == 1
+        req_frag = fragment_map[start_event.fragments[0].fragment_id]
+        inst.assigned_fragment = inst.get_fragment(req_frag.object_id)
 
         # retrieve input artifacts
         input_artifacts_dir = inst.env.input_artifacts_dir()
@@ -518,9 +535,12 @@ class FragmentRunner(abc.ABC):
         if run_id not in self._run_map:
             return
 
-        run = self._run_map[run_id]
-        await run.runner.mark_simulator_terminated(event.simulator_id)
-        LOGGER.debug(f"marked simulator {event.simulator_id} as terminated")
+        if event.state == RunComponentState.TERMINATED:
+            run = self._run_map[run_id]
+            await run.runner.mark_simulator_terminated(event.simulator_id)
+            LOGGER.debug(f"marked simulator {event.simulator_id} as terminated")
+
+        return
 
     async def _handle_events(self) -> None:
         while True:
@@ -535,7 +555,7 @@ class FragmentRunner(abc.ABC):
                     case SimulationSigusr1():
                         await self._handle_sigusr1(event)
                     case StartRunReq():
-                        await self._handle_start_run(events)
+                        await self._handle_start_run(event)
                     case ProxyChangedState():
                         await self._handle_proxy_ready_run_event(event)
                     case SimulatorChangedState():
