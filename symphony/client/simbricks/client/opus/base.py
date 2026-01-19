@@ -66,11 +66,12 @@ class ConsoleLineGenerator:
             wait=None,
         )
 
-        if isinstance(output.links, PaginationLinks):
+        if isinstance(output.links, PaginationLinks) and isinstance(output.links.next_, str):
             self._cursor_next = datetime.datetime.fromisoformat(output.links.next_)
 
         lines = []
         if not isinstance(output.data, RunOutput):
+            print("No run output fetched")
             return lines
 
         # TODO: handle proxy output as well
@@ -84,12 +85,6 @@ class ConsoleLineGenerator:
                 for output_line in output_lines:
                     assert output_line.id is not None
                     lines.append((simulator.name, output_line.output))
-                    if self._simulators_seen_until_id is None:
-                        self._simulators_seen_until_id = output_line.id
-                    else:
-                        self._simulators_seen_until_id = max(
-                            self._simulators_seen_until_id, output_line.id
-                        )
 
         return lines
 
