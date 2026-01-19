@@ -67,7 +67,7 @@ async def follow(run_id: str):
 
 @app.command()
 @async_cli()
-async def run_con(run_id: str):
+async def rc(run_id: str):
     """Print a runs console completely."""
     console = rich.console.Console()
     pretty_printer = opus_base.ComponentOutputPrettyPrinter(console)
@@ -96,7 +96,7 @@ async def ls_rf(run_id: Annotated[str, Argument(help="The run id.")]):
 
 @app.command()
 @async_cli()
-async def get_output_artifact(
+async def goa(
     run_id: Annotated[str, Argument(help="The run id.")],
     run_fragment_id: Annotated[str, Argument(help="The run fragment id.")],
     path: Annotated[
