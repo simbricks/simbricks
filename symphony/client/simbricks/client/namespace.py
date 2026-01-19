@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
+import typing
 from datetime import datetime
 from pathlib import Path
 from .base import base_client, validate_response_model
@@ -374,92 +375,107 @@ class SimBricksClient:
 
         filepath = Path(path_to_file)
         assert filepath.exists() and filepath.is_file()
-        with filepath.open("rb") as fd:
-            artifact_file = File(fd)
+        with open(filepath, "rb") as fd:
+            artifact_file = File(payload=fd, file_name=fd.name, mime_type="multipart/form-data")
             artifact = InstArt(file=artifact_file)
 
-        async with base_client(self._ns_client.base_url) as client:
-            await inst_set_input_artifact.asyncio(
-                self._ns_client.namespace_path,
-                inst_id,
-                client=client,
-                body=artifact,
-            )
+            async with base_client(self._ns_client.base_url) as client:
+                resp = await inst_set_input_artifact.asyncio(
+                    self._ns_client.namespace_path,
+                    inst_id,
+                    client=client,
+                    body=artifact,
+                )
 
     async def get_inst_input_artifact(self, inst_id: str, store_path: str) -> None:
-        # TODO: FIXME
         async with base_client(self._ns_client.base_url) as client:
-            content = await inst_get_input_artifact.asyncio(
+            response = await inst_get_input_artifact.asyncio_detailed(
                 self._ns_client.namespace_path, inst_id, client=client
             )
             with open(store_path, "wb") as fd:
-                fd.write(content)
+                fd.write(response.content)
 
     async def get_inst_input_artifact_raw(self, inst_id: str) -> bytes:
-        # TODO: FIXME
         async with base_client(self._ns_client.base_url) as client:
-            content = await inst_get_input_artifact.asyncio(
+            response = await inst_get_input_artifact.asyncio_detailed(
                 self._ns_client.namespace_path, inst_id, client=client
             )
-            return content
+            return response.content
 
     async def set_fragment_input_artifact(
         self, inst_id: str, frag_id: str, path_to_file: str
     ) -> None:
         filepath = Path(path_to_file)
         assert filepath.exists() and filepath.is_file()
-        with filepath.open("rb") as fd:
-            artifact_file = File(fd)
+        with open(filepath, "rb") as fd:
+            artifact_file = File(payload=fd, file_name=fd.name, mime_type="multipart/form-data")
             artifact = InstFragArt(file=artifact_file)
 
-        async with base_client(self._ns_client.base_url) as client:
-            await inst_set_fragment_input_artifact.asyncio(
-                self._ns_client.namespace_path, inst_id, frag_id, client=client, body=artifact
-            )
+            async with base_client(self._ns_client.base_url) as client:
+                resp = await inst_set_fragment_input_artifact.asyncio(
+                    self._ns_client.namespace_path, inst_id, frag_id, client=client, body=artifact
+                )
 
     async def get_fragment_input_artifact(
         self, inst_id: str, frag_id: str, store_path: str
     ) -> None:
-        # TODO: FIXME
         async with base_client(self._ns_client.base_url) as client:
-            content = await inst_get_fragment_input_artifact.asyncio(
+            response = await inst_get_fragment_input_artifact.asyncio_detailed(
                 self._ns_client.namespace_path, inst_id, frag_id, client=client
             )
             with open(store_path, "wb") as fd:
-                fd.write(content)
+                fd.write(response.content)
 
     async def get_fragment_input_artifact_raw(self, inst_id: str, frag_id: str) -> bytes:
-        # TODO: FIXME
         async with base_client(self._ns_client.base_url) as client:
-            content = await inst_get_fragment_input_artifact.asyncio(
+            response = await inst_get_fragment_input_artifact.asyncio_detailed(
                 self._ns_client.namespace_path, inst_id, frag_id, client=client
             )
-            return content
+            return response.content
 
     async def set_run_fragment_output_artifact(
-        self, run_id: str, frag_id: str, path_to_file: str
+        self, run_id: str, run_frag_id: str, path_to_file: str
     ) -> None:
 
         filepath = Path(path_to_file)
         assert filepath.exists() and filepath.is_file()
         with filepath.open("rb") as fd:
-            artifact_file = File(fd)
+            artifact_file = File(payload=fd, file_name=fd.name, mime_type="multipart/form-data")
             artifact = RunFragOutArt(file=artifact_file)
+
+            async with base_client(self._ns_client.base_url) as client:
+                await set_run_frag_out_artifact.asyncio(
+                    self._ns_client.namespace_path,
+                    run_id,
+                    run_frag_id,
+                    client=client,
+                    body=artifact,
+                )
+
+    async def set_run_fragment_output_artifact_raw(
+        self, run_id: str, run_frag_id: int, uploaded_data: typing.IO[bytes]
+    ) -> None:
+
+        file = File(payload=uploaded_data)
 
         async with base_client(self._ns_client.base_url) as client:
             await set_run_frag_out_artifact.asyncio(
-                self._ns_client.namespace_path, run_id, frag_id, client=client, body=artifact
+                self._ns_client.namespace_path,
+                run_id,
+                run_frag_id,
+                client=client,
+                body=RunFragOutArt(file=file),
             )
 
     async def get_run_fragment_output_artifact(
         self, run_id: str, frag_id: str, store_path: str
     ) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            content = await get_run_frag_out_artifact.asyncio(
+            response = await get_run_frag_out_artifact.asyncio_detailed(
                 self._ns_client.namespace_path, run_id, frag_id, client=client
             )
             with open(store_path, "wb") as fd:
-                fd.write(content)
+                fd.write(response.content)
 
     async def get_all_run_fragments(self, run_id: str) -> RunsFragmentsList200Response:
         async with base_client(self._ns_client.base_url) as client:
