@@ -24,6 +24,7 @@ import asyncio
 import functools
 from rich.table import Table
 from rich.console import Console
+from simbricks.client.namespace import NsMember, NsRole
 
 
 def async_cli():
@@ -65,7 +66,7 @@ def print_table_generic(title: str, to_print, *args):
     console.print(table)
 
 
-def print_members_table(members: dict[str, list[dict]]):
+def print_members_table(members: dict[NsRole, list[NsMember]]):
     table = Table()
     table.add_column("Role")
     table.add_column("User")
@@ -73,6 +74,6 @@ def print_members_table(members: dict[str, list[dict]]):
     table.add_column("Last")
     for r, ms in members.items():
         for m in ms:
-            table.add_row(r, m["username"], m["first_name"], m["last_name"])
+            table.add_row(m.role, m.username, m.first_name, m.last_name)
     console = Console()
     console.print(table)
