@@ -22,6 +22,7 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
+from simbricks.client.settings import client_settings
 from simbricks.cli.commands import (
     audit,
     admin,
@@ -49,16 +50,14 @@ app.add_typer(instantiations.app, name="insts")
 app.add_typer(runners.app, name="runners")
 app.add_typer(rg.app, name="rg")
 
-namespace: str = ""
-
 
 @app.callback()
 @async_cli()
 async def amain(
     ns: Annotated[str, Option(help="Namespace to operate in.")] = client_settings().namespace,
 ):
-    global namespace
-    namespace = ns
+    settings = client_settings()
+    settings.namespace = ns
     # TODO
 
 
