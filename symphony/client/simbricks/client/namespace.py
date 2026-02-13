@@ -656,19 +656,25 @@ class RunnerClient:
 
 
 def ns_client(
-    base_url: str = client_settings().base_url,
-    namespace_path: str | None = client_settings().namespace,
+    base_url: str | None = None,
+    namespace_path: str | None = None,
 ) -> NSClient:
-    return NSClient(base_url, namespace_path)
+    return NSClient(
+      base_url if base_url is not None else client_settings().base_url,
+      namespace_path if namespace_path is not None else client_settings().namespace)
 
 
-def simb_client(ns_client: NSClient = ns_client()) -> SimBricksClient:
-    return SimBricksClient(ns_client)
+def simb_client(nsc: NSClient | None = None) -> SimBricksClient:
+    return SimBricksClient(
+      nsc if nsc is not None else ns_client())
 
 
-def rg_client(ns_client: NSClient = ns_client()) -> ResourceGroupClient:
-    return ResourceGroupClient(ns_client)
+def rg_client(nsc: NSClient | None) -> ResourceGroupClient:
+    return ResourceGroupClient(
+      nsc if nsc is not None else ns_client())
 
 
-def runner_client(runner_id: str, ns_client: NSClient = ns_client()) -> RunnerClient:
-    return RunnerClient(ns_client, runner_id)
+def runner_client(runner_id: str, nsc: NSClient | None = None) -> RunnerClient:
+    return RunnerClient(
+        nsc if nsc is not None else ns_client(),
+        runner_id)
