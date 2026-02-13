@@ -183,31 +183,6 @@ class TokenClient:
         assert token
         return token
 
-    async def resource_token(self, token: Token, ticket: str) -> Token:
-        assert token.is_access_valid()
-        timeout = aiohttp.ClientTimeout(total=client_settings().timeout_sec)
-        async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
-            async with session.post(
-                url=self._token_url,
-                headers={"Authorization": f"Bearer {token.access_token}"},
-                data={
-                    "client_id": self._client_id,
-                    "grant_type": "urn:ietf:params:oauth:grant-type:uma-ticket",
-                    "ticket": ticket,
-                },
-            ) as resp:
-                if resp.status in [401, 403]:
-                    json_resp = await resp.json()
-                    if "error" in json_resp:
-                        raise Exception(f"error refreshing token: {json_resp}")
-                else:
-                    resp.raise_for_status()
-                json_resp = await resp.json()
-                token = Token.parse_from_resp(json_obj=json_resp)
-
-        assert token
-        return token
-
 
 class TokenProvider:
 
@@ -240,18 +215,12 @@ class TokenProvider:
         assert self._token
         return self._token.access_token
 
-    async def resource_token(self, ticket):
-        await self._refresh_token()
-        self._token = await self._toke_client.resource_token(self._token, ticket)
-        self._token.store_token(self._toke_filepath)
-
 
 class SimBricksAuth(httpx.Auth):
 
     prefix: str = "Bearer"
     auth_header_name: str = "Authorization"
     retry: bool = True
-    auth_401_header_name: str = "WWW-Authenticate"
 
     def __init__(self, token_provider: TokenProvider):
         self._token_provider = token_provider
@@ -267,21 +236,4 @@ class SimBricksAuth(httpx.Auth):
     async def async_auth_flow(self, request: httpx.Request):
         # set access token
         await self._update_token_on_req(request)
-        response = yield request
-
-        # If the server issues a 401 response, we need to refresh the token
-        if response.status_code == 401 and self.auth_401_header_name in response.headers and self.retry:
-            wwa = response.headers[self.auth_401_header_name]
-            parts = wwa.split(",")
-            ticket = None
-            for p in parts:
-                p = p.strip()
-                if p.startswith('ticket="'):
-                    ticket = p[8:-1]
-
-            if ticket is not None:
-                # refresh token using the token provider, for this, the ticket from the responsse is needed.
-                await self._token_provider.resource_token(ticket)
-                # update headers once again
-                await self._update_token_on_req(request)
-                yield request
+        yield request
