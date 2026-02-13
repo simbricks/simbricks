@@ -29,6 +29,12 @@ from .settings import client_settings
 from simbricks.client.openapi.client.sim_bricks_api_client.api.namespace_base import (
     resolve_default_user_namspace_name_resolve_default_user_get_resolve_default_user_get as resolve_default_ns,
 )
+from simbricks.client.openapi.client.sim_bricks_api_client.api.members import (
+    members_delete_ns_ns_path_members_username_delete as members_delete_ns,
+    members_get_ns_ns_path_members_username_get as members_get_ns,
+    members_list_ns_ns_path_members_get as members_list_ns,
+    members_modify_ns_ns_path_members_username_put as members_update_ns,
+)
 from simbricks.client.openapi.client.sim_bricks_api_client.api.namespaces import (
     namespaces_children_create_ns_ns_path_children_post as create_child_ns,
     namespaces_children_list_ns_ns_path_children_get as list_child_ns,
@@ -85,8 +91,11 @@ from simbricks.client.openapi.client.sim_bricks_api_client.api.runners import (
     runners_to_events_delete_ns_ns_path_runners_runner_id_events_to_runner_event_id_delete as delete_events_to_runner,
 )
 from simbricks.client.openapi.client.sim_bricks_api_client.models import (
+    MembersList200Response,
     Namespace,
     NamespacesList200Response,
+    NsMember,
+    NsRole,
     System as ApiSystem,
     SystemsList200Response,
     Simulation as ApiSimulation,
@@ -215,24 +224,43 @@ class NSClient:
             namespaces = validate_response_model(namespaces, NamespacesList200Response)
             return namespaces
 
-    async def get_members(self) -> dict[str, list[dict]]:
+    async def get_member(self, username: str) -> NsMember:
         async with base_client(self.base_url) as client:
-            raise NotImplementedError()
-        # async with self.get(url="/members") as resp:
-        #     return await resp.json()
+            member = await members_get_ns.asyncio(self.namespace_path, username=username, client=client)
+            return validate_response_model(member, NsMember)
 
-    async def get_role_members(self, role: str) -> list[dict]:
+    async def get_members(self, role: NsRole | None = None) -> dict[NsRole, list[NsMember]]:
         async with base_client(self.base_url) as client:
-            raise NotImplementedError()
-        # async with self.get(url=f"/members/{role}") as resp:
-        #     return await resp.json()
+            members = await members_list_ns.asyncio(self.namespace_path, role=role, client=client)
+            members = validate_response_model(members, MembersList200Response)
+            map = {}
+            if members.data:
+                for m in members.data:
+                    l = map.get(m.role, [])
+                    l.append(m)
+                    map[m.role] = l
+            return map
+
+    async def get_role_members(self, role: NsRole) -> list[NsMember]:
+        rm = await self.get_members(role=role)
+        return rm.get(role, [])
 
     async def add_member(self, role: str, username: str) -> None:
         async with base_client(self.base_url) as client:
-            raise NotImplementedError()
-        # req_json = {"username": username}
-        # async with self.post(url=f"/members/{role}", json=req_json) as resp:
-        #     await resp.json()
+            to_create = NsMember(
+                username=username,
+                email="",
+                first_name="",
+                last_name="",
+                role=NsRole(role),
+            )
+            member = await members_update_ns.asyncio(self.namespace_path, username, body=to_create, client=client)
+            validate_response_model(member, NsMember)
+
+    async def delete_member(self, username: str) -> None:
+        async with base_client(self.base_url) as client:
+            await members_delete_ns.asyncio(self.namespace_path, username, client=client)
+
 
 
 class SimBricksClient:
