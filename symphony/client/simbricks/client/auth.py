@@ -26,6 +26,7 @@ import json
 import aiohttp
 import time
 import os
+import sys
 from typing_extensions import Self
 from .settings import client_settings
 
@@ -128,6 +129,7 @@ class TokenClient:
             print(f"Please visit {verification_uri} in the browser")
             print(f"There, enter the code: {user_code}")
             print("Waiting...")
+            sys.stdout.flush()
             while True:
                 time.sleep(interval)  # TODO: check timeout...
 
