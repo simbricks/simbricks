@@ -26,8 +26,8 @@ import contextlib
 from typing import TypeVar
 from .settings import client_settings
 from .auth import TokenProvider, SimBricksAuth
-from simbricks.client.openapi.client.sim_bricks_api_client.client import AuthenticatedClient
-from simbricks.client.openapi.client.sim_bricks_api_client.models import (
+from simbricks.client.openapi.client.python.sim_bricks_api_client.client import AuthenticatedClient
+from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     HTTPValidationError,
     InlineObject,
 )
