@@ -36,7 +36,7 @@ from simbricks.orchestration import instantiation, simulation, system
 from simbricks.utils import artifatcs as utils_artifacts
 
 from ..namespace import simb_client, SimBricksClient
-from ..openapi.client.sim_bricks_api_client.models import (
+from ..openapi.client.python.sim_bricks_api_client.models import (
     RunState,
     PaginationLinks,
     RunOutput,
