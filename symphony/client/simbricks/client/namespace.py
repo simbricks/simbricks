@@ -29,25 +29,17 @@ from .settings import client_settings
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.namespace_base import (
     user_namespaces_resolve_default,
 )
-<<<<<<< HEAD
-from simbricks.client.openapi.client.sim_bricks_api_client.api.members import (
-    members_delete_ns_ns_path_members_username_delete as members_delete_ns,
-    members_get_ns_ns_path_members_username_get as members_get_ns,
-    members_list_ns_ns_path_members_get as members_list_ns,
-    members_modify_ns_ns_path_members_username_put as members_update_ns,
+from simbricks.client.openapi.client.python.sim_bricks_api_client.api.members import (
+    members_modify,
+    members_get,
+    members_list,
+    members_delete,
 )
-from simbricks.client.openapi.client.sim_bricks_api_client.api.namespaces import (
-    namespaces_children_create_ns_ns_path_children_post as create_child_ns,
-    namespaces_children_list_ns_ns_path_children_get as list_child_ns,
-    namespaces_get_ns_ns_path_get as ns_by_path,
-    namespaces_delete_ns_ns_path_delete as delete_ns_by_path,
-=======
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.namespaces import (
     namespaces_children_create,
     namespaces_children_list,
     namespaces_get,
     namespaces_delete,
->>>>>>> e198f735 (symphony/client/openapi: adjust admin, base and namespace to use new auto-generated methods)
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.systems import (
     systems_create,
@@ -102,12 +94,8 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runners im
     runners_to_events_list,
     runners_to_events_delete,
 )
-<<<<<<< HEAD
-from simbricks.client.openapi.client.sim_bricks_api_client.models import (
-    MembersList200Response,
-=======
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
->>>>>>> e198f735 (symphony/client/openapi: adjust admin, base and namespace to use new auto-generated methods)
+    MembersList200Response,
     Namespace,
     NamespacesList200Response,
     NsMember,
@@ -244,12 +232,12 @@ class NSClient:
 
     async def get_member(self, username: str) -> NsMember:
         async with base_client(self.base_url) as client:
-            member = await members_get_ns.asyncio(self.namespace_path, username=username, client=client)
+            member = await members_get.asyncio(self.namespace_path, username=username, client=client)
             return validate_response_model(member, NsMember)
 
     async def get_members(self, role: NsRole | None = None) -> dict[NsRole, list[NsMember]]:
         async with base_client(self.base_url) as client:
-            members = await members_list_ns.asyncio(self.namespace_path, role=role, client=client)
+            members = await members_list.asyncio(self.namespace_path, role=role, client=client)
             members = validate_response_model(members, MembersList200Response)
             map = {}
             if members.data:
@@ -272,12 +260,12 @@ class NSClient:
                 last_name="",
                 role=NsRole(role),
             )
-            member = await members_update_ns.asyncio(self.namespace_path, username, body=to_create, client=client)
+            member = await members_modify.asyncio(self.namespace_path, username, body=to_create, client=client)
             validate_response_model(member, NsMember)
 
     async def delete_member(self, username: str) -> None:
         async with base_client(self.base_url) as client:
-            await members_delete_ns.asyncio(self.namespace_path, username, client=client)
+            await members_delete.asyncio(self.namespace_path, username, client=client)
 
 
 
