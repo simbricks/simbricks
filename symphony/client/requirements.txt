@@ -22,8 +22,7 @@
 
 # external dependencies
 aiohttp==3.9.5
-pydantic-settings==2.6.1
-rich==13.9.4
+pydantic-settings==2.11.0
 pytype==2024.10.11
 httpx==0.28.1
 attrs==22.2.0
