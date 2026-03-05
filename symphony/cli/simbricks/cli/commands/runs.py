@@ -141,7 +141,7 @@ async def submit(
     for sb_inst in instantiations:
         run_id = await opus_base.create_run(instantiation=sb_inst)
         run = await simb_client().get_run(run_id)
-        assert run_id == run.id
+        assert run and run_id == run.id
         print_table_generic("Run", [run], "id", "instantiation_id", "state")
 
     if follow and len(instantiations) > 1:

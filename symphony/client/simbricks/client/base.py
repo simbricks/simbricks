@@ -46,14 +46,17 @@ def non_close_file(handle: typing.IO):
 T = TypeVar("T")
 
 
-def validate_response_model(response_model: object, expected_type: type[T]) -> T:
+def validate_response_model(response_model: object, expected_type: type[T]) -> T | None:
+    if response_model is None:
+        return None
+    
     match response_model:
         case expected_type():
             return response_model
         case HTTPValidationError():
-            raise Exception(f"encountered http validation error: {response_model}")
+            raise Exception(f"encountered http validation error: {response_model.detail}")
         case InlineObject():
-            raise Exception(f"encountered unexpected InlineObject: {response_model}")
+            raise Exception(f"encountered error: {response_model.detail}")
         case _:
             raise Exception(f"encountered unexpected repsonse model: {response_model}")
 

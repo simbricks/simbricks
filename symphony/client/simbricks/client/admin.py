@@ -41,14 +41,16 @@ class AdminClient:
     def __init__(self):
         pass
 
-    async def get_ns(self, ns_id: str) -> Namespace:
+    async def get_ns(self, ns_id: str) -> Namespace | None:
         async with base_client() as client:
             ns = await admin_namespaces_get_id.asyncio(ns_id, client=client)
+            ns = validate_response_model(ns, Namespace)
             return ns
 
-    async def get_ns_by_name(self, ns_path: str) -> Namespace:
+    async def get_ns_by_name(self, ns_path: str) -> Namespace | None:
         async with base_client() as client:
             ns = await admin_namespaces_get_name.asyncio(ns_path, client=client)
+            ns = validate_response_model(ns, Namespace)
             return ns
 
     async def get_all_ns(self) -> NamespacesList200Response:
@@ -61,6 +63,9 @@ class AdminClient:
         to_create = Namespace(name=name, parent_id=parent_id)
         async with base_client() as client:
             ns = await admin_namespaces_create.asyncio(client=client, body=to_create)
+            ns = validate_response_model(ns, Namespace)
+            if ns is None:
+                raise Exception(f"Namespace {name} could not be created")
             return ns
 
     async def delete(self, ns_id: str) -> None:
