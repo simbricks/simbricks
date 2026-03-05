@@ -19,7 +19,7 @@ from simbricks.runner import utils as runner_utils
 from simbricks.runtime import simulation_executor as sim_exec
 
 from simbricks.utils import artifatcs as utils_art
-from simbricks.client.openapi.client.sim_bricks_api_client.models import (
+from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     RunComponentState,
     RunFragment,
     RunState,
@@ -545,7 +545,7 @@ class FragmentRunner(abc.ABC):
         while True:
             events = await self.get_events()
 
-            LOGGER.debug(f"events fetched ({events})")
+            LOGGER.debug(f"{len(events)} events fetched")
 
             for event in events:
                 match event:
