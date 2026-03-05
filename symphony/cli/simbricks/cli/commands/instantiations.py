@@ -41,7 +41,6 @@ async def ls():
 async def show(inst_id: str):
     """Show individual Instantiation."""
     inst = await simb_client().get_instantiation(inst_id)
-    print(inst)
     print_table_generic("Instantiations", [inst], "id", "simulation_id", "fragments")
 
 

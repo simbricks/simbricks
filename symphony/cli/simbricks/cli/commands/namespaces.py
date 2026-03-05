@@ -38,7 +38,7 @@ async def ls():
 @app.command()
 @async_cli()
 async def show(name: str):
-    """List namespace with given id ident."""
+    """List namespace with given name."""
     namespace = await ns_client().get_ns_by_name(name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 

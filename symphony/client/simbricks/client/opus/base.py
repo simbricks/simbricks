@@ -46,7 +46,7 @@ from ..openapi.client.python.sim_bricks_api_client.models import (
 
 async def still_running(run_id: str) -> bool:
     run = await simb_client().get_run(run_id)
-    return run.state == RunState.PENDING or run.state == RunState.RUNNING
+    return run is not None and (run.state == RunState.PENDING or run.state == RunState.RUNNING)
 
 
 class ConsoleLineGenerator:
