@@ -21,7 +21,6 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # external dependencies
-rich==13.9.4
 pytype==2024.10.11
 
 # local dependencies
