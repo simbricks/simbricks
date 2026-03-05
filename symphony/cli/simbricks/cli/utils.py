@@ -50,6 +50,9 @@ def print_table_generic(title: str, to_print, *args):
         table.add_column(key)
 
     for val in to_print:
+        if val is None:
+            continue
+
         row = []
 
         for key in args:
