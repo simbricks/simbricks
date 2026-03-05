@@ -20,7 +20,7 @@ from simbricks.runner.main_runner.plugins import plugin
 from simbricks.runner.main_runner.plugins import plugin_loader
 from simbricks.runner import utils as runner_utils
 from simbricks.client.namespace import EventToRunner_U, EventFromRunner_U
-from simbricks.client.openapi.client.sim_bricks_api_client.models import (
+from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     Fragment,
     RunnerTag,
     RunState,
