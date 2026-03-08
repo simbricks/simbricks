@@ -40,12 +40,14 @@ class Token:
         session_state: str,
         access_valid_until: int,
         refresh_valid_until: int,
+        is_offline_token: bool,
     ):
         self.access_token: str = access_token
         self.refresh_token: str = refresh_token
         self.session_state: str = session_state
         self.access_valid_until: int = access_valid_until
         self.refresh_valid_until: int = refresh_valid_until
+        self.is_offline_token: bool = is_offline_token
 
     def toJSON(self) -> dict:
         return self.__dict__
@@ -54,7 +56,7 @@ class Token:
         return self.access_valid_until > int(time.time())
 
     def is_refresh_valid(self) -> bool:
-        return self.refresh_valid_until > int(time.time())
+        return self.is_offline_token or self.refresh_valid_until > int(time.time())
 
     def store_token(self, filename: str) -> None:
         with open(filename, "w") as fh:
@@ -71,11 +73,12 @@ class Token:
                     session_state=json_token["session_state"],
                     access_valid_until=int(json_token["access_valid_until"]),
                     refresh_valid_until=int(json_token["refresh_valid_until"]),
+                    is_offline_token=json_token["is_offline_token"],
                 )
         return None
 
     @staticmethod
-    def parse_from_resp(json_obj) -> Token:
+    def parse_from_resp(json_obj, is_offline_token: bool) -> Token:
         access_valid_until = int(time.time()) - 10 + int(json_obj["expires_in"])
         refresh_valid_until = int(time.time()) - 10 + int(json_obj["refresh_expires_in"])
 
@@ -85,6 +88,7 @@ class Token:
             session_state="",
             access_valid_until=access_valid_until,
             refresh_valid_until=refresh_valid_until,
+            is_offline_token=is_offline_token,
         )
 
 
@@ -112,8 +116,11 @@ class TokenClient:
             interval = None
             verification_uri = None
             user_code = None
+            request_data = {"client_id": self._client_id}
+            if client_settings().auth_offline_token:
+                request_data["scope"] = "offline_access"
             async with session.post(
-                url=self._device_auth_url, data={"client_id": self._client_id}
+                url=self._device_auth_url, data=request_data
             ) as resp:
                 resp.raise_for_status()  # TODO: handel gracefully
 
@@ -150,7 +157,9 @@ class TokenClient:
                     if "error" in json_resp and json_resp["error"] != "authorization_pending":
                         raise Exception(f"error retrievening retrieving token: {json_resp}")
                     elif "error" not in json_resp:
-                        token = Token.parse_from_resp(json_obj=json_resp)
+                        token = Token.parse_from_resp(
+                            json_obj=json_resp, is_offline_token=client_settings().auth_offline_token
+                        )
                         break
 
         assert token
@@ -180,7 +189,7 @@ class TokenClient:
                 if "error" in json_resp:
                     raise Exception(f"error refreshing token: {json_resp}")
 
-                token = Token.parse_from_resp(json_obj=json_resp)
+                token = Token.parse_from_resp(json_obj=json_resp, is_offline_token=old_token.is_offline_token)
 
         assert token
         return token
@@ -194,10 +203,10 @@ class TokenProvider:
         self._toke_client = TokenClient()
 
     def _access_valid(self) -> bool:
-        return self._token and self._token.is_access_valid()
+        return self._token is not None and self._token.is_access_valid()
 
     def _refresh_valid(self) -> bool:
-        return self._token and self._token.is_refresh_valid()
+        return self._token is not None and self._token.is_refresh_valid()
 
     async def _refresh_token(self) -> None:
         if self._access_valid():

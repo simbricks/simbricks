@@ -29,6 +29,7 @@ class ClientSettings(BaseSettings):
     auth_client_id: str = "api.auth.simbricks.io"
     auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
     auth_dev_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
+    auth_offline_token: bool = False
 
     organization: str = "SimBricks"
     namespace: str | None = None
