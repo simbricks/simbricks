@@ -435,8 +435,8 @@ class MainRunner:
             await self._rc.submit_event(started_event)
 
             LOGGER.debug("start worker tasks")
-            workers.append(asyncio.create_task(self._handle_fragment_runner_events()))  # TODO
-            workers.append(asyncio.create_task(self._handel_events()))  # TODO
+            workers.append(asyncio.create_task(self._handle_fragment_runner_events()))
+            workers.append(asyncio.create_task(self._handel_events()))
             await asyncio.gather(*workers)
         except (asyncio.CancelledError, Exception):
             LOGGER.warning("aborting run loop and cleaning up")
