@@ -203,7 +203,7 @@ class NSClient:
                 self.namespace_path, client=client, body=to_create
             )
             ns = validate_response_model(ns, Namespace)
-            if ns is None:
+            if ns is None or ns.id is None:
                 raise Exception(f"did not receive created namespace {relative_name}")
             return ns
 
@@ -289,7 +289,7 @@ class SimBricksClient:
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             sys = validate_response_model(sys, ApiSystem)
-            if sys is None:
+            if sys is None or sys.id is None:
                 raise Exception("did not receive cerated system")
             return sys
 
@@ -320,7 +320,7 @@ class SimBricksClient:
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             sim = validate_response_model(sim, ApiSimulation)
-            if sim is None:
+            if sim is None or sim.id is None:
                 raise Exception("did not receive created simulation")
             return sim
 
@@ -333,7 +333,7 @@ class SimBricksClient:
             sim = await simulations_get.asyncio(
                 self._ns_client.namespace_path, sim_id, client=client
             )
-            sim = validate_response_model(sim, ApiSimulation, True)
+            sim = validate_response_model(sim, ApiSimulation)
             return sim
 
     async def get_simulations(self) -> SimulationsList200Response:
@@ -361,13 +361,13 @@ class SimBricksClient:
         )
 
         async with base_client(self._ns_client.base_url) as client:
-            inst = await instantiations_create.asyncio(
+            created = await instantiations_create.asyncio(
                 self._ns_client.namespace_path, client=client, body=to_create
             )
-            inst = validate_response_model(inst, ApiInstantiation)
-            if inst is None:
+            created = validate_response_model(created, ApiInstantiation)
+            if created is None or created.id is None:
                 raise Exception("did not receive created instantiation")
-            return inst
+            return created
 
     async def delete_instantiation(self, inst_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
@@ -398,7 +398,7 @@ class SimBricksClient:
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             run = validate_response_model(run, Run)
-            if run is None:
+            if run is None or run.id is None:
                 raise Exception("did not receive created run")
             return run
 
@@ -596,7 +596,7 @@ class ResourceGroupClient:
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             rg = validate_response_model(rg, ResourceGroup)
-            if rg is None:
+            if rg is None or rg.id is None:
                 raise Exception("did not receive created resource group")
             return rg
 
@@ -663,7 +663,7 @@ class RunnerClient:
                 self._ns_client.namespace_path, client=client, body=to_create
             )
             runner = validate_response_model(runner, Runner)
-            if runner is None:
+            if runner is None or runner.id is None:
                 raise Exception("did not receive created runner")
             return runner
 
