@@ -40,7 +40,7 @@ async def ls():
 @async_cli()
 async def show(sim_id: str):
     """Show individual Simulation."""
-    sim = await simb_client().get_simulation(simulation_id=sim_id)
+    sim = await simb_client().get_simulation(sim_id)
     print_table_generic("Simulation", [sim], "id", "system_id")
 
 

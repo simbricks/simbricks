@@ -40,7 +40,7 @@ async def ls():
 @async_cli()
 async def show(system_id: str):
     """Show individual System."""
-    system = await simb_client().get_system(system_id=system_id)
+    system = await simb_client().get_system(system_id)
     print_table_generic("Systems", [system], "id")
 
 
