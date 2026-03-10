@@ -8,48 +8,31 @@ from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.http_validation_error import HTTPValidationError
 from ...models.inline_object import InlineObject
-from ...models.runners_from_events_create_request import RunnersFromEventsCreateRequest
-from ...models.runners_from_events_list_200_response import RunnersFromEventsList200Response
-from ...types import UNSET, Response, Unset
+from ...models.ns_member import NsMember
+from ...types import Response
 
 
 def _get_kwargs(
     ns_path: str,
-    runner_id: str,
-    *,
-    body: RunnersFromEventsCreateRequest | Unset = UNSET,
 ) -> dict[str, Any]:
-    headers: dict[str, Any] = {}
 
     _kwargs: dict[str, Any] = {
-        "method": "post",
-        "url": "/ns/{ns_path}/-/runners/{runner_id}/events-from-runner".format(
+        "method": "put",
+        "url": "/users/self/namespace/membership/default/{ns_path}".format(
             ns_path=quote(str(ns_path), safe=""),
-            runner_id=quote(str(runner_id), safe=""),
         ),
     }
 
-    if not isinstance(body, Unset):
-        _kwargs["json"] = body.to_dict()
-
-    headers["Content-Type"] = "application/json"
-
-    _kwargs["headers"] = headers
     return _kwargs
 
 
 def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> HTTPValidationError | InlineObject | RunnersFromEventsList200Response | None:
+) -> HTTPValidationError | InlineObject | NsMember | None:
     if response.status_code == 200:
-        response_200 = RunnersFromEventsList200Response.from_dict(response.json())
+        response_200 = NsMember.from_dict(response.json())
 
         return response_200
-
-    if response.status_code == 201:
-        response_201 = RunnersFromEventsList200Response.from_dict(response.json())
-
-        return response_201
 
     if response.status_code == 401:
         response_401 = InlineObject.from_dict(response.json())
@@ -79,7 +62,7 @@ def _parse_response(
 
 def _build_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]:
+) -> Response[HTTPValidationError | InlineObject | NsMember]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -90,32 +73,24 @@ def _build_response(
 
 def sync_detailed(
     ns_path: str,
-    runner_id: str,
     *,
     client: AuthenticatedClient,
-    body: RunnersFromEventsCreateRequest | Unset = UNSET,
-) -> Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]:
-    """Enqueue one or multiple new events from the runner to the backend.
-
-     Enqueue one or multiple new events from the runner to the backend.
+) -> Response[HTTPValidationError | InlineObject | NsMember]:
+    """Set Default User Namespace Membership
 
     Args:
         ns_path (str):
-        runner_id (str):
-        body (RunnersFromEventsCreateRequest | Unset): RunnersFromEventsCreateRequest
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]
+        Response[HTTPValidationError | InlineObject | NsMember]
     """
 
     kwargs = _get_kwargs(
         ns_path=ns_path,
-        runner_id=runner_id,
-        body=body,
     )
 
     response = client.get_httpx_client().request(
@@ -127,64 +102,48 @@ def sync_detailed(
 
 def sync(
     ns_path: str,
-    runner_id: str,
     *,
     client: AuthenticatedClient,
-    body: RunnersFromEventsCreateRequest | Unset = UNSET,
-) -> HTTPValidationError | InlineObject | RunnersFromEventsList200Response | None:
-    """Enqueue one or multiple new events from the runner to the backend.
-
-     Enqueue one or multiple new events from the runner to the backend.
+) -> HTTPValidationError | InlineObject | NsMember | None:
+    """Set Default User Namespace Membership
 
     Args:
         ns_path (str):
-        runner_id (str):
-        body (RunnersFromEventsCreateRequest | Unset): RunnersFromEventsCreateRequest
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        HTTPValidationError | InlineObject | RunnersFromEventsList200Response
+        HTTPValidationError | InlineObject | NsMember
     """
 
     return sync_detailed(
         ns_path=ns_path,
-        runner_id=runner_id,
         client=client,
-        body=body,
     ).parsed
 
 
 async def asyncio_detailed(
     ns_path: str,
-    runner_id: str,
     *,
     client: AuthenticatedClient,
-    body: RunnersFromEventsCreateRequest | Unset = UNSET,
-) -> Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]:
-    """Enqueue one or multiple new events from the runner to the backend.
-
-     Enqueue one or multiple new events from the runner to the backend.
+) -> Response[HTTPValidationError | InlineObject | NsMember]:
+    """Set Default User Namespace Membership
 
     Args:
         ns_path (str):
-        runner_id (str):
-        body (RunnersFromEventsCreateRequest | Unset): RunnersFromEventsCreateRequest
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]
+        Response[HTTPValidationError | InlineObject | NsMember]
     """
 
     kwargs = _get_kwargs(
         ns_path=ns_path,
-        runner_id=runner_id,
-        body=body,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -194,33 +153,25 @@ async def asyncio_detailed(
 
 async def asyncio(
     ns_path: str,
-    runner_id: str,
     *,
     client: AuthenticatedClient,
-    body: RunnersFromEventsCreateRequest | Unset = UNSET,
-) -> HTTPValidationError | InlineObject | RunnersFromEventsList200Response | None:
-    """Enqueue one or multiple new events from the runner to the backend.
-
-     Enqueue one or multiple new events from the runner to the backend.
+) -> HTTPValidationError | InlineObject | NsMember | None:
+    """Set Default User Namespace Membership
 
     Args:
         ns_path (str):
-        runner_id (str):
-        body (RunnersFromEventsCreateRequest | Unset): RunnersFromEventsCreateRequest
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        HTTPValidationError | InlineObject | RunnersFromEventsList200Response
+        HTTPValidationError | InlineObject | NsMember
     """
 
     return (
         await asyncio_detailed(
             ns_path=ns_path,
-            runner_id=runner_id,
             client=client,
-            body=body,
         )
     ).parsed

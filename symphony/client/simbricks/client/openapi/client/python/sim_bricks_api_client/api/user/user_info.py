@@ -5,7 +5,9 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.namespace import Namespace
+from ...models.http_validation_error import HTTPValidationError
+from ...models.inline_object import InlineObject
+from ...models.user import User
 from ...types import Response
 
 
@@ -13,17 +15,39 @@ def _get_kwargs() -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/resolve/default/user",
+        "url": "/users/self/info",
     }
 
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Namespace | None:
+def _parse_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> HTTPValidationError | InlineObject | User | None:
     if response.status_code == 200:
-        response_200 = Namespace.from_dict(response.json())
+        response_200 = User.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 401:
+        response_401 = InlineObject.from_dict(response.json())
+
+        return response_401
+
+    if response.status_code == 403:
+        response_403 = InlineObject.from_dict(response.json())
+
+        return response_403
+
+    if response.status_code == 404:
+        response_404 = InlineObject.from_dict(response.json())
+
+        return response_404
+
+    if response.status_code == 422:
+        response_422 = HTTPValidationError.from_dict(response.json())
+
+        return response_422
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -31,7 +55,9 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[Namespace]:
+def _build_response(
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[HTTPValidationError | InlineObject | User]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -42,16 +68,16 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
 def sync_detailed(
     *,
-    client: AuthenticatedClient | Client,
-) -> Response[Namespace]:
-    """Resolve Default User Namspace Name
+    client: AuthenticatedClient,
+) -> Response[HTTPValidationError | InlineObject | User]:
+    """Resolve User Info
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Namespace]
+        Response[HTTPValidationError | InlineObject | User]
     """
 
     kwargs = _get_kwargs()
@@ -65,16 +91,16 @@ def sync_detailed(
 
 def sync(
     *,
-    client: AuthenticatedClient | Client,
-) -> Namespace | None:
-    """Resolve Default User Namspace Name
+    client: AuthenticatedClient,
+) -> HTTPValidationError | InlineObject | User | None:
+    """Resolve User Info
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Namespace
+        HTTPValidationError | InlineObject | User
     """
 
     return sync_detailed(
@@ -84,16 +110,16 @@ def sync(
 
 async def asyncio_detailed(
     *,
-    client: AuthenticatedClient | Client,
-) -> Response[Namespace]:
-    """Resolve Default User Namspace Name
+    client: AuthenticatedClient,
+) -> Response[HTTPValidationError | InlineObject | User]:
+    """Resolve User Info
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Namespace]
+        Response[HTTPValidationError | InlineObject | User]
     """
 
     kwargs = _get_kwargs()
@@ -105,16 +131,16 @@ async def asyncio_detailed(
 
 async def asyncio(
     *,
-    client: AuthenticatedClient | Client,
-) -> Namespace | None:
-    """Resolve Default User Namspace Name
+    client: AuthenticatedClient,
+) -> HTTPValidationError | InlineObject | User | None:
+    """Resolve User Info
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Namespace
+        HTTPValidationError | InlineObject | User
     """
 
     return (

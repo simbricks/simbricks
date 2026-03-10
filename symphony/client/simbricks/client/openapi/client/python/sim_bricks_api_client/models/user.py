@@ -6,31 +6,27 @@ from typing import Any, TypeVar, cast
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.ns_role import NsRole
 from ..types import UNSET, Unset
 
-T = TypeVar("T", bound="NsMember")
+T = TypeVar("T", bound="User")
 
 
 @_attrs_define
-class NsMember:
-    """NsMember
-
+class User:
+    """
     Attributes:
         username (str):
         email (str):
         first_name (str):
         last_name (str):
-        role (NsRole): NsRole
-        namespace_full_path (None | str | Unset):
+        id (None | str | Unset): API object id
     """
 
     username: str
     email: str
     first_name: str
     last_name: str
-    role: NsRole
-    namespace_full_path: None | str | Unset = UNSET
+    id: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -42,13 +38,11 @@ class NsMember:
 
         last_name = self.last_name
 
-        role = self.role.value
-
-        namespace_full_path: None | str | Unset
-        if isinstance(self.namespace_full_path, Unset):
-            namespace_full_path = UNSET
+        id: None | str | Unset
+        if isinstance(self.id, Unset):
+            id = UNSET
         else:
-            namespace_full_path = self.namespace_full_path
+            id = self.id
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -58,11 +52,10 @@ class NsMember:
                 "email": email,
                 "first_name": first_name,
                 "last_name": last_name,
-                "role": role,
             }
         )
-        if namespace_full_path is not UNSET:
-            field_dict["namespace_full_path"] = namespace_full_path
+        if id is not UNSET:
+            field_dict["id"] = id
 
         return field_dict
 
@@ -77,28 +70,25 @@ class NsMember:
 
         last_name = d.pop("last_name")
 
-        role = NsRole(d.pop("role"))
-
-        def _parse_namespace_full_path(data: object) -> None | str | Unset:
+        def _parse_id(data: object) -> None | str | Unset:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
             return cast(None | str | Unset, data)
 
-        namespace_full_path = _parse_namespace_full_path(d.pop("namespace_full_path", UNSET))
+        id = _parse_id(d.pop("id", UNSET))
 
-        ns_member = cls(
+        user = cls(
             username=username,
             email=email,
             first_name=first_name,
             last_name=last_name,
-            role=role,
-            namespace_full_path=namespace_full_path,
+            id=id,
         )
 
-        ns_member.additional_properties = d
-        return ns_member
+        user.additional_properties = d
+        return user
 
     @property
     def additional_keys(self) -> list[str]:

@@ -61,6 +61,7 @@ from .simulator_state_change import SimulatorStateChange
 from .start_run_req import StartRunReq
 from .system import System
 from .systems_list_200_response import SystemsList200Response
+from .user import User
 from .validation_error import ValidationError
 from .validation_error_loc_inner import ValidationErrorLocInner
 
@@ -126,6 +127,7 @@ __all__ = (
     "StartRunReq",
     "System",
     "SystemsList200Response",
+    "User",
     "ValidationError",
     "ValidationErrorLocInner",
 )
