@@ -27,6 +27,7 @@ from simbricks.orchestration import system
 from simbricks.orchestration import simulation as sim
 from simbricks.orchestration import instantiation as inst
 from simbricks.utils import base as utils_base
+from simbricks.client import simb_client
 from simbricks.client.opus import base as opus_base
 
 """
@@ -178,11 +179,12 @@ if __name__ == "__main__":
     async def submit_and_plot():
         averages = []
         run_ids = []
+        sbc = await simb_client()
         for instance in instantiations:
             run_ids.append(await opus_base.create_run(instantiation=instance))
         for run_id in run_ids:
             data = []
-            line_gen = opus_base.ConsoleLineGenerator(run_id=run_id, follow=True)
+            line_gen = opus_base.ConsoleLineGenerator(run_id=run_id, follow=True, sbc=sbc)
             async for _, line in line_gen.generate_lines():
                 pattern = r"(\d+\.?\d*)\s*MBytes"
                 match = re.search(pattern, line)
