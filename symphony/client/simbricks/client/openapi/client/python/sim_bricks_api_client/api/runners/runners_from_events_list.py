@@ -146,6 +146,8 @@ def sync_detailed(
 ) -> Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]:
     """Retrieve events passing from runner to backend.
 
+     Retrieve events passing from runner to backend.
+
     Args:
         ns_path (str):
         runner_id (str):
@@ -196,6 +198,8 @@ def sync(
 ) -> HTTPValidationError | InlineObject | RunnersFromEventsList200Response | None:
     """Retrieve events passing from runner to backend.
 
+     Retrieve events passing from runner to backend.
+
     Args:
         ns_path (str):
         runner_id (str):
@@ -240,6 +244,8 @@ async def asyncio_detailed(
     before: datetime.datetime | None | Unset = UNSET,
 ) -> Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]:
     """Retrieve events passing from runner to backend.
+
+     Retrieve events passing from runner to backend.
 
     Args:
         ns_path (str):
@@ -288,6 +294,8 @@ async def asyncio(
     before: datetime.datetime | None | Unset = UNSET,
 ) -> HTTPValidationError | InlineObject | RunnersFromEventsList200Response | None:
     """Retrieve events passing from runner to backend.
+
+     Retrieve events passing from runner to backend.
 
     Args:
         ns_path (str):
