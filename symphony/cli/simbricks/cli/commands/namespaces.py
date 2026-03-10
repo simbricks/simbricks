@@ -31,7 +31,8 @@ app = Typer(help="Managing SimBricks namespaces.")
 @async_cli()
 async def ls():
     """List available namespaces."""
-    namespaces = await ns_client().get_all()
+    nsc = await ns_client()
+    namespaces = await nsc.get_all()
     print_table_generic("Namespaces", namespaces.data, "id", "name", "parent_id", "base_path")
 
 
@@ -39,7 +40,8 @@ async def ls():
 @async_cli()
 async def show(name: str):
     """List namespace with given name."""
-    namespace = await ns_client().get_ns_by_name(name)
+    nsc = await ns_client()
+    namespace = await nsc.get_ns_by_name(name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
@@ -47,7 +49,8 @@ async def show(name: str):
 @async_cli()
 async def cur():
     """List current namespace."""
-    namespace = await ns_client().get_cur()
+    nsc = await ns_client()
+    namespace = await nsc.get_cur()
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
@@ -55,7 +58,8 @@ async def cur():
 @async_cli()
 async def create(name: str):
     """Create a new namespace."""
-    namespace = await ns_client().create_child_ns(name)
+    nsc = await ns_client()
+    namespace = await nsc.create_child_ns(name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
@@ -63,7 +67,8 @@ async def create(name: str):
 @async_cli()
 async def rm(name: str):
     """Delete a namespace."""
-    await ns_client().delete_ns(name)
+    nsc = await ns_client()
+    await nsc.delete_ns(name)
     print(f"Deleted namespace {name}.")
 
 
@@ -71,7 +76,8 @@ async def rm(name: str):
 @async_cli()
 async def members():
     """List all members."""
-    members = await ns_client().get_members()
+    nsc = await ns_client()
+    members = await nsc.get_members()
     print_members_table(members)
 
 
@@ -79,5 +85,6 @@ async def members():
 @async_cli()
 async def member_add(user: str, role: str):
     """Add member to namespace."""
-    members = await ns_client().add_member(role, user)
+    nsc = await ns_client()
+    members = await nsc.add_member(role, user)
     print(f"Added user {user} with role {role}.")

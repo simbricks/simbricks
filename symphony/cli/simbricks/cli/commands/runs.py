@@ -20,13 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import json
 import typing
 from pathlib import Path
 
 import rich
-from aiohttp import client_exceptions
-from typer import Argument, Option, Typer, Exit
+from typer import Argument, Option, Typer
 from typing_extensions import Annotated
 
 import simbricks.utils.load_mod as load_mod
@@ -46,7 +44,8 @@ app = Typer(help="Managing SimBricks runs.")
 @async_cli()
 async def ls():
     """List runs."""
-    runs = await simb_client().get_runs()
+    sbc = await simb_client()
+    runs = await sbc.get_runs()
     print_table_generic("Runs", runs.data, "id", "instantiation_id", "state")
 
 
@@ -54,7 +53,8 @@ async def ls():
 @async_cli()
 async def show(run_id: str):
     """Show individual run."""
-    run = await simb_client().get_run(run_id)
+    sbc = await simb_client()
+    run = await sbc.get_run(run_id)
     print_table_generic("Run", [run], "id", "instantiation_id", "state")
 
 
@@ -69,11 +69,12 @@ async def follow(run_id: str):
 @async_cli()
 async def rc(run_id: str):
     """Print a runs console completely."""
+    sbc = await simb_client()
     console = rich.console.Console()
     pretty_printer = opus_base.ComponentOutputPrettyPrinter(console)
     with console.status(f"[bold green]Waiting for console output of run {run_id} ..."):
         async for prefix, line in opus_base.ConsoleLineGenerator(
-            run_id=run_id, follow=False
+            run_id=run_id, follow=False, sbc=sbc
         ).generate_lines():
             pretty_printer.print_line(prefix, line)
 
@@ -82,7 +83,8 @@ async def rc(run_id: str):
 @async_cli()
 async def ls_rf(run_id: Annotated[str, Argument(help="The run id.")]):
     """List all run fragments of a run."""
-    run_fragments = await simb_client().get_all_run_fragments(run_id)
+    sbc = await simb_client()
+    run_fragments = await sbc.get_all_run_fragments(run_id)
     print_table_generic(
         "Run Fragments",
         run_fragments.data,
@@ -109,14 +111,16 @@ async def goa(
     if not path.parent.exists():
         raise RuntimeError(f"The path '{path.parent}' does not exist.")
 
-    await simb_client().get_run_fragment_output_artifact(run_id, run_fragment_id, path.as_posix())
+    sbc = await simb_client()
+    await sbc.get_run_fragment_output_artifact(run_id, run_fragment_id, path.as_posix())
 
 
 @app.command()
 @async_cli()
 async def rm(run_id: str):
     """Delete an individual run."""
-    await simb_client().delete_run(run_id)
+    sbc = await simb_client()
+    await sbc.delete_run(run_id)
 
 
 @app.command()
@@ -137,10 +141,11 @@ async def submit(
     experiment_mod = load_mod.load_module(module_path=path.as_posix())
     instantiations: list[inst_base.Instantiation] = experiment_mod.instantiations
 
+    sbc = await simb_client()
     run_id = None
     for sb_inst in instantiations:
         run_id = await opus_base.create_run(instantiation=sb_inst)
-        run = await simb_client().get_run(run_id)
+        run = await sbc.get_run(run_id)
         assert run and run_id == run.id
         print_table_generic("Run", [run], "id", "instantiation_id", "state")
 
@@ -164,7 +169,8 @@ async def create(
     ] = False,
 ):
     """Create a virtual prototype run based on an already submitted configuration."""
-    run = await simb_client().create_run(inst_id)
+    sbc = await simb_client()
+    run = await sbc.create_run(inst_id)
     print_table_generic("Run", [run], "id", "instantiation_id", "state")
 
     if follow and run.id is not None:

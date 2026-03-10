@@ -33,7 +33,8 @@ app = Typer(help="Managing SimBricks runners.")
 @async_cli()
 async def ls():
     """List runners."""
-    runners = await runner_client(-1).list_runners()
+    rc = await runner_client(-1)
+    runners = await rc.list_runners()
     print_table_generic(
         "Runners",
         runners.data,
@@ -51,7 +52,8 @@ async def ls():
 @async_cli()
 async def show(runner_id: str):
     """Show individual runner."""
-    runner = await runner_client(runner_id).get_runner()
+    rc = await runner_client(runner_id)
+    runner = await rc.get_runner()
     print_table_generic(
         "Runners", [runner], "id", "label", "tags", "namespace_id", "resource_group_id", "status"
     )
@@ -61,14 +63,16 @@ async def show(runner_id: str):
 @async_cli()
 async def rm(runner_id: str):
     """Delete an individual runner."""
-    await runner_client(runner_id).delete_runner()
+    rc = await runner_client(runner_id)
+    await rc.delete_runner()
 
 
 @app.command()
 @async_cli()
 async def create(resource_group_id: str, label: str, tags: list[str]):
     """Update a runner with the the given label and tags."""
-    runner = await runner_client(-1).create_runner(
+    rc = await runner_client(-1)
+    runner = await rc.create_runner(
         resource_group_id, label, tags
     )
     print_table_generic(
@@ -80,7 +84,8 @@ async def create(resource_group_id: str, label: str, tags: list[str]):
 @async_cli()
 async def rm_event(runner_id: str, event_id: str):
     """Delete all events to runner up to and including the specified event."""
-    await runner_client(runner_id).delete_retrieved_events_until_event(event_id)
+    rc = await runner_client(runner_id)
+    await rc.delete_retrieved_events_until_event(event_id)
 
 
 @app.command()
@@ -90,7 +95,7 @@ async def ls_events(
     limit: Annotated[int | None, Option("--limit", "-l", help="Limit results.")] = None,
 ):
     """List events going from backend to runner."""
-    rc = runner_client(runner_id)
+    rc = await runner_client(runner_id)
     events = await rc.retrieve_events(limit=limit)  # TODO: add missing parameters
 
     print_table_generic("Events", events.data, "id", "__class__", "produced_at")

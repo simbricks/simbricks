@@ -32,7 +32,8 @@ app = Typer(help="Managing SimBricks Simulations.")
 @async_cli()
 async def ls():
     """List Simulations."""
-    simulations = await simb_client().get_simulations()
+    sbc = await simb_client()
+    simulations = await sbc.get_simulations()
     print_table_generic("Simulations", simulations.data, "id", "system_id")
 
 
@@ -40,7 +41,8 @@ async def ls():
 @async_cli()
 async def show(sim_id: str):
     """Show individual Simulation."""
-    sim = await simb_client().get_simulation(sim_id)
+    sbc = await simb_client()
+    sim = await sbc.get_simulation(sim_id)
     print_table_generic("Simulation", [sim], "id", "system_id")
 
 
@@ -48,4 +50,5 @@ async def show(sim_id: str):
 @async_cli()
 async def rm(sim_id: str):
     """Delete an individual Simulation."""
-    await simb_client().delete_simulation(sim_id=sim_id)
+    sbc = await simb_client()
+    await sbc.delete_simulation(sim_id=sim_id)
