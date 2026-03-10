@@ -749,8 +749,8 @@ async def ns_client(
 ) -> NSClient:
     if base_url is None:
         base_url = client_settings().base_url
-    
-    namespace_path if namespace_path is not None else client_settings().namespace
+
+    namespace_path = namespace_path if namespace_path is not None else client_settings().namespace
     if namespace_path is None:
         namespace_path = await resolve_default_ns(base_url)
 
