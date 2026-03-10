@@ -20,52 +20,15 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer, Option
-from typing_extensions import Annotated
-from simbricks.client.settings import client_settings
-from simbricks.cli.commands import (
-    audit,
-    admin,
-    org,
-    namespaces,
-    rg,
-    runs,
-    systems,
-    simulations,
-    instantiations,
-    runners,
-    user,
-)
-from simbricks.client.settings import client_settings
-from simbricks.cli.utils import async_cli
+from typer import Typer
+from simbricks.client import auth
+from ..utils import async_cli
 
-app = Typer(pretty_exceptions_show_locals=False)
-app.add_typer(namespaces.app, name="ns")
-app.add_typer(runs.app, name="runs")
-app.add_typer(audit.app, name="audit")
-app.add_typer(admin.app, name="admin")
-app.add_typer(org.app, name="org")
-app.add_typer(systems.app, name="systems")
-app.add_typer(simulations.app, name="sims")
-app.add_typer(instantiations.app, name="insts")
-app.add_typer(runners.app, name="runners")
-app.add_typer(rg.app, name="rg")
-app.add_typer(user.app, name="user")
+app = Typer(help="Managing SimBricks User.")
 
 
-@app.callback()
+@app.command()
 @async_cli()
-async def amain(
-    ns: Annotated[str, Option(help="Namespace to operate in.")] = client_settings().namespace,
-):
-    settings = client_settings()
-    settings.namespace = ns
-    # TODO
-
-
-def main():
-    app()
-
-
-if __name__ == "__main__":
-    main()
+async def authenticate():
+    """Explicitly trigger user authentication. (Usually not necessary to do this explicitly)"""
+    await auth.TokenProvider().access_token()
