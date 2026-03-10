@@ -40,7 +40,8 @@ async def authenticate():
 @async_cli()
 async def info():
     """Retrieve information about my user."""
-    user = await user_client().user_info()
+    uc = await user_client()
+    user = await uc.user_info()
     print_table_generic("User", [user],  "id", "username", "email", "first_name", "last_name")
 
 
@@ -48,7 +49,8 @@ async def info():
 @async_cli()
 async def def_ns_mem():
     """Retrieve the current users default namespace membership."""
-    membership = await user_client().default_namespace_membership()
+    uc = await user_client()
+    membership = await uc.default_namespace_membership()
     print_table_generic("Default Namesapce Membership", [membership],  "username", "email", "first_name", "last_name", "role", "namespace_full_path")
 
 
@@ -56,7 +58,8 @@ async def def_ns_mem():
 @async_cli()
 async def set_def_ns_mem(ns_path: str):
     """Set the current users default namespace membership."""
-    membership = await user_client().set_default_ns_membership(ns_path)
+    uc = await user_client()
+    membership = await uc.set_default_ns_membership(ns_path)
     print_table_generic("Default Namesapce Membership", [membership],  "username", "email", "first_name", "last_name", "role", "namespace_full_path")
 
 
@@ -65,5 +68,6 @@ async def set_def_ns_mem(ns_path: str):
 @async_cli()
 async def memberships():
     """List a users namespace memberships."""
-    memberships = await user_client().memberships()
+    uc = await user_client()
+    memberships = await uc.memberships()
     print_table_generic("Namesapce Memberships", memberships.data,  "username", "email", "first_name", "last_name", "role", "namespace_full_path")

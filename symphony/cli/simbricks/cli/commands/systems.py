@@ -32,7 +32,8 @@ app = Typer(help="Managing SimBricks Systems.")
 @async_cli()
 async def ls():
     """List Systems."""
-    systems = await simb_client().get_systems()
+    sbc = await simb_client()
+    systems = await sbc.get_systems()
     print_table_generic("Systems", systems.data, "id")
 
 
@@ -40,7 +41,8 @@ async def ls():
 @async_cli()
 async def show(system_id: str):
     """Show individual System."""
-    system = await simb_client().get_system(system_id)
+    sbc = await simb_client()
+    system = await sbc.get_system(system_id)
     print_table_generic("Systems", [system], "id")
 
 
@@ -48,4 +50,5 @@ async def show(system_id: str):
 @async_cli()
 async def rm(system_id: str):
     """Delete an individual run."""
-    await simb_client().delete_system(sys_id=system_id)
+    sbc = await simb_client()
+    await sbc.delete_system(sys_id=system_id)

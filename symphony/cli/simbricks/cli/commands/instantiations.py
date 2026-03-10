@@ -32,7 +32,8 @@ app = Typer(help="Managing SimBricks Instantiations.")
 @async_cli()
 async def ls():
     """List Instantiations."""
-    insts = await simb_client().get_instantiations()
+    sbc = await simb_client()
+    insts = await sbc.get_instantiations()
     print_table_generic("Instantiations", insts.data, "id", "simulation_id", "fragments")
 
 
@@ -40,7 +41,8 @@ async def ls():
 @async_cli()
 async def show(inst_id: str):
     """Show individual Instantiation."""
-    inst = await simb_client().get_instantiation(inst_id)
+    sbc = await simb_client()
+    inst = await sbc.get_instantiation(inst_id)
     print_table_generic("Instantiations", [inst], "id", "simulation_id", "fragments")
 
 
@@ -48,4 +50,5 @@ async def show(inst_id: str):
 @async_cli()
 async def rm(inst_id: str):
     """Delete an individual Instantiation."""
-    await simb_client().delete_instantiation(inst_id=inst_id)
+    sbc = await simb_client()
+    await sbc.delete_instantiation(inst_id=inst_id)

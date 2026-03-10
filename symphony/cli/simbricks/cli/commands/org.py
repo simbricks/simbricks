@@ -23,7 +23,8 @@ async def amain(
 @async_cli()
 async def members():
     """List organization members."""
-    members = await org_client().get_members(organization)
+    oc = await org_client()
+    members = await oc.get_members(organization)
 
     print_table_generic("Members", members, "username", "first_name", "last_name")
 
@@ -32,7 +33,8 @@ async def members():
 @async_cli()
 async def invite(email: str, first_name: str, last_name: str):
     """Invite a new user."""
-    await org_client().invite_member(organization, email, first_name, last_name)
+    oc = await org_client()
+    await oc.invite_member(organization, email, first_name, last_name)
 
 
 @app.command()
@@ -44,22 +46,26 @@ async def guest(
     generate_token: Annotated[str, Option(help='File name to store an auth token into, if specified.', show_default=False)] = ''
     ):
     """Create a new guest user."""
-    client = org_client()
+    client = await org_client()
     await client.create_guest(organization, email, first_name, last_name)
     if generate_token:
         tok = await client.guest_token(organization, email)
         tok.store_token(generate_token)
 
+
 @app.command()
 @async_cli()
 async def guest_token(email: str, filename: str):
     """Generate token for guest account."""
-    tok = await org_client().guest_token(organization, email)
+    oc = await org_client()
+    tok = await oc.guest_token(organization, email)
     tok.store_token(filename)
+
 
 @app.command()
 @async_cli()
 async def guest_link(email: str, filename: str):
     """Generate magic login link for guest account."""
-    link = await org_client().guest_magic_link(organization, email)
+    oc = await org_client()
+    link = await oc.guest_magic_link(organization, email)
     print(link)

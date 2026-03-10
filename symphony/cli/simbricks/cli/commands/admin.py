@@ -32,7 +32,8 @@ app = Typer(help="SimBricks admin commands.")
 @async_cli()
 async def ns_ls():
     """List all available namespaces."""
-    namespaces = await admin_client().get_all_ns()
+    ac = await admin_client()
+    namespaces = await ac.get_all_ns()
     print_table_generic("Namespaces", namespaces.data, "id", "name", "parent_id", "base_path")
 
 
@@ -40,7 +41,8 @@ async def ns_ls():
 @async_cli()
 async def ns_show(ident: str):
     """List namespace with given id ident."""
-    namespace = await admin_client().get_ns(ns_id=ident)
+    ac = await admin_client()
+    namespace = await ac.get_ns(ns_id=ident)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
 
 
@@ -50,7 +52,8 @@ async def ns_create(
     name: str, parent_id: Annotated[str | None, Option(help="optional parent namesapce")] = None
 ):
     """Create a new namespace."""
-    namespace = await admin_client().create_ns(parent_id, name=name)
+    ac = await admin_client()
+    namespace = await ac.create_ns(parent_id, name=name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
     
 
@@ -58,7 +61,8 @@ async def ns_create(
 @async_cli()
 async def ns_rm(ident: str):
     """Delete a namespace."""
-    await admin_client().delete(ns_id=ident)
+    ac = await admin_client()
+    await ac.delete(ns_id=ident)
     print(f"Deleted namespace with id {ident}.")
 
 
@@ -66,4 +70,5 @@ async def ns_rm(ident: str):
 @async_cli()
 async def schedule(namespace_id: str):
     """Trigger run scheduling manually for a namespace."""
-    await admin_client().schedule_ns(namespace_id)
+    ac = await admin_client()
+    await ac.schedule_ns(namespace_id)
