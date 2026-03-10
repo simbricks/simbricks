@@ -45,13 +45,14 @@ from ..openapi.client.python.sim_bricks_api_client.models import (
 
 
 async def still_running(run_id: str) -> bool:
-    run = await simb_client().get_run(run_id)
+    sbc = await simb_client()
+    run = await sbc.get_run(run_id)
     return run is not None and (run.state == RunState.PENDING or run.state == RunState.RUNNING)
 
 
 class ConsoleLineGenerator:
-    def __init__(self, run_id: str, follow: bool):
-        self._sb_client: SimBricksClient = simb_client()
+    def __init__(self, run_id: str, follow: bool, sbc: SimBricksClient):
+        self._sb_client: SimBricksClient = sbc
         self._run_id: str = run_id
         self._cursor_next: datetime.datetime | None = None
         self._proxies_seen_until_id: int | None = None
@@ -123,7 +124,8 @@ class ComponentOutputPrettyPrinter:
 
 
 async def follow_run(run_id: str) -> None:
-    line_gen = ConsoleLineGenerator(run_id=run_id, follow=True)
+    sbc = await simb_client()
+    line_gen = ConsoleLineGenerator(run_id=run_id, follow=True, sbc=sbc)
     console = rich.console.Console()
     pretty_printer = ComponentOutputPrettyPrinter(console)
 
@@ -135,13 +137,15 @@ async def follow_run(run_id: str) -> None:
 
 
 async def submit_system(system: system.System) -> str:
-    sys = await simb_client().create_system(system)
+    sbc = await simb_client()
+    sys = await sbc.create_system(system)
     assert sys.id
     return sys.id
 
 
 async def submit_simulation(system_id: str, simulation: simulation.Simulation) -> str:
-    sim = await simb_client().create_simulation(system_id, simulation)
+    sbc = await simb_client()
+    sim = await sbc.create_simulation(system_id, simulation)
     assert sim.id
     return sim.id
 
@@ -149,7 +153,7 @@ async def submit_simulation(system_id: str, simulation: simulation.Simulation) -
 async def submit_instantiation(
     simulation_id: str, instantiation: instantiation.Instantiation
 ) -> str:
-    simbricks_client = simb_client()
+    simbricks_client = await simb_client()
 
     inst = await simbricks_client.create_instantiation(simulation_id, instantiation)
 
@@ -175,7 +179,8 @@ async def submit_instantiation(
 
 
 async def submit_run(instantiation_id: str) -> str:
-    run = await simb_client().create_run(instantiation_id)
+    sbc = await simb_client()
+    run = await sbc.create_run(instantiation_id)
     assert run.id
     return run.id
 

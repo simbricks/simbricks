@@ -82,5 +82,5 @@ class OrgClient:
         #     return (await resp.json())["magic_link"]
 
 
-def org_client() -> OrgClient:
+async def org_client() -> OrgClient:
     return OrgClient()

@@ -170,20 +170,12 @@ EventToRunner_U = (
 
 
 class NSClient:
-    def __init__(self, base_url: str, namespace_path: str | None = None):
+    def __init__(self, base_url: str, namespace_path: str):
         self.base_url: str = base_url
-        self.namespace_path: str | None = namespace_path
+        self.namespace_path: str = namespace_path
 
     def __build_ns_path(self, ns_base_path: str, ns_name: str) -> str:
         return f"{ns_base_path}/{ns_name}"
-
-    async def resolve_default_ns(self) -> None:
-        if self.namespace_path is not None:
-            return
-
-        async with base_client(self.base_url) as client:
-            membership = await user_default_membership.asyncio(client=client)            
-            self.namespace_path = membership.namespace_full_path
 
     async def create_child_ns(self, relative_name: str) -> Namespace:
         """
@@ -742,26 +734,45 @@ class RunnerClient:
             )
 
 
-def ns_client(
+async def resolve_default_ns(base_url: str) -> str:
+    async with base_client(base_url) as client:
+        membership = await user_default_membership.asyncio(client=client)
+        membership = validate_response_model(membership, NsMember)            
+        namespace_path = membership.namespace_full_path
+        assert namespace_path
+        return namespace_path
+
+
+async def ns_client(
     base_url: str | None = None,
     namespace_path: str | None = None,
 ) -> NSClient:
-    return NSClient(
-      base_url if base_url is not None else client_settings().base_url,
-      namespace_path if namespace_path is not None else client_settings().namespace)
+    if base_url is None:
+        base_url = client_settings().base_url
+    
+    namespace_path if namespace_path is not None else client_settings().namespace
+    if namespace_path is None:
+        namespace_path = await resolve_default_ns(base_url)
+
+    return NSClient(base_url, namespace_path)
+        
+
+async def simb_client(nsc: NSClient | None = None) -> SimBricksClient:
+    if nsc is None:
+        nsc = await ns_client()
+
+    return SimBricksClient(nsc)
 
 
-def simb_client(nsc: NSClient | None = None) -> SimBricksClient:
-    return SimBricksClient(
-      nsc if nsc is not None else ns_client())
+async def rg_client(nsc: NSClient | None = None) -> ResourceGroupClient:
+    if nsc is None:
+        nsc = await ns_client()
+
+    return ResourceGroupClient(nsc)
 
 
-def rg_client(nsc: NSClient | None = None) -> ResourceGroupClient:
-    return ResourceGroupClient(
-      nsc if nsc is not None else ns_client())
+async def runner_client(runner_id: str, nsc: NSClient | None = None) -> RunnerClient:
+    if nsc is None:
+        nsc = await ns_client()
 
-
-def runner_client(runner_id: str, nsc: NSClient | None = None) -> RunnerClient:
-    return RunnerClient(
-        nsc if nsc is not None else ns_client(),
-        runner_id)
+    return RunnerClient(nsc, runner_id)

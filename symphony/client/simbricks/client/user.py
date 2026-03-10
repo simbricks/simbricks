@@ -65,5 +65,5 @@ class UserClient:
             return default_membership
 
 
-def user_client() -> UserClient:
+async def user_client() -> UserClient:
     return UserClient()

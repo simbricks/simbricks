@@ -77,5 +77,5 @@ class AdminClient:
             await admin_namespaces_schedule.asyncio(ns_id, client=client)
 
 
-def admin_client() -> AdminClient:
+async def admin_client() -> AdminClient:
     return AdminClient()
