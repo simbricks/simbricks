@@ -95,8 +95,9 @@ class MainRunner:
 
     def __init__(
         self,
-        base_url: str,
-        namespace: str,
+        namespace_client: client.NSClient,
+        runner_client: client.RunnerClient,
+        simbricks_client: client.SimBricksClient,
         ident: int,
         polling_delay_sec: int,
     ):
@@ -108,9 +109,9 @@ class MainRunner:
         self.fragment_runners: dict[str, set[FragmentRunner]] = {}
         self.fragment_runner_events = asyncio.Queue[FragmentRunnerEvent]()
 
-        self._namespace_client = client.ns_client(base_url, namespace)
-        self._rc = client.runner_client(ident, self._namespace_client)
-        self._simbricks_client = client.simb_client(self._namespace_client)
+        self._namespace_client = namespace_client
+        self._rc = runner_client
+        self._simbricks_client = simbricks_client
 
         self._run_map: dict[str, MainRun] = {}
 
@@ -452,10 +453,19 @@ class MainRunner:
 
 
 async def amain():
+    base_url=settings.runner_settings().base_url
+    namespace=settings.runner_settings().namespace
+    ident=settings.runner_settings().runner_id
+
+    nsc = await client.ns_client(base_url, namespace)
+    sbc = await client.simb_client(nsc)
+    ruc = await client.runner_client(ident, nsc)
+
     runner = MainRunner(
-        base_url=settings.runner_settings().base_url,
-        namespace=settings.runner_settings().namespace,
-        ident=settings.runner_settings().runner_id,
+        nsc,
+        ruc,
+        sbc,
+        ident,
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
     )
 
