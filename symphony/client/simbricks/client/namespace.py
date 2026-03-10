@@ -26,8 +26,8 @@ from datetime import datetime
 from pathlib import Path
 from .base import base_client, validate_response_model
 from .settings import client_settings
-from simbricks.client.openapi.client.python.sim_bricks_api_client.api.namespace_base import (
-    user_namespaces_resolve_default,
+from simbricks.client.openapi.client.python.sim_bricks_api_client.api.user import (
+    user_default_membership,
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.members import (
     members_modify,
@@ -182,8 +182,8 @@ class NSClient:
             return
 
         async with base_client(self.base_url) as client:
-            ns: Namespace = await user_namespaces_resolve_default.asyncio(client=client)
-            self.namespace_path = self.__build_ns_path(ns.base_path, ns.name)
+            membership = await user_default_membership.asyncio(client=client)            
+            self.namespace_path = membership.namespace_full_path
 
     async def create_child_ns(self, relative_name: str) -> Namespace:
         """
