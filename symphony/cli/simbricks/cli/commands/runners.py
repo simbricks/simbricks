@@ -33,7 +33,7 @@ app = Typer(help="Managing SimBricks runners.")
 @async_cli()
 async def ls():
     """List runners."""
-    rc = await runner_client(-1)
+    rc = await runner_client("undefined")
     runners = await rc.list_runners()
     print_table_generic(
         "Runners",
@@ -71,7 +71,7 @@ async def rm(runner_id: str):
 @async_cli()
 async def create(resource_group_id: str, label: str, tags: list[str]):
     """Update a runner with the the given label and tags."""
-    rc = await runner_client(-1)
+    rc = await runner_client("undefined")
     runner = await rc.create_runner(
         resource_group_id, label, tags
     )

@@ -53,12 +53,12 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         self,
         instantiation: inst_base.Instantiation,
         send_queue: asyncio.Queue[EventFromRunner_U],
-        run_id: int,
+        run_id: str,
     ):
         super().__init__(instantiation)
         self._instantiation = instantiation
         self._send_queue = send_queue
-        self._run_id: int = run_id
+        self._run_id: str = run_id
 
     # ---------------------------------------
     # Callbacks related to whole simulation -
@@ -87,9 +87,9 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def _send_state_simulator_event(
         self,
         simulator_id: int,
-        sim_name: str | None = None,
+        sim_name: str,
+        state: RunComponentState,
         cmd: str | None = None,
-        state: RunComponentState | None = None,
     ) -> None:
         event = SimulatorStateChange(
             run_id=self._run_id,
@@ -116,7 +116,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def simulator_prepare_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
         await self._send_state_simulator_event(
-            sim.id(), sim.full_name(), cmd, RunComponentState.PREPARING
+            sim.id(), sim.full_name(), RunComponentState.PREPARING, cmd
         )
 
     async def simulator_prepare_exited(self, sim: sim_base.Simulator, exit_code: int) -> None:
@@ -139,7 +139,7 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     async def simulator_started(self, sim: sim_base.Simulator, cmd: str) -> None:
         LOGGER.debug(f"+ [{sim.full_name()}] {cmd}")
         await self._send_state_simulator_event(
-            sim.id(), sim.full_name(), cmd, RunComponentState.STARTING
+            sim.id(), sim.full_name(), RunComponentState.STARTING, cmd
         )
 
     async def simulator_ready(self, sim: sim_base.Simulator) -> None:
@@ -341,7 +341,7 @@ class FragmentRunner(abc.ABC):
         fragment_map: dict[str, Fragment] = {}
         for frag in start_event.inst.fragments:
             frag: Fragment = frag
-            assert frag.id
+            assert isinstance(frag, Fragment) and isinstance(frag.id, str) 
             fragment_map[frag.id] = frag
 
         env = inst_base.InstantiationEnvironment(

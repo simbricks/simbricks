@@ -23,7 +23,7 @@
 include mk/subdir_pre.mk
 
 SYMPHONY_DIR := $(d)
-SYMPHONY_MODS := utils orchestration client cli runtime runner local schemas
+SYMPHONY_MODS := utils orchestration client cli runtime runner local
 
 SYMPHONY_PUBLICATION_REPO ?= testpypi
 USE_PYPI_REPO := n

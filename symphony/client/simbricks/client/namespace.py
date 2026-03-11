@@ -60,7 +60,6 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.instantiat
     instantiations_delete,
     instantiations_input_artifact_get,
     instantiations_input_artifact_set,
-    instantiations_fragments_list,
     instantiations_fragment_input_artifact_get,
     instantiations_fragment_input_artifact_set,
 )
@@ -70,7 +69,6 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runs impor
     runs_list,
     runs_delete,
     runs_set,
-    runs_state_changes_list,
     runs_console_list,
     runs_fragments_list,
     runs_fragments_output_artifact_get,
@@ -80,7 +78,6 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.resource_g
     resource_groups_create,
     resource_groups_get,
     resource_groups_list,
-    resource_groups_delete,
     resource_groups_set,
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runners import (
@@ -88,8 +85,6 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runners im
     runners_get,
     runners_list,
     runners_delete,
-    runners_set,
-    runners_from_events_list,
     runners_from_events_create,
     runners_to_events_list,
     runners_to_events_delete,
@@ -119,7 +114,6 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     ResourceGroupsList200Response,
     Runner,
     RunnersList200Response,
-    RunnerStatus,
     RunnersFromEventsList200Response,
     RunnersToEventsList200Response,
     RunnersFromEventsCreateRequest,
@@ -135,7 +129,6 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     KillRunReq,
     RunnerHeartbeatReq,
     StartRunReq,
-    RunFragment,
     RunnerStarted,
     SimulationSigusr1,
     SimulatorChangedState,
@@ -320,7 +313,7 @@ class SimBricksClient:
         async with base_client(self._ns_client.base_url) as client:
             await simulations_delete.asyncio(self._ns_client.namespace_path, sim_id, client=client)
 
-    async def get_simulation(self, sim_id: int) -> ApiSimulation | None:
+    async def get_simulation(self, sim_id: str) -> ApiSimulation | None:
         async with base_client(self._ns_client.base_url) as client:
             sim = await simulations_get.asyncio(
                 self._ns_client.namespace_path, sim_id, client=client
@@ -372,7 +365,7 @@ class SimBricksClient:
             inst = await instantiations_get.asyncio(
                 self._ns_client.namespace_path, inst_id, client=client
             )
-            return validate_response_model(inst, ApiInstantiation, True)
+            return validate_response_model(inst, ApiInstantiation)
 
     async def get_instantiations(self) -> InstantitionsList200Response:
         async with base_client(self._ns_client.base_url) as client:
@@ -394,7 +387,7 @@ class SimBricksClient:
                 raise Exception("did not receive created run")
             return run
 
-    async def delete_run(self, rid: int) -> None:
+    async def delete_run(self, rid: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
             await runs_delete.asyncio(self._ns_client.namespace_path, rid, client=client)
 
