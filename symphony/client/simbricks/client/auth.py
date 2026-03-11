@@ -27,7 +27,6 @@ import aiohttp
 import time
 import os
 import sys
-from typing_extensions import Self
 from .settings import client_settings
 
 
@@ -237,7 +236,7 @@ class SimBricksAuth(httpx.Auth):
         self._token_provider = token_provider
 
     def sync_auth_flow(self, request: httpx.Request):
-        raise RuntimeError(f"Cannot use sync authentication with {Self.__class__.__qualname__}")
+        raise RuntimeError(f"Cannot use sync authentication with {self.__class__.__qualname__}")
 
     async def _update_token_on_req(self, request: httpx.Request) -> None:
         # set access token in request header

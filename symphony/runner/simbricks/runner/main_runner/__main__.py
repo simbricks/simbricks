@@ -24,6 +24,7 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     Fragment,
     RunnerTag,
     RunState,
+    PaginationLinks,
     # events to runner
     KillRunReq,
     RunnerHeartbeatReq,
@@ -98,7 +99,7 @@ class MainRunner:
         namespace_client: client.NSClient,
         runner_client: client.RunnerClient,
         simbricks_client: client.SimBricksClient,
-        ident: int,
+        ident: str,
         polling_delay_sec: int,
     ):
         self._ident = ident
@@ -116,7 +117,7 @@ class MainRunner:
         self._run_map: dict[str, MainRun] = {}
 
     async def _send_events_aggregate_updates(self, event: EventToRunner_U) -> None:
-        if event.run_id not in self._run_map:
+        if not hasattr(event, "run_id") or not isinstance(event.run_id, str) or event.run_id not in self._run_map:
             msg = f"Cannot _send_events_aggregate_updates to run {event.run_id}"
             LOGGER.error(msg)
             raise Exception(msg)
@@ -139,7 +140,7 @@ class MainRunner:
                     pass
             raise
 
-    async def _stop_fragment_runners(self, fragment_runner_map: dict[int, FragmentRunner]):
+    async def _stop_fragment_runners(self, fragment_runner_map: dict[str, FragmentRunner]):
         stop = []
         for runner in fragment_runner_map.values():
             stop.append(asyncio.create_task(runner.stop()))
@@ -180,8 +181,7 @@ class MainRunner:
         # get fragments
         fragment_map: dict[str, Fragment] = {}
         for frag in start_run_event.inst.fragments:
-            frag: Fragment = frag
-            assert frag.id
+            assert isinstance(frag, Fragment) and isinstance(frag.id, str)
             fragment_map[frag.id] = frag
 
         # retrieve instantiation input artifacts
@@ -207,6 +207,7 @@ class MainRunner:
             fragment_runner = await self._start_fragment_runner(
                 fragment_executor_tag, parameters_map[frag.object_id]
             )
+            assert isinstance(rf.id, str)
             fragment_runner_map[rf.id] = fragment_runner
 
         run = MainRun(start_run_event.run_id, fragment_runner_map)
@@ -282,8 +283,11 @@ class MainRunner:
             fetched_events_bundle = await self._rc.retrieve_events(cursor_next=cursor_next)
 
             # remember the cursor of already fetched events
-            if fetched_events_bundle.links is not None:
-                cursor_next = fetched_events_bundle.links.next_
+            links = fetched_events_bundle.links
+            if isinstance(links, PaginationLinks):
+                next_links = links.next_
+                if isinstance(next_links, str):
+                    cursor_next = next_links
 
             LOGGER.debug(f"events fetched ({len(fetched_events_bundle.data)})")
 
