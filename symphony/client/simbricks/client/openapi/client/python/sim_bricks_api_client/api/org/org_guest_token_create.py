@@ -7,6 +7,7 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.http_validation_error import HTTPValidationError
+from ...models.inline_object import InlineObject
 from ...models.org_guest_cred import OrgGuestCred
 from ...types import UNSET, Response, Unset
 
@@ -36,10 +37,15 @@ def _get_kwargs(
 
 def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Any | HTTPValidationError | None:
+) -> Any | HTTPValidationError | InlineObject | None:
     if response.status_code == 200:
         response_200 = response.json()
         return response_200
+
+    if response.status_code == 401:
+        response_401 = InlineObject.from_dict(response.json())
+
+        return response_401
 
     if response.status_code == 422:
         response_422 = HTTPValidationError.from_dict(response.json())
@@ -54,7 +60,7 @@ def _parse_response(
 
 def _build_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[Any | HTTPValidationError]:
+) -> Response[Any | HTTPValidationError | InlineObject]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -66,9 +72,9 @@ def _build_response(
 def sync_detailed(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
+    client: AuthenticatedClient,
     body: OrgGuestCred | Unset = UNSET,
-) -> Response[Any | HTTPValidationError]:
+) -> Response[Any | HTTPValidationError | InlineObject]:
     """Guest Token
 
      Invite a user to the organization.
@@ -82,7 +88,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Any | HTTPValidationError]
+        Response[Any | HTTPValidationError | InlineObject]
     """
 
     kwargs = _get_kwargs(
@@ -100,9 +106,9 @@ def sync_detailed(
 def sync(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
+    client: AuthenticatedClient,
     body: OrgGuestCred | Unset = UNSET,
-) -> Any | HTTPValidationError | None:
+) -> Any | HTTPValidationError | InlineObject | None:
     """Guest Token
 
      Invite a user to the organization.
@@ -116,7 +122,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Any | HTTPValidationError
+        Any | HTTPValidationError | InlineObject
     """
 
     return sync_detailed(
@@ -129,9 +135,9 @@ def sync(
 async def asyncio_detailed(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
+    client: AuthenticatedClient,
     body: OrgGuestCred | Unset = UNSET,
-) -> Response[Any | HTTPValidationError]:
+) -> Response[Any | HTTPValidationError | InlineObject]:
     """Guest Token
 
      Invite a user to the organization.
@@ -145,7 +151,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Any | HTTPValidationError]
+        Response[Any | HTTPValidationError | InlineObject]
     """
 
     kwargs = _get_kwargs(
@@ -161,9 +167,9 @@ async def asyncio_detailed(
 async def asyncio(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
+    client: AuthenticatedClient,
     body: OrgGuestCred | Unset = UNSET,
-) -> Any | HTTPValidationError | None:
+) -> Any | HTTPValidationError | InlineObject | None:
     """Guest Token
 
      Invite a user to the organization.
@@ -177,7 +183,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Any | HTTPValidationError
+        Any | HTTPValidationError | InlineObject
     """
 
     return (

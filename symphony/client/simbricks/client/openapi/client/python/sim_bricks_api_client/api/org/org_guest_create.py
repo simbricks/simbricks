@@ -7,14 +7,15 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.http_validation_error import HTTPValidationError
-from ...models.org_invite import OrgInvite
+from ...models.inline_object import InlineObject
+from ...models.org_member import OrgMember
 from ...types import UNSET, Response, Unset
 
 
 def _get_kwargs(
     org: str,
     *,
-    body: OrgInvite | Unset = UNSET,
+    body: OrgMember | Unset = UNSET,
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
 
@@ -36,7 +37,7 @@ def _get_kwargs(
 
 def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Any | HTTPValidationError | None:
+) -> Any | HTTPValidationError | InlineObject | None:
     if response.status_code == 200:
         response_200 = response.json()
         return response_200
@@ -44,6 +45,11 @@ def _parse_response(
     if response.status_code == 204:
         response_204 = cast(Any, None)
         return response_204
+
+    if response.status_code == 401:
+        response_401 = InlineObject.from_dict(response.json())
+
+        return response_401
 
     if response.status_code == 422:
         response_422 = HTTPValidationError.from_dict(response.json())
@@ -58,7 +64,7 @@ def _parse_response(
 
 def _build_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[Any | HTTPValidationError]:
+) -> Response[Any | HTTPValidationError | InlineObject]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -70,23 +76,23 @@ def _build_response(
 def sync_detailed(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
-    body: OrgInvite | Unset = UNSET,
-) -> Response[Any | HTTPValidationError]:
+    client: AuthenticatedClient,
+    body: OrgMember | Unset = UNSET,
+) -> Response[Any | HTTPValidationError | InlineObject]:
     """Create Guest
 
      Invite a user to the organization.
 
     Args:
         org (str):
-        body (OrgInvite | Unset): OrgInvite
+        body (OrgMember | Unset): OrgInvite
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Any | HTTPValidationError]
+        Response[Any | HTTPValidationError | InlineObject]
     """
 
     kwargs = _get_kwargs(
@@ -104,23 +110,23 @@ def sync_detailed(
 def sync(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
-    body: OrgInvite | Unset = UNSET,
-) -> Any | HTTPValidationError | None:
+    client: AuthenticatedClient,
+    body: OrgMember | Unset = UNSET,
+) -> Any | HTTPValidationError | InlineObject | None:
     """Create Guest
 
      Invite a user to the organization.
 
     Args:
         org (str):
-        body (OrgInvite | Unset): OrgInvite
+        body (OrgMember | Unset): OrgInvite
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Any | HTTPValidationError
+        Any | HTTPValidationError | InlineObject
     """
 
     return sync_detailed(
@@ -133,23 +139,23 @@ def sync(
 async def asyncio_detailed(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
-    body: OrgInvite | Unset = UNSET,
-) -> Response[Any | HTTPValidationError]:
+    client: AuthenticatedClient,
+    body: OrgMember | Unset = UNSET,
+) -> Response[Any | HTTPValidationError | InlineObject]:
     """Create Guest
 
      Invite a user to the organization.
 
     Args:
         org (str):
-        body (OrgInvite | Unset): OrgInvite
+        body (OrgMember | Unset): OrgInvite
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Any | HTTPValidationError]
+        Response[Any | HTTPValidationError | InlineObject]
     """
 
     kwargs = _get_kwargs(
@@ -165,23 +171,23 @@ async def asyncio_detailed(
 async def asyncio(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
-    body: OrgInvite | Unset = UNSET,
-) -> Any | HTTPValidationError | None:
+    client: AuthenticatedClient,
+    body: OrgMember | Unset = UNSET,
+) -> Any | HTTPValidationError | InlineObject | None:
     """Create Guest
 
      Invite a user to the organization.
 
     Args:
         org (str):
-        body (OrgInvite | Unset): OrgInvite
+        body (OrgMember | Unset): OrgInvite
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Any | HTTPValidationError
+        Any | HTTPValidationError | InlineObject
     """
 
     return (
