@@ -21,8 +21,21 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-from .base import base_client
+from .base import base_client, validate_response_model
 from .auth import Token
+from simbricks.client.openapi.client.python.sim_bricks_api_client.api.org import (
+    org_invite_member,
+    org_guest_create,
+    org_guest_token_create,
+    org_guest_magic_link_create,
+    org_members_list_root,
+)
+from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
+    OrgMember,
+    OrgMemberList200Response,
+    OrgGuestCred,
+    OrgGuestMagicLinkResp,
+)
 
 
 class OrgClient:
@@ -30,57 +43,36 @@ class OrgClient:
     def __init__(self):
         pass
 
-    # def _prefix(self, org: str, url: str) -> str:
-    # return f"/org/{org}{url}"
-
-    async def get_members(self, org: str):
-        raise NotImplementedError()
-        # async with self._base_client.get(url=self._prefix(org, f"/members")) as resp:
-        #     return await resp.json()
+    async def get_members(self, org: str) -> OrgMemberList200Response:
+        async with base_client() as client:
+            members = await org_members_list_root.asyncio(org, client=client)
+            members = validate_response_model(members, OrgMemberList200Response)
+            assert members
+            return members
 
     async def invite_member(self, org: str, email: str, first_name: str, last_name: str):
-        raise NotImplementedError()
-        # namespace_json = {
-        #     "email": email,
-        #     "first_name": first_name,
-        #     "last_name": last_name,
-        # }
-        # async with self._base_client.post(
-        #     url=self._prefix(org, "/invite-member"), json=namespace_json
-        # ) as resp:
-        #     await resp.json()
+        invite = OrgMember(email, first_name, last_name)
+        async with base_client() as client:
+            await org_invite_member.asyncio(org, client=client, body=invite)
 
     async def create_guest(self, org: str, email: str, first_name: str, last_name: str):
-        raise NotImplementedError()
-        # namespace_json = {
-        #     "email": email,
-        #     "first_name": first_name,
-        #     "last_name": last_name,
-        # }
-        # async with self._base_client.post(
-        #     url=self._prefix(org, "/create-guest"), json=namespace_json
-        # ) as resp:
-        #     await resp.json()
+        member = OrgMember(email, first_name, last_name)
+        async with base_client() as client:
+            await org_guest_create.asyncio(org, client=client, body=member)
 
     async def guest_token(self, org: str, email: str) -> Token:
-        raise NotImplementedError()
-        # j = {
-        #     "email": email,
-        # }
-        # async with self._base_client.post(url=self._prefix(org, "/guest-token"), json=j) as resp:
-        #     tok = await resp.json()
-        #     return Token.parse_from_resp(tok)
+        guest_cred = OrgGuestCred(email)
+        async with base_client() as client:
+            token = await org_guest_token_create.asyncio(org, client=client, body=guest_cred)
+            return Token.parse_from_resp(token)
 
-    async def guest_magic_link(self, org: str, email: str) -> str:
-        raise NotImplementedError()
-        # j = {
-        #     "email": email,
-        # }
-        # async with self._base_client.post(
-        #     url=self._prefix(org, "/guest-magic-link"), json=j
-        # ) as resp:
-        #     return (await resp.json())["magic_link"]
-
+    async def guest_magic_link(self, org: str, email: str) -> OrgGuestMagicLinkResp:
+        guest = OrgGuestCred(email)
+        async with base_client() as client:
+            link = org_guest_magic_link_create.asyncio(org, client=client, body=guest)
+            link = validate_response_model(link, OrgGuestMagicLinkResp)
+            assert link
+            return link
 
 async def org_client() -> OrgClient:
     return OrgClient()

@@ -68,4 +68,4 @@ async def guest_link(email: str, filename: str):
     """Generate magic login link for guest account."""
     oc = await org_client()
     link = await oc.guest_magic_link(organization, email)
-    print(link)
+    print(link.magic_link)
