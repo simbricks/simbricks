@@ -7,7 +7,8 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.http_validation_error import HTTPValidationError
-from ...models.ns_member import NsMember
+from ...models.inline_object import InlineObject
+from ...models.org_member_list_200_response import OrgMemberList200Response
 from ...types import Response
 
 
@@ -27,16 +28,16 @@ def _get_kwargs(
 
 def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> HTTPValidationError | list[NsMember] | None:
+) -> HTTPValidationError | InlineObject | OrgMemberList200Response | None:
     if response.status_code == 200:
-        response_200 = []
-        _response_200 = response.json()
-        for response_200_item_data in _response_200:
-            response_200_item = NsMember.from_dict(response_200_item_data)
-
-            response_200.append(response_200_item)
+        response_200 = OrgMemberList200Response.from_dict(response.json())
 
         return response_200
+
+    if response.status_code == 401:
+        response_401 = InlineObject.from_dict(response.json())
+
+        return response_401
 
     if response.status_code == 422:
         response_422 = HTTPValidationError.from_dict(response.json())
@@ -51,7 +52,7 @@ def _parse_response(
 
 def _build_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[HTTPValidationError | list[NsMember]]:
+) -> Response[HTTPValidationError | InlineObject | OrgMemberList200Response]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -63,8 +64,8 @@ def _build_response(
 def sync_detailed(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> Response[HTTPValidationError | list[NsMember]]:
+    client: AuthenticatedClient,
+) -> Response[HTTPValidationError | InlineObject | OrgMemberList200Response]:
     """Read Root
 
     Args:
@@ -75,7 +76,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[HTTPValidationError | list[NsMember]]
+        Response[HTTPValidationError | InlineObject | OrgMemberList200Response]
     """
 
     kwargs = _get_kwargs(
@@ -92,8 +93,8 @@ def sync_detailed(
 def sync(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> HTTPValidationError | list[NsMember] | None:
+    client: AuthenticatedClient,
+) -> HTTPValidationError | InlineObject | OrgMemberList200Response | None:
     """Read Root
 
     Args:
@@ -104,7 +105,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        HTTPValidationError | list[NsMember]
+        HTTPValidationError | InlineObject | OrgMemberList200Response
     """
 
     return sync_detailed(
@@ -116,8 +117,8 @@ def sync(
 async def asyncio_detailed(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> Response[HTTPValidationError | list[NsMember]]:
+    client: AuthenticatedClient,
+) -> Response[HTTPValidationError | InlineObject | OrgMemberList200Response]:
     """Read Root
 
     Args:
@@ -128,7 +129,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[HTTPValidationError | list[NsMember]]
+        Response[HTTPValidationError | InlineObject | OrgMemberList200Response]
     """
 
     kwargs = _get_kwargs(
@@ -143,8 +144,8 @@ async def asyncio_detailed(
 async def asyncio(
     org: str,
     *,
-    client: AuthenticatedClient | Client,
-) -> HTTPValidationError | list[NsMember] | None:
+    client: AuthenticatedClient,
+) -> HTTPValidationError | InlineObject | OrgMemberList200Response | None:
     """Read Root
 
     Args:
@@ -155,7 +156,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        HTTPValidationError | list[NsMember]
+        HTTPValidationError | InlineObject | OrgMemberList200Response
     """
 
     return (

@@ -20,7 +20,8 @@ from .ns_member import NsMember
 from .ns_role import NsRole
 from .org_guest_cred import OrgGuestCred
 from .org_guest_magic_link_resp import OrgGuestMagicLinkResp
-from .org_invite import OrgInvite
+from .org_member import OrgMember
+from .org_member_list_200_response import OrgMemberList200Response
 from .pagination_links import PaginationLinks
 from .proxy_changed_state import ProxyChangedState
 from .proxy_output import ProxyOutput
@@ -86,7 +87,8 @@ __all__ = (
     "NsRole",
     "OrgGuestCred",
     "OrgGuestMagicLinkResp",
-    "OrgInvite",
+    "OrgMember",
+    "OrgMemberList200Response",
     "PaginationLinks",
     "ProxyChangedState",
     "ProxyOutput",

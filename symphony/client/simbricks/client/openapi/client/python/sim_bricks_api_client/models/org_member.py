@@ -6,11 +6,11 @@ from typing import Any, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="OrgInvite")
+T = TypeVar("T", bound="OrgMember")
 
 
 @_attrs_define
-class OrgInvite:
+class OrgMember:
     """OrgInvite
 
     Attributes:
@@ -52,14 +52,14 @@ class OrgInvite:
 
         last_name = d.pop("last_name")
 
-        org_invite = cls(
+        org_member = cls(
             email=email,
             first_name=first_name,
             last_name=last_name,
         )
 
-        org_invite.additional_properties = d
-        return org_invite
+        org_member.additional_properties = d
+        return org_member
 
     @property
     def additional_keys(self) -> list[str]:
