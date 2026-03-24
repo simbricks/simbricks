@@ -26,7 +26,7 @@ async def members():
     oc = await org_client()
     members = await oc.get_members(organization)
 
-    print_table_generic("Members", members, "username", "first_name", "last_name")
+    print_table_generic("Members", members.data, "email", "first_name", "last_name")
 
 
 @app.command()
