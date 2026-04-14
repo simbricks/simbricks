@@ -70,14 +70,12 @@ async def base_client(
     base_url: str = client_settings().base_url,
 ) -> typing.AsyncIterator[AuthenticatedClient]:
 
-    access_token = await __token_provider.access_token()
-
     # custom httpx client using our authentication class
     httpx_client = httpx.AsyncClient(base_url=base_url, auth=__simbricks_auth)
 
     # create the auto generated client instance to pass on
     client = AuthenticatedClient(
-        base_url=base_url, raise_on_unexpected_status=True, token=access_token
+        base_url=base_url, raise_on_unexpected_status=True, token="invalid"
     )
     client.set_async_httpx_client(httpx_client)
 
