@@ -232,8 +232,9 @@ class SimBricksAuth(httpx.Auth):
     auth_header_name: str = "Authorization"
     retry: bool = True
 
-    def __init__(self, token_provider: TokenProvider):
+    def __init__(self, token_provider: TokenProvider, disable_auth: bool = client_settings().disable_auth):
         self._token_provider = token_provider
+        self._disable_auth = disable_auth
 
     def sync_auth_flow(self, request: httpx.Request):
         raise RuntimeError(f"Cannot use sync authentication with {self.__class__.__qualname__}")
@@ -244,6 +245,7 @@ class SimBricksAuth(httpx.Auth):
         request.headers[self.auth_header_name] = f"{self.prefix} {access_token}"
 
     async def async_auth_flow(self, request: httpx.Request):
-        # set access token
-        await self._update_token_on_req(request)
+        if not self._disable_auth:
+            # set access token
+            await self._update_token_on_req(request)
         yield request
