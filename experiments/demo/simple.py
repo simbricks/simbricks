@@ -1,4 +1,5 @@
 import sys, os
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
@@ -9,10 +10,18 @@ from simbricks.orchestration.helpers import instantiation as inst_helpers
 from simbricks.orchestration.helpers import simulation as sim_helpers
 from helpers import sys_host_nic
 
-#################################
-# System configuration
-#################################
+"""
+Simple example of a simulation: All components are executed in the same fragment.
+ _________________________________________________________________________
+|                                                                        |
+|  Iperf-Server -- Server-NIC -- Switch ----- Client-NIC -- Iperf-CLient |
+|________________________________________________________________________|
+"""
 
+
+"""
+System configuration
+"""
 sys = system.System()
 
 # We create a Linux disk image instance that will be used by the hosts we create.
@@ -40,15 +49,15 @@ for nic in [server_nic, client_nic]:
     switch0.connect_eth_peer_if(nic._eth_if)
 
 
-#################################
-# Simulation configuration
-#################################
+"""
+Simulation configuration
+"""
 
 # We make a simulator choice by simply mapping component types to simulators.
 simulation = sim_helpers.simple_simulation(
     sys,
     compmap={
-        system.FullSystemHost: sim.QemuSim,
+        system.FullSystemHost: sim.Gem5Sim,
         system.IntelI40eNIC: sim.I40eNicSim,
         system.EthSwitch: sim.SwitchNet,
     },
@@ -57,9 +66,9 @@ simulation = sim_helpers.simple_simulation(
 # simulation.enable_synchronization()
 
 
-#################################
-# Instantiation configuration
-#################################
+"""
+Instantiation configuration
+"""
 
 # Instantiate the virtual prototype
 instantiation = inst_helpers.simple_instantiation(simulation)

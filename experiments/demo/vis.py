@@ -5,6 +5,14 @@ from simbricks.client.opus.base import create_run, ConsoleLineGenerator
 from loop import instantiations, iperf_rates
 from helpers import parse_Iperf_line_bytes
 
+"""
+Simple example of how to use SimBRicks api to start and analyse a simulation programatically.
+
+In this file, the instantiations defined in 'loop.py' are submitted for execution to the backend.
+
+The simulator output for each of them is parsed to create a plot comparing the three different Runs with each other.
+"""
+
 
 async def run_and_parse(instantiation) -> list[float]:
     sbc = await simb_client()
