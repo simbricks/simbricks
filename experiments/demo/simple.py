@@ -57,7 +57,7 @@ Simulation configuration
 simulation = sim_helpers.simple_simulation(
     sys,
     compmap={
-        system.FullSystemHost: sim.Gem5Sim,
+        system.FullSystemHost: sim.QemuSim,
         system.IntelI40eNIC: sim.I40eNicSim,
         system.EthSwitch: sim.SwitchNet,
     },
