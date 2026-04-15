@@ -73,6 +73,8 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runs impor
     runs_fragments_list,
     runs_fragments_output_artifact_get,
     runs_fragments_output_artifact_set,
+    runs_sigusr1,
+    runs_kill,
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.resource_groups import (
     resource_groups_create,
@@ -220,7 +222,9 @@ class NSClient:
 
     async def get_member(self, username: str) -> NsMember | None:
         async with base_client(self.base_url) as client:
-            member = await members_get.asyncio(self.namespace_path, username=username, client=client)
+            member = await members_get.asyncio(
+                self.namespace_path, username=username, client=client
+            )
             return validate_response_model(member, NsMember)
 
     async def get_members(self, role: NsRole | None = None) -> dict[NsRole, list[NsMember]]:
@@ -250,13 +254,14 @@ class NSClient:
                 last_name="",
                 role=NsRole(role),
             )
-            member = await members_modify.asyncio(self.namespace_path, username, body=to_create, client=client)
+            member = await members_modify.asyncio(
+                self.namespace_path, username, body=to_create, client=client
+            )
             validate_response_model(member, NsMember)
 
     async def delete_member(self, username: str) -> None:
         async with base_client(self.base_url) as client:
             await members_delete.asyncio(self.namespace_path, username, client=client)
-
 
 
 class SimBricksClient:
@@ -422,6 +427,14 @@ class SimBricksClient:
             runs = validate_response_model(runs, RunsList200Response)
             assert runs
             return runs
+
+    async def kill_run(self, run_id: str) -> None:
+        async with base_client(self._ns_client.base_url) as client:
+            await runs_kill.asyncio(self._ns_client.namespace_path, run_id, client=client)
+
+    async def sigusr1_run(self, run_id: str) -> None:
+        async with base_client(self._ns_client.base_url) as client:
+            await runs_sigusr1.asyncio(self._ns_client.namespace_path, run_id, client=client)
 
     async def set_inst_input_artifact(self, inst_id: str, path_to_file: str) -> None:
 
@@ -730,7 +743,7 @@ class RunnerClient:
 async def resolve_default_ns(base_url: str) -> str:
     async with base_client(base_url) as client:
         membership = await user_default_membership.asyncio(client=client)
-        membership = validate_response_model(membership, NsMember)            
+        membership = validate_response_model(membership, NsMember)
         namespace_path = membership.namespace_full_path
         assert namespace_path
         return namespace_path
@@ -748,7 +761,7 @@ async def ns_client(
         namespace_path = await resolve_default_ns(base_url)
 
     return NSClient(base_url, namespace_path)
-        
+
 
 async def simb_client(nsc: NSClient | None = None) -> SimBricksClient:
     if nsc is None:
