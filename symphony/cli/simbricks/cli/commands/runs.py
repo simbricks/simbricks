@@ -60,6 +60,22 @@ async def show(run_id: str):
 
 @app.command()
 @async_cli()
+async def kill(run_id: str):
+    """Kill individual run."""
+    sbc = await simb_client()
+    await sbc.kill_run(run_id)
+
+
+@app.command()
+@async_cli()
+async def sigusr1(run_id: str):
+    """Send sigusr1 to run."""
+    sbc = await simb_client()
+    await sbc.sigusr1_run(run_id)
+
+
+@app.command()
+@async_cli()
 async def follow(run_id: str):
     """Follow individual run as it executes."""
     await opus_base.follow_run(run_id=run_id)
