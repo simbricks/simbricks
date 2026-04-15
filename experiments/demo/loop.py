@@ -10,15 +10,25 @@ from simbricks.orchestration.helpers import instantiation as inst_helpers
 from simbricks.orchestration.helpers import simulation as sim_helpers
 from helpers import sys_host_nic
 
+"""
+Simple example of a simulation: All components are executed in the same fragment.
+ _________________________________________________________________________
+|                                                                        |
+|  Iperf-Server -- Server-NIC -- Switch ----- Client-NIC -- Iperf-CLient |
+|________________________________________________________________________|
+
+We define different rates at which the Iperf UDP client tries to send packets 
+and create 3 instantiations (one for each rate).
+"""
+
 instantiations = []
 
 iperf_rates = ["150m", "430m", "600m"]
 for rate in iperf_rates:
 
-    #################################
-    # System configuration
-    #################################
-
+    """
+    System configuration
+    """
     sys = system.System()
 
     # We create a Linux disk image instance that will be used by the hosts we create.
@@ -45,9 +55,9 @@ for rate in iperf_rates:
     for nic in [server_nic, client_nic]:
         switch0.connect_eth_peer_if(nic._eth_if)
 
-    #################################
-    # Simulation configuration
-    #################################
+    """
+    Simulation configuration
+    """
 
     # We make a simulator choice by simply mapping component types to simulators.
     simulation = sim_helpers.simple_simulation(
@@ -60,9 +70,9 @@ for rate in iperf_rates:
     )
     # simulation.enable_synchronization()
 
-    #################################
-    # Instantiation configuration
-    #################################
+    """
+    Instantiation configuration
+    """
 
     # Instantiate the virtual prototype
     instantiation = inst_helpers.simple_instantiation(simulation)
