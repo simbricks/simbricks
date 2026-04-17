@@ -41,11 +41,21 @@ class LocalRunner(runner_base.FragmentRunner):
         polling_delay_sec: int,
         runner_ip: str,
         runner_port: int,
+        proxy_host_ip: str,
         verbose: bool,
     ):
-        super().__init__(base_url, workdir, namespace, ident, polling_delay_sec, runner_ip, verbose)
+        super().__init__(
+            base_url,
+            workdir,
+            namespace,
+            ident,
+            polling_delay_sec,
+            proxy_host_ip,
+            verbose
+        )
         self.reader: asyncio.StreamReader
         self.writer: asyncio.StreamWriter
+        self._runner_ip: str = runner_ip
         self._runner_port: int = runner_port
 
     async def connect(self) -> None:
@@ -68,6 +78,7 @@ async def amain():
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
         runner_ip=sys.argv[1],
         runner_port=int(sys.argv[2]),
+        proxy_host_ip=sys.argv[3],
         verbose=settings.runner_settings().verbose,
     )
 

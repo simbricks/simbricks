@@ -108,7 +108,7 @@ class Proxy(utils_base.IdObj, abc.ABC):
         return self._interfaces
 
     @abc.abstractmethod
-    def run_cmd(self, inst: inst_base.Instantiation, runner_ip: str) -> str:
+    def run_cmd(self, inst: inst_base.Instantiation, proxy_host_ip: str) -> str:
         pass
 
     def sockets_wait(self, inst: inst_base.Instantiation) -> set[inst_socket.Socket]:
@@ -142,19 +142,19 @@ class DummyProxy(Proxy):
     async def read_listening_info(self) -> None:
         pass
 
-    def run_cmd(self, inst: inst_base.Instantiation, runner_ip: str) -> str:
+    def run_cmd(self, inst: inst_base.Instantiation, proxy_host_ip: str) -> str:
         raise NotImplementedError("function run_cmd() should not be called for DummyProxy")
 
 
 class TCPProxy(Proxy):
 
-    def run_cmd(self, inst: inst_base.Instantiation, runner_ip: str) -> str:
+    def run_cmd(self, inst: inst_base.Instantiation, proxy_host_ip: str) -> str:
         proxy_bin = inst.env.repo_base("dist/sockets/net_sockets")
         cmd_args = [proxy_bin]
 
         if self._connection_mode == inst_socket.SockType.LISTEN:
             cmd_args.append("-l")
-            self._ip = runner_ip
+            self._ip = proxy_host_ip
             self._port = 0
         else:
             opposing_proxy = inst._find_opposing_proxy(self)

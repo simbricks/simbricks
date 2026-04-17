@@ -269,7 +269,7 @@ class FragmentRunner(abc.ABC):
         namespace: str,
         ident: int,
         polling_delay_sec: int,
-        runner_ip: str,
+        proxy_host_ip: str,
         verbose: bool,
     ):
         self._base_url: str = base_url
@@ -277,7 +277,7 @@ class FragmentRunner(abc.ABC):
         self._polling_delay_sec: int = polling_delay_sec
         self._namespace: str = namespace
         self._ident: int = ident
-        self._runner_ip: str = runner_ip
+        self._proxy_host_ip: str = proxy_host_ip
         self._verbose: bool = verbose
 
         self._send_event_queue = asyncio.Queue[EventFromRunner_U]()
@@ -387,7 +387,7 @@ class FragmentRunner(abc.ABC):
         callbacks = RunnerSimulationExecutorCallbacks(
             inst, self._send_event_queue, start_event.run_id
         )
-        runner = sim_exec.SimulationExecutor(inst, callbacks, self._verbose, self._runner_ip)
+        runner = sim_exec.SimulationExecutor(inst, callbacks, self._verbose, self._proxy_host_ip)
         await runner.prepare()
 
         assert len(start_event.fragments) == 1
