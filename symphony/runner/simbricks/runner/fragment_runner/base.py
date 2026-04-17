@@ -322,7 +322,7 @@ class FragmentRunner(abc.ABC):
         if len(start_event.fragments) != 1:
             raise RuntimeError("There must be exactly one fragment assigned to a runner")
 
-        run_workdir = self._workdir / f"run-{start_event.run_id}"
+        run_workdir = self._workdir / f"run-{start_event.run_id}-{start_event.fragments[0].id}"
         if run_workdir.exists():
             LOGGER.warning(
                 f"the directory {run_workdir} already exists, will create a new one using a uuid"
