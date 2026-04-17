@@ -40,6 +40,7 @@ from ..openapi.client.python.sim_bricks_api_client.models import (
     RunState,
     PaginationLinks,
     RunOutput,
+    RunOutputProxiesType0,
     RunOutputSimulatorsType0,
 )
 
@@ -86,6 +87,17 @@ class ConsoleLineGenerator:
                 for output_line in output_lines:
                     assert output_line.id is not None
                     lines.append((simulator.name, output_line.output))
+
+        assert output.data.proxies and isinstance(
+            output.data.proxies, RunOutputProxiesType0
+        )
+        proxies: RunOutputProxiesType0 = output.data.proxies
+
+        for proxy in proxies.additional_properties.values():
+            for output_lines in proxy.commands.additional_properties.values():
+                for output_line in output_lines:
+                    assert output_line.id is not None
+                    lines.append((proxy.name, output_line.output))
 
         return lines
 
