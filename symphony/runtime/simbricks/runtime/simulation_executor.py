@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+import socket
 import traceback
 import typing
 
@@ -136,13 +137,13 @@ class SimulationExecutor:
         instantiation: inst_base.Instantiation,
         callbacks: SimulationExecutorCallbacks,
         verbose: bool,
-        runner_ip: str,
+        proxy_host_ip: str,
         profile_int=None,
     ) -> None:
         self._instantiation: inst_base.Instantiation = instantiation
         self._callbacks: SimulationExecutorCallbacks = callbacks
         self._verbose: bool = verbose
-        self._runner_ip: str = runner_ip
+        self._proxy_host_ip: str = proxy_host_ip
         self._profile_int: int | None = profile_int
         self._running_sims: dict[sim_base.Simulator, cmd_exec.CommandExecutor] = {}
         self._running_proxies: dict[inst_proxy.Proxy, cmd_exec.CommandExecutor] = {}
@@ -168,8 +169,16 @@ class SimulationExecutor:
 
     async def _start_proxy(self, proxy: inst_proxy.Proxy) -> None:
         """Start a proxy and wait for it to be ready."""
+        ip = ""
+        try:
+            ip = socket.gethostbyname(self._proxy_host_ip)
+        except socket.gaierror:
+            raise RuntimeError(
+                f"could not resolve address '{self._proxy_host_ip}' for proxy {proxy.id}"
+            )
+
         cmd_exec = await self._cmd_executor.start_proxy(
-            proxy, proxy.run_cmd(self._instantiation, self._runner_ip)
+            proxy, proxy.run_cmd(self._instantiation, ip)
         )
         self._running_proxies[proxy] = cmd_exec
 

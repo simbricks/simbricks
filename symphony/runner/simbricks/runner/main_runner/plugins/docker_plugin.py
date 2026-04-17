@@ -87,7 +87,7 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
             "docker", "run", "--rm", "--device=/dev/kvm",
             "--add-host=host.docker.internal:host-gateway",
             docker_image,
-            "host.docker.internal", str(port)])
+            "host.docker.internal", str(port), "host.docker.internal"])
 
         # wait for the fragment executor to connect
         await self.connected.wait()

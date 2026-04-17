@@ -37,7 +37,7 @@ class RunnerSettings(BaseSettings):
     namespace: str = "foo/bar/baz"
     runner_id: str = "1"
 
-    runner_ip: str = "127.0.0.1"
+    external_runner_ip: str = "127.0.0.1"
 
     verbose: bool = True
     log_level: str = "DEBUG"
