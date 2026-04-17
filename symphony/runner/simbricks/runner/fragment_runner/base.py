@@ -521,6 +521,9 @@ class FragmentRunner(abc.ABC):
         LOGGER.info(f"handled run related event {event.id}")
 
     async def _handle_proxy_ready_run_event(self, event: ProxyChangedState) -> None:
+        if event.state != RunComponentState.RUNNING:
+            return
+
         run_id = event.run_id
         if run_id and not run_id in self._run_map:
             return
