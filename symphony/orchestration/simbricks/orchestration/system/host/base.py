@@ -199,10 +199,10 @@ class BaseLinuxHost(FullSystemHost):
 
         es = (
             self.prepare_pre_cp(inst)
-            + self.applications[0].prepare_pre_cp(inst)
+            + (self.applications[0].prepare_pre_cp(inst) if self.applications else [])
             + cp_cmd
             + self.prepare_post_cp(inst)
-            + self.applications[0].prepare_post_cp(inst)
+            + (self.applications[0].prepare_post_cp(inst) if self.self.applications else [])
             + self.run_cmds(inst)
             + self.cleanup_cmds(inst)
         )
