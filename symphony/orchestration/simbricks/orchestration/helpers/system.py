@@ -48,10 +48,10 @@ def connect_eth_devices(
     utils_base.has_expected_type(obj=device_b, expected_type=system.Component)
 
     eth_inter_a = system.eth.EthInterface(c=device_a)
-    device_a.add_if(interface=eth_inter_a)
+    device_a.add_if(eth_inter_a)
 
     eth_inter_b = system.eth.EthInterface(c=device_b)
-    device_b.add_if(interface=eth_inter_b)
+    device_b.add_if(eth_inter_b)
 
     eth_channel = system.eth.EthChannel(a=eth_inter_a, b=eth_inter_b)
     return eth_channel
