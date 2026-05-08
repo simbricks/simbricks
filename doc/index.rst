@@ -45,11 +45,13 @@ SimBricks
 About
 ###################################
 
-SimBricks is a platform for creating and simulating virtual prototypes of modern heterogeneous computer systems.
+SimBricks is a platform for creating and simulating virtual prototypes of modern heterogeneous computer systems and enables meaningful end-to-end evaluations of such systems in simlation.
 
-SimBricks enables virtual prototyping of complete computer systems, rather than individual components. It allows to 
-create virtual prototypes by combining and connecting multiple different existing simulators for individual system 
-components into a complete system simulation. SimBricks **does not** replace existing simulators for individual components, 
+To create virtual prototypes of complete computer systems, rather than individual components, SimBricks modularly combines and connects battle-tested simulators
+for different components: machines (e.g. QEMU, gem5, Simics), hardware components (e.g. Verilator, Tofino, FEMU SSD), and networks (e.g. ns-3,
+OMNeT++). SimBricks simulations run unmodified full-system stacks, including applications, operating systems such as Linux, and hardware RTL.
+
+SimBricks **does not** replace existing simulators for individual components, 
 but instead enables users to connect together multiple existing simulators, even from different vendors and never designed 
 to interoperate, into a complete system. 
 
@@ -61,7 +63,14 @@ Key Features:
 * **Extensible:** Easily integrate your component simulators.
 * **Scalable:** Create large-scale virtual prototypes with thousands of components.
 
-To easily get started with using SimBricks check out our :ref:`chap-quickstart` guide.  
+To easily get started with using SimBricks check out our :ref:`chap-quickstart` guide.
+
+..  include:: use-cases.rst
+
+..  include:: supported-sims.rst
+
+To learn more about SimBricks check out the following
+######################################################################
 
 .. toctree::
    :numbered:
