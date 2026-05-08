@@ -21,26 +21,20 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-.. _chap-quickstart:
+Building the Core Library Debian Package
+========================================
 
-Quickstart
-###################################
+If you are developing custom hardware adapters or integrating third-party
+simulators, you do not need to build the entire SimBricks framework. Instead,
+you can generate a standalone Debian package containing the SimBricks C/C++ core
+library.
 
-Get up and running with the SimBricks in a few minutes.
+To create the package, run:
 
-In this guide we will make use of the `SimBricks Examples Repository <https://github.com/simbricks/simbricks-examples>`_ and guide you through the execution of
-your first virtual prototype using the SimBricks CLI and SimBricks Cloud version.
+.. code-block:: bash
 
-.. toctree::
-   :maxdepth: 2
+   make package
 
-   setup
-   first-vp
-   execute-first-vp
-
-Next Steps
-******************************
-
-* Check out more SimBricks exampels from our SimBricks examples repo at :simbricks-examples:`\ `.
-* To learn more about the inner workings and details of SimBricks check out :ref:`chap-learn` chapter. 
-* Join the SimBricks community on :slack:`Slack`
+This command outputs a ``.deb`` package. Installing this package on your target
+system or Docker image dramatically simplifies the setup process for adapter
+development, allowing you to link against the core library instantly.

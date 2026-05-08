@@ -35,3 +35,4 @@ Core Library
     pcie
     nicif
     axi
+    parser

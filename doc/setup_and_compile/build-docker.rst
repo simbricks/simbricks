@@ -20,27 +20,24 @@
   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
 
-.. _chap-quickstart:
+Building Docker Images Locally
+==============================
 
-Quickstart
-###################################
+If you need to customize the base SimBricks Docker images—for example, to
+provision custom infrastructure or deploy a specialized self-hosted runner—you
+can build them locally. You will need ``git``, ``make``, and ``docker build``
+installed. Other dependencies than that should not be required.
 
-Get up and running with the SimBricks in a few minutes.
+Run the following commands to build the images (this can, depending on your
+system take between 15-45 minutes):
 
-In this guide we will make use of the `SimBricks Examples Repository <https://github.com/simbricks/simbricks-examples>`_ and guide you through the execution of
-your first virtual prototype using the SimBricks CLI and SimBricks Cloud version.
+.. code-block:: bash
 
-.. toctree::
-   :maxdepth: 2
+   git clone https://github.com/simbricks/simbricks.git
+   cd simbricks
+   make docker-images
 
-   setup
-   first-vp
-   execute-first-vp
-
-Next Steps
-******************************
-
-* Check out more SimBricks exampels from our SimBricks examples repo at :simbricks-examples:`\ `.
-* To learn more about the inner workings and details of SimBricks check out :ref:`chap-learn` chapter. 
-* Join the SimBricks community on :slack:`Slack`
+This builds and locally tags a series of Docker images, including the 
+``simbricks/simbricks-local`` image.

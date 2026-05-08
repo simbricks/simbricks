@@ -21,26 +21,17 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-.. _chap-quickstart:
+Building From Source (Bare Metal)
+=================================
 
-Quickstart
-###################################
+If you are provisioning a dedicated build server or setting up a self-hosted
+runner node directly on bare metal (bypassing Docker entirely), you can install
+the dependencies and build SimBricks from source.
 
-Get up and running with the SimBricks in a few minutes.
-
-In this guide we will make use of the `SimBricks Examples Repository <https://github.com/simbricks/simbricks-examples>`_ and guide you through the execution of
-your first virtual prototype using the SimBricks CLI and SimBricks Cloud version.
-
-.. toctree::
-   :maxdepth: 2
-
-   setup
-   first-vp
-   execute-first-vp
-
-Next Steps
-******************************
-
-* Check out more SimBricks exampels from our SimBricks examples repo at :simbricks-examples:`\ `.
-* To learn more about the inner workings and details of SimBricks check out :ref:`chap-learn` chapter. 
-* Join the SimBricks community on :slack:`Slack`
+.. note::
+   You will need to install the build dependencies for both the core SimBricks
+   framework and any specific external simulators you require. 
+   
+We suggest referring to the ``docker/Dockerfile.buildenv`` file within the
+repository, as it serves as the authoritative, up-to-date list of all required
+system packages for building everything bare-metal.
