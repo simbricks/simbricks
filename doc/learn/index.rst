@@ -34,6 +34,7 @@ Learn
    simulator-integration/index
    runners/index
    execution
+   ui/index
 
 .. 
   faq
