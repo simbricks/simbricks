@@ -69,7 +69,7 @@ To easily get started with using SimBricks check out our :ref:`chap-quickstart` 
 
 ..  include:: supported-sims.rst
 
-To learn more about SimBricks check out the following
+Learn more about SimBricks
 ######################################################################
 
 .. toctree::
@@ -79,4 +79,5 @@ To learn more about SimBricks check out the following
 
    quickstart/index
    learn/index
+   setup_and_compile/index
    reference/index

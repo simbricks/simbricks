@@ -33,4 +33,7 @@ extlinks = {
         'lib/simbricks/%s'
     ),
     'website': ('https://www.simbricks.io/%s', None),
+    'docker-hub': ('https://hub.docker.com/u/simbricks%s', 'Docker Hub%s'),
+    'dev-container': ('https://code.visualstudio.com/docs/remote/containers%s', 'Visual Studio Code Development Container%s'),
+    'dev-container-ext': ('https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers%s', 'VS Code Dev Containers extension%s'),
 }

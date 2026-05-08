@@ -21,26 +21,27 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-.. _chap-quickstart:
+.. _sec-setup-compile:
 
-Quickstart
-###################################
+===================================
+Advanced Setup & Building
+===================================
 
-Get up and running with the SimBricks in a few minutes.
+While the SimBricks Cloud offering provides the fastest, zero-friction path to
+running virtual prototypes, advanced workflows may require you to compile custom
+simulators, build modified disk images, or prepare environments for self-hosted
+cloud runners. 
 
-In this guide we will make use of the `SimBricks Examples Repository <https://github.com/simbricks/simbricks-examples>`_ and guide you through the execution of
-your first virtual prototype using the SimBricks CLI and SimBricks Cloud version.
+Depending on your goals—whether developing a new integration or provisioning a
+self-hosted execution node for your paid plan—there are several ways to set up
+an environment to build and manage these SimBricks artifacts.
 
 .. toctree::
    :maxdepth: 2
 
-   setup
-   first-vp
-   execute-first-vp
+   pre-built-docker
+   build-docker
+   build-dev-container
+   deb-package
+   bare-metal
 
-Next Steps
-******************************
-
-* Check out more SimBricks exampels from our SimBricks examples repo at :simbricks-examples:`\ `.
-* To learn more about the inner workings and details of SimBricks check out :ref:`chap-learn` chapter. 
-* Join the SimBricks community on :slack:`Slack`
