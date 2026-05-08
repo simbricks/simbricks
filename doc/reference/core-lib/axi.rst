@@ -24,6 +24,9 @@
 AXI
 =======================================
 
+AXI-Light
+***************************************
+
 AXI Subordinate
 -----------------------------------------
 
@@ -37,3 +40,8 @@ AXIL Manager
 .. doxygenfile:: axi/axil_manager.hh
    :project: simbricks
 
+
+AXI-Stream
+***************************************
+
+.. doxygenfile:: axi/axi_s.hpp
