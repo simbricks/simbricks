@@ -21,6 +21,7 @@ class Instantiation:
 
     Attributes:
         id (None | str | Unset): API Object id
+        name (None | str | Unset):
         namespace_id (None | str | Unset): API Object id
         simulation_id (None | str | Unset): API Object id
         fragments (list[Fragment] | None | Unset):
@@ -28,6 +29,7 @@ class Instantiation:
     """
 
     id: None | str | Unset = UNSET
+    name: None | str | Unset = UNSET
     namespace_id: None | str | Unset = UNSET
     simulation_id: None | str | Unset = UNSET
     fragments: list[Fragment] | None | Unset = UNSET
@@ -40,6 +42,12 @@ class Instantiation:
             id = UNSET
         else:
             id = self.id
+
+        name: None | str | Unset
+        if isinstance(self.name, Unset):
+            name = UNSET
+        else:
+            name = self.name
 
         namespace_id: None | str | Unset
         if isinstance(self.namespace_id, Unset):
@@ -76,6 +84,8 @@ class Instantiation:
         field_dict.update({})
         if id is not UNSET:
             field_dict["id"] = id
+        if name is not UNSET:
+            field_dict["name"] = name
         if namespace_id is not UNSET:
             field_dict["namespace_id"] = namespace_id
         if simulation_id is not UNSET:
@@ -101,6 +111,15 @@ class Instantiation:
             return cast(None | str | Unset, data)
 
         id = _parse_id(d.pop("id", UNSET))
+
+        def _parse_name(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        name = _parse_name(d.pop("name", UNSET))
 
         def _parse_namespace_id(data: object) -> None | str | Unset:
             if data is None:
@@ -153,6 +172,7 @@ class Instantiation:
 
         instantiation = cls(
             id=id,
+            name=name,
             namespace_id=namespace_id,
             simulation_id=simulation_id,
             fragments=fragments,

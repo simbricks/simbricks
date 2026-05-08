@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from io import BytesIO
 from typing import Any, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from .. import types
-from ..types import File
 
 T = TypeVar("T", bound="BodyInstantiationsInputArtifactSet")
 
@@ -17,14 +15,14 @@ T = TypeVar("T", bound="BodyInstantiationsInputArtifactSet")
 class BodyInstantiationsInputArtifactSet:
     """
     Attributes:
-        file (File):
+        file (str):
     """
 
-    file: File
+    file: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        file = self.file.to_tuple()
+        file = self.file
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -39,7 +37,7 @@ class BodyInstantiationsInputArtifactSet:
     def to_multipart(self) -> types.RequestFiles:
         files: types.RequestFiles = []
 
-        files.append(("file", self.file.to_tuple()))
+        files.append(("file", (None, str(self.file).encode(), "text/plain")))
 
         for prop_name, prop in self.additional_properties.items():
             files.append((prop_name, (None, str(prop).encode(), "text/plain")))
@@ -49,7 +47,7 @@ class BodyInstantiationsInputArtifactSet:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        file = File(payload=BytesIO(d.pop("file")))
+        file = d.pop("file")
 
         body_instantiations_input_artifact_set = cls(
             file=file,

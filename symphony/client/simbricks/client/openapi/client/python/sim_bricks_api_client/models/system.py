@@ -17,11 +17,13 @@ class System:
 
     Attributes:
         id (None | str | Unset): API Object id
+        name (None | str | Unset):
         namespace_id (None | str | Unset): API Object id
         sb_json (None | str | Unset):
     """
 
     id: None | str | Unset = UNSET
+    name: None | str | Unset = UNSET
     namespace_id: None | str | Unset = UNSET
     sb_json: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -32,6 +34,12 @@ class System:
             id = UNSET
         else:
             id = self.id
+
+        name: None | str | Unset
+        if isinstance(self.name, Unset):
+            name = UNSET
+        else:
+            name = self.name
 
         namespace_id: None | str | Unset
         if isinstance(self.namespace_id, Unset):
@@ -50,6 +58,8 @@ class System:
         field_dict.update({})
         if id is not UNSET:
             field_dict["id"] = id
+        if name is not UNSET:
+            field_dict["name"] = name
         if namespace_id is not UNSET:
             field_dict["namespace_id"] = namespace_id
         if sb_json is not UNSET:
@@ -69,6 +79,15 @@ class System:
             return cast(None | str | Unset, data)
 
         id = _parse_id(d.pop("id", UNSET))
+
+        def _parse_name(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        name = _parse_name(d.pop("name", UNSET))
 
         def _parse_namespace_id(data: object) -> None | str | Unset:
             if data is None:
@@ -90,6 +109,7 @@ class System:
 
         system = cls(
             id=id,
+            name=name,
             namespace_id=namespace_id,
             sb_json=sb_json,
         )

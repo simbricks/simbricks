@@ -17,12 +17,14 @@ class Simulation:
 
     Attributes:
         id (None | str | Unset): API Object id
+        name (None | str | Unset):
         namespace_id (None | str | Unset): API Object id
         system_id (None | str | Unset): API Object id
         sb_json (None | str | Unset):
     """
 
     id: None | str | Unset = UNSET
+    name: None | str | Unset = UNSET
     namespace_id: None | str | Unset = UNSET
     system_id: None | str | Unset = UNSET
     sb_json: None | str | Unset = UNSET
@@ -34,6 +36,12 @@ class Simulation:
             id = UNSET
         else:
             id = self.id
+
+        name: None | str | Unset
+        if isinstance(self.name, Unset):
+            name = UNSET
+        else:
+            name = self.name
 
         namespace_id: None | str | Unset
         if isinstance(self.namespace_id, Unset):
@@ -58,6 +66,8 @@ class Simulation:
         field_dict.update({})
         if id is not UNSET:
             field_dict["id"] = id
+        if name is not UNSET:
+            field_dict["name"] = name
         if namespace_id is not UNSET:
             field_dict["namespace_id"] = namespace_id
         if system_id is not UNSET:
@@ -79,6 +89,15 @@ class Simulation:
             return cast(None | str | Unset, data)
 
         id = _parse_id(d.pop("id", UNSET))
+
+        def _parse_name(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        name = _parse_name(d.pop("name", UNSET))
 
         def _parse_namespace_id(data: object) -> None | str | Unset:
             if data is None:
@@ -109,6 +128,7 @@ class Simulation:
 
         simulation = cls(
             id=id,
+            name=name,
             namespace_id=namespace_id,
             system_id=system_id,
             sb_json=sb_json,
