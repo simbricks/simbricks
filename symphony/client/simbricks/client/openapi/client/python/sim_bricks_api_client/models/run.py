@@ -18,6 +18,7 @@ class Run:
 
     Attributes:
         id (None | str | Unset): API Object id
+        name (None | str | Unset):
         namespace_id (None | str | Unset): API Object id
         instantiation_id (None | str | Unset): API Object id
         output (None | str | Unset):
@@ -25,6 +26,7 @@ class Run:
     """
 
     id: None | str | Unset = UNSET
+    name: None | str | Unset = UNSET
     namespace_id: None | str | Unset = UNSET
     instantiation_id: None | str | Unset = UNSET
     output: None | str | Unset = UNSET
@@ -37,6 +39,12 @@ class Run:
             id = UNSET
         else:
             id = self.id
+
+        name: None | str | Unset
+        if isinstance(self.name, Unset):
+            name = UNSET
+        else:
+            name = self.name
 
         namespace_id: None | str | Unset
         if isinstance(self.namespace_id, Unset):
@@ -69,6 +77,8 @@ class Run:
         field_dict.update({})
         if id is not UNSET:
             field_dict["id"] = id
+        if name is not UNSET:
+            field_dict["name"] = name
         if namespace_id is not UNSET:
             field_dict["namespace_id"] = namespace_id
         if instantiation_id is not UNSET:
@@ -92,6 +102,15 @@ class Run:
             return cast(None | str | Unset, data)
 
         id = _parse_id(d.pop("id", UNSET))
+
+        def _parse_name(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        name = _parse_name(d.pop("name", UNSET))
 
         def _parse_namespace_id(data: object) -> None | str | Unset:
             if data is None:
@@ -139,6 +158,7 @@ class Run:
 
         run = cls(
             id=id,
+            name=name,
             namespace_id=namespace_id,
             instantiation_id=instantiation_id,
             output=output,
