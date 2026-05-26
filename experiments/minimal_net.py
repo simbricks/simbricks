@@ -10,12 +10,11 @@ sys = system.System()
 distro_disk_image = system.DistroDiskImage(sys, "base")
 
 # create a host instance and a NIC instance then install the NIC on the host
-# host0 = system.CorundumLinuxHost(sys)
-host0 = system.I40ELinuxHost(sys)
+host0 = system.LinuxHost(sys)
 host0.add_disk(distro_disk_image)
 host0.add_disk(system.LinuxConfigDiskImage(sys, host0))
 
-nic0 = system.IntelI40eNIC(sys)
+nic0 = system.VirtIONic(sys)
 nic0.add_ipv4("10.0.0.1")
 host0.connect_pcie_dev(nic0)
 
@@ -44,10 +43,18 @@ simulation = sim_helpers.simple_simulation(
     sys,
     compmap={
         system.FullSystemHost: sim.QemuSim,
-        system.IntelI40eNIC: sim.I40eNicSim,
         system.EthSwitch: sim.SwitchNet,
     },
 )
+
+# simulate client NIC as part of QEMU
+qemu_sim_host_0 = simulation.find_sim(host0)
+qemu_sim_host_0.add(nic0)
+
+nic1_sim = sim.I40eNicSim(simulation)
+nic1_sim.add(nic1)
+
+# simulation.enable_synchronization()
 
 instantiation = inst_helpers.simple_instantiation(simulation)
 fragment = inst.Fragment()
