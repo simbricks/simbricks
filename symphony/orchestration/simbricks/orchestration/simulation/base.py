@@ -219,14 +219,39 @@ class Simulator(utils_base.IdObj):
         inst: inst_base.Instantiation,
         intf: sys_conf.Interface,
     ) -> str:
-            socket = inst.get_socket(interface=intf)
-            chan = self._get_channel(intf.channel)
-            return self.get_parameters_url(
-                inst, socket, sync=chan._synchronized, latency=intf.channel.latency, sync_period=chan.sync_period
-            )
+        socket = inst.get_socket(interface=intf)
+        chan = self._get_channel(intf.channel)
+        return self.get_parameters_url(
+            inst,
+            socket,
+            sync=chan._synchronized,
+            latency=intf.channel.latency,
+            sync_period=chan.sync_period,
+        )
 
     def components(self) -> set[sys_conf.Component]:
         return self._components
+
+    def components_connected_in_sim(
+        self, comp_a: sys_conf.Component, comp_b: sys_conf.Component
+    ) -> bool:
+        comp_a_l = list(filter(lambda c: c == comp_a, self._components))
+        if len(comp_a_l) != 1:
+            return False
+
+        comp_b_l = list(filter(lambda c: c == comp_b, self._components))
+        if len(comp_b_l) != 1:
+            return False
+
+        for if_a in comp_a.interfaces():
+            if if_a.channel is None:
+                continue
+
+            for if_b in comp_b.interfaces():
+                if if_b.channel is not None and if_b.channel.id() == if_a.channel.id():
+                    return True
+
+        return False
 
     def resreq_cores(self) -> int:
         """
@@ -439,7 +464,9 @@ class Simulation(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_conf.System, json_obj: dict, enforce_dummies: bool = False) -> tpe.Self:
+    def fromJSON(
+        cls, system: sys_conf.System, json_obj: dict, enforce_dummies: bool = False
+    ) -> tpe.Self:
         """
         Deserializes a Simulation.
 
