@@ -36,7 +36,9 @@ from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.system import mem as sys_mem
 from simbricks.orchestration.system import disk_images
 from simbricks.utils import base as utils_base, file as utils_file
+from simbricks.utils.eth import rand_mac_s
 from simbricks.orchestration.instantiation import socket as inst_socket
+from simbricks.orchestration.system import nic as sys_nic
 
 
 class HostSim(sim_base.Simulator):
@@ -87,18 +89,14 @@ class HostSim(sim_base.Simulator):
                     host_disks.append((disk, disk.path(inst, disk.find_format(self))))
             self._disk_images[host] = host_disks
 
-    def supported_socket_types(
-        self, interface: system.Interface
-    ) -> set[inst_socket.SockType]:
+    def supported_socket_types(self, interface: system.Interface) -> set[inst_socket.SockType]:
         return {inst_socket.SockType.CONNECT}
 
 
 class Gem5Sim(HostSim):
 
     def __init__(self, simulation: sim_base.Simulation):
-        super().__init__(
-            simulation=simulation, executable="sims/external/gem5/build/X86/gem5"
-        )
+        super().__init__(simulation=simulation, executable="sims/external/gem5/build/X86/gem5")
         self.name = f"Gem5Sim-{self._id}"
         self.cpu_type_cp = "X86KvmCPU"
         self.cpu_type = "TimingSimpleCPU"
@@ -134,12 +132,8 @@ class Gem5Sim(HostSim):
         instance = super().fromJSON(simulation, json_obj)
         instance.cpu_type_cp = utils_base.get_json_attr_top(json_obj, "cpu_type_cp")
         instance.cpu_type = utils_base.get_json_attr_top(json_obj, "cpu_type")
-        instance.extra_main_args = utils_base.get_json_attr_top(
-            json_obj, "extra_main_args"
-        )
-        instance.extra_config_args = utils_base.get_json_attr_top(
-            json_obj, "extra_config_args"
-        )
+        instance.extra_main_args = utils_base.get_json_attr_top(json_obj, "extra_main_args")
+        instance.extra_config_args = utils_base.get_json_attr_top(json_obj, "extra_config_args")
         instance._variant = utils_base.get_json_attr_top(json_obj, "_variant")
         instance._sys_clock = utils_base.get_json_attr_top(json_obj, "_sys_clock")
         return instance
@@ -200,10 +194,8 @@ class Gem5Sim(HostSim):
         if inst.restore_checkpoint:
             cmd += "-r 1 "
 
-        latency, sync_period, run_sync = (
-            sim_base.Simulator.get_unique_latency_period_sync(
-                channels=self.get_channels()
-            )
+        latency, sync_period, run_sync = sim_base.Simulator.get_unique_latency_period_sync(
+            channels=self.get_channels()
         )
 
         fsh_interfaces = host_spec.interfaces()
@@ -273,6 +265,15 @@ class QemuSim(HostSim):
         self.name = f"QemuSim-{self._id}"
         self._qemu_img_exec: str = "sims/external/qemu/build/qemu-img"
 
+    def add(self, host_or_nic: sys_host.Host | sys_nic.SimplePCIeNIC):
+        match host_or_nic:
+            case sys_nic.SimplePCIeNIC() | sys_host.Host():
+                super().add(host_or_nic)
+            case _:
+                raise Exception(
+                    f"QEMU does not support simulating component with type {type(host_or_nic)}"
+                )
+
     def resreq_cores(self) -> int:
         return 1
 
@@ -332,6 +333,12 @@ class QemuSim(HostSim):
     def cleanup_commands(self) -> list[str]:
         return ["poweroff -f"]
 
+    def supported_socket_types(self, interface: system.Interface) -> set[inst_socket.SockType]:
+        if len(self.filter_components_by_type(ty=sys_nic.SimplePCIeNIC)) > 0:
+            return {inst_socket.SockType.LISTEN}
+
+        return {inst_socket.SockType.CONNECT}
+
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
 
         latency, period, sync = sim_base.Simulator.get_unique_latency_period_sync(
@@ -376,6 +383,42 @@ class QemuSim(HostSim):
             shift = base - int(math.ceil(math.log(num, 2)))
 
             cmd += f" -icount shift={shift},sleep=off "
+
+        nic_spes = self.filter_components_by_type(ty=sys_nic.SimplePCIeNIC)
+        if len(full_sys_hosts) != 1 and len(nic_spes) > 1:
+            raise Exception(
+                "QEMU only supports simulating a single NIC together with its connected host"
+            )
+        elif len(nic_spes) == 1:
+            nic_spec = nic_spes[0]
+
+            if not self.components_connected_in_sim(nic_spec, host_spec):
+                raise Exception(
+                    f"{nic_spec.id()} and {host_spec.id()} are not connected in QEMU simulator {self.id()}"
+                )
+
+            socket = inst.get_socket(interface=nic_spec._eth_if)
+            assert socket is not None and socket._type == inst_socket.SockType.LISTEN
+            params_url = self.get_parameters_url(
+                inst, socket, sync=sync, latency=latency, sync_period=period
+            )
+
+            nic_cmd = ""
+            match nic_spec:
+                case sys_nic.IntelE1000NIC():
+                    nic_cmd = "e1000"
+                case sys_nic.VirtIONic():
+                    nic_cmd = "virtio-net-pci,ioeventfd=off"
+                case _:
+                    raise Exception(f"Non supported nic type: {type(nic_spec)}")
+
+            # TODO: put MAC addresses in specification objects
+            mac = rand_mac_s()
+
+            cmd += f"-device {nic_cmd},netdev=simnet0,mac={mac} -netdev simbricks-eth,id=simnet0,sock-path={params_url} "
+
+            # if we simulate a host with its NIC in a single instance, we do not expose the pci interface below
+            return cmd
 
         fsh_interfaces = host_spec.interfaces()
         pci_interfaces = system.Interface.filter_by_type(
