@@ -373,6 +373,13 @@ class NS3NetworkSimbricks(NS3Network):
         self.shm_path = ''
         self.sync = '1' if chan._synchronized else '0'
 
+        self.data_rate = self.get_parameter(chan.sys_channel, 'data_rate')
+        self.queue_type = self.get_parameter(chan.sys_channel, 'queue_type',
+                                             'ns3::DropTailQueue')
+        self.queue_size = self.get_parameter(chan.sys_channel, 'queue_size')
+        if 'ns3_params' in chan.sys_channel.parameters:
+            self.mapping.update(chan.sys_channel.parameters['ns3_params'])
+
         self.simbricks_component = None
 
     def ns3_config(self) -> str:
@@ -384,6 +391,9 @@ class NS3NetworkSimbricks(NS3Network):
             'Listen': 'true' if self.listen else 'false',
             'ShmPath': self.shm_path,
             'Sync': self.sync,
+            'DataRate': self.data_rate,
+            'QueueType': self.queue_type,
+            'Queue-MaxSize': self.queue_size,
         })
         return super().ns3_config()
 
