@@ -37,6 +37,7 @@ from simbricks.cli.commands import (
     user,
 )
 from simbricks.client.settings import client_settings
+from simbricks.client.telemetry.base import setup_telemetry
 from simbricks.cli.utils import async_cli
 
 app = Typer(pretty_exceptions_show_locals=False)
@@ -57,10 +58,15 @@ app.add_typer(user.app, name="user")
 @async_cli()
 async def amain(
     ns: Annotated[str, Option(help="Namespace to operate in.")] = client_settings().namespace,
+    disable_telemetry: Annotated[
+        bool, Option(help="Disable Telemetry.")
+    ] = client_settings().telemetry.disabled,
 ):
     settings = client_settings()
     settings.namespace = ns
-    # TODO
+    settings.telemetry.disabled = disable_telemetry
+    settings.telemetry.service_name = "simb-python-cli"
+    setup_telemetry(settings.telemetry)
 
 
 def main():
