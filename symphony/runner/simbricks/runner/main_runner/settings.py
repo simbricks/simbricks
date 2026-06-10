@@ -23,10 +23,15 @@
 from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from simbricks.client.telemetry.config import TelemetryConfig
 
 
 class RunnerSettings(BaseSettings):
-    model_config = SettingsConfigDict(cli_parse_args=True)
+    model_config = SettingsConfigDict(
+        cli_parse_args=True,
+        env_prefix="",
+        env_nested_delimiter="_",
+    )
     base_url: str = "https://app.simbricks.io/api"
     auth_client_id: str = "api.auth.simbricks.io"
     auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
@@ -46,6 +51,8 @@ class RunnerSettings(BaseSettings):
     configuration_file: str = (
         "./symphony/runner/simbricks/runner/main_runner/runner_config_example.yaml"
     )
+
+    telemetry: TelemetryConfig = TelemetryConfig()
 
 
 @lru_cache
