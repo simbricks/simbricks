@@ -27,6 +27,8 @@ pytype==2024.10.11
 httpx==0.28.1
 attrs==22.2.0
 python-dateutil==2.8.0
+opentelemetry-instrumentation-httpx==0.63b1
+opentelemetry-exporter-otlp-proto-http==1.42.1
 
 # local dependencies
 -e ../orchestration

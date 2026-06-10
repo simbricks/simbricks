@@ -21,20 +21,32 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from functools import lru_cache
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from .telemetry.config import TelemetryConfig
+
 
 class ClientSettings(BaseSettings):
     base_url: str = "https://app.simbricks.io/api"
 
     auth_client_id: str = "api.auth.simbricks.io"
     auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
-    auth_dev_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
+    auth_dev_url: str = (
+        "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/auth/device"
+    )
     auth_offline_token: bool = False
     disable_auth: bool = False
 
     organization: str = "SimBricks"
     namespace: str | None = None
     timeout_sec: int = 20
+
+    telemetry: TelemetryConfig = TelemetryConfig()
+
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        env_nested_delimiter="_",
+    )
+
 
 @lru_cache
 def client_settings() -> ClientSettings:
