@@ -25,7 +25,7 @@ import typing
 import contextlib
 from typing import TypeVar
 from .settings import client_settings
-from .auth import TokenProvider, SimBricksAuth
+from .auth import simbricks_httpx_auth
 from simbricks.client.openapi.client.python.sim_bricks_api_client.client import AuthenticatedClient
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     HTTPValidationError,
@@ -49,7 +49,7 @@ T = TypeVar("T")
 def validate_response_model(response_model: object, expected_type: type[T]) -> T | None:
     if response_model is None:
         return None
-    
+
     match response_model:
         case expected_type():
             return response_model
@@ -61,17 +61,14 @@ def validate_response_model(response_model: object, expected_type: type[T]) -> T
             raise Exception(f"encountered unexpected repsonse model: {response_model}")
 
 
-__token_provider = TokenProvider()
-__simbricks_auth = SimBricksAuth(__token_provider)
-
-
 @contextlib.asynccontextmanager
 async def base_client(
     base_url: str = client_settings().base_url,
 ) -> typing.AsyncIterator[AuthenticatedClient]:
 
     # custom httpx client using our authentication class
-    httpx_client = httpx.AsyncClient(base_url=base_url, auth=__simbricks_auth)
+    sb_auth = simbricks_httpx_auth()
+    httpx_client = httpx.AsyncClient(base_url=base_url, auth=sb_auth)
 
     # create the auto generated client instance to pass on
     client = AuthenticatedClient(
