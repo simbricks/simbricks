@@ -27,6 +27,8 @@ import aiohttp
 import time
 import os
 import sys
+import asyncio
+from requests.auth import AuthBase
 from .settings import client_settings
 
 
@@ -118,9 +120,7 @@ class TokenClient:
             request_data = {"client_id": self._client_id}
             if client_settings().auth_offline_token:
                 request_data["scope"] = "offline_access"
-            async with session.post(
-                url=self._device_auth_url, data=request_data
-            ) as resp:
+            async with session.post(url=self._device_auth_url, data=request_data) as resp:
                 resp.raise_for_status()  # TODO: handel gracefully
 
                 json_resp = await resp.json()
@@ -157,7 +157,8 @@ class TokenClient:
                         raise Exception(f"error retrievening retrieving token: {json_resp}")
                     elif "error" not in json_resp:
                         token = Token.parse_from_resp(
-                            json_obj=json_resp, is_offline_token=client_settings().auth_offline_token
+                            json_obj=json_resp,
+                            is_offline_token=client_settings().auth_offline_token,
                         )
                         break
 
@@ -188,7 +189,9 @@ class TokenClient:
                 if "error" in json_resp:
                     raise Exception(f"error refreshing token: {json_resp}")
 
-                token = Token.parse_from_resp(json_obj=json_resp, is_offline_token=old_token.is_offline_token)
+                token = Token.parse_from_resp(
+                    json_obj=json_resp, is_offline_token=old_token.is_offline_token
+                )
 
         assert token
         return token
@@ -198,16 +201,29 @@ class TokenProvider:
 
     def __init__(self) -> None:
         self._toke_filepath: str = "auth.json"
-        self._token: Token | None = Token.load_token(self._toke_filepath)
+        self._token: Token | None = None
         self._toke_client = TokenClient()
+        self._lock = asyncio.Lock()
 
     def _access_valid(self) -> bool:
+        """Internal function that returns true iff the cached token is still valid.
+        Must be called with the lock held.
+        """
         return self._token is not None and self._token.is_access_valid()
 
     def _refresh_valid(self) -> bool:
+        """Internal function that returns true iff the cached token can still be refreshed.
+        Must be called with the lock held.
+        """
         return self._token is not None and self._token.is_refresh_valid()
 
     async def _refresh_token(self) -> None:
+        """Internal function that tries to retrieve or refresh a token.
+        Must be called with the lock held.
+        """
+        if self._token is None:
+            self._token = Token.load_token(self._toke_filepath)
+
         if self._access_valid():
             return
 
@@ -221,18 +237,27 @@ class TokenProvider:
         self._token.store_token(self._toke_filepath)
 
     async def access_token(self) -> str:
-        await self._refresh_token()
-        assert self._token
-        return self._token.access_token
+        """Return a valid access token that can be used as Bearer token to make requests.
+
+        Examples:
+            access_token = await token_provider.access_token()
+            request.headers[Authorization] = f"Bearer {access_token}"
+        """
+        async with self._lock:
+            await self._refresh_token()
+            assert self._token
+            return self._token.access_token
 
 
-class SimBricksAuth(httpx.Auth):
+class SimBricksHttpxAuth(httpx.Auth):
 
     prefix: str = "Bearer"
     auth_header_name: str = "Authorization"
     retry: bool = True
 
-    def __init__(self, token_provider: TokenProvider, disable_auth: bool = client_settings().disable_auth):
+    def __init__(
+        self, token_provider: TokenProvider, disable_auth: bool = client_settings().disable_auth
+    ):
         self._token_provider = token_provider
         self._disable_auth = disable_auth
 
@@ -249,3 +274,45 @@ class SimBricksAuth(httpx.Auth):
             # set access token
             await self._update_token_on_req(request)
         yield request
+
+
+class SimBricksRequestsAuth(AuthBase):
+    """
+    Class to directly hook into the requests library to inject the freshest
+    cached token right before a request is made.
+
+    Example:
+        the OTEL export batch is sent.
+    """
+    
+    prefix: str = "Bearer"
+    auth_header_name: str = "Authorization"
+
+    def __init__(self, token_provider: TokenProvider):
+        self._token_provider: TokenProvider = token_provider
+
+    def __call__(self, r):
+        fresh_token = asyncio.run(self._token_provider.access_token())
+        r.headers[self.auth_header_name] = f"{self.prefix} {fresh_token}"
+        return r
+
+
+__token_provider = TokenProvider()
+
+
+def token_provider() -> TokenProvider:
+    return __token_provider
+
+
+__simbricks_httpx_auth = SimBricksHttpxAuth(token_provider())
+
+
+def simbricks_httpx_auth() -> SimBricksHttpxAuth:
+    return __simbricks_httpx_auth
+
+
+__simbricks_requests_auth = SimBricksRequestsAuth(token_provider())
+
+
+def simbricks_requests_auth() -> SimBricksRequestsAuth:
+    return __simbricks_requests_auth
