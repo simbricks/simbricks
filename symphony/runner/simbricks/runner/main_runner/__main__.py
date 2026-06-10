@@ -19,6 +19,7 @@ from simbricks.runner.main_runner import settings
 from simbricks.runner.main_runner.plugins import plugin
 from simbricks.runner.main_runner.plugins import plugin_loader
 from simbricks.runner import utils as runner_utils
+from simbricks.client.telemetry.base import setup_telemetry
 from simbricks.client.namespace import EventToRunner_U, EventFromRunner_U
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     Fragment,
@@ -460,6 +461,9 @@ async def amain():
     base_url=settings.runner_settings().base_url
     namespace=settings.runner_settings().namespace
     ident=settings.runner_settings().runner_id
+
+    settings.runner_settings().telemetry.service_name = f"simb-runner-{ident}"
+    setup_telemetry(settings.runner_settings().telemetry)
 
     nsc = await client.ns_client(base_url, namespace)
     sbc = await client.simb_client(nsc)
