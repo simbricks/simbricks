@@ -33,3 +33,4 @@ pytype==2024.10.11
 -e ./runtime
 -e ./local
 -e ./utils
+-e ./telemetry

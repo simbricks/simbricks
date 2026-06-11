@@ -1,7 +1,7 @@
 from typer import Typer, Option
 from typing import Annotated
 from simbricks.client import org_client
-from simbricks.client.settings import client_settings
+from simbricks.cli.settings import cli_settings
 from ..utils import async_cli, print_table_generic
 
 
@@ -13,7 +13,7 @@ organization = ""
 @app.callback()
 @async_cli()
 async def amain(
-    org: Annotated[str, Option(help="Organization to operate in.")] = client_settings().organization,
+    org: Annotated[str, Option(help="Organization to operate in.")] = cli_settings().client.organization,
 ):
     global organization
     organization = org

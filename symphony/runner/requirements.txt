@@ -27,3 +27,4 @@ pytype==2024.10.11
 -e ../orchestration
 -e ../runtime
 -e ../local
+-e ../telemetry
