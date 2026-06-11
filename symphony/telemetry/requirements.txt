@@ -1,0 +1,7 @@
+
+# external dependencies
+typer==0.24.1
+pytype==2024.10.11
+
+# local dependencies
+-e ../client

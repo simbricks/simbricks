@@ -20,8 +20,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer, Option
-from typing import Annotated
+from typer import Typer
 from simbricks.client import auth
 from simbricks.client.user import user_client
 from ..utils import async_cli, print_table_generic
