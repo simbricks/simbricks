@@ -22,7 +22,6 @@
 
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from .telemetry.config import TelemetryConfig
 
 
 class ClientSettings(BaseSettings):
@@ -39,8 +38,6 @@ class ClientSettings(BaseSettings):
     organization: str = "SimBricks"
     namespace: str | None = None
     timeout_sec: int = 20
-
-    telemetry: TelemetryConfig = TelemetryConfig()
 
     model_config = SettingsConfigDict(
         env_prefix="",

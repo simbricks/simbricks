@@ -22,7 +22,7 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
-from simbricks.client.settings import client_settings
+from simbricks.cli.settings import cli_settings
 from simbricks.cli.commands import (
     audit,
     admin,
@@ -36,8 +36,7 @@ from simbricks.cli.commands import (
     runners,
     user,
 )
-from simbricks.client.settings import client_settings
-from simbricks.client.telemetry.base import setup_telemetry
+from simbricks.telemetry.base import setup_telemetry
 from simbricks.cli.utils import async_cli
 
 app = Typer(pretty_exceptions_show_locals=False)
@@ -57,13 +56,13 @@ app.add_typer(user.app, name="user")
 @app.callback()
 @async_cli()
 async def amain(
-    ns: Annotated[str, Option(help="Namespace to operate in.")] = client_settings().namespace,
+    ns: Annotated[str, Option(help="Namespace to operate in.")] = cli_settings().client.namespace,
     disable_telemetry: Annotated[
         bool, Option(help="Disable Telemetry.")
-    ] = client_settings().telemetry.disabled,
+    ] = cli_settings().telemetry.disabled,
 ):
-    settings = client_settings()
-    settings.namespace = ns
+    settings = cli_settings()
+    settings.client.namespace = ns
     settings.telemetry.disabled = disable_telemetry
     settings.telemetry.service_name = "simb-python-cli"
     setup_telemetry(settings.telemetry)

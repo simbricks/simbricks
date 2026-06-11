@@ -26,3 +26,4 @@ pytype==2024.10.11
 
 # local dependencies
 -e ../orchestration
+-e ../telemetry

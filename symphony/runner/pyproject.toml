@@ -27,7 +27,7 @@ line-length = 100
 inputs = ["simbricks"]
 python_version = "3.10"
 incremental = true
-pythonpath = "../utils:../runtime:../runner:../orchestration:../local:../client:../cli"
+pythonpath = "../utils:../runtime:../runner:../orchestration:../local:../client:../cli:../telemetry"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -54,3 +54,4 @@ pytype = "2024.10.11"
 simbricks-orchestration = ">=0.3.6"
 simbricks-runtime = ">=0.3.6"
 simbricks-client = ">=0.3.6"
+simbricks-telemetry = ">=0.3.6"

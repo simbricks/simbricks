@@ -19,7 +19,7 @@ from simbricks.runner.main_runner import settings
 from simbricks.runner.main_runner.plugins import plugin
 from simbricks.runner.main_runner.plugins import plugin_loader
 from simbricks.runner import utils as runner_utils
-from simbricks.client.telemetry.base import setup_telemetry
+from simbricks.telemetry.base import setup_telemetry
 from simbricks.client.namespace import EventToRunner_U, EventFromRunner_U
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     Fragment,
