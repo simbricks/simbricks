@@ -343,7 +343,7 @@ class SimBricksClient:
                 cores_required=frag.cores_required,
                 memory_required=frag.memory_required,
                 runner_tags=list(frag.runner_tags),
-                fragment_executor_tag=None,
+                fragment_executor_tag=frag.fragment_executor_tag,
             )
             api_fragments.append(api_frag)
         to_create = ApiInstantiation(
