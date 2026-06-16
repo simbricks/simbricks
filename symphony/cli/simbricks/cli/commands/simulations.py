@@ -21,9 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from typer import Typer
-from simbricks.client import simb_client
 from ..utils import async_cli
 from ..utils import print_table_generic
+from ..settings import simb_client
 
 app = Typer(help="Managing SimBricks Simulations.")
 
