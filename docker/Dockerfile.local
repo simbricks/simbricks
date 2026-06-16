@@ -6,10 +6,12 @@ COPY --chown=simbricks symphony /simbricks/symphony
 COPY --chown=simbricks mk /simbricks/mk
 COPY --chown=simbricks Makefile requirements.txt /simbricks/
 WORKDIR /simbricks
+RUN pip install -r requirements.txt
 USER simbricks
-RUN sudo pip install -r requirements.txt
 RUN make -j `nproc` symphony-build
 
 FROM ${REGISTRY}simbricks/simbricks-fullsims${TAG}
 COPY --from=builder /simbricks/symphony/*/dist/*.whl /tmp/
-RUN sudo pip install --force-reinstall /tmp/simbricks*.whl
+USER root
+RUN pip install --force-reinstall /tmp/simbricks*.whl
+USER simbricks
