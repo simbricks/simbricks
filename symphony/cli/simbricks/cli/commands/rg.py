@@ -1,7 +1,7 @@
 from typer import Typer, Option
 from typing import Annotated
-from simbricks.client import rg_client
 from ..utils import async_cli, print_table_generic
+from ..settings import rg_client
 
 
 app = Typer(help="Managing SimBricks resource groups used by runners.")

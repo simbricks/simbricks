@@ -22,9 +22,8 @@
 
 from typer import Typer, Option
 from typing_extensions import Annotated
-from simbricks.client import runner_client
 from ..utils import async_cli, print_table_generic
-from simbricks.client.opus import base as opus_base
+from ..settings import runner_client
 
 app = Typer(help="Managing SimBricks runners.")
 

@@ -20,18 +20,15 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import rich
 import typing
 from pathlib import Path
-
-import rich
 from typer import Argument, Option, Typer
 from typing_extensions import Annotated
-
 import simbricks.utils.load_mod as load_mod
 from simbricks.client.opus import base as opus_base
-from simbricks.client import simb_client
-
 from ..utils import async_cli, print_table_generic
+from ..settings import simb_client
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
