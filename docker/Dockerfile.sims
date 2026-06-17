@@ -1,6 +1,6 @@
 ARG REGISTRY=
 ARG TAG=:latest
-FROM ${REGISTRY}simbricks/simbricks-build${TAG}
+FROM ${REGISTRY}simbricks-build${TAG}
 RUN mkdir /simbricks && chown simbricks:simbricks /simbricks
 COPY --chown=simbricks sims /simbricks/sims
 COPY --chown=simbricks lib /simbricks/lib

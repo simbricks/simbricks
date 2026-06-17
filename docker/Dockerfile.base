@@ -1,6 +1,6 @@
 ARG REGISTRY=
 ARG TAG=:latest
-FROM ${REGISTRY}simbricks/simbricks-build${TAG}
+FROM ${REGISTRY}simbricks-build${TAG}
 COPY --chown=simbricks . /simbricks
 WORKDIR /simbricks
 USER simbricks

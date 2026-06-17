@@ -1,6 +1,6 @@
 ARG REGISTRY=
 ARG TAG=:latest
-FROM ${REGISTRY}simbricks/simbricks-sims${TAG}
+FROM ${REGISTRY}simbricks-sims${TAG}
 COPY --chown=simbricks images /simbricks/images
 RUN make -j `nproc` build-images-min COMPRESSED_IMAGES=true \
  && bash docker/cleanup_images.sh
