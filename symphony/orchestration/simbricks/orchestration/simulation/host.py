@@ -200,11 +200,12 @@ class Gem5Sim(HostSim):
         if inst.restore_checkpoint:
             cmd += "-r 1 "
 
-        latency, sync_period, run_sync = (
-            sim_base.Simulator.get_unique_latency_period_sync(
-                channels=self.get_channels()
+        if len(self.get_channels()) > 0:
+            latency, sync_period, run_sync = (
+                sim_base.Simulator.get_unique_latency_period_sync(
+                    channels=self.get_channels()
+                )
             )
-        )
 
         fsh_interfaces = host_spec.interfaces()
 
@@ -212,6 +213,7 @@ class Gem5Sim(HostSim):
             interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
         )
         for inf in pci_interfaces:
+            assert(len(self.get_channels()) > 0)
             socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue
@@ -229,6 +231,7 @@ class Gem5Sim(HostSim):
             interfaces=fsh_interfaces, ty=sys_mem.MemHostInterface
         )
         for inf in mem_interfaces:
+            assert(len(self.get_channels()) > 0)
             socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue
@@ -334,9 +337,13 @@ class QemuSim(HostSim):
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
 
-        latency, period, sync = sim_base.Simulator.get_unique_latency_period_sync(
-            channels=self.get_channels()
-        )
+        if len(self.get_channels()) == 0:
+            sync = False
+        else:
+            latency, period, sync = sim_base.Simulator.get_unique_latency_period_sync(
+                channels=self.get_channels()
+            )
+
         accel = ",accel=kvm:tcg" if not sync else ""
 
         cmd = (
@@ -382,6 +389,7 @@ class QemuSim(HostSim):
             interfaces=fsh_interfaces, ty=sys_pcie.PCIeHostInterface
         )
         for inf in pci_interfaces:
+            assert(len(self.get_channels()) > 0)
             socket = inst.get_socket(interface=inf)
             if socket is None:
                 continue

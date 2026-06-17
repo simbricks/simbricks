@@ -145,6 +145,10 @@ def build_simulation_dependency_graph(
     nodes_sim: dict[sim_base.Simulator, SimulationDependencyNode] = {}
     nodes_proxy: dict[inst_proxy.Proxy, SimulationDependencyNode] = {}
 
+    for sim in inst.assigned_fragment.all_simulators():
+        nodes_sim[sim] = SimulationDependencyNode(SimulationDependencyNodeType.SIMULATOR, sim)
+        dep_graph[nodes_sim[sim]] = set()
+
     # add simulator-simulator dependencies for simulators in assigned fragment
     for sim_a in inst.assigned_fragment.all_simulators():
         for comp_a in sim_a.components():
@@ -160,21 +164,12 @@ def build_simulation_dependency_graph(
                 # other simulator is not part of current fragment, will handle this case later via
                 # simulator-proxy dependencies
                 if sim_b not in inst.assigned_fragment.all_simulators():
-                    if sim_a not in nodes_sim:
-                        nodes_sim[sim_a] = (
-                            SimulationDependencyNode(SimulationDependencyNodeType.SIMULATOR, sim_a)
-                        )
                     continue
 
                 # get / create nodes
-                node_a = nodes_sim.setdefault(
-                    sim_a,
-                    SimulationDependencyNode(SimulationDependencyNodeType.SIMULATOR, sim_a),
-                )
-                node_b = nodes_sim.setdefault(
-                    sim_b,
-                    SimulationDependencyNode(SimulationDependencyNodeType.SIMULATOR, sim_b),
-                )
+                node_a = nodes_sim[sim_a]
+                node_b = nodes_sim[sim_b]
+
                 _insert_dep_if_a_depends_on_b(dep_graph, inst, inf_a, node_a, inf_b, node_b)
                 _insert_dep_if_a_depends_on_b(dep_graph, inst, inf_b, node_b, inf_a, node_a)
 
