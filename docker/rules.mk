@@ -24,6 +24,7 @@ include mk/subdir_pre.mk
 
 # Configuration parameters to control docker image build
 DOCKER_REGISTRY ?= docker.io/simbricks/
+DOCKER_REGISTRY_FROM ?= docker.io/simbricks/
 DOCKER_TAG ?= :latest
 
 DOCKER_IMAGES_SIMS := simbricks-build simbricks-runenv \
