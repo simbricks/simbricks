@@ -23,14 +23,14 @@
 include mk/subdir_pre.mk
 
 # Configuration parameters to control docker image build
-DOCKER_REGISTRY ?= docker.io/
+DOCKER_REGISTRY ?= docker.io/simbricks/
 DOCKER_TAG ?= :latest
 
-DOCKER_IMAGES_SIMS := simbricks/simbricks-build simbricks/simbricks-runenv \
-  simbricks/simbricks-sims simbricks/simbricks-fullsims
+DOCKER_IMAGES_SIMS := simbricks-build simbricks-runenv \
+  simbricks-sims simbricks-fullsims
 
-DOCKER_IMAGES_SYMPHONY := simbricks/simbricks-local simbricks/simbricks-runner \
-  simbricks/simbricks-executor
+DOCKER_IMAGES_SYMPHONY := simbricks-local simbricks-runner \
+  simbricks-executor
 
 REQUIREMENTS_TXT := $(d)requirements.txt
 
@@ -39,39 +39,39 @@ $(REQUIREMENTS_TXT):
 
 docker-images-sims: $(REQUIREMENTS_TXT)
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-build$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks-build$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.buildenv docker
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-runenv$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks-runenv$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.runenv docker
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-sims$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks-sims$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.sims .
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-fullsims$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks-fullsims$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.full .
 
 docker-images-symphony: $(REQUIREMENTS_TXT)
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-local$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks-local$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.local .
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-runner$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks-runner$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.runner .
 	docker build -t \
-		$(DOCKER_REGISTRY)simbricks/simbricks-executor$(DOCKER_TAG) \
+		$(DOCKER_REGISTRY)simbricks-executor$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.executor .
@@ -79,7 +79,7 @@ docker-images-symphony: $(REQUIREMENTS_TXT)
 docker-images: docker-images-sims docker-images-symphony
 
 docker-images-tofino:
-	docker build -t $(DOCKER_REGISTRY)simbricks/simbricks-tofino$(DOCKER_TAG) \
+	docker build -t $(DOCKER_REGISTRY)simbricks-tofino$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		-f docker/Dockerfile.tofino .
