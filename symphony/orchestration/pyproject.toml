@@ -35,7 +35,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-orchestration"
-version = "0.4.0"
+version = "0.4.1"
 description = "simbricks orchestration lib used to specify your systems, choose simulators and instantiate your virtual prototypes "
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -47,4 +47,4 @@ packages = [
 
 [tool.poetry.dependencies]
 pytype = "2024.10.11"
-simbricks-utils = ">=0.4.0"
+simbricks-utils = ">=0.4.1"

@@ -35,7 +35,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-local"
-version = "0.4.0"
+version = "0.4.1"
 description = "simbricks lib to simulate virtual prototypes locally"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -50,5 +50,5 @@ simbricks-run = "simbricks.local.__main__:main"
 
 [tool.poetry.dependencies]
 pytype = "2024.10.11"
-simbricks-orchestration = ">=0.4.0"
-simbricks-runtime = ">=0.4.0"
+simbricks-orchestration = ">=0.4.1"
+simbricks-runtime = ">=0.4.1"

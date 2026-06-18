@@ -34,7 +34,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-symphony"
-version = "0.4.0"
+version = "0.4.1"
 description = "SimBricks open source packages to specify and simulate virtual prototypes"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -46,11 +46,11 @@ packages = [
 
 [tool.poetry.dependencies]
 pytype = "2024.10.11"
-simbricks-cli = ">=0.4.0"
-simbricks-client = ">=0.4.0"
-simbricks-orchestration = ">=0.4.0"
-simbricks-runner = ">=0.4.0"
-simbricks-runtime = ">=0.4.0"
-simbricks-local = ">=0.4.0"
-simbricks-utils = ">=0.4.0"
-simbricks-telemetry = ">=0.4.0"
+simbricks-cli = ">=0.4.1"
+simbricks-client = ">=0.4.1"
+simbricks-orchestration = ">=0.4.1"
+simbricks-runner = ">=0.4.1"
+simbricks-runtime = ">=0.4.1"
+simbricks-local = ">=0.4.1"
+simbricks-utils = ">=0.4.1"
+simbricks-telemetry = ">=0.4.1"
