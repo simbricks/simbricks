@@ -35,7 +35,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-client"
-version = "0.4.1"
+version = "0.4.2"
 description = "simbricks client lib to send and retrieve experiments"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -54,4 +54,4 @@ attrs = "26.1.0"
 python-dateutil = "2.9.0"
 opentelemetry-instrumentation-httpx = "0.63b1"
 opentelemetry-exporter-otlp-proto-http = "1.42.1"
-simbricks-orchestration = ">=0.4.1"
+simbricks-orchestration = ">=0.4.2"
