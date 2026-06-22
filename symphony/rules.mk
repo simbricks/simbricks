@@ -24,6 +24,7 @@ include mk/subdir_pre.mk
 
 SYMPHONY_DIR := $(d)
 SYMPHONY_MODS := utils orchestration client telemetry cli runtime runner local
+SYMPHONY_MOD_DIRS := $(foreach m,$(SYMPHONY_MODS),$(SYMPHONY_DIR)$(m))
 
 SYMPHONY_PUBLICATION_REPO ?= testpypi
 USE_PYPI_REPO := n
@@ -46,7 +47,7 @@ symphony-typecheck:
 
 symphony-dev:
 	pip install -r $(base_dir)requirements.txt
-	cd $(SYMPHONY_DIR); pip install -r requirements.txt
+	pip install -e $(SYMPHONY_MOD_DIRS)
 
 symphony-version:
 	for m in $(SYMPHONY_MODS); do \
