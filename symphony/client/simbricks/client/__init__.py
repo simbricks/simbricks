@@ -20,15 +20,36 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from .org import OrgClient, org_client
-from .admin import AdminClient, admin_client
-from .namespace import (
+from simbricks.client.admin import AdminClient, admin_client
+
+__all__ = ["AdminClient", "admin_client"]
+
+from simbricks.client.namespace import (
     NSClient,
     SimBricksClient,
-    RunnerClient,
     ResourceGroupClient,
+    RunnerClient,
     ns_client,
     simb_client,
-    runner_client,
     rg_client,
+    runner_client,
 )
+
+__all__ += [
+    "NSClient",
+    "SimBricksClient",
+    "ResourceGroupClient",
+    "RunnerClient",
+    "ns_client",
+    "simb_client",
+    "rg_client",
+    "runner_client",
+]
+
+from simbricks.client.org import OrgClient, org_client
+
+__all__ += ["OrgClient", "org_client"]
+
+from simbricks.client.user import UserClient, user_client
+
+__all__ += ["UserClient", "user_client"]
