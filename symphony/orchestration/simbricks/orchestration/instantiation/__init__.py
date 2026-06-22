@@ -20,6 +20,32 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration.instantiation.base import *
-from simbricks.orchestration.instantiation.fragment import *
-from simbricks.orchestration.instantiation.proxy import *
+from simbricks.orchestration.instantiation.base import (
+    InstantiationEnvironment,
+    Instantiation,
+)
+
+__all__ = [
+    "InstantiationEnvironment",
+    "Instantiation",
+]
+
+from simbricks.orchestration.instantiation.fragment import Fragment
+
+__all__ += ["Fragment"]
+
+from simbricks.orchestration.instantiation.proxy import (
+    Proxy,
+    DummyProxy,
+    TCPProxy,
+    RDMAProxy,
+    ProxyPair,
+)
+
+__all__ += [
+    "Proxy",
+    "DummyProxy",
+    "TCPProxy",
+    "RDMAProxy",
+    "ProxyPair",
+]
