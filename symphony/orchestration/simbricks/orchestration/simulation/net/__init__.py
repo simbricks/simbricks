@@ -20,4 +20,24 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration.simulation.net.net_base import *
+from simbricks.orchestration.simulation.net.net_base import (
+    NetSim,
+    WireNet,
+    SwitchNet,
+    MemSwitchNet,
+    SimpleNS3Sim,
+    NS3DumbbellNet,
+    NS3BridgeNet,
+    NS3Net,
+)
+
+__all__ = [
+    "NetSim",
+    "WireNet",
+    "SwitchNet",
+    "MemSwitchNet",
+    "SimpleNS3Sim",
+    "NS3DumbbellNet",
+    "NS3BridgeNet",
+    "NS3Net",
+]
