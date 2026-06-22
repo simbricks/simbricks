@@ -2,7 +2,8 @@ pylint==3.2.0
 cpplint==1.6.1
 pre-commit==3.7.1
 yapf==0.40.2
-pytype==2024.4.11
+pytype==2024.10.11
 isort==5.13.2
 poetry==1.8.4
 pyyaml==6.0.2
+black==24.10.0
