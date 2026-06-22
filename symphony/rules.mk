@@ -23,7 +23,8 @@
 include mk/subdir_pre.mk
 
 SYMPHONY_DIR := $(d)
-SYMPHONY_MODS := utils orchestration client telemetry cli runtime runner local
+SYMPHONY_MODS := utils orchestration client telemetry cli runtime runner local \
+	components/qemu
 SYMPHONY_MOD_DIRS := $(foreach m,$(SYMPHONY_MODS),$(SYMPHONY_DIR)$(m))
 
 SYMPHONY_PUBLICATION_REPO ?= testpypi
