@@ -39,13 +39,11 @@ __all__ += ["Channel"]
 from simbricks.orchestration.simulation.host import (
     HostSim,
     Gem5Sim,
-    QemuSim,
 )
 
 __all__ += [
     "HostSim",
     "Gem5Sim",
-    "QemuSim",
 ]
 
 from simbricks.orchestration.simulation.mem import (
