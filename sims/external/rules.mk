@@ -1,5 +1,5 @@
-# Copyright 2021 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -28,10 +28,15 @@ GEM5_VARIANT ?= fast
 
 EXTERNAL_SIMS_DIR := $(d)
 
+SIMBRICKS_INC_DIR ?= $(abspath $(lib_dir))
+SIMBRICKS_LIB_DIR ?= $(abspath $(lib_dir))
+
+PREFIX ?= /usr/local
+
 $(eval $(call subdir,simics))
 
 external: $(d)gem5/ready $(d)qemu/ready $(d)ns-3/ready $(d)femu/ready $(d)bmv2/ready
-.PHONY: external gem5-clean qemu-clean ns-3-clean femu-clean bmv2-clean
+.PHONY: external gem5-clean qemu-clean ns-3-clean femu-clean bmv2-clean qemu-install
 
 
 
@@ -40,8 +45,8 @@ $(d)gem5:
 
 $(d)gem5/ready: $(d)gem5
 	cd $< && \
-		CCFLAGS_EXTRA="-I$(abspath $(lib_dir))" \
-		LIBRARY_PATH="$(abspath $(lib_dir))" \
+		CCFLAGS_EXTRA="-I$(SIMBRICKS_INC_DIR)" \
+		LIBRARY_PATH="$(SIMBRICKS_LIB_DIR)" \
 		scons build/X86/gem5.$(GEM5_VARIANT) \
 		--ignore-style -j`nproc`
 	touch $@
@@ -56,15 +61,19 @@ $(d)qemu:
 
 $(d)qemu/ready: $(d)qemu
 	+cd $< && ./configure \
-	    --target-list=x86_64-softmmu \
-	    --disable-werror \
-	    --with-pkgversion=SimBricks \
-	    --extra-cflags="-I$(abspath $(lib_dir))" \
-	    --extra-ldflags="-L$(abspath $(lib_dir))" \
-	    --enable-simbricks \
-	    --enable-simbricks-pci && \
+			--target-list=x86_64-softmmu \
+			--prefix="$(PREFIX)" \
+			--disable-werror \
+			--with-pkgversion=SimBricks \
+			--extra-cflags="-I$(SIMBRICKS_INC_DIR)" \
+			--extra-ldflags="-L$(SIMBRICKS_LIB_DIR) -lstdc++ -latomic" \
+			--enable-simbricks \
+			--enable-simbricks-pci && \
 	  $(MAKE)
 	touch $@
+
+qemu-install: $(d)qemu/ready
+	cd $(EXTERNAL_SIMS_DIR)qemu && $(MAKE) install
 
 $(QEMUG_IMG): $(d)qemu/ready
 	touch $@
