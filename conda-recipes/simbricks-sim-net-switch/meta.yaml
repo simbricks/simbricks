@@ -1,5 +1,5 @@
-# Copyright 2021 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,27 +20,34 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-include mk/subdir_pre.mk
+package:
+  name: simbricks-sim-net-switch
+  version: {{ simbricks_version }}
 
-PREFIX ?= /usr/local
-SWITCH_DEPS ?= $(lib_nicif) $(lib_netif) $(lib_base) 
-SIMBRICKS_INC_DIR ?= $(d)include/
-SWITCH_LDLIBS ?= -lpcap
+source:
+  path: ../../
 
-bin_net_switch := $(d)net_switch
+build:
+  number: 0
 
-OBJS := $(d)net_switch.o
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - make
 
-$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(SIMBRICKS_INC_DIR)
+  host:
+    - simbricks-lib =={{ simbricks_version }}
+    - elfutils
+    - libpcap
 
-$(bin_net_switch): LDLIBS += $(SWITCH_LDLIBS)
-$(bin_net_switch): $(OBJS) $(SWITCH_DEPS)
+  run:
+    - libpcap
 
-.PHONY: install-net-switch
-install-net-switch: $(bin_net_switch)
-	install -d $(PREFIX)/bin
-	install -m 755 $(bin_net_switch) $(PREFIX)/bin/simb_net_switch
-
-CLEAN := $(bin_net_switch) $(OBJS)
-ALL := $(bin_net_switch)
-include mk/subdir_post.mk
+about:
+  home: {{ homepage }}
+  license: MIT
+  license_family: MIT
+  license_file: ../../LICENSE.md
+  summary: SimBricks simplistic behavioral swithc model.
+  dev_url: {{ github_org }}
