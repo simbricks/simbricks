@@ -36,15 +36,9 @@ from simbricks.orchestration.simulation.channel import Channel
 
 __all__ += ["Channel"]
 
-from simbricks.orchestration.simulation.host import (
-    HostSim,
-    Gem5Sim,
-)
+from simbricks.orchestration.simulation.host import HostSim
 
-__all__ += [
-    "HostSim",
-    "Gem5Sim",
-]
+__all__ += ["HostSim"]
 
 from simbricks.orchestration.simulation.mem import (
     BasicMem,
