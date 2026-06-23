@@ -13,9 +13,14 @@
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
-typedef uint16_t __le16;
-typedef uint32_t __le32;
-typedef uint64_t __le64;
+
+#if defined(__linux__)
+    #include <linux/types.h>
+#else
+    typedef uint16_t __le16;
+    typedef uint32_t __le32;
+    typedef uint64_t __le64;
+#endif
 
 #include "sims/nic/i40e_bm/base/i40e_adminq_cmd.h"
 #include "sims/nic/i40e_bm/base/i40e_devids.h"
