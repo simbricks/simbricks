@@ -62,7 +62,6 @@ from simbricks.orchestration.simulation.pcidev import (
     PCIDevSim,
     FEMUSim,
     NICSim,
-    I40eNicSim,
     E1000NIC,
 )
 
@@ -70,7 +69,6 @@ __all__ += [
     "PCIDevSim",
     "FEMUSim",
     "NICSim",
-    "I40eNicSim",
     "E1000NIC",
 ]
 
