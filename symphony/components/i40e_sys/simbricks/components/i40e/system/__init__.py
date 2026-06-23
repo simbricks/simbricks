@@ -1,5 +1,5 @@
-# Copyright 2024 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,30 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from __future__ import annotations
+from .i40e import IntelI40eNIC, I40ELinuxHost
 
-
-from simbricks.orchestration.system import base
-from simbricks.orchestration.system import pcie
-from simbricks.orchestration.system import eth
-
-
-class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):
-    def __init__(self, s: base.System) -> None:
-        super().__init__(s)
-
-    def add_if(self, interface: eth.EthInterface | pcie.PCIeDeviceInterface) -> None:
-        match interface:
-            case eth.EthInterface():
-                eth.EthSimpleNIC.add_if(interface)
-            case pcie.PCIeDeviceInterface():
-                pcie.PCIeSimpleDevice.add_if(interface)
-            case _:
-                raise Exception(
-                    f"interface must have type EthInterface or PCIeDeviceInterface but has type {type(interface)}"
-                )
-
-
-class IntelE1000NIC(SimplePCIeNIC):
-    def __init__(self, s: base.System) -> None:
-        super().__init__(s)
+__all__ = ["IntelI40eNIC", "I40ELinuxHost"]
