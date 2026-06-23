@@ -20,29 +20,34 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-include mk/subdir_pre.mk
+package:
+  name: simbricks-sim-i40e
+  version: {{ simbricks_version }}
 
-PREFIX ?= /usr/local
+source:
+  path: ../../
 
-I40E_DEPS     ?= $(lib_nicbm) $(lib_nicif) $(lib_netif) $(lib_pcie) $(lib_base) 
-SIMBRICKS_INC_DIR ?= $(d)include/
-I40E_LDLIBS ?= -lboost_fiber -lboost_context -lpthread
+build:
+  number: 0
 
-bin_i40e_bm := $(d)i40e_bm
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - make
 
-OBJS := $(addprefix $(d),i40e_bm.o i40e_queues.o i40e_adminq.o i40e_hmc.o \
-    i40e_lan.o i40e_ptp.o xsums.o rss.o logger.o)
+  host:
+    - simbricks-lib =={{ simbricks_version }}
+    - elfutils
+    - boost-cpp
 
-$(OBJS): CPPFLAGS := $(CPPFLAGS) -I$(SIMBRICKS_INC_DIR)
+  run:
+    - boost-cpp
 
-$(bin_i40e_bm): LDLIBS += $(I40E_LDLIBS)
-$(bin_i40e_bm): $(OBJS) $(I40E_DEPS)
-
-.PHONY: install-i40e
-install-i40e: $(bin_i40e_bm)
-	install -d $(PREFIX)/bin
-	install -m 755 $(bin_i40e_bm) $(PREFIX)/bin/simb_i40e_bm
-
-CLEAN := $(bin_i40e_bm) $(OBJS)
-ALL := $(bin_i40e_bm)
-include mk/subdir_post.mk
+about:
+  home: {{ homepage }}
+  license: MIT
+  license_family: MIT
+  license_file: ../../LICENSE.md
+  summary: SimBricks behavioral model of the Intel i40e NIC.
+  dev_url: {{ github_org }}
