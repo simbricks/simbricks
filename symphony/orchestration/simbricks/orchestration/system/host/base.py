@@ -312,12 +312,6 @@ class LinuxHost(BaseLinuxHost):
         return instance
 
 
-class I40ELinuxHost(LinuxHost):
-    def __init__(self, sys: base.System) -> None:
-        super().__init__(sys)
-        self.drivers.append("i40e")
-
-
 class E1000LinuxHost(LinuxHost):
 
     def __init__(self, sys) -> None:
