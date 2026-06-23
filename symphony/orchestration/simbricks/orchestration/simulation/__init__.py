@@ -86,7 +86,7 @@ from simbricks.orchestration.simulation.net import (
     NS3Net,
 )
 
-__all__ = [
+__all__ += [
     # net_base.py
     "NetSim",
     "WireNet",
