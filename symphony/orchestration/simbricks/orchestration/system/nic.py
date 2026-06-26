@@ -42,8 +42,3 @@ class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):
                 raise Exception(
                     f"interface must have type EthInterface or PCIeDeviceInterface but has type {type(interface)}"
                 )
-
-
-class IntelE1000NIC(SimplePCIeNIC):
-    def __init__(self, s: base.System) -> None:
-        super().__init__(s)

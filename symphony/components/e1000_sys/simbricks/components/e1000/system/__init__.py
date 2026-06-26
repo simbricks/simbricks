@@ -1,5 +1,5 @@
-# Copyright 2024 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,48 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration.system.host.base import (
-    Host,
-    FullSystemHost,
-    BaseLinuxHost,
-    LinuxHost,
-    NVMeLinuxHost,
-)
+from .e1000 import IntelE1000NIC, E1000LinuxHost
 
-__all__ = [
-    "Host",
-    "FullSystemHost",
-    "BaseLinuxHost",
-    "LinuxHost",
-    "NVMeLinuxHost",
-]
-
-from simbricks.orchestration.system.host.app import (
-    Application,
-    BaseLinuxApplication,
-    GenericRawCommandApplication,
-    NVMEFsTest,
-    PingClient,
-    Sleep,
-    NetperfServer,
-    NetperfClient,
-    IperfTCPServer,
-    IperfUDPServer,
-    IperfTCPClient,
-    IperfUDPClient,
-)
-
-__all__ += [
-    "Application",
-    "BaseLinuxApplication",
-    "GenericRawCommandApplication",
-    "NVMEFsTest",
-    "PingClient",
-    "Sleep",
-    "NetperfServer",
-    "NetperfClient",
-    "IperfTCPServer",
-    "IperfUDPServer",
-    "IperfTCPClient",
-    "IperfUDPClient",
-]
+__all__ = ["IntelE1000NIC", "E1000LinuxHost"]

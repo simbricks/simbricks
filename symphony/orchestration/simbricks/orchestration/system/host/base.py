@@ -312,13 +312,6 @@ class LinuxHost(BaseLinuxHost):
         return instance
 
 
-class E1000LinuxHost(LinuxHost):
-
-    def __init__(self, sys) -> None:
-        super().__init__(sys)
-        self.drivers.append("e1000")
-
-
 class NVMeLinuxHost(LinuxHost):
 
     def __init__(self, sys: base.System) -> None:
