@@ -48,7 +48,7 @@ symphony-typecheck:
 
 symphony-dev:
 	pip install -r $(base_dir)requirements.txt
-	pip install -e $(SYMPHONY_MOD_DIRS)
+	pip install $(foreach m,$(SYMPHONY_MOD_DIRS),-e $m)
 
 symphony-version:
 	for m in $(SYMPHONY_MODS); do \
