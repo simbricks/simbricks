@@ -1,5 +1,5 @@
-# Copyright 2024 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,48 +20,21 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration.system.host.base import (
-    Host,
-    FullSystemHost,
-    BaseLinuxHost,
-    LinuxHost,
-    NVMeLinuxHost,
-)
+from __future__ import annotations
 
-__all__ = [
-    "Host",
-    "FullSystemHost",
-    "BaseLinuxHost",
-    "LinuxHost",
-    "NVMeLinuxHost",
-]
 
-from simbricks.orchestration.system.host.app import (
-    Application,
-    BaseLinuxApplication,
-    GenericRawCommandApplication,
-    NVMEFsTest,
-    PingClient,
-    Sleep,
-    NetperfServer,
-    NetperfClient,
-    IperfTCPServer,
-    IperfUDPServer,
-    IperfTCPClient,
-    IperfUDPClient,
-)
+from simbricks.orchestration.system import base
+from simbricks.orchestration.system import nic
+from simbricks.orchestration.system.host import base as sys_host
 
-__all__ += [
-    "Application",
-    "BaseLinuxApplication",
-    "GenericRawCommandApplication",
-    "NVMEFsTest",
-    "PingClient",
-    "Sleep",
-    "NetperfServer",
-    "NetperfClient",
-    "IperfTCPServer",
-    "IperfUDPServer",
-    "IperfTCPClient",
-    "IperfUDPClient",
-]
+
+class IntelE1000NIC(nic.SimplePCIeNIC):
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
+
+
+class E1000LinuxHost(sys_host.LinuxHost):
+
+    def __init__(self, sys) -> None:
+        super().__init__(sys)
+        self.drivers.append("e1000")

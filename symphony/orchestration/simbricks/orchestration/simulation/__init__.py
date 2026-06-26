@@ -56,14 +56,12 @@ from simbricks.orchestration.simulation.pcidev import (
     PCIDevSim,
     FEMUSim,
     NICSim,
-    E1000NIC,
 )
 
 __all__ += [
     "PCIDevSim",
     "FEMUSim",
     "NICSim",
-    "E1000NIC",
 ]
 
 from simbricks.orchestration.simulation.net import (

@@ -92,12 +92,10 @@ __all__ += [
 
 from simbricks.orchestration.system.nic import (
     SimplePCIeNIC,
-    IntelE1000NIC,
 )
 
 __all__ += [
     "SimplePCIeNIC",
-    "IntelE1000NIC",
 ]
 
 from simbricks.orchestration.system.disk_images import (
@@ -126,7 +124,6 @@ from simbricks.orchestration.system.host import (
     FullSystemHost,
     BaseLinuxHost,
     LinuxHost,
-    E1000LinuxHost,
     NVMeLinuxHost,
     # app.py
     Application,
@@ -149,7 +146,6 @@ __all__ += [
     "FullSystemHost",
     "BaseLinuxHost",
     "LinuxHost",
-    "E1000LinuxHost",
     "NVMeLinuxHost",
     # app.py
     "Application",
