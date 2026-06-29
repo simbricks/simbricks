@@ -310,10 +310,3 @@ class LinuxHost(BaseLinuxHost):
         instance.drivers = utils_base.get_json_attr_top(json_obj, "drivers")
         instance.hostname = utils_base.get_json_attr_top(json_obj, "hostname")
         return instance
-
-
-class NVMeLinuxHost(LinuxHost):
-
-    def __init__(self, sys: base.System) -> None:
-        super().__init__(sys)
-        self.drivers.append('nvme')

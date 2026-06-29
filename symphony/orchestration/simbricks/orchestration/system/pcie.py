@@ -79,13 +79,3 @@ class PCIeSimpleDevice(base.Component):
         inf_id = int(utils_base.get_json_attr_top(json_obj, "pci_if"))
         instance._pci_if = system.get_inf(inf_id)
         return instance
-
-
-class NVMeSSD(PCIeSimpleDevice):
-
-    def __init__(self, s: base.System) -> None:
-        super().__init__(s)
-
-    @classmethod
-    def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
-        return super().fromJSON(system, json_obj)

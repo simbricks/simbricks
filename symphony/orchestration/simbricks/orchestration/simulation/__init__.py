@@ -54,13 +54,11 @@ __all__ += [
 
 from simbricks.orchestration.simulation.pcidev import (
     PCIDevSim,
-    FEMUSim,
     NICSim,
 )
 
 __all__ += [
     "PCIDevSim",
-    "FEMUSim",
     "NICSim",
 ]
 
