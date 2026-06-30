@@ -44,6 +44,8 @@ RUN apt-get update \
 	nano \
 	vim \
 	verilator \
+	# needed for QEMUs "user" network backend
+	libslirp-dev \
  && locale-gen en_US.UTF-8 \
  && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt /tmp/requirements.txt
@@ -58,6 +60,10 @@ RUN cd /tmp \
  && make install \
  && ldconfig \
  && rm -rf /tmp/thrift
+
+# Install rustc / cargo required by QEMU
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Add non-root user for vs code devcontainer.
 ARG USERNAME=simbricks
