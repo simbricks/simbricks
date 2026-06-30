@@ -25,6 +25,7 @@ mkdir -p input-$outname
 
 # add our qemu to $PATH
 export PATH="$qemupath:$qemupath/build/:$PATH"
+./packer init ${pkrfile}
 ./packer build \
     -var "cpus=$cores" \
     -var "memory=$mem" \

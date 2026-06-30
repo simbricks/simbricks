@@ -271,7 +271,7 @@ class QemuSim(HostSim):
     def __init__(self, simulation: sim_base.Simulation) -> None:
         super().__init__(
             simulation=simulation,
-            executable="sims/external/qemu/build/x86_64-softmmu/qemu-system-x86_64",
+            executable="sims/external/qemu/build/qemu-system-x86_64",
         )
         self.name = f"QemuSim-{self._id}"
         self._qemu_img_exec: str = "sims/external/qemu/build/qemu-img"

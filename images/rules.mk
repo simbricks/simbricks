@@ -22,7 +22,7 @@
 
 include mk/subdir_pre.mk
 
-PACKER_VERSION := 1.7.0
+PACKER_VERSION := 1.14.0
 KERNEL_VERSION := 5.15.93
 
 BASE_IMAGE := $(d)output-base/base
