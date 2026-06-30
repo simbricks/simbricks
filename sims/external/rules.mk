@@ -57,6 +57,7 @@ $(d)qemu:
 $(d)qemu/ready: $(d)qemu
 	+cd $< && ./configure \
 	    --target-list=x86_64-softmmu \
+		--enable-slirp \
 	    --disable-werror \
 	    --with-pkgversion=SimBricks \
 	    --extra-cflags="-I$(abspath $(lib_dir))" \
