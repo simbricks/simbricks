@@ -1,5 +1,5 @@
-# Copyright 2024 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,50 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.orchestration.simulation.base import (
-    Simulator,
-    DummySimulator,
-    Simulation,
-)
+from .net import WireNet, SwitchNet, MemSwitchNet
 
-__all__ = [
-    "Simulator",
-    "DummySimulator",
-    "Simulation",
-]
-
-from simbricks.orchestration.simulation.channel import Channel
-
-__all__ += ["Channel"]
-
-from simbricks.orchestration.simulation.host import HostSim
-
-__all__ += ["HostSim"]
-
-from simbricks.orchestration.simulation.pcidev import (
-    PCIDevSim,
-    NICSim,
-)
-
-__all__ += [
-    "PCIDevSim",
-    "NICSim",
-]
-
-from simbricks.orchestration.simulation.net import (
-    # net_base.py
-    NetSim,
-    SimpleNS3Sim,
-    NS3DumbbellNet,
-    NS3BridgeNet,
-    NS3Net,
-)
-
-__all__ += [
-    # net_base.py
-    "NetSim",
-    "SimpleNS3Sim",
-    "NS3DumbbellNet",
-    "NS3BridgeNet",
-    "NS3Net",
-]
+__all__ = ["WireNet", "SwitchNet", "MemSwitchNet"]

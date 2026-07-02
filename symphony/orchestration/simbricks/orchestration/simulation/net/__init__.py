@@ -22,9 +22,6 @@
 
 from simbricks.orchestration.simulation.net.net_base import (
     NetSim,
-    WireNet,
-    SwitchNet,
-    MemSwitchNet,
     SimpleNS3Sim,
     NS3DumbbellNet,
     NS3BridgeNet,
@@ -33,9 +30,6 @@ from simbricks.orchestration.simulation.net.net_base import (
 
 __all__ = [
     "NetSim",
-    "WireNet",
-    "SwitchNet",
-    "MemSwitchNet",
     "SimpleNS3Sim",
     "NS3DumbbellNet",
     "NS3BridgeNet",
