@@ -50,12 +50,6 @@ __all__ += [
     "NICSim",
 ]
 
-from simbricks.orchestration.simulation.net import (
-    # net_base.py
-    NetSim,
-)
+from simbricks.orchestration.simulation.net import NetSim
 
-__all__ += [
-    # net_base.py
-    "NetSim",
-]
+__all__ += ["NetSim"]

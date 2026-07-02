@@ -26,12 +26,12 @@ import typing_extensions as tpe
 
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.simulation.net import net_base
+from simbricks.orchestration.simulation import net as sim_net
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.utils import base as utils_base
 
 
-class WireNet(net_base.NetSim):
+class WireNet(sim_net.NetSim):
 
     def __init__(
         self, simulation: sim_base.Simulation, relative_pcap_filepath: str | None = None
@@ -82,7 +82,7 @@ class WireNet(net_base.NetSim):
         return cmd
 
 
-class SwitchNet(net_base.NetSim):
+class SwitchNet(sim_net.NetSim):
 
     def __init__(
         self,

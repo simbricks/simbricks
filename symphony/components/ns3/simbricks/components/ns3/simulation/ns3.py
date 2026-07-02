@@ -30,14 +30,14 @@ from simbricks.orchestration import system
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.orchestration.simulation import base as sim_base
-from simbricks.orchestration.simulation.net import net_base
+from simbricks.orchestration.simulation import net as sim_net
 from simbricks.orchestration.system import base as sys_base
 from simbricks.orchestration.system import eth as sys_eth
 from simbricks.utils import base as utils_base
 from simbricks.utils import file as utils_file
 
 
-class SimpleNS3Sim(net_base.NetSim):
+class SimpleNS3Sim(sim_net.NetSim):
 
     def __init__(
         self,
