@@ -53,17 +53,9 @@ __all__ += [
 from simbricks.orchestration.simulation.net import (
     # net_base.py
     NetSim,
-    SimpleNS3Sim,
-    NS3DumbbellNet,
-    NS3BridgeNet,
-    NS3Net,
 )
 
 __all__ += [
     # net_base.py
     "NetSim",
-    "SimpleNS3Sim",
-    "NS3DumbbellNet",
-    "NS3BridgeNet",
-    "NS3Net",
 ]

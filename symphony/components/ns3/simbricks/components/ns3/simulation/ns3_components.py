@@ -1,5 +1,5 @@
-# Copyright 2023 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -23,11 +23,9 @@
 from __future__ import annotations
 
 import typing as tp
-import uuid
 from abc import ABC, abstractmethod
 from enum import Enum
 from simbricks.orchestration import system
-from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.orchestration.simulation import channel as sim_chan
 from simbricks.orchestration.system import base as sys_base
