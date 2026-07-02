@@ -25,6 +25,7 @@ from simbricks.orchestration.system.host.base import (
     FullSystemHost,
     BaseLinuxHost,
     LinuxHost,
+    NVMeLinuxHost,
 )
 
 __all__ = [
@@ -32,6 +33,7 @@ __all__ = [
     "FullSystemHost",
     "BaseLinuxHost",
     "LinuxHost",
+    "NVMeLinuxHost",
 ]
 
 from simbricks.orchestration.system.host.app import (

@@ -43,6 +43,7 @@ from simbricks.orchestration.system.pcie import (
     PCIeDeviceInterface,
     PCIeChannel,
     PCIeSimpleDevice,
+    NVMeSSD,
 )
 
 __all__ += [
@@ -50,6 +51,7 @@ __all__ += [
     "PCIeDeviceInterface",
     "PCIeChannel",
     "PCIeSimpleDevice",
+    "NVMeSSD",
 ]
 
 from simbricks.orchestration.system.eth import (
@@ -122,6 +124,7 @@ from simbricks.orchestration.system.host import (
     FullSystemHost,
     BaseLinuxHost,
     LinuxHost,
+    NVMeLinuxHost,
     # app.py
     Application,
     BaseLinuxApplication,
@@ -143,6 +146,7 @@ __all__ += [
     "FullSystemHost",
     "BaseLinuxHost",
     "LinuxHost",
+    "NVMeLinuxHost",
     # app.py
     "Application",
     "BaseLinuxApplication",

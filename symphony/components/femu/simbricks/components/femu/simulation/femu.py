@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import typing_extensions as tpe
 
-from simbricks.components.nvmessd import system as sys_nvmessd
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.orchestration.simulation import base as sim_base
@@ -44,14 +43,14 @@ class FEMUSim(pcidev.PCIDevSim):
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         return super().fromJSON(simulation, json_obj)
 
-    def add(self, ssd: sys_nvmessd.NVMeSSD):
-        utils_base.has_expected_type(ssd, sys_nvmessd.NVMeSSD)
+    def add(self, ssd: sys_pcie.NVMeSSD):
+        utils_base.has_expected_type(ssd, sys_pcie.NVMeSSD)
         super().add(ssd)
 
     def run_cmd(self, inst: inst_base.Instantiation) -> str:
         cmd = f"{inst.env.repo_base(relative_path=self._executable)} "
 
-        nvme_devices = self.filter_components_by_type(ty=sys_nvmessd.NVMeSSD)
+        nvme_devices = self.filter_components_by_type(ty=sys_pcie.NVMeSSD)
         assert len(nvme_devices) == 1
         nvme_dev = nvme_devices[0]
         socket = inst.get_socket(interface=nvme_dev._pci_if)
