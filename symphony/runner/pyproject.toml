@@ -50,7 +50,6 @@ simbricks-runner = "simbricks.runner.main_runner.__main__:main"
 simbricks-executor-local = "simbricks.runner.fragment_runner.local.__main__:main"
 
 [tool.poetry.dependencies]
-pytype = "2024.10.11"
 simbricks-orchestration = ">=0.4.2"
 simbricks-runtime = ">=0.4.2"
 simbricks-client = ">=0.4.2"

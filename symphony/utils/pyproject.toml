@@ -46,4 +46,3 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-pytype = "2024.10.11"
