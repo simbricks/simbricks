@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from io import BytesIO
 from typing import Any, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from .. import types
+from ..types import File
 
 T = TypeVar("T", bound="BodyInstantiationsFragmentInputArtifactSet")
 
@@ -15,14 +17,14 @@ T = TypeVar("T", bound="BodyInstantiationsFragmentInputArtifactSet")
 class BodyInstantiationsFragmentInputArtifactSet:
     """
     Attributes:
-        file (str):
+        file (File):
     """
 
-    file: str
+    file: File
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        file = self.file
+        file = self.file.to_tuple()
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -37,7 +39,7 @@ class BodyInstantiationsFragmentInputArtifactSet:
     def to_multipart(self) -> types.RequestFiles:
         files: types.RequestFiles = []
 
-        files.append(("file", (None, str(self.file).encode(), "text/plain")))
+        files.append(("file", self.file.to_tuple()))
 
         for prop_name, prop in self.additional_properties.items():
             files.append((prop_name, (None, str(prop).encode(), "text/plain")))
@@ -47,7 +49,7 @@ class BodyInstantiationsFragmentInputArtifactSet:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        file = d.pop("file")
+        file = File(payload=BytesIO(d.pop("file")))
 
         body_instantiations_fragment_input_artifact_set = cls(
             file=file,
