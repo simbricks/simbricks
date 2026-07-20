@@ -212,16 +212,6 @@ class BaseLinuxHost(FullSystemHost):
         cmd = "\n".join(es)
         return cmd
 
-    def strfile(self, s: str) -> io.BytesIO:
-        """
-        Helper function to convert a string to an IO handle for usage in
-        `config_files()`.
-
-        Using this, you can create a file with the string as its content on the
-        simulated node.
-        """
-        return io.BytesIO(bytes(s, encoding="UTF-8"))
-
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["load_modules"] = self.load_modules

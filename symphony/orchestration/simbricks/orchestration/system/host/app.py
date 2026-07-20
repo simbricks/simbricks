@@ -101,16 +101,6 @@ class BaseLinuxApplication(Application):
         else:
             return [f"sleep {self.end_delay}"]
 
-    def strfile(self, s: str) -> io.BytesIO:
-        """
-        Helper function to convert a string to an IO handle for usage in
-        `config_files()`.
-
-        Using this, you can create a file with the string as its content on the
-        simulated node.
-        """
-        return io.BytesIO(bytes(s, encoding="UTF-8"))
-
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["start_delay"] = self.start_delay
