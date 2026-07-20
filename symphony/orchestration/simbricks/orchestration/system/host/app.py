@@ -32,6 +32,7 @@ from simbricks.orchestration.system import base as sys_base
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
     from simbricks.orchestration.system import host as sys_host
+    from simbricks.orchestration.system import disk_images
 
 
 class Application(utils_base.IdObj):
@@ -65,6 +66,7 @@ class BaseLinuxApplication(Application):
         super().__init__(h)
         self.start_delay: float | None = None
         self.end_delay: float | None = None
+        self._config_files: list[disk_images.ConfigFile] = []
 
     @abc.abstractmethod
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
@@ -78,15 +80,15 @@ class BaseLinuxApplication(Application):
         else:
             return [f"sleep {self.start_delay}"]
 
-    def config_files(self, inst: inst_base.Instantiation) -> dict[str, tp.IO]:
+    def add_config_file(self, config_file: disk_images.ConfigFile):
+        self._config_files.append(config_file)
+
+    def config_files(self, inst: inst_base.Instantiation) -> list[disk_images.ConfigFile]:
         """
         Additional files to put inside the node, which are mounted under
         `/tmp/guest/`.
-
-        Specified in the following format: `filename_inside_node`:
-        `IO_handle_of_file`
         """
-        return {}
+        return self._config_files
 
     def prepare_pre_cp(self, inst: inst_base.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
@@ -113,6 +115,7 @@ class BaseLinuxApplication(Application):
         json_obj = super().toJSON()
         json_obj["start_delay"] = self.start_delay
         json_obj["end_delay"] = self.end_delay
+        json_obj["config_files"] = utils_base.list_tuple_to_json(self._config_files)
         return json_obj
 
     @classmethod
@@ -120,6 +123,9 @@ class BaseLinuxApplication(Application):
         instance = super().fromJSON(system, json_obj)
         instance.start_delay = utils_base.get_json_attr_top_or_none(json_obj, "start_delay")
         instance.end_delay = utils_base.get_json_attr_top_or_none(json_obj, "end_delay")
+        instance._config_files = utils_base.json_array_to_list(
+            utils_base.get_json_attr_top(json_obj, "config_files")
+        )
         return instance
 
 

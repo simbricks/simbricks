@@ -27,6 +27,7 @@ import typing_extensions as tpe
 import io
 import asyncio
 from simbricks.orchestration.system import base as base
+from simbricks.orchestration.system import disk_images
 from simbricks.orchestration.system import eth as eth
 from simbricks.orchestration.system import nic as nic
 from simbricks.orchestration.system import pcie as pcie
@@ -35,7 +36,6 @@ from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     import simbricks.orchestration.instantiation.base as instantiation
-    from simbricks.orchestration.system import disk_images
 
 
 class Host(base.Component):
@@ -127,6 +127,7 @@ class BaseLinuxHost(FullSystemHost):
         self.applications: list[app.BaseLinuxApplication] = []
         self.load_modules = []
         self.kcmd_append: str | None = None
+        self._config_files: list[disk_images.ConfigFile] = []
 
     def add_app(self, a: app.BaseLinuxApplication) -> None:
         self.applications.append(a)
@@ -165,17 +166,19 @@ class BaseLinuxHost(FullSystemHost):
         cmds += cleanup
         return cmds
 
-    def config_files(self, inst: instantiation.Instantiation) -> dict[str, tp.IO]:
+    def add_config_file(self, config_file: disk_images.ConfigFile):
+        self._config_files.append(config_file)
+
+    def config_files(self, inst: instantiation.Instantiation) -> list[disk_images.ConfigFile]:
         """
         Additional files to put inside the node, which are mounted under
         `/tmp/guest/`.
-
-        Specified in the following format: `filename_inside_node`:
-        `IO_handle_of_file`
         """
-        cfg_files = {}
+        cfg_files = []
+        cfg_files += self._config_files
         for app in self.applications:
-            cfg_files |= app.config_files(inst)
+            cfg_files += app.config_files(inst)
+        cfg_files.append(disk_images.ConfigFileStr("run.sh", self.config_str(inst)))
         return cfg_files
 
     def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
@@ -223,6 +226,7 @@ class BaseLinuxHost(FullSystemHost):
         json_obj = super().toJSON()
         json_obj["load_modules"] = self.load_modules
         json_obj["kcmd_append"] = self.kcmd_append
+        json_obj["config_files"] = utils_base.list_tuple_to_json(self._config_files)
         return json_obj
 
     @classmethod
@@ -230,6 +234,9 @@ class BaseLinuxHost(FullSystemHost):
         instance = super().fromJSON(system, json_obj)
         instance.load_modules = utils_base.get_json_attr_top(json_obj, "load_modules")
         instance.kcmd_append = utils_base.get_json_attr_top(json_obj, "kcmd_append")
+        instance._config_files = utils_base.json_array_to_list(
+            utils_base.get_json_attr_top(json_obj, "config_files")
+        )
         return instance
 
 

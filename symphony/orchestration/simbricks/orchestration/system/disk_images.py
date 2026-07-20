@@ -203,20 +203,10 @@ class LinuxConfigDiskImage(DynamicDiskImage):
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         path = self.path(inst, format)
         with tarfile.open(path, "w:") as tar:
-            # add main run script
-            cfg_i = tarfile.TarInfo("guest/run.sh")
-            cfg_i.mode = 0o777
-            cfg_f = self.host.strfile(self.host.config_str(inst))
-            cfg_f.seek(0, io.SEEK_END)
-            cfg_i.size = cfg_f.tell()
-            cfg_f.seek(0, io.SEEK_SET)
-            tar.addfile(tarinfo=cfg_i, fileobj=cfg_f)
-            cfg_f.close()
-
-            # add additional config files
-            for n, f in self.host.config_files(inst).items():
-                f_i = tarfile.TarInfo("guest/" + n)
+            for file in self.host.config_files(inst):
+                f_i = tarfile.TarInfo(f"guest/{file.file_name}")
                 f_i.mode = 0o777
+                f = file.IOHandle(inst)
                 f.seek(0, io.SEEK_END)
                 f_i.size = f.tell()
                 f.seek(0, io.SEEK_SET)
@@ -293,4 +283,83 @@ class PackerDiskImage(DynamicDiskImage):
         instance.config_path = utils_base.get_json_attr_top(json_obj, "config_path")
         vars_json = utils_base.get_json_attr_top(json_obj, "vars")
         instance.vars = utils_base.json_to_dict(vars_json)
+        return instance
+
+
+class ConfigFile(utils_base.IdObj):
+
+    def __init__(self, file_name: str):
+        super().__init__()
+        # Name of the file in the image
+        self.file_name: str = file_name
+
+    @abc.abstractmethod
+    def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
+        pass
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["file_name"] = self.file_name
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, json_obj) -> tpe.Self:
+        instance = super().fromJSON(json_obj)
+        instance.file_name = utils_base.get_json_attr_top(json_obj, "file_name")
+        return instance
+
+
+class ConfigFileLocal(ConfigFile):
+
+    def __init__(self, file_name: str, path: str, from_artifact: bool):
+        super().__init__(file_name)
+        # Path of the local file to be added to the image
+        self.path: str = path
+        # True if path is relative to the input artifact directory
+        self.from_artifact: bool = from_artifact
+        self.open_mode: str = 'rb'
+
+    def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
+        if self.from_artifact:
+            self.path = inst.env.input_artifacts_dir(self.path, True)
+        else:
+            if not pathlib.Path(self.path).is_file():
+                raise RuntimeError(f"file '{self.path}' does not exist")
+
+        return open(self.path, self.open_mode)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["path"] = self.path
+        json_obj["from_artifact"] = self.from_artifact
+        json_obj["open_mode"] = self.open_mode
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, json_obj) -> tpe.Self:
+        instance = super().fromJSON(json_obj)
+        instance.path = utils_base.get_json_attr_top(json_obj, "path")
+        instance.from_artifact = utils_base.get_json_attr_top(json_obj, "from_artifact")
+        instance.open_mode = utils_base.get_json_attr_top(json_obj, "open_mode")
+        return instance
+
+
+class ConfigFileStr(ConfigFile):
+
+    def __init__(self, file_name: str, string: str):
+        super().__init__(file_name)
+        self.string = string
+
+    def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
+        return io.BytesIO(bytes(self.string, encoding="UTF-8"))
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["string"] = self.string
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, json_obj) -> tpe.Self:
+        instance = super().fromJSON(json_obj)
+        instance.string = utils_base.get_json_attr_top(json_obj, "string")
         return instance
