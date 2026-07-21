@@ -320,13 +320,14 @@ class ConfigFileLocal(ConfigFile):
         self.open_mode: str = 'rb'
 
     def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
+        path = self.path
         if self.from_artifact:
-            self.path = inst.env.input_artifacts_dir(self.path, True)
+            path = inst.env.input_artifacts_dir(self.path, True)
         else:
             if not pathlib.Path(self.path).is_file():
                 raise RuntimeError(f"file '{self.path}' does not exist")
 
-        return open(self.path, self.open_mode)
+        return open(path, self.open_mode)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
