@@ -1,0 +1,65 @@
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+{% set name = "simbricks-orchestration" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ simbricks_version }}
+
+source:
+  path: ../../symphony/orchestration
+
+build:
+  noarch: python
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.10
+    - poetry-core >=1.0.0
+    - pip
+  run:
+    - python >=3.10
+    - simbricks-utils >=0.4.2
+    - typing_extensions >=4.14.1
+
+test:
+  imports:
+    - simbricks.orchestration
+    - simbricks.orchestration.system
+    - simbricks.orchestration.simulation
+    - simbricks.orchestration.instantiation
+
+about:
+  home: https://www.simbricks.io/
+  license: MIT
+  summary: SimBricks orchestration library
+  description: |
+    SimBricks orchestration library used to specify systems, choose simulators
+    and instantiate virtual prototypes.
+  dev_url: https://github.com/simbricks/simbricks
+
+extra:
+  recipe-maintainers:
+    - Team SimBricks <team@simbricks.io>

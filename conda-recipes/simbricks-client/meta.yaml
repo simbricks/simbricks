@@ -1,0 +1,65 @@
+# Copyright 2026 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks UG (haftungsbeschränkt)
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+{% set name = "simbricks-client" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ simbricks_version }}
+
+source:
+  path: ../../symphony/client
+
+build:
+  noarch: python
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.10
+    - poetry-core >=1.0.0
+    - pip
+  run:
+    - python >=3.10
+    - aiohttp 3.14.1
+    - pydantic-settings 2.14.1
+    - httpx 0.28.1
+    - attrs 26.1.0
+    - python-dateutil 2.9.0
+    - opentelemetry-instrumentation-httpx 0.63b1
+    - opentelemetry-exporter-otlp-proto-http 1.42.1
+    - simbricks-orchestration >=0.4.2
+
+test:
+  imports:
+    - simbricks.client
+
+about:
+  home: https://www.simbricks.io/
+  license: MIT
+  summary: SimBricks client lib to interact with the SimBricks backend
+  dev_url: https://github.com/simbricks/simbricks
+
+extra:
+  recipe-maintainers:
+    - Team SimBricks <team@simbricks.io>
