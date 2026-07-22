@@ -29,8 +29,24 @@ COMMON_OBJS := $(addprefix $(d)common/, base.o utils.o)
 RDMA_OBJS := $(addprefix $(d)rdma/, net_rdma.o rdma.o rdma_cm.o rdma_ib.o)
 SOCKETS_OBJS := $(addprefix $(d)sockets/, net_sockets.o)
 
-$(bin_net_rdma): $(RDMA_OBJS) $(COMMON_OBJS) -lrdmacm -libverbs -lpthread
-$(bin_net_sockets): $(SOCKETS_OBJS) $(COMMON_OBJS) -lpthread
+$(bin_net_rdma): $(RDMA_OBJS) $(COMMON_OBJS)
+$(bin_net_rdma): LDLIBS := -lrdmacm -libverbs -lpthread
+$(bin_net_sockets): $(SOCKETS_OBJS) $(COMMON_OBJS)
+$(bin_net_sockets): LDLIBS := -lpthread
+
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+
+install-dist: $(bin_net_rdma) $(bin_net_sockets)
+	@echo "Installing SimBricks dist binaries to $(BINDIR)..."
+	
+	# Create the target directories
+	install -d $(BINDIR)
+
+	# Find and copy all compiled static libraries
+	install -m 0755 $(bin_net_rdma) $(bin_net_sockets) $(BINDIR)
+
+.PHONY: install-dist
 
 CLEAN := $(bin_net_rdma) $(bin_net_sockets) \
 	$(RDMA_OBJS) $(SOCKETS_OBJS) $(COMMON_OBJS)
