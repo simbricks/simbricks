@@ -22,7 +22,7 @@
 
 include mk/subdir_pre.mk
 
-lib_netif := $(d)libnetwork.a
+lib_netif := $(lib_dir)libnetwork.a
 
 OBJS := $(addprefix $(d),if.o)
 
@@ -31,4 +31,5 @@ libsimbricks_objs += $(OBJS)
 $(lib_netif): $(OBJS)
 
 CLEAN := $(lib_netif) $(OBJS)
+ALL := $(lib_netif)
 include mk/subdir_post.mk

@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "lib/simbricks/network/if.h"
+#include <simbricks/network/if.h>
 
 #include <poll.h>
 #include <stdio.h>

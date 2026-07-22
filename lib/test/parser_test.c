@@ -1,4 +1,4 @@
-#include "lib/simbricks/parser/parser.h"
+#include <simbricks/parser/parser.h>
 
 #include <stdio.h>
 #include <string.h>

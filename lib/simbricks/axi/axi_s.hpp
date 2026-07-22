@@ -32,8 +32,8 @@
  #include <exception>
  #include <type_traits>
  
- #include "lib/utils/log.h"
- #include "lib/utils/util.hpp"
+ #include <simbricks/utils/log.h>
+ #include <simbricks/utils/util.hpp>
  
 //  #define AXIS_DEBUG 0
  

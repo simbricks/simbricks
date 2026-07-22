@@ -22,7 +22,7 @@
 
 include mk/subdir_pre.mk
 
-lib_parser := $(d)libparser.a
+lib_parser := $(lib_dir)libparser.a
 
 OBJS := $(addprefix $(d),parser.o)
 
@@ -32,4 +32,5 @@ libparser_objs := $(OBJS)
 $(lib_parser): $(OBJS)
 
 CLEAN := $(lib_parser) $(OBJS)
+ALL := $(lib_parser)
 include mk/subdir_post.mk

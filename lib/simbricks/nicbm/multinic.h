@@ -25,7 +25,7 @@
 #ifndef SIMBRICKS_NICBM_MULTINIC_H_
 #define SIMBRICKS_NICBM_MULTINIC_H_
 
-#include "lib/simbricks/nicbm/nicbm.h"
+#include <simbricks/nicbm/nicbm.h>
 
 namespace nicbm {
 

@@ -22,11 +22,12 @@
 
 include mk/subdir_pre.mk
 
-lib_nicif := $(d)libnicif.a
+lib_nicif := $(lib_dir)libnicif.a
 
 OBJS := $(addprefix $(d),nicif.o)
 
 $(lib_nicif): $(OBJS)
 
 CLEAN := $(lib_nicif) $(OBJS)
+ALL := $(lib_nicif)
 include mk/subdir_post.mk

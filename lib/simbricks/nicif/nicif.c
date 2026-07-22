@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "lib/simbricks/nicif/nicif.h"
+#include <simbricks/nicif/nicif.h>
 
 #include <poll.h>
 #include <stdio.h>

@@ -22,7 +22,7 @@
 
 include mk/subdir_pre.mk
 
-lib_pcie := $(d)libpcie.a
+lib_pcie := $(lib_dir)libpcie.a
 
 OBJS := $(addprefix $(d),if.o)
 
@@ -31,4 +31,5 @@ libsimbricks_objs += $(OBJS)
 $(lib_pcie): $(OBJS)
 
 CLEAN := $(lib_pcie) $(OBJS)
+ALL := $(lib_pcie)
 include mk/subdir_post.mk

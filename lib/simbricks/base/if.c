@@ -24,7 +24,7 @@
 
 #define _GNU_SOURCE
 
-#include "lib/simbricks/base/if.h"
+#include <simbricks/base/if.h>
 
 #include <errno.h>
 #include <fcntl.h>

@@ -22,7 +22,7 @@
 
 include mk/subdir_pre.mk
 
-lib_mem := $(d)libmem.a
+lib_mem := $(lib_dir)libmem.a
 
 OBJS := $(addprefix $(d),if.o)
 
@@ -31,4 +31,5 @@ libsimbricks_objs += $(OBJS)
 $(lib_mem): $(OBJS)
 
 CLEAN := $(lib_mem) $(OBJS)
+ALL := $(lib_mem)
 include mk/subdir_post.mk

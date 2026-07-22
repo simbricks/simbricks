@@ -22,7 +22,7 @@
 
 include mk/subdir_pre.mk
 
-lib_base := $(d)libbase.a
+lib_base := $(lib_dir)libbase.a
 
 OBJS := $(addprefix $(d),if.o)
 
@@ -31,4 +31,5 @@ libsimbricks_objs += $(OBJS)
 $(lib_base): $(OBJS)
 
 CLEAN := $(lib_base) $(OBJS)
+ALL := $(lib_base)
 include mk/subdir_post.mk

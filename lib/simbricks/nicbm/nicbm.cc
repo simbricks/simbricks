@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "lib/simbricks/nicbm/nicbm.h"
+#include <simbricks/nicbm/nicbm.h>
 
 #include <fcntl.h>
 #include <signal.h>

@@ -22,11 +22,12 @@
 
 include mk/subdir_pre.mk
 
-lib_nicbm := $(d)libnicbm.a
+lib_nicbm := $(lib_dir)libnicbm.a
 
 OBJS := $(addprefix $(d),nicbm.o multinic.o)
 
 $(lib_nicbm): $(OBJS) $(libparser_objs)
 
 CLEAN := $(lib_nicbm) $(OBJS)
+ALL := $(lib_nicbm)
 include mk/subdir_post.mk

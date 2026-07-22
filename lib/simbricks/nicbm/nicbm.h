@@ -36,7 +36,7 @@ extern "C" {
 #include <simbricks/parser/parser.h>
 }
 
-#include "lib/utils/log.h"
+#include <simbricks/utils/log.h>
 namespace nicbm {
 
 static const size_t kMaxDmaLen = 2048;

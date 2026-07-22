@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "lib/simbricks/mem/if.h"
+#include <simbricks/mem/if.h>
 
 void SimbricksMemIfDefaultParams(struct SimbricksBaseIfParams *params) {
   SimbricksBaseIfDefaultParams(params);

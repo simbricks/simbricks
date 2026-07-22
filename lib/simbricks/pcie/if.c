@@ -22,7 +22,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "lib/simbricks/pcie/if.h"
+#include <simbricks/pcie/if.h>
 
 void SimbricksPcieIfDefaultParams(struct SimbricksBaseIfParams *params) {
   SimbricksBaseIfDefaultParams(params);
