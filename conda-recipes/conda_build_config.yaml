@@ -20,8 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-python:
-  - 3.10
 c_compiler:
   - gcc
 c_compiler_version:
@@ -32,6 +30,10 @@ cxx_compiler_version:
   - 13
 target_platform:
   - linux-64
+c_stdlib:
+  - sysroot
+c_stdlib_version:
+  - "2.17"
 
 
 # custom variables

@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package:
-  name: simbricks-sim-i40e
+  name: simbricks-dist
   version: {{ simbricks_version }}
 
 source:
@@ -34,20 +34,17 @@ requirements:
   build:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
+    - {{ stdlib('c') }}
     - make
-
   host:
-    - simbricks-lib =={{ simbricks_version }}
-    - elfutils
-    - boost-cpp
-
+    - rdma-core
   run:
-    - boost-cpp
+    - rdma-core
 
 about:
   home: {{ homepage }}
   license: MIT
   license_family: MIT
   license_file: ../../LICENSE.md
-  summary: SimBricks behavioral model of the Intel i40e NIC.
+  summary: Core dist binaries needed for distributed simulations with the SimBricks framework.
   dev_url: {{ github_org }}
