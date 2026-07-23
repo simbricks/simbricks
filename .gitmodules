@@ -1,6 +1,3 @@
-[submodule "sims/external/ns-3"]
-	path = sims/external/ns-3
-	url = https://github.com/simbricks/ns-3.git
 [submodule "sims/external/bmv2"]
 	path = sims/external/bmv2
 	url = https://github.com/simbricks/bmv2.git
