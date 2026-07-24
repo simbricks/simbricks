@@ -45,7 +45,6 @@ $(eval $(call subdir,lib))
 $(eval $(call subdir,sims))
 $(eval $(call subdir,dist))
 $(eval $(call subdir,doc))
-$(eval $(call subdir,images))
 $(eval $(call subdir,symphony))
 
 
