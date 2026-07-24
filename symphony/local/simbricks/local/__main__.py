@@ -105,11 +105,11 @@ def parse_args() -> argparse.Namespace:
     # arguments for the experiment environment
     g_env = parser.add_argument_group("Environment")
     g_env.add_argument(
-        "--repo",
+        "--global-input-dir",
         metavar="DIR",
-        type=pathlib.Path,
-        default=pathlib.Path("/simbricks"),
-        help="SimBricks repository directory",
+        type=pathlib.Path | None,
+        default=None,
+        help="Global input directory",
     )
     g_env.add_argument(
         "--workdir",
@@ -167,9 +167,7 @@ def add_exp(
     workdir = utils_file.join_paths(
         args.workdir, f"{instantiation.simulation.name}/{instantiation.id()}"
     )
-    env = inst_base.InstantiationEnvironment(
-        pathlib.Path(workdir).resolve(), pathlib.Path(args.repo).resolve()
-    )
+    env = inst_base.InstantiationEnvironment(pathlib.Path(workdir).resolve(), args.global_input_dir)
     instantiation.env = env
     assert len(instantiation.fragments) == 1
     instantiation.assigned_fragment = instantiation.fragments[0]
