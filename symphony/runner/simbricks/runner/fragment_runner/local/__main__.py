@@ -36,6 +36,7 @@ class LocalRunner(runner_base.FragmentRunner):
         self,
         base_url: str,
         workdir: pathlib.Path,
+        global_input_dir: pathlib.Path | None,
         namespace: str,
         ident: int,
         polling_delay_sec: int,
@@ -47,6 +48,7 @@ class LocalRunner(runner_base.FragmentRunner):
         super().__init__(
             base_url,
             workdir,
+            global_input_dir,
             namespace,
             ident,
             polling_delay_sec,
@@ -70,9 +72,14 @@ class LocalRunner(runner_base.FragmentRunner):
 
 
 async def amain():
+    global_input_dir = settings.runner_settings().global_input_dir
+    if global_input_dir is not None:
+        global_input_dir = pathlib.Path(global_input_dir)
+
     runner = LocalRunner(
         base_url=settings.runner_settings().base_url,
         workdir=pathlib.Path("./runner-work").resolve(),
+        global_input_dir=global_input_dir,
         namespace=settings.runner_settings().namespace,
         ident=settings.runner_settings().runner_id,
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
