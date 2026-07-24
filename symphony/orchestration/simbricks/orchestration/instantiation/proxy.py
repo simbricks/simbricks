@@ -149,7 +149,7 @@ class DummyProxy(Proxy):
 class TCPProxy(Proxy):
 
     def run_cmd(self, inst: inst_base.Instantiation, proxy_host_ip: str) -> str:
-        proxy_bin = inst.env.repo_base("dist/sockets/net_sockets")
+        proxy_bin = "net_sockets"
         cmd_args = [proxy_bin]
 
         if self._connection_mode == inst_socket.SockType.LISTEN:
