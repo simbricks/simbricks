@@ -1,3 +1,0 @@
-[submodule "sims/external/bmv2"]
-	path = sims/external/bmv2
-	url = https://github.com/simbricks/bmv2.git
