@@ -22,9 +22,6 @@
 
 include mk/subdir_pre.mk
 
-$(eval $(call subdir,wire))
-$(eval $(call subdir,tap))
-$(eval $(call subdir,switch))
 # $(eval $(call subdir,pktgen))
 $(eval $(call subdir,menshen))
 $(eval $(call subdir,tofino))
