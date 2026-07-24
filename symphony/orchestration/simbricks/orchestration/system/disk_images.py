@@ -124,8 +124,9 @@ class ExternalDiskImage(DiskImage):
         return self.formats
 
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
-        DiskImage.assert_is_file(self._path)
-        return self._path
+        path = inst.env.work_dir_or_abs(self._path)
+        DiskImage.assert_is_file(path)
+        return path
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
