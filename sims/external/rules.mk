@@ -31,22 +31,4 @@ PREFIX ?= /usr/local
 
 $(eval $(call subdir,simics))
 
-external: $(d)bmv2/ready
-.PHONY: external bmv2-clean
-
-$(d)bmv2:
-	git clone https://github.com/simbricks/bmv2.git $@
-
-$(d)bmv2/ready: $(d)bmv2 $(lib_netif)
-	+cd $< && ./autogen.sh && \
-	CPPFLAGS=-I$(abspath $(lib_dir)) ./configure && \
-	$(MAKE) -j
-	touch $@
-
-bmv2-clean:
-	-cd $(EXTERNAL_SIMS_DIR)bmv2 && $(MAKE) clean
-	rm -f $(EXTERNAL_SIMS_DIR)bmv2/ready
-
-DISTCLEAN := $(d)bmv2
-EXTERNAL_CLEAN_TASKS := bmv2-clean
 include mk/subdir_post.mk
