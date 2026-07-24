@@ -22,7 +22,6 @@
 
 from __future__ import annotations
 
-import copy
 import pathlib
 import typing
 import typing_extensions as tpe
@@ -44,6 +43,7 @@ if typing.TYPE_CHECKING:
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.orchestration.system import disk_images
     from simbricks.runtime import command_executor as cmd_exec
+    from os import PathLike
 
 
 class InstantiationEnvironment(utils_base.IdObj):
@@ -51,89 +51,88 @@ class InstantiationEnvironment(utils_base.IdObj):
     def __init__(
         self,
         workdir: pathlib.Path,
-        simbricksdir: pathlib.Path,
+        global_input_dir: pathlib.Path | None,
     ):
         super().__init__()
-        self._simbricks_dir: str = simbricksdir.resolve().as_posix()
-        self._work_dir: str = workdir.resolve().as_posix()
-        self._output_base: str = pathlib.Path(f"{self._work_dir}/output").resolve().as_posix()
-        self._tmp_dir: str = pathlib.Path(f"{self._work_dir}/tmp").resolve().as_posix()
-        self._img_dir: str = pathlib.Path(f"{self._tmp_dir}/imgs").resolve().as_posix()
-        self._cp_dir: str = pathlib.Path(f"{self._tmp_dir}/checkpoints").resolve().as_posix()
-        self._shm_base: str = pathlib.Path(f"{self._tmp_dir}/shm").resolve().as_posix()
-        self._proxy_dir: str = pathlib.Path(f"{self._tmp_dir}/proxies").resolve().as_posix()
-        self._input_artifacts_dir: str = (
-            pathlib.Path(f"{self._work_dir}/input_artifacts").resolve().as_posix()
-        )
+        self._work_dir: pathlib.Path = workdir.resolve()
+
+        self._global_input_dir: pathlib.Path | None = None
+        if global_input_dir is not None:
+            if not (global_input_dir.exists() and global_input_dir.is_dir()):
+                raise RuntimeError("Global input directory does not exist or is not a directory")
+            self._global_input_dir = self._work_dir / "global_input"
+            self._global_input_dir.symlink_to(global_input_dir)
+
+        self._output_base: pathlib.Path = self._work_dir / "output"
+        self._tmp_dir: pathlib.Path = self._work_dir / "tmp"
+        self._img_dir: pathlib.Path = self._tmp_dir / "imgs"
+        self._cp_dir: pathlib.Path = self._tmp_dir / "checkpoints"
+        self._shm_base: pathlib.Path = self._tmp_dir / "shm"
+        self._proxy_dir: pathlib.Path = self._tmp_dir / "proxies"
+        self._input_artifacts_dir: pathlib.Path = self._work_dir / "input_artifacts"
 
     # --------------------------------------------------
     # Read-only accessor functions for path properties -
     # --------------------------------------------------
 
-    def repo_base(self, relative_path: str | None = None, must_exist: bool = True) -> str:
-        if relative_path is None:
-            return self._simbricks_dir
-        return utils_file.join_paths(
-            base=self._simbricks_dir, relative_path=relative_path, must_exist=must_exist
-        )
-
     def work_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
-            return self._work_dir
-        return utils_file.join_paths(
-            base=self._work_dir, relative_path=relative_path, must_exist=must_exist
-        )
+            return self._work_dir.as_posix()
+        return utils_file.join_paths(self._work_dir, relative_path, must_exist)
+
+    def work_dir_or_abs(self, path: str | PathLike[str], must_exist: bool = False) -> str:
+        """
+        If @path is an absolute path return @path.
+        Otherwise join work_dir with @path and return the joined path.
+        """
+        p = pathlib.Path(self._work_dir, path).resolve()
+        if must_exist and not p.exists():
+            raise RuntimeError(f"Path '{p}' does not exist")
+        return p.as_posix()
+
+    def global_input_dir(self, relative_path: str | None = None, must_exist: bool = True) -> str:
+        if self._global_input_dir is None:
+            raise RuntimeError("Global input directory is not set")
+        if relative_path is None:
+            return self._global_input_dir.as_posix()
+        return utils_file.join_paths(self._global_input_dir, relative_path, must_exist)
 
     def output_base(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
-            return self._output_base
-        return utils_file.join_paths(
-            base=self._output_base, relative_path=relative_path, must_exist=must_exist
-        )
+            return self._output_base.as_posix()
+        return utils_file.join_paths(self._output_base, relative_path, must_exist)
 
     def tmp_simulation_files(
         self, relative_path: str | None = None, must_exist: bool = False
     ) -> str:
         if relative_path is None:
-            return self._tmp_dir
-        return utils_file.join_paths(
-            base=self._tmp_dir, relative_path=relative_path, must_exist=must_exist
-        )
+            return self._tmp_dir.as_posix()
+        return utils_file.join_paths(self._tmp_dir, relative_path, must_exist)
 
     def img_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
-            return self._img_dir
-        return utils_file.join_paths(
-            base=self._img_dir, relative_path=relative_path, must_exist=must_exist
-        )
+            return self._img_dir.as_posix()
+        return utils_file.join_paths(self._img_dir, relative_path, must_exist)
 
     def cp_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
-            return self._cp_dir
-        return utils_file.join_paths(
-            base=self._cp_dir, relative_path=relative_path, must_exist=must_exist
-        )
+            return self._cp_dir.as_posix()
+        return utils_file.join_paths(self._cp_dir, relative_path, must_exist)
 
     def shm_base(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
-            return self._shm_base
-        return utils_file.join_paths(
-            base=self._shm_base, relative_path=relative_path, must_exist=must_exist
-        )
+            return self._shm_base.as_posix()
+        return utils_file.join_paths(self._shm_base, relative_path, must_exist)
 
     def proxy_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
-            return self._proxy_dir
-        return utils_file.join_paths(
-            base=self._proxy_dir, relative_path=relative_path, must_exist=must_exist
-        )
+            return self._proxy_dir.as_posix()
+        return utils_file.join_paths(self._proxy_dir, relative_path, must_exist)
 
     def input_artifacts_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
-            return self._input_artifacts_dir
-        return utils_file.join_paths(
-            base=self._input_artifacts_dir, relative_path=relative_path, must_exist=must_exist
-        )
+            return self._input_artifacts_dir.as_posix()
+        return utils_file.join_paths(self._input_artifacts_dir, relative_path, must_exist)
 
     # ----------------------------------------
     # Other functions on instantiation paths -
@@ -148,7 +147,7 @@ class InstantiationEnvironment(utils_base.IdObj):
     def hd_path(self, hd_name_or_path: str) -> str:
         if utils_file.is_absolute_exists(hd_name_or_path):
             return hd_name_or_path
-        return self.repo_base(f"images/output-{hd_name_or_path}/{hd_name_or_path}", must_exist=True)
+        return self.global_input_dir(f"images/{hd_name_or_path}", True)
 
     def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
         return self.img_dir(f"{img._id}_hdcopy.{format}")
