@@ -316,24 +316,15 @@ class ConfigFileLocal(ConfigFile):
         super().__init__(file_name)
         # Path of the local file to be added to the image
         self.path: str = path
-        # True if path is relative to the input artifact directory
-        self.from_artifact: bool = from_artifact
         self.open_mode: str = 'rb'
 
     def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
-        path = self.path
-        if self.from_artifact:
-            path = inst.env.input_artifacts_dir(self.path, True)
-        else:
-            if not pathlib.Path(self.path).is_file():
-                raise RuntimeError(f"file '{self.path}' does not exist")
-
+        path = inst.env.work_dir_or_abs(self.path, True)
         return open(path, self.open_mode)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["path"] = self.path
-        json_obj["from_artifact"] = self.from_artifact
         json_obj["open_mode"] = self.open_mode
         return json_obj
 
@@ -341,7 +332,6 @@ class ConfigFileLocal(ConfigFile):
     def fromJSON(cls, json_obj) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance.path = utils_base.get_json_attr_top(json_obj, "path")
-        instance.from_artifact = utils_base.get_json_attr_top(json_obj, "from_artifact")
         instance.open_mode = utils_base.get_json_attr_top(json_obj, "open_mode")
         return instance
 
