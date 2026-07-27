@@ -57,11 +57,7 @@ class InstantiationEnvironment(utils_base.IdObj):
         self._work_dir: pathlib.Path = workdir.resolve()
 
         self._global_input_dir: pathlib.Path | None = None
-        if global_input_dir is not None:
-            if not (global_input_dir.exists() and global_input_dir.is_dir()):
-                raise RuntimeError("Global input directory does not exist or is not a directory")
-            self._global_input_dir = self._work_dir / "global_input"
-            self._global_input_dir.symlink_to(global_input_dir)
+        self._global_input_dir_src: pathlib.Path | None = global_input_dir
 
         self._output_base: pathlib.Path = self._work_dir / "output"
         self._tmp_dir: pathlib.Path = self._work_dir / "tmp"
@@ -451,6 +447,13 @@ class Instantiation(utils_base.IdObj):
         for tp in to_prepare:
             utils_file.rmtree(tp)
             utils_file.mkdir(tp)
+
+        if self.env._global_input_dir_src is not None:
+            if not (self.env._global_input_dir_src.exists()
+                    and self.env._global_input_dir_src.is_dir()):
+                raise RuntimeError("Global input directory does not exist or is not a directory")
+            self.env._global_input_dir = self.env._work_dir / "global_input"
+            self.env._global_input_dir.symlink_to(self.env._global_input_dir_src)
 
         await self.simulation.prepare(inst=self)
 
