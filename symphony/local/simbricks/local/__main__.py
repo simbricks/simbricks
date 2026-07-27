@@ -107,8 +107,7 @@ def parse_args() -> argparse.Namespace:
     g_env.add_argument(
         "--global-input-dir",
         metavar="DIR",
-        type=pathlib.Path | None,
-        default=None,
+        type=pathlib.Path,
         help="Global input directory",
     )
     g_env.add_argument(
