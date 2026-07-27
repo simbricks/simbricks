@@ -1,5 +1,7 @@
-from simbricks.orchestration import instantiation as inst
-from simbricks.orchestration import simulation as sim
+from simbricks.components.i40e import system as i40e_sys
+from simbricks.components.i40e.simulation import behavioral as i40e_sim
+from simbricks.components.net.simulation import base as net_sim
+from simbricks.components.qemu import simulation as qemu_sim
 from simbricks.orchestration import system
 from simbricks.orchestration.helpers import instantiation as inst_helpers
 from simbricks.orchestration.helpers import simulation as sim_helpers
@@ -11,21 +13,21 @@ distro_disk_image = system.DistroDiskImage(sys, "base")
 
 # create a host instance and a NIC instance then install the NIC on the host
 # host0 = system.CorundumLinuxHost(sys)
-host0 = system.I40ELinuxHost(sys)
+host0 = i40e_sys.I40ELinuxHost(sys)
 host0.add_disk(distro_disk_image)
 host0.add_disk(system.LinuxConfigDiskImage(sys, host0))
 
-nic0 = system.IntelI40eNIC(sys)
+nic0 = i40e_sys.IntelI40eNIC(sys)
 nic0.add_ipv4("10.0.0.1")
 host0.connect_pcie_dev(nic0)
 
 
 # create a host instance and a NIC instance then install the NIC on the host
-host1 = system.I40ELinuxHost(sys)
+host1 = i40e_sys.I40ELinuxHost(sys)
 host1.add_disk(distro_disk_image)
 host1.add_disk(system.LinuxConfigDiskImage(sys, host1))
 
-nic1 = system.IntelI40eNIC(sys)
+nic1 = i40e_sys.IntelI40eNIC(sys)
 nic1.add_ipv4("10.0.0.2")
 host1.connect_pcie_dev(nic1)
 
@@ -43,20 +45,18 @@ host1.add_app(system.Sleep(host1, infinite=True))
 simulation = sim_helpers.simple_simulation(
     sys,
     compmap={
-        system.FullSystemHost: sim.QemuSim,
-        system.IntelI40eNIC: sim.I40eNicSim,
-        system.EthSwitch: sim.SwitchNet,
+        system.FullSystemHost: qemu_sim.QemuSim,
+        i40e_sys.IntelI40eNIC: i40e_sim.I40eNicSim,
+        system.EthSwitch: net_sim.SwitchNet,
     },
 )
 
+# simulation.enable_synchronization()
+
 instantiation = inst_helpers.simple_instantiation(simulation)
-fragment = inst.Fragment()
-fragment.add_simulators(*simulation.all_simulators())
-
-
-instantiation.fragments = [fragment]
 
 # potentially set input artifacts
+# fragment = instantiation.fragments[0]
 # fragment.input_artifact_paths = ["experiments/minimal_net.py"]
 # instantiation.input_artifact_paths = ["experiments/minimal_net_dist.py"]
 
