@@ -449,11 +449,11 @@ class Instantiation(utils_base.IdObj):
             utils_file.mkdir(tp)
 
         if self.env._global_input_dir_src is not None:
-            if not (self.env._global_input_dir_src.exists()
-                    and self.env._global_input_dir_src.is_dir()):
+            gi_src = self.env._global_input_dir_src.resolve()
+            if not (gi_src.exists() and gi_src.is_dir()):
                 raise RuntimeError("Global input directory does not exist or is not a directory")
             self.env._global_input_dir = self.env._work_dir / "global_input"
-            self.env._global_input_dir.symlink_to(self.env._global_input_dir_src)
+            self.env._global_input_dir.symlink_to(gi_src)
 
         await self.simulation.prepare(inst=self)
 
