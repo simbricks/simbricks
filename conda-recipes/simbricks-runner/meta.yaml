@@ -48,6 +48,7 @@ requirements:
     - simbricks-runtime >=0.4.2
     - simbricks-client >=0.4.2
     - simbricks-telemetry >=0.4.2
+    - pyyaml
 
 test:
   imports:
