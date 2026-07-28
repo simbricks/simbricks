@@ -270,6 +270,7 @@ class FragmentRunner(abc.ABC):
         namespace: str,
         ident: int,
         polling_delay_sec: int,
+        sending_delay_sec: int,
         proxy_host_ip: str,
         verbose: bool,
     ):
@@ -277,6 +278,7 @@ class FragmentRunner(abc.ABC):
         self._workdir: pathlib.Path = workdir.resolve()
         self._global_input_dir: pathlib.Path | None = global_input_dir
         self._polling_delay_sec: int = polling_delay_sec
+        self._sending_delay_sec: int = sending_delay_sec
         self._namespace: str = namespace
         self._ident: int = ident
         self._proxy_host_ip: str = proxy_host_ip
@@ -580,8 +582,13 @@ class FragmentRunner(abc.ABC):
 
     async def _send_loop(self):
         while True:
-            event = await self._send_event_queue.get()
-            await self.send_events([event])
+            events = []
+            while not self._send_event_queue.empty():
+                event = self._send_event_queue.get_nowait()
+                events.append(event)
+            if events:
+                await self.send_events(events)
+            await asyncio.sleep(self._sending_delay_sec)
 
     async def run(self) -> None:
         LOGGER.info("STARTED FRAGMENT EXECUTOR")

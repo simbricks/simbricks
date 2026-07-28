@@ -40,6 +40,7 @@ class LocalRunner(runner_base.FragmentRunner):
         namespace: str,
         ident: int,
         polling_delay_sec: int,
+        sending_delay_sec: int,
         runner_ip: str,
         runner_port: int,
         proxy_host_ip: str,
@@ -52,6 +53,7 @@ class LocalRunner(runner_base.FragmentRunner):
             namespace,
             ident,
             polling_delay_sec,
+            sending_delay_sec,
             proxy_host_ip,
             verbose
         )
@@ -83,6 +85,7 @@ async def amain():
         namespace=settings.runner_settings().namespace,
         ident=settings.runner_settings().runner_id,
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
+        sending_delay_sec=settings.runner_settings().sending_delay_sec,
         runner_ip=sys.argv[1],
         runner_port=int(sys.argv[2]),
         proxy_host_ip=sys.argv[3],

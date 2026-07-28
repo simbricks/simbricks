@@ -41,6 +41,7 @@ class RunnerSettings(BaseSettings):
     verbose: bool = True
     log_level: str = "DEBUG"
     polling_delay_sec: int = Field(default=10, gt=5, lt=60)
+    sending_delay_sec: int = Field(default=5, gt=1, lt=60)
 
 
 @lru_cache
