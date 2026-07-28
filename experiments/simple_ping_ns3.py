@@ -1,8 +1,13 @@
 from simbricks.orchestration import system
+from simbricks.components.ns3.simulation import ns3
 from simbricks.orchestration import simulation as sim
-from simbricks.orchestration.simulation.net import ns3_components
+from simbricks.components.i40e import system as i40e_sys
 from simbricks.orchestration import instantiation as inst
-from simbricks.orchestration.helpers import simulation as sim_helpers
+from simbricks.components.qemu import simulation as qemu_sim
+from simbricks.components.ns3.simulation import ns3_components 
+from simbricks.orchestration.helpers import system as sys_helpers
+from simbricks.components.i40e.simulation import behavioral as i40e_sim
+from simbricks.orchestration.helpers import instantiation as inst_helpers
 
 """
 Ping ns-3 Example:
@@ -21,43 +26,38 @@ instantiations: list[inst.Instantiation] = []
 
 sys = system.System()
 
-# create a host instance and a NIC instance then install the NIC on the host
-host0 = system.I40ELinuxHost(sys)
-cfg_disk0 = system.DistroDiskImage(h=host0, name="base")
-host0.add_disk(cfg_disk0)
-tar_disk0 = system.LinuxConfigDiskImage(h=host0)
-host0.add_disk(tar_disk0)
+# create disk images
+distro_disk_image = system.DistroDiskImage(sys, "base")
 
-pcie0 = system.PCIeHostInterface(host0)
-host0.add_if(pcie0)
-nic0 = system.IntelI40eNIC(sys)
+# create a host instance and a NIC instance then install the NIC on the host
+host0 = i40e_sys.I40ELinuxHost(sys)
+host0.add_disk(distro_disk_image)
+host0.add_disk(system.LinuxConfigDiskImage(sys, host0))
+
+nic0 = i40e_sys.IntelI40eNIC(sys)
 nic0.add_ipv4("10.0.0.1")
-pcichannel0 = system.PCIeChannel(pcie0, nic0._pci_if)
+host0.connect_pcie_dev(nic0)
 
 # create a second host instance and a NIC instance
-host1 = system.I40ELinuxHost(sys)
-cfg_disk1 = system.DistroDiskImage(h=host1, name="base")
-host1.add_disk(cfg_disk1)
-tar_disk1 = system.LinuxConfigDiskImage(h=host1)
-host1.add_disk(tar_disk1)
+host1 = i40e_sys.I40ELinuxHost(sys)
+host1.add_disk(distro_disk_image)
+host1.add_disk(system.LinuxConfigDiskImage(sys, host1))
 
-pcie1 = system.PCIeHostInterface(host1)
-host1.add_if(pcie1)
-nic1 = system.IntelI40eNIC(sys)
+nic1 = i40e_sys.IntelI40eNIC(sys)
 nic1.add_ipv4("10.0.0.2")
-pcichannel1 = system.PCIeChannel(pcie1, nic1._pci_if)
+host1.connect_pcie_dev(nic1)
 
 # create a host instance simulated in ns-3
-# host2 = system.Host(sys)
-# host2.parameters["ip"] = "10.0.0.3/24"
-# host2_eth_if = system.EthInterface(host2)
-# host2.add_if(host2_eth_if)
+host2 = system.Host(sys)
+host2.parameters["ip"] = "10.0.0.3/24"
+host2_eth_if = system.EthInterface(host2)
+host2.add_if(host2_eth_if)
 
 # create a second host instance simulated in ns-3
-# host3 = system.Host(sys)
-# host3.parameters["ip"] = "10.0.0.4/24"
-# host3_eth_if = system.EthInterface(host3)
-# host3.add_if(host3_eth_if)
+host3 = system.Host(sys)
+host3.parameters["ip"] = "10.0.0.4/24"
+host3_eth_if = system.EthInterface(host3)
+host3.add_if(host3_eth_if)
 
 switch = system.EthSwitch(sys)
 # connect switch to NICs
@@ -69,7 +69,8 @@ switch_nic1 = system.EthInterface(switch)
 switch.add_if(switch_nic1)
 switch_nic1_chan = system.EthChannel(nic1._eth_if, switch_nic1)
 switch_nic1_chan.latency = 2 * 10**6 # 2ms
-# connect switch to ns-3 hosts
+
+# # connect switch to ns-3 hosts
 # switch_host2 = system.EthInterface(switch)
 # switch.add_if(switch_host2)
 # switch_host2_chan = system.EthChannel(host2_eth_if, switch_host2)
@@ -106,21 +107,21 @@ host1.add_app(ping_app)
 
 simulation = sim.Simulation(name="simple-ping-ns3", system=sys)
 
-host_inst0 = sim.QemuSim(simulation)
+host_inst0 = qemu_sim.QemuSim(simulation)
 host_inst0.add(host0)
 host_inst0.name = "Server-Host"
 
-nic_inst0 = sim.I40eNicSim(simulation=simulation)
+nic_inst0 = i40e_sim.I40eNicSim(simulation=simulation)
 nic_inst0.add(nic0)
 
-host_inst1 = sim.QemuSim(simulation)
+host_inst1 = qemu_sim.QemuSim(simulation)
 host_inst1.add(host1)
 host_inst1.name = "Client-Host"
 
-nic_inst1 = sim.I40eNicSim(simulation=simulation)
+nic_inst1 = i40e_sim.I40eNicSim(simulation=simulation)
 nic_inst1.add(nic1)
 
-net_inst = sim.NS3Net(simulation)
+net_inst = ns3.NS3Net(simulation)
 # net_inst.add(host2)
 # net_inst.add(host3)
 net_inst.add(switch)
@@ -132,19 +133,7 @@ net_inst.global_conf.stop_time = '60s'
 # net_inst.logging.add_logging("SimpleNetDevice", ns3_components.NS3LoggingLevel.LEVEL_ALL)
 # net_inst.logging.add_logging("SimbricksNetDevice", ns3_components.NS3LoggingLevel.LEVEL_ALL)
 
-# sim_helpers.enable_sync_simulation(
-#     simulation=simulation, amount=500, ratio=sim.Time.Nanoseconds
-# )
-sim_helpers.disalbe_sync_simulation(simulation=simulation)
+# simulation.enable_synchronization()
 
-print(simulation.name + "   all simulators:")
-sims = simulation.all_simulators()
-for s in sims:
-    print(s)
-
-instance = inst.Instantiation(sim=simulation)
-instance.preserve_tmp_folder = False
-instance.create_checkpoint = False
-#instance.output_artifact_paths = ["simbricks-workdir/output"]
-
+instance = inst_helpers.simple_instantiation(simulation)
 instantiations.append(instance)
