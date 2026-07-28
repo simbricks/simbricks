@@ -1,5 +1,5 @@
-# Copyright 2024 Max Planck Institute for Software Systems, and
-# National University of Singapore
+# Copyright 2024 Max Planck Institute for Software Systems,
+# National University of Singapore, and SimBricks contributors.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -42,3 +42,9 @@ class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):
                 raise Exception(
                     f"interface must have type EthInterface or PCIeDeviceInterface but has type {type(interface)}"
                 )
+
+
+class VirtIONic(SimplePCIeNIC):
+    def __init__(self, s: base.System) -> None:
+        super().__init__(s)
+
