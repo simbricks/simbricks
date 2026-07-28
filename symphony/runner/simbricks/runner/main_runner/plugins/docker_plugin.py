@@ -82,11 +82,22 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
             if pull.returncode != 0:
                 raise RuntimeError(f"docker pull of image {docker_image} failed")
 
+        if "docker_opts" in config_params:
+            docker_opts = config_params["docker_opts"]
+            if not isinstance(docker_opts, list):
+                raise RuntimeError("invalid format of docker_opts list (not a list)")
+            for opt in docker_opts:
+                if not isinstance(opt, str):
+                    raise RuntimeError("invalid entry in docker_opts list (not a string)")
+        else:
+            docker_opts = []
+
         port = self.server.sockets[0].getsockname()[1]
         self.executor = subprocess.Popen([
             "docker", "run", "--rm", "--device=/dev/kvm",
-            "--add-host=host.docker.internal:host-gateway",
-            docker_image,
+            "--add-host=host.docker.internal:host-gateway"]
+            + docker_opts
+            + [docker_image,
             "host.docker.internal", str(port), "host.docker.internal"])
 
         # wait for the fragment executor to connect
