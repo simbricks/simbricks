@@ -71,7 +71,7 @@ simulation = sim_helpers.simple_simulation(
 # qemu_sims = filter(lambda s: isinstance(s, qemu_sim.QemuSim), simulation.all_simulators())
 # for qs in qemu_sims:
 #     qs: qemu_sim.QemuSim
-#     qs.initrd = "global_input/images/initrd"
+#     qs.initrd = "global_input/images/base/boot/initrd"
 
 # simulation.enable_synchronization()
 

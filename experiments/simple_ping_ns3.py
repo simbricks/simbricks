@@ -48,16 +48,16 @@ nic1.add_ipv4("10.0.0.2")
 host1.connect_pcie_dev(nic1)
 
 # create a host instance simulated in ns-3
-host2 = system.Host(sys)
-host2.parameters["ip"] = "10.0.0.3/24"
-host2_eth_if = system.EthInterface(host2)
-host2.add_if(host2_eth_if)
+# host2 = system.Host(sys)
+# host2.parameters["ip"] = "10.0.0.3/24"
+# host2_eth_if = system.EthInterface(host2)
+# host2.add_if(host2_eth_if)
 
 # create a second host instance simulated in ns-3
-host3 = system.Host(sys)
-host3.parameters["ip"] = "10.0.0.4/24"
-host3_eth_if = system.EthInterface(host3)
-host3.add_if(host3_eth_if)
+# host3 = system.Host(sys)
+# host3.parameters["ip"] = "10.0.0.4/24"
+# host3_eth_if = system.EthInterface(host3)
+# host3.add_if(host3_eth_if)
 
 switch = system.EthSwitch(sys)
 # connect switch to NICs
