@@ -140,11 +140,6 @@ class InstantiationEnvironment(utils_base.IdObj):
     def dynamic_img_path(self, img: disk_images.DiskImage, format: str) -> str:
         return self.img_dir(f"{img._id}.{format}")
 
-    def hd_path(self, hd_name_or_path: str) -> str:
-        if utils_file.is_absolute_exists(hd_name_or_path):
-            return hd_name_or_path
-        return self.global_input_dir(f"images/{hd_name_or_path}", True)
-
     def hdcopy_path(self, img: disk_images.DiskImage, format: str) -> str:
         return self.img_dir(f"{img._id}_hdcopy.{format}")
 

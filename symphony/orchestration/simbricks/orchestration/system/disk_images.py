@@ -153,7 +153,7 @@ class DistroDiskImage(DiskImage):
         return self.formats
 
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
-        path = inst.env.hd_path(self.name)
+        path = inst.env.global_input_dir(f"images/{self.name}/{self.name}", True)
         if format == "raw":
             path += ".raw"
         elif format == "qcow2":
