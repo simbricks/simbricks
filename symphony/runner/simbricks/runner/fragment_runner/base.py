@@ -273,6 +273,7 @@ class FragmentRunner(abc.ABC):
         sending_delay_sec: int,
         proxy_host_ip: str,
         verbose: bool,
+        output_artifact_relative: bool,
     ):
         self._base_url: str = base_url
         self._workdir: pathlib.Path = workdir.resolve()
@@ -283,6 +284,7 @@ class FragmentRunner(abc.ABC):
         self._ident: int = ident
         self._proxy_host_ip: str = proxy_host_ip
         self._verbose: bool = verbose
+        self._output_artifact_relative: bool = output_artifact_relative
 
         self._send_event_queue = asyncio.Queue[EventFromRunner_U]()
 
@@ -415,8 +417,8 @@ class FragmentRunner(abc.ABC):
                     utils_art.create_artifact(
                         file=output_artifact,
                         paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
-                        base_path=pathlib.Path(run.inst.env._work_dir),
-                        check_relative=True,
+                        base_path=pathlib.Path(run.inst.env.work_dir()),
+                        check_relative=self._output_artifact_relative,
                     )
 
                     output_artifact_event = FragmentOutputArtifact(

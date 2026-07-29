@@ -38,6 +38,15 @@ class RunnerSettings(BaseSettings):
 
     global_input_dir: str | None = None
 
+    """
+    This controls whether output artifacts are enforced to be relative to the work directory of
+    the respective run.
+    This also affects the paths in the output artifact zip. If true, the paths in the zip are the
+    paths relative to work directory, e.g. '/path/to/workdir/folder/file' becomes 'folder/file' in
+    the zip. If false, files are stored with their absolute path in the zip.
+    """
+    output_artifact_relative: bool = True
+
     verbose: bool = True
     log_level: str = "DEBUG"
     polling_delay_sec: int = Field(default=10, gt=5, lt=60)
