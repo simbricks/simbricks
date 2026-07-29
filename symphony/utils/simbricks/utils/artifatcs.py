@@ -29,13 +29,15 @@ def _add_file_to_zip(
     zip_file: zipfile.ZipFile,
     file_path: pathlib.Path,
     base_path: pathlib.Path,
-    check_relative: bool,
+    relative: bool,
 ) -> None:
+    file_path = file_path.resolve()
+    base_path = base_path.resolve()
+
     if not file_path.is_file():
         raise Exception(f"_add_file_to_zip: cannot add non file {file_path} to zip")
 
-    if check_relative:
-        file_path = file_path.resolve()
+    if relative:
         if not file_path.is_relative_to(base_path):
             raise RuntimeError(f"file path {file_path} is not relative to base path {base_path}")
 
@@ -44,18 +46,21 @@ def _add_file_to_zip(
         zip_file.write(filename=file_path, arcname=file_path)
 
 
-def _add_folder_to_zip(
-    zip_file: zipfile.ZipFile, dir_path: pathlib.Path, base_path: pathlib.Path, check_relative: bool
+def _add_to_zip(
+    zip_file: zipfile.ZipFile,
+    path: pathlib.Path,
+    base_path: pathlib.Path,
+    relative: bool,
+    recursive: bool
 ) -> None:
-    if dir_path.is_file():
-        _add_file_to_zip(zip_file, dir_path, base_path, check_relative)
-        return
-    elif dir_path.is_dir():
-        for child_path in dir_path.rglob("*"):
+    if path.is_file():
+        _add_file_to_zip(zip_file, path, base_path, relative)
+    elif path.is_dir() and recursive:
+        for child_path in path.rglob("*"):
             if child_path.is_file():
-                _add_file_to_zip(zip_file, child_path, base_path, check_relative)
+                _add_file_to_zip(zip_file, child_path, base_path, relative)
     else:
-        raise Exception(f"_add_folder_to_zip: cannot add {str(dir_path)} to zip")
+        raise Exception(f"_add_to_zip: cannot add {str(path)} to zip")
 
 
 # create an artifact containing all files and folders specified as paths.
@@ -64,6 +69,7 @@ def create_artifact(
     paths_to_include: list[str] = [],
     base_path: pathlib.Path = pathlib.Path("./"),
     check_relative: bool = False,
+    recursive: bool = True,
 ) -> None:
     if len(paths_to_include) < 1:
         return
@@ -72,17 +78,10 @@ def create_artifact(
 
     with zipfile.ZipFile(file, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for path_str in paths_to_include:
-            path = pathlib.Path(path_str)
-            if check_relative:
-                full_path = (base_path / path).resolve()
-                if (path.is_absolute() or not full_path.is_relative_to(base_path)):
-                    raise RuntimeError(f"invalid path {full_path}")
-            else:
-                full_path = path
-            if full_path.is_file():
-                _add_file_to_zip(zip_file, full_path, base_path, check_relative)
-            else:
-                _add_folder_to_zip(zip_file, full_path, base_path, check_relative)
+            path = pathlib.Path(base_path, path_str).resolve()
+            if check_relative and not path.is_relative_to(base_path):
+                raise RuntimeError("output artifact path must be relative to work directory")
+            _add_to_zip(zip_file, path, base_path, check_relative, recursive)
 
 
 def unpack_artifact(file: str | tp.IO[bytes], dest_path: str) -> None:
