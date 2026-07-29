@@ -1,5 +1,80 @@
 ARG REGISTRY=
 ARG TAG=:latest
+
+FROM ubuntu:jammy AS image
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG PACKER_VERSION=1.11.2
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        qemu-system-x86 \
+        qemu-utils \
+        libguestfs-tools \
+        linux-image-generic \
+        build-essential \
+        git \
+        ca-certificates \
+        curl \
+        unzip \
+        flex \
+        bison \
+        libelf-dev \
+        libssl-dev \
+        bc \
+        cpio \
+        kmod \
+        dpkg-dev \
+        rsync \
+        fakeroot \
+        xz-utils \
+        patch \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/cache/apt
+
+# packer from the official release archive.
+ADD https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip /tmp/packer.zip
+RUN unzip -o -d /usr/local/bin /tmp/packer.zip && rm /tmp/packer.zip
+
+# libguestfs' 'direct' backend (used by extract-boot-artifacts.sh) builds its
+# appliance from the installed kernel and must be able to read it; the distro ships
+# /boot/vmlinuz-* mode 0600.
+RUN chmod 0644 /boot/vmlinuz-* 2>/dev/null || true
+
+# Get simbricks/image-builder source
+ADD https://github.com/simbricks/image-builder.git /image_builder
+WORKDIR /image_builder
+
+# Build kernel and Linux image
+RUN make kernel
+RUN make image INPUT=output/kernel \
+    BASE_SCRIPTS="kernel/install-kernel.sh scripts/install-base.sh scripts/configure-boot.sh \
+                  scripts/install-guestinit.sh examples/gem5/install-m5.sh \
+                  examples/corundum/install-mqnic.sh" \
+    ACCELERATOR=tcg
+
 FROM ${REGISTRY}simbricks-runner${TAG}
-COPY docker/run_local_executor.sh /run_local_executor.sh
+
+USER root
+RUN mkdir -p /global_input/images && chown -R simbricks:simbricks /global_input
+
+USER simbricks
+
+RUN micromamba install -y simbricks-qemu-sim-bin \
+                          simbricks-gem5-sim-bin \
+                          simbricks-femu-sim-bin \
+                          simbricks-ns3-sim-bin \
+                          simbricks-i40e-sim-bm-bin \
+                          simbricks-e1000-sim-bm-bin \
+                          simbricks-net-base-sim-bin \
+                          simbricks-mem-base-sim-bin \
+                          simbricks-memnet-base-sim-bin \
+                          simbricks-dist \
+  && micromamba clean --all -y \
+  && rm -rf $MAMBA_ROOT_PREFIX/include
+
+ENV GLOBAL_INPUT_DIR=/global_input
+
+COPY run_local_executor.sh /run_local_executor.sh
+COPY --from=image /image_builder/output/base/ /global_input/images/base/
+
 ENTRYPOINT ["/run_local_executor.sh"]

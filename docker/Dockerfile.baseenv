@@ -1,0 +1,37 @@
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ubuntu:jammy
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive \
+    TZ=Europe/Berlin \
+    apt-get install -y \
+	curl \
+	bzip2 \
+	sudo \
+ && rm -rf /var/lib/apt/lists/* \
+ && rm -rf /var/cache/apt
+
+# Add non-root user for vs code devcontainer.
+ARG USERNAME=simbricks
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+RUN groupadd --gid $USER_GID $USERNAME \
+ && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME --shell /bin/bash \
+# Add sudo support for this user and remove the need to type in password.
+ && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+ && chmod 0440 /etc/sudoers.d/$USERNAME
+
+RUN mkdir /wrk && chown $USERNAME:$USERNAME /wrk
+
+USER $USERNAME
+
+ENV PATH=/home/$USERNAME/.local/bin:$PATH
+ENV MAMBA_ROOT_PREFIX=/home/$USERNAME/micromamba
+
+ARG CONDA_CHANNEL=latest
+
+RUN curl -Lf micro.mamba.pm | /bin/bash
+RUN echo "micromamba activate base" >> /home/$USERNAME/.bashrc
+RUN micromamba config append channels https://conda.simbricks.io/$CONDA_CHANNEL
+
+WORKDIR /wrk

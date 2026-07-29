@@ -1,5 +1,8 @@
 #!/bin/bash
 
+eval "$(micromamba shell hook --shell bash)"
+micromamba activate base
+
 namespace=$1
 runner_id=$2
 
@@ -9,7 +12,5 @@ if [[ "$namespace" = "" ]] || [[ "$runner_id" = "" ]]; then
     exit 1
 fi
 
-sudo chmod o+rw /dev/kvm
-make convert-images-raw
 NAMESPACE="$namespace" RUNNER_ID="$runner_id" exec simbricks-runner \
     --configuration_file /runner_config.yaml

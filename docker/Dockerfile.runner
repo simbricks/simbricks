@@ -1,6 +1,12 @@
 ARG REGISTRY=
 ARG TAG=:latest
-FROM ${REGISTRY}simbricks-local${TAG}
-COPY docker/run_runner.sh /run_runner.sh
-COPY docker/runner_config.yaml /runner_config.yaml
+FROM ${REGISTRY}simbricks-baseenv${TAG}
+
+RUN micromamba install -y simbricks-runner \
+  && micromamba clean --all -y \
+  && rm -rf $MAMBA_ROOT_PREFIX/include
+
+COPY run_runner.sh /run_runner.sh
+COPY runner_config.yaml /runner_config.yaml
+
 ENTRYPOINT ["/run_runner.sh"]
