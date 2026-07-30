@@ -76,6 +76,6 @@ RUN micromamba install -y simbricks-qemu-sim-bin \
 ENV GLOBAL_INPUT_DIR=/global_input
 
 COPY run_local_executor.sh /run_local_executor.sh
-COPY --from=image /image_builder/output/base/ /global_input/images/base/
+COPY --chown=simbricks --from=image /image_builder/output/base/ /global_input/images/base/
 
 ENTRYPOINT ["/run_local_executor.sh"]
