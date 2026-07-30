@@ -29,6 +29,7 @@ ENV PATH=/home/$USERNAME/.local/bin:$PATH
 ENV MAMBA_ROOT_PREFIX=/home/$USERNAME/micromamba
 
 ARG CONDA_CHANNEL=latest
+ENV SB_CONDA_CHANNEL=$CONDA_CHANNEL
 
 RUN curl -Lf micro.mamba.pm | /bin/bash
 RUN echo "micromamba activate base" >> /home/$USERNAME/.bashrc
