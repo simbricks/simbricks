@@ -68,6 +68,7 @@ RUN micromamba install -y simbricks-qemu-sim-bin \
                           simbricks-net-base-sim-bin \
                           simbricks-mem-base-sim-bin \
                           simbricks-memnet-base-sim-bin \
+                          simbricks-corundum-sim-rtl-bin \
                           simbricks-dist \
   && micromamba clean --all -y \
   && rm -rf $MAMBA_ROOT_PREFIX/include
