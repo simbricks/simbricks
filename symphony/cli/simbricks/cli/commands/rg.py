@@ -101,3 +101,10 @@ async def ls():
         "cores_left",
         "memory_left",
     )
+
+@app.command()
+@async_cli()
+async def rm(rg_id: str):
+    """Delete an individual runner."""
+    rgc = await rg_client()
+    rgs = await rgc.delete_rg(rg_id)

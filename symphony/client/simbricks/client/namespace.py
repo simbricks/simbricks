@@ -81,6 +81,7 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.resource_g
     resource_groups_get,
     resource_groups_list,
     resource_groups_set,
+    resource_groups_delete,
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runners import (
     runners_create,
@@ -639,6 +640,10 @@ class ResourceGroupClient:
             rgs = validate_response_model(rgs, ResourceGroupsList200Response)
             assert rgs
             return rgs
+
+    async def delete_rg(self, rg_id: str) -> None:
+        async with base_client(self._ns_client.base_url) as client:
+            await resource_groups_delete.asyncio(self._ns_client.namespace_path, rg_id, client=client)
 
 
 class RunnerClient:
