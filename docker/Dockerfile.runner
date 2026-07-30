@@ -2,13 +2,6 @@ ARG REGISTRY=
 ARG TAG=:latest
 FROM ${REGISTRY}simbricks-baseenv${TAG}
 
-# Check if the index has changed to avoid caching issues
-ADD https://conda.simbricks.io/$SB_CONDA_CHANNEL/noarch/repodata.json /tmp/conda_indexes/
-ADD https://conda.simbricks.io/$SB_CONDA_CHANNEL/linux-64/repodata.json /tmp/conda_indexes/
-USER root
-RUN rm -rf /tmp/conda_indexes
-USER simbricks
-
 RUN micromamba install -y simbricks-runner \
   && micromamba clean --all -y \
   && rm -rf $MAMBA_ROOT_PREFIX/include

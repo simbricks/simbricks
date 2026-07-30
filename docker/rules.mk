@@ -42,11 +42,13 @@ docker-images:
 		$(DOCKER_REGISTRY)simbricks-runner$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
+		--no-cache \
 		-f docker/Dockerfile.runner docker
 	docker build -t \
 		$(DOCKER_REGISTRY)simbricks-executor$(DOCKER_TAG) \
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
+		--no-cache-filter executor \
 		-f docker/Dockerfile.executor docker
 
 docker-retag:

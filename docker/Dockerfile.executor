@@ -52,18 +52,11 @@ RUN make image INPUT=output/kernel \
                   examples/corundum/install-mqnic.sh" \
     ACCELERATOR=tcg
 
-FROM ${REGISTRY}simbricks-runner${TAG}
+FROM ${REGISTRY}simbricks-runner${TAG} AS executor
 
 USER root
 RUN mkdir -p /global_input/images && chown -R simbricks:simbricks /global_input
 
-USER simbricks
-
-# Check if the index has changed to avoid caching issues
-ADD https://conda.simbricks.io/$SB_CONDA_CHANNEL/noarch/repodata.json /tmp/conda_indexes/
-ADD https://conda.simbricks.io/$SB_CONDA_CHANNEL/linux-64/repodata.json /tmp/conda_indexes/
-USER root
-RUN rm -rf /tmp/conda_indexes
 USER simbricks
 
 RUN micromamba install -y simbricks-qemu-sim-bin \
