@@ -35,7 +35,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-runner"
-version = "0.4.2"
+version = "0.5.0"
 description = "simbricks runner to self host and run simulations via the SimBricks cloud"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -50,7 +50,7 @@ simbricks-runner = "simbricks.runner.main_runner.__main__:main"
 simbricks-executor-local = "simbricks.runner.fragment_runner.local.__main__:main"
 
 [tool.poetry.dependencies]
-simbricks-orchestration = ">=0.4.2"
-simbricks-runtime = ">=0.4.2"
-simbricks-client = ">=0.4.2"
-simbricks-telemetry = ">=0.4.2"
+simbricks-orchestration = ">=0.5.0"
+simbricks-runtime = ">=0.5.0"
+simbricks-client = ">=0.5.0"
+simbricks-telemetry = ">=0.5.0"

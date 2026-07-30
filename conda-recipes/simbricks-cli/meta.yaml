@@ -44,9 +44,9 @@ requirements:
   run:
     - python >=3.10
     - typer 0.26.7
-    - simbricks-client >=0.4.2
-    - simbricks-orchestration >=0.4.2
-    - simbricks-telemetry >=0.4.2
+    - simbricks-client >=0.5.0
+    - simbricks-orchestration >=0.5.0
+    - simbricks-telemetry >=0.5.0
 
 test:
   imports:

@@ -41,7 +41,7 @@ requirements:
     - pip
   run:
     - python >=3.10
-    - simbricks-client >=0.4.2
+    - simbricks-client >=0.5.0
 
 test:
   imports:
