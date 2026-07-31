@@ -25,6 +25,7 @@ import asyncio
 import os
 import pathlib
 import shutil
+import typing
 
 
 async def await_file(path: str, delay=0.1, verbose=False, timeout=600) -> None:
@@ -64,3 +65,86 @@ def join_paths(base: str | os.PathLike[str], relative_path: str, must_exist=Fals
     if must_exist and not joined.exists():
         raise Exception(f"Joined path does not exist: {str(joined)}")
     return joined.as_posix()
+
+
+def build_path_resolver(
+    relative_to_conda_env: str,
+    custom_env: str | None,
+    relative_to_custom_env: str | None,
+    file_relative_to_base: str,
+) -> typing.Callable[[str | None], str]:
+    """
+    Build a resolver that turns an optional user-provided path into a concrete one.
+
+    Simulator objects are built on the *client* but run on the *executor*. In between they
+    are serialized and rebuilt via ``fromJSON``, which does **not** run ``__init__``. So a
+    path computed in ``__init__`` reaches the executor as a literal string: an absolute
+    path valid only on the client's machine. Instead, keep what the user passed (usually
+    ``None`` = "use the default") in the serialized state and resolve it on the executor,
+    at the point of use. This captures the *rules* for finding a file rather than the
+    result of applying them, so they are evaluated wherever the resolver is called — which
+    means: never call it on the client and store the result.
+
+    Resolution order: an explicit non-empty path is returned unchanged; otherwise the base
+    is ``$custom_env[/relative_to_custom_env]`` if that variable is set, else
+    ``$CONDA_PREFIX/relative_to_conda_env``, with ``file_relative_to_base`` appended.
+    If neither variable is set the prefix degrades to ``""``, yielding a root-anchored
+    path.
+
+    Args:
+        relative_to_conda_env: Install root relative to ``$CONDA_PREFIX``.
+        custom_env: Environment variable that replaces the conda prefix when set on the
+            executor.
+        relative_to_custom_env: Optional subdirectory appended to ``custom_env``.
+        file_relative_to_base: Path of the file itself, relative to the resolved base.
+
+    Returns:
+        A callable taking the user-provided path (or ``None``/``""`` for the default).
+
+    Example:
+            ...
+
+            def __init__(
+                self,
+                simulation: sim_base.Simulation,
+                executable: str | None = None,
+                config: str | None = None,
+            ):
+                super().__init__(
+                    simulation=simulation,
+                    executable="" if executable is None else executable,
+                )
+                self.resolve_exe = build_path_resolver(
+                    "opt", "GEM5_PREFIX", None, "gem5/build/X86/gem5"
+                )
+                self.resolve_conf = build_path_resolver(
+                    "opt", "GEM5_PREFIX", None, "gem5/configs/simbricks/simbricks.py"
+                )
+
+            ...
+
+            def run_cmd(self, inst: inst_base.Instantiation) -> str:
+                exe = self.resolve_exe(self._executable)
+                conf = self.resolve_conf(self._config)
+
+            ...
+    """
+
+    def resolve_path(to_resolve: str | None) -> str:
+        custom_prefix = os.environ.get(custom_env) if custom_env else None
+        if custom_prefix is not None:
+            base = f"{custom_prefix}"
+            if relative_to_custom_env:
+                base += f"/{relative_to_custom_env}"
+        else:
+            conda_prefix = os.environ.get("CONDA_PREFIX")
+            if conda_prefix is None:
+                conda_prefix = ""
+            base = f"{conda_prefix}/{relative_to_conda_env}"
+
+        if to_resolve is None or to_resolve == "":
+            return f"{base}/{file_relative_to_base}"
+        else:
+            return to_resolve
+
+    return resolve_path
