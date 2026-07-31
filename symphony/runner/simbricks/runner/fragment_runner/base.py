@@ -274,6 +274,7 @@ class FragmentRunner(abc.ABC):
         proxy_host_ip: str,
         verbose: bool,
         output_artifact_relative: bool,
+        event_batch_size: int,
     ):
         self._base_url: str = base_url
         self._workdir: pathlib.Path = workdir.resolve()
@@ -285,6 +286,7 @@ class FragmentRunner(abc.ABC):
         self._proxy_host_ip: str = proxy_host_ip
         self._verbose: bool = verbose
         self._output_artifact_relative: bool = output_artifact_relative
+        self.event_batch_size = event_batch_size if event_batch_size > 0 else 1
 
         self._send_event_queue = asyncio.Queue[EventFromRunner_U]()
 
@@ -585,7 +587,7 @@ class FragmentRunner(abc.ABC):
     async def _send_loop(self):
         while True:
             events = []
-            while not self._send_event_queue.empty():
+            while not self._send_event_queue.empty() and len(events) < self.event_batch_size:
                 event = self._send_event_queue.get_nowait()
                 events.append(event)
             if events:

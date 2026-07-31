@@ -46,6 +46,7 @@ class LocalRunner(runner_base.FragmentRunner):
         proxy_host_ip: str,
         verbose: bool,
         output_artifact_relative: bool,
+        event_batch_size: int,
     ):
         super().__init__(
             base_url,
@@ -58,6 +59,7 @@ class LocalRunner(runner_base.FragmentRunner):
             proxy_host_ip,
             verbose,
             output_artifact_relative,
+            event_batch_size,
         )
         self.reader: asyncio.StreamReader
         self.writer: asyncio.StreamWriter
@@ -93,6 +95,7 @@ async def amain():
         proxy_host_ip=sys.argv[3],
         verbose=settings.runner_settings().verbose,
         output_artifact_relative=settings.runner_settings().output_artifact_relative,
+        event_batch_size=settings.runner_settings().event_batch_size,
     )
 
     await runner.run()
