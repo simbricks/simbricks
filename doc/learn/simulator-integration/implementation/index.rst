@@ -1,6 +1,6 @@
 ..
-  Copyright 2022 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -21,7 +21,6 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
 .. _sec-simulator-integration-implementation:
 
 Implementation
@@ -30,13 +29,13 @@ Implementation
 .. tip::
   If you're new to SimBricks and have not already read it you might want to check out our documentation :ref:`background on Adapters <sec-simulator-integration-background>`.
 
-As we have seen :ref:`before <sec-simulator-integration-background>` does SimBricks enable the modular connectiion and synchronization of component simulators to create virtual prototypes.
+As we have seen :ref:`before <sec-simulator-integration-background>` does SimBricks enable the modular connection and synchronization of component simulators to create virtual prototypes.
 
 Now we will have a look at the practical steps one has to take in order to integrate a component simulator into the SimBricks platform for the first time.
 We can divide this integration process roughly into two steps:
 
 1. **Adapter Implementation:** We discussed that SimBricks defines standardized interfaces and achieves simulator integration by the implementation of an Adapter between the SimBricks interface
-   and the simulators internal abstractions.
+   and the simulator's internal abstractions.
 
 2. **Orchestration Framework Integration:** Once this adapter is implemented the respective simulator must be integrated into the SimBricks :ref:`sec-orchestration-framework`.
    This will allow users to easily make use of the integrated simulator within python scripts that are used by SimBricks to configure virtual prototypes.
@@ -45,19 +44,19 @@ We can divide this integration process roughly into two steps:
 Adapter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The Adapter required for the integratoin into SimBricks must use a simulator’s extension API to act as a native device on one side and on the other side it must send and receive SimBricks messages to and from other Adapters.
+The Adapter required for the integration into SimBricks must use a simulator's extension API to act as a native device on one side and on the other side it must send and receive SimBricks messages to and from other Adapters.
 
 
 SimBricks Interface and Message Types
 """""""""""""""""""""""""""""""""""""""""""
 
-As we saw in the :ref:`background section <sec-simulator-integration-background>` are SimBricks interfaces designed around natural component boundaries. 
+As we saw in the :ref:`background section <sec-simulator-integration-background>` are SimBricks interfaces designed around natural component boundaries.
 For instance a PCIe interface connects a host simulator to a hardware device simulator whereas an Ethernet interface may connect a NIC simulator and a network simulator.
 
 Understanding these interfaces and the respective message types associated with such an interface is a crucial first step in writing an Adapter.
 Typically these interfaces abstract key transactions.
 
-When **implementing an Adapter** users must either **re-use** any of the mesage types already supported by SimBricks or **implement their own Message Types** depending on their needs. 
+When **implementing an Adapter** users must either **re-use** any of the message types already supported by SimBricks or **implement their own Message Types** depending on their needs.
 
 Lets look at an example: the SimBricks PCIe interface currently supports the following message types between host and device: ``INIT_DEV``, ``DMA_READ/WRITE/COMPLETE``, ``MMIO_READ/WRITE/COMPLETE`` and ``INTERRUPT``.
 
@@ -85,17 +84,17 @@ Message types for any protocol are defined using structs specific to each type.
 Like in the shown example message type, do message types across SimBricks interfaces share a common structure with the following **order**:
 
 1. **Header:**
-  
+
    * Includes type-specific fields and standard fields for synchronization and identification.
-    
+
      - **Type specific** fields are in the given case the ``req_id``, ``offset`` and ``len`` field.
-     - The padding (``pad``) following those fields has to be adjusted. 
+     - The padding (``pad``) following those fields has to be adjusted.
      - **Standard header** fields are ``timestamp``, ``pad``, and the ``own_type`` field.
 
-   * Has to be ache-line-sized.
+   * Has to be cache-line-sized.
 
 2. **Payload (optional):**
-   
+
    * Variable-length, used for transmitting data.
 
 Each message type is identified by a unique integer stored in the ``own_type`` field.
@@ -114,7 +113,7 @@ Adapters interpret these incoming messages, translating them into actions within
 Similarly, they send these messages to communicate events back to their peers.
 
 .. seealso::
-    For more exaples of such message types check out our :ref:`Core Lib References <sec-core-lib-ref>`
+    For more examples of such message types check out our :ref:`Core Lib References <sec-core-lib-ref>`
 
 
 Actual Adapter Implementation
@@ -123,14 +122,14 @@ Actual Adapter Implementation
 Once the Adapters interface is determined and the respective message types are implemented, the next step is to actually implement the Adapter logic.
 Every Adapter implementation involves three main steps: :ref:`adapter-init`, the :ref:`adapter-handling-messages` as well as :ref:`adapter-poll-sync`.
 
-For illustration we will have a look at the Adapter Code used by SimBricks to integrate the :verilator:`\ ` simulation of the :corundum:`\ ` . 
-This is also an example for an Adapter that implements both, the SimBricks PCIe interface as well as the SimBricks ethernet interface and would thus in a virtual prototype connect to both, a host and a network. 
+For illustration we will have a look at the Adapter Code used by SimBricks to integrate the :verilator:`\ ` simulation of the :corundum:`\ ` .
+This is also an example for an Adapter that implements both, the SimBricks PCIe interface as well as the SimBricks ethernet interface and would thus in a virtual prototype connect to both, a host and a network.
 
 .. important::
   We only show the part of the Adapter that is specific to SimBricks and it's :ref:`Core Library <sec-core-lib-ref>`.
 
-  In between the functions and the functions whos implementation is not shown in the following example its the programmers responsibility to 
-  interact with the respective simulator. That means there one would need to deal with a simulator’s internal abstractions through the API they
+  In between the functions and the functions whose implementation is not shown in the following example its the programmers responsibility to
+  interact with the respective simulator. That means there one would need to deal with a simulator's internal abstractions through the API they
   expose to trigger actions or schedule actions depending on the messages received through functions as shown in the example.
 
   These internal abstractions depend on the actual simulator. If you want to get an idea of concrete examples on how to do this check out :ref:`some of our Adapter examples <adapter-examples>`.
@@ -145,12 +144,12 @@ Initialization
   - For this we use the SimBricks library helpers to establish communication channels.
 
 * Exchange initial protocol-specific messages.
-     
+
   - Example: In PCIe, the device simulator sends device information (e.g., BARs, interrupts) to the host.
 
 * In :numref:`code-adapter-initialize` you can see the initialization code from our Corundum Verilator Adapter.
 
-.. _code-adapter-initialize:   
+.. _code-adapter-initialize:
 
 .. code-block:: C++
   :linenos:
@@ -189,10 +188,10 @@ Initialization
     }
 
     ...
-  
+
   }
 
-  
+
 .. _adapter-handling-messages:
 
 Handling Incoming Messages
@@ -201,13 +200,13 @@ Handling Incoming Messages
 * Poll the incoming queue for messages.
 * Interpret the SimBricks messages and call corresponding simulator functions to process events.
 * Message handling typically involves a switch statement to manage different message types.
-  
+
   - Example: Handling an MMIO_READ message involves retrieving the corresponding memory-mapped data and responding.
 
 * In :numref:`code-adapter-handling-incoming` you can see the example code for handling incoming messages from our Corundum Verilator Adapter.
-  
+
   - The main simulation loop polls the incoming queue for each channel.
-  - You can see that in this Adapter two poll functions (``poll_h2d``, ``poll_n2d``) are used. One to handle messages coming from the host interface and another to handle message received on the ethernet interface.  
+  - You can see that in this Adapter two poll functions (``poll_h2d``, ``poll_n2d``) are used. One to handle messages coming from the host interface and another to handle message received on the ethernet interface.
   - Each of these function triggers different actions in the simulator (in this case Verilator) depending on the Message Type they receive from their respective interface. An example of how this might be handled
     is shown in the ``h2d_read`` function that will read the received message and triggers the mmio read by interacting with Verilators top level module.
 
@@ -323,7 +322,7 @@ Handling Incoming Messages
     do {
       poll_h2d(mmio);
       poll_n2d(rx);
-    } while 
+    } while
 
     ...
 
@@ -335,13 +334,13 @@ Polling and Synchronization
 --------------------------------------------
 
 * Poll messages and synchronize the simulator's clock:
-  
+
   - Basic simulators: Poll queues, advancing time based on the next message timestamp.
   - Complex event-based simulators: Schedule an event to process the next message and re-schedule after processing.
 
 * Ensure the simulation clock never progresses ahead of incoming messages.
 * Periodically send dummy messages when no data messages are available to ensure the peer simulator can progress.
-* In :numref:`code-adapter-poll-sync` tou can see example code from our Corundum Verilator adapter that handles polling and synchronization.
+* In :numref:`code-adapter-poll-sync` you can see example code from our Corundum Verilator adapter that handles polling and synchronization.
 
 .. _code-adapter-poll-sync:
 
@@ -358,7 +357,7 @@ Polling and Synchronization
     struct SimbricksBaseIfParams netParams;
     struct SimbricksBaseIfParams pcieParams;
 
-    ... 
+    ...
 
     SimbricksNetIfDefaultParams(&netParams);
     SimbricksPcieIfDefaultParams(&pcieParams);
@@ -433,7 +432,7 @@ Polling and Synchronization
 .. admonition:: Here you will find more Adapter implementations of already supported simulators.
 
     In case you want to have a look at some more actual Adapter code, have a look at one of the following Adapters:
-    
+
     * **Host:** :gem5-adapter:`\ `
     * **PCI Device:** :corundum-verilator-adapter:`\ ` , :jped-decoder-adapter:`\ `
     * **Network:** :ns3-adapter:`\ `
@@ -444,16 +443,61 @@ Polling and Synchronization
 
 Orchestration Framework
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TODO
 
-..
-    Lastly, 
-    Create a simulator class that inherits from the PCI device simulator class and configure the command to run the simulator.
-    With this simulator class defined in the orchestration framework, we can invoke it in the experiment script and run it alongside other components in an end-to-end environment.
-    For further guidance to the simulation script, refer to our previous blog post on running a simple experiment with the orchestration framework.
+Once the Adapter is implemented and the simulator builds, the last step is to make the simulator
+usable from virtual prototype scripts. In the modular SimBricks layout this means providing two
+small Python packages in your component repository that plug into the shared
+``simbricks.components.*`` namespace (see :ref:`sec-orchestration-framework-components`):
 
-..
-    To make running experiments and setting up the SimBricks communication channels to other simulators convenient, add a class for the simulator in orchestration/simulators.py` that inherits either from Simulator or one of the more specialized base classes in.
-    In this class, you define the command(s) to execute the simulator together with further parameters, for example, to connect to the communication channels with other simulators.
-    Below is an example of what this looks like.
+1. **System components** (``simbricks.components.<x>.system``, optional): concrete component
+   classes for the System Configuration that subclass the generic classes from
+   ``simbricks.orchestration.system``. For a NIC this is typically a subclass of
+   ``SimplePCIeNIC`` plus, if a driver needs to be loaded in the guest, a host subclass that
+   appends the driver to the host's driver list. As an example, the i40e component defines:
 
+   .. code-block:: python
+
+     from simbricks.orchestration.system import nic
+     from simbricks.orchestration.system.host import base as sys_host
+
+
+     class IntelI40eNIC(nic.SimplePCIeNIC):
+         ...
+
+
+     class I40ELinuxHost(sys_host.LinuxHost):
+         def __init__(self, sys) -> None:
+             super().__init__(sys)
+             self.drivers.append("i40e")
+
+2. **A simulator class** (``simbricks.components.<x>.simulation``): a subclass of one of the
+   simulator base classes in ``simbricks.orchestration.simulation`` (``HostSim``, ``NICSim``,
+   ``PCIDevSim``, ``NetSim``, or plain ``Simulator``) that defines which executable to run and how
+   to construct its command line. The base class handles socket setup and synchronization
+   parameters; you mainly pass the executable name and implement/extend ``run_cmd()``:
+
+   .. code-block:: python
+
+     from simbricks.orchestration.simulation import pcidev
+
+
+     class I40eNicSim(pcidev.NICSim):
+         def __init__(self, simulation) -> None:
+             super().__init__(simulation=simulation, executable="simb_i40e_bm")
+
+         def run_cmd(self, inst) -> str:
+             cmd = self.basic_run_cmd(inst)
+             ...
+             return cmd
+
+   The ``executable`` is resolved through ``$PATH`` at execution time — by convention it is
+   installed under exactly this name by the component's binary conda package (e.g.
+   ``simb_i40e_bm`` by ``simbricks-i40e-sim-bm-bin``). Where a simulator needs additional
+   installed files (e.g. gem5's config scripts), the simulator class resolves them relative to
+   ``$CONDA_PREFIX`` (or a dedicated override environment variable).
+
+With these classes in place, users select your simulator in their Simulation Configuration just
+like any built-in one, e.g. ``compmap={i40e_sys.IntelI40eNIC: i40e_sim.I40eNicSim, ...}``.
+
+How to lay out the component repository and package everything up as conda packages is described
+in :ref:`sec-simulator-integration-packaging`.

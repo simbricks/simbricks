@@ -1,6 +1,6 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -23,25 +23,22 @@
 
 .. _sec-setup-compile:
 
-===================================
 Advanced Setup & Building
-===================================
+###################################
 
-While the SimBricks Cloud offering provides the fastest, zero-friction path to
-running virtual prototypes, advanced workflows may require you to compile custom
-simulators, build modified disk images, or prepare environments for self-hosted
-cloud runners. 
-
-Depending on your goals—whether developing a new integration or provisioning a
-self-hosted execution node for your paid plan—there are several ways to set up
-an environment to build and manage these SimBricks artifacts.
+The :ref:`chap-quickstart` gets you going with the SimBricks Cloud, where our hosted Runners
+execute your virtual prototypes. This chapter covers everything beyond that: installing SimBricks
+packages from the conda channel, using and building the SimBricks Docker images, running your own
+Runners and executing virtual prototypes on your own machines, building disk images, and building
+the SimBricks core from source for development.
 
 .. toctree::
    :maxdepth: 2
 
+   conda-packages
    pre-built-docker
+   local-runner
+   image-builder
    build-docker
-   build-dev-container
-   deb-package
    bare-metal
-
+   deb-package

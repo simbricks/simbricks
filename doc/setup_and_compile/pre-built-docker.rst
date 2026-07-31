@@ -1,6 +1,6 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -21,43 +21,57 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+.. _sec-docker-images:
+
 Using Pre-Built Docker Images
-=============================
+*****************************
 
-We provide pre-built Docker images on :docker-hub:`\ `.
-These images provide a ready-to-use environment without building it yourself,
-containing all necessary dependencies to build custom disk images, compile
-adapters, or execute specialized workloads like self-hosted runners.
+SimBricks provides pre-built Docker images on :docker-hub:`\ `. Since the move to conda packaging,
+there are exactly **three** images, building on each other:
 
-To start an interactive shell in a new ephemeral container (which will be
-deleted after the shell exits), use the following command:
+- ``simbricks/simbricks-baseenv`` — Ubuntu base environment with :micromamba:`\ ` installed and
+  the SimBricks conda channel pre-configured. Use this as a starting point for custom environments:
+  any SimBricks package is a ``micromamba install`` away.
+- ``simbricks/simbricks-runner`` — base environment plus the ``simbricks-runner`` package. Runs a
+  :ref:`Main Runner <sec-runner>` that connects to the SimBricks Backend
+  (entrypoint ``run_runner.sh``, see :ref:`sec-local-runner`).
+- ``simbricks/simbricks-executor`` — runner image plus the standard simulator packages
+  (QEMU, gem5, ns-3, FEMU, i40e, e1000, and the basic net/mem simulators) **and** a pre-built
+  ``base`` disk image at ``/global_input/images/base/`` (built with :image-builder:`\ `, including
+  the gem5-compatible kernel, the ``m5`` tool, and the Corundum ``mqnic`` driver). This is the
+  image that actually executes simulations, either spawned by a Runner's Docker plugin or used
+  directly.
 
-.. code-block:: bash
-
-   docker run --rm -it --device /dev/kvm --privileged simbricks/simbricks-local /bin/bash
-
-**Performance & Requirements:**
-If your host system or runner node has Linux KVM support enabled, we highly
-recommend passing ``/dev/kvm`` into the container. This drastically speeds up
-some of the simulators. It is even required for certain simulators like gem5.
-
-Furthermore, if your workload involves gem5, the container must be started with
-the ``--privileged`` flag since it must access the ``perf_event_open`` syscall.
-In addition, you must also set ``/proc/sys/kernel/perf_event_paranoid`` to ``1``
-or lower on the host machine. You can set this temporarily by running the
-following command:
+For a quick interactive environment with all standard simulators available, you can enter the
+executor image directly:
 
 .. code-block:: bash
 
-   sudo sysctl -w kernel.perf_event_paranoid=1
+  docker run --rm -it --device /dev/kvm --entrypoint /bin/bash simbricks/simbricks-executor
 
-**Image Format Conversion:**
-Certain host simulators, e.g. gem5 or Simics, require raw disk images. Because
-Docker does not efficiently handle large, sparse files that lead to huge Docker
-image sizes, we ship our images in ``qcow`` format to minimize image size. If
-your workflow requires raw images, you can convert them by running the following
-command inside the container:
+Requirements on the host
+========================
+
+**KVM for fast QEMU simulations.** For QEMU's fast functional mode, the container needs access to
+the KVM device, enabled with ``--device /dev/kvm`` (check that ``/dev/kvm`` exists on your host —
+on machines without virtualization support or VMs without nested virtualization you can still run
+QEMU, just slower via TCG).
+
+**perf event access for gem5.** gem5 requires the Linux ``perf_event_paranoid`` setting to be 1 or
+lower. Since this is a kernel setting, it can only be changed from a privileged container (or
+directly on the host):
 
 .. code-block:: bash
 
-   make convert-images-raw
+  docker run --rm -it --device /dev/kvm --privileged --entrypoint /bin/bash simbricks/simbricks-executor
+  # inside the container:
+  sudo sysctl -w kernel.perf_event_paranoid=1
+
+**Raw images for gem5.** The shipped ``base`` image is in qcow2 format. gem5 requires raw images;
+the executor's default entrypoint converts the image on startup, but when entering the container
+manually you can convert it yourself:
+
+.. code-block:: bash
+
+  qemu-img convert -f qcow2 -O raw -S 4k \
+      /global_input/images/base/base /global_input/images/base/base.raw

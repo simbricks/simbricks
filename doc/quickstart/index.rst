@@ -1,6 +1,6 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -26,7 +26,7 @@
 Quickstart
 ###################################
 
-Get up and running with the SimBricks in a few minutes.
+Get up and running with SimBricks in a few minutes.
 
 In this guide we will make use of the `SimBricks Examples Repository <https://github.com/simbricks/simbricks-examples>`_ and guide you through the execution of
 your first virtual prototype using the SimBricks CLI and SimBricks Cloud version.
@@ -41,6 +41,7 @@ your first virtual prototype using the SimBricks CLI and SimBricks Cloud version
 Next Steps
 ******************************
 
-* Check out more SimBricks exampels from our SimBricks examples repo at :simbricks-examples:`\ `.
-* To learn more about the inner workings and details of SimBricks check out :ref:`chap-learn` chapter. 
+* Check out more SimBricks examples from our SimBricks examples repo at :simbricks-examples:`\ `.
+* To learn more about the inner workings and details of SimBricks check out the :ref:`chap-learn` chapter.
+* To run virtual prototypes on your own machines, check out :ref:`sec-setup-compile`.
 * Join the SimBricks community on :slack:`Slack`

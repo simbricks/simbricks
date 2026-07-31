@@ -1,36 +1,30 @@
-/*
- * Copyright 2021 Max Planck Institute for Software Systems, and
- * National University of Singapore
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-
-#ifndef DOC_INDEX_H_
-#define DOC_INDEX_H_
-
 /**
  * @mainpage SimBricks Overview
  *
- * Components:
- *    - TAS. (@ref tas)
- *      + Slow Path: the control plane. (@ref tas-sp)
+ * SimBricks is a modular full-system simulation framework that connects
+ * battle-tested component simulators (hosts, NICs, other devices, memory, and
+ * networks) into complete virtual prototypes.
+ *
+ * This Doxygen documentation covers the SimBricks core C/C++ libraries found
+ * in `lib/simbricks/` of the main repository (distributed as the
+ * `simbricks-lib` conda package):
+ *
+ *    - Base protocol: connection setup, message transfer, and time
+ *      synchronization (`lib/simbricks/base`).
+ *    - Network protocol: Ethernet packet exchange layered on the base
+ *      protocol (`lib/simbricks/network`).
+ *    - PCIe protocol: transaction-level PCIe communication between hosts and
+ *      devices (`lib/simbricks/pcie`).
+ *    - Memory protocol: simplified memory read/write interface
+ *      (`lib/simbricks/mem`).
+ *    - NIC helpers: `lib/simbricks/nicif` (thin C helper for NIC simulators,
+ *      deprecated) and `lib/simbricks/nicbm` (C++ helper library for
+ *      behavioral NIC models).
+ *    - Parameter parsing and interface establishment helpers
+ *      (`lib/simbricks/parser`).
+ *    - AXI helpers for connecting RTL device simulations
+ *      (`lib/simbricks/axi`).
+ *
+ * For the user-facing documentation, including the Python orchestration
+ * framework, see https://simbricks.readthedocs.io/ .
  */
-
-#endif  // DOC_INDEX_H_

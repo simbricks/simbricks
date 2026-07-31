@@ -1,6 +1,6 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -31,10 +31,9 @@ Learn
 
    concepts/index
    orchestration-framework
+   disk-images
    simulator-integration/index
    runners/index
    execution
    ui/index
-
-.. 
-  faq
+   faq

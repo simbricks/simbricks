@@ -1,6 +1,6 @@
 ..
-  Copyright 2022 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -20,7 +20,6 @@
   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 
 .. image:: simbricks-text-horizontal.svg
   :width: 600
@@ -45,22 +44,27 @@ SimBricks
 About
 ###################################
 
-SimBricks is a platform for creating and simulating virtual prototypes of modern heterogeneous computer systems and enables meaningful end-to-end evaluations of such systems in simlation.
+SimBricks is a platform for creating and simulating virtual prototypes of modern heterogeneous computer systems and enables meaningful end-to-end evaluations of such systems in simulation.
 
 To create virtual prototypes of complete computer systems, rather than individual components, SimBricks modularly combines and connects battle-tested simulators
 for different components: machines (e.g. QEMU, gem5, Simics), hardware components (e.g. Verilator, Tofino, FEMU SSD), and networks (e.g. ns-3,
 OMNeT++). SimBricks simulations run unmodified full-system stacks, including applications, operating systems such as Linux, and hardware RTL.
 
-SimBricks **does not** replace existing simulators for individual components, 
-but instead enables users to connect together multiple existing simulators, even from different vendors and never designed 
-to interoperate, into a complete system. 
+SimBricks **does not** replace existing simulators for individual components,
+but instead enables users to connect together multiple existing simulators, even from different vendors and never designed
+to interoperate, into a complete system.
+
+SimBricks itself is modular: the core framework (orchestration, client, CLI, and the
+SimBricks protocol libraries) lives in the :simbricks-repo-plain:`main repository <>`, while each
+integrated simulator lives in its own ``component-*`` repository and is distributed as a set of
+installable packages. You only install the simulators you actually need.
 
 Key Features:
 
 * **Easy:** Easily create and execute virtual representations of your system through simple Python.
 * **Fast:** Efficient synchronization mechanisms in SimBricks enable fast simulation execution.
 * **Full-System:** Create full-system virtual prototypes with all components you would find in the real world using SimBricks.
-* **Extensible:** Easily integrate your component simulators.
+* **Extensible:** Easily integrate your component simulators. Each integration lives in its own component repository and ships as conda packages.
 * **Scalable:** Create large-scale virtual prototypes with thousands of components.
 
 To easily get started with using SimBricks check out our :ref:`chap-quickstart` guide.

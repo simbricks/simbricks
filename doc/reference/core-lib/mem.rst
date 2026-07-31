@@ -1,6 +1,6 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -21,18 +21,17 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Mem
+Memory
 =======================================
 
 Interface
------------------------------------------
+------------------------------------------
 
 .. doxygenfile:: mem/if.h
    :project: simbricks
 
-
 Protocol
------------------------------------------
+------------------------------------------
 
 .. doxygenfile:: mem/proto.h
    :project: simbricks

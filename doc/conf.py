@@ -15,15 +15,14 @@
 import os
 import sys
 
-sys.path.append(os.path.abspath('../symphony'))
 sys.path.append(os.path.abspath('.'))
 from external_links import *
 
 # -- Project information -----------------------------------------------------
 
 project = 'SimBricks'
-copyright = '2025 Max Planck Institute for Software Systems, ' + \
-        'and National University of Singapore'
+copyright = '2026 Max Planck Institute for Software Systems, ' + \
+        'National University of Singapore, and SimBricks UG (haftungsbeschraenkt)'
 
 author = 'Antoine Kaufmann'
 
@@ -68,7 +67,7 @@ master_doc = 'index'
 language = 'en'
 
 # List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
+# directories to ignore when building source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
@@ -209,5 +208,11 @@ import subprocess
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 if read_the_docs_build:
-    subprocess.call('cd .. && doxygen doc/Doxyfile', shell=True)
-    subprocess.call('cp -r doxygen/html _static/doxygen', shell=True)
+    conf_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(conf_dir)
+    subprocess.call('doxygen doc/Doxyfile', shell=True, cwd=repo_root)
+    subprocess.call(
+        'cp -r ' + os.path.join(conf_dir, 'doxygen', 'html') + ' ' +
+        os.path.join(conf_dir, '_static', 'doxygen'),
+        shell=True
+    )

@@ -1,6 +1,6 @@
 ..
-  Copyright 2022 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -20,7 +20,6 @@
   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 
 .. _sec-execution:
 
@@ -42,15 +41,15 @@ Cloud
 ==============================
 
 .. attention::
-  Throughout this section we will assume that you already set up Runner properly in order to execute your virtual prototypes in the cloud.
-  That means we assume that you are using a setup in which Runner were created and that they have the required dependencies installed.
-  These respective Runner should additionally be properly tagged to match your virtual prototyping script's configuration.
+  Throughout this section we will assume that you already set up Runners properly in order to execute your virtual prototypes in the cloud.
+  That means we assume that you are using a setup in which Runners were created and that they have the required dependencies installed.
+  These respective Runners should additionally be properly tagged to match your virtual prototyping script's configuration.
 
-.. tip::  
-  If want to leatrn how to setup up Runner and how they function check out our documentation :ref:`here <sec-runner>`.
+.. tip::
+  If you want to learn how to set up Runners and how they function check out our documentation :ref:`here <sec-runner>` and the self-hosting instructions in :ref:`sec-setup-compile`.
 
-SimBricks cloud version comes with a hosted SimBricks Backend that serves as the central hub for managing and executing virtual prototype simulations
-Therefore, once users specified thier virtual prototypes through our python Orchestration Framework for Virtual Prototypes, users can submit those to the Backend (along with outputs and results) were they are stored, ensuring these can be retrieved at any time in the future.
+SimBricks cloud version comes with a hosted SimBricks Backend that serves as the central hub for managing and executing virtual prototype simulations.
+Therefore, once users specified their virtual prototypes through our python Orchestration Framework for Virtual Prototypes, users can submit those to the Backend (along with outputs and results) where they are stored, ensuring these can be retrieved at any time in the future.
 
 Further will the Backend schedule virtual prototype execution :ref:`Runs <sec-execution-cloud-runs>` on Runners provided by users ensuring seamless resource sharing across multiple users of the same organization.
 
@@ -65,15 +64,15 @@ SimBricks Cloud introduces the concept of Runs, a foundational feature that simp
 A Run encapsulates the lifecycle of a single execution instance of one of your virtual prototypes and is managed by the SimBricks backend.
 
 That means a Run represents the execution of a virtual prototype which in turn is defined by the System-, Simulation- and Instantiation Configuration.
-Once these configurations are submitted to the SimBricks Backend by a user, they can use those stored configurations to create Runs. 
+Once these configurations are submitted to the SimBricks Backend by a user, they can use those stored configurations to create Runs.
 A Run will then encapsulate those configurations for executing the virtual prototype.
 
 The Backend will automatically schedule available Runs (i.e. once the user created a Run or multiple Runs in the Backend) for execution.
-During scheduling decisions are made the Backend will consider multiple factors:
+During scheduling, the Backend will consider multiple factors:
 
-- Availability: There must be enough Runners available to execute virtual prototypes. Especially when in scenarios were the execution shall be distributed across multiple machines. 
-- Resources: To execute a virtual prototype (or a part thereof) on a Runner, enough computational resources must still be available on that RUnner for execution.
-- Tags: The backend matches Runner tags specified in the Instantiation-Configuration to ensure Runs are executed by Runners with the appropriate tags.
+- Availability: There must be enough Runners available to execute virtual prototypes. Especially in scenarios where the execution shall be distributed across multiple machines.
+- Resources: To execute a virtual prototype (or a part thereof) on a Runner, enough computational resources must still be available on that Runner for execution.
+- Tags: The backend matches Runner tags against the ``runner_tags`` specified on the Fragments of the Instantiation-Configuration to ensure Runs are executed by Runners with the appropriate tags.
 
 If the necessary resources or tags are not available, the Run is queued until suitable Runners are accessible.
 
@@ -86,11 +85,11 @@ This ensures that the original configurations remain unchanged, allowing users t
 CLI
 ------------------------------------------
 
-The CLI i.e. the `simbricks-cli` package provides a command-line interface for managing SimBricks virtual prototypes.
-That means either sending them to or managing virtual protoypes already stored in the SimBricks Backend.
+The CLI i.e. the ``simbricks-cli`` package provides a command-line interface for managing SimBricks virtual prototypes.
+That means either sending them to or managing virtual prototypes already stored in the SimBricks Backend.
 
 .. hint::
-  You can simply install CLI package by running ``pip install simbricks-cli``.
+  You can simply install the CLI package by running ``pip install simbricks-cli``.
 
 It is ideal when working in a terminal environment if a lightweight way to interact with the SimBricks Backend is needed.
 
@@ -100,15 +99,16 @@ Through the CLI you can:
 
   .. code-block:: bash
 
-    simbricks-cli runs submit <path to tour virtual prototype python script>
+    simbricks-cli runs submit <path to your virtual prototype python script>
 
-  Note that in order to submit a virtual prototype python script to the backend via the CLI, it must declare a list of Instantiation Configurations.
-  In case submitting yout virtual prototype was successful, you should be able to see output that looks similar to the following:
+  Note that in order to submit a virtual prototype python script to the backend via the CLI, it must declare a module-level list called ``instantiations``.
+  You can also directly follow the execution's output by passing ``--follow``.
+  In case submitting your virtual prototype was successful, you should be able to see output that looks similar to the following:
 
   .. code-block:: console
 
-    $ simbricks-cli runs submit <path to tour virtual prototype python script>
-                          Run                     
+    $ simbricks-cli runs submit <path to your virtual prototype python script>
+                          Run
       --------------------------------------------
       | id | instantiation_id | state            |
       --------------------------------------------
@@ -119,30 +119,30 @@ Through the CLI you can:
 
   .. code-block:: bash
 
-    simbricks-cli runs create <id of the instantiation configoration>
+    simbricks-cli runs create <id of the instantiation configuration>
 
-- Assuming the execution of a virtual prototypes already started. Then, in case one wants to follow the output created by that execution, its easy to do so:
+- Assuming the execution of a virtual prototype already started. Then, in case one wants to follow the output created by that execution, it's easy to do so:
 
   .. code-block:: bash
 
     simbricks-cli runs follow <id of the run to follow>
 
-  When following an active Run you should be able to see output that looks similar to the following:
+  When following an active Run you should be able to see output that looks similar to the following (exact paths depend on the Runner's environment):
 
   .. code-block:: console
 
-    [host.QemuSim-25] Formatting '/workspaces/simbricks_docker/runner-work/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/hdcopy.2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/workspaces/simbricks_docker/images/output-base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+    [host.QemuSim-25] Formatting '/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/2_hdcopy.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/global_input/images/base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
     [host.QemuSim-25] prepare command exited with code 0
-    [host.QemuSim-26] Formatting '/workspaces/simbricks_docker/runner-work/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/hdcopy.10', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/workspaces/simbricks_docker/images/output-base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+    [host.QemuSim-26] Formatting '/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/10_hdcopy.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/global_input/images/base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
     [host.QemuSim-26] prepare command exited with code 0
-    [net.SwitchNet-29] Switch connecting to: /workspaces/simbricks_docker/runner-work/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-5.21.20
-    [net.SwitchNet-29] Switch connecting to: /workspaces/simbricks_docker/runner-work/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-13.23.22
+    [net.SwitchNet-29] Switch connecting to: /wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-5.21.20
+    [net.SwitchNet-29] Switch connecting to: /wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-13.23.22
     [host.QemuSim-25] qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.07H:EBX.hle [bit 4]
     [host.QemuSim-25] qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.07H:EBX.rtm [bit 11]
     [host.QemuSim-25] Wrong EFI loader signature.
     [host.QemuSim-25] early console in extract_kernel
     ...
-    
+
 
 - View Runs that are currently stored on the server along their status:
 
@@ -161,67 +161,71 @@ Through the CLI you can:
 Client Library
 ------------------------------------
 
-The Client Library i.e. the `simbricks-client` package is used for interacting with the SimBricks Backend and implements its API. 
+The Client Library i.e. the ``simbricks-client`` package is used for interacting with the SimBricks Backend and implements its API.
 It provides the interface i.e. python functions to:
 
 - Upload virtual prototype configurations. That means it offers functions to send :ref:`System-, Simulation-, and Instantiation-Configurations <sec-orchestration-framework>` to the SimBricks Backend in order to store those there.
 
   Users can upload their Python simulation scripts and related configurations to the cloud.
-- Manage Simulations: It allows users to cerate, stop, monitor and alter the execution of virtual prototypes through Runs.
+- Manage Simulations: It allows users to create, stop, monitor and alter the execution of virtual prototypes through Runs.
 - Retrieve Results: After a simulation is complete, users can download logs and output files for analysis.
 
 
 .. hint::
-  You can simply install client library by running ``pip install simbricks-client``.
+  You can simply install the client library by running ``pip install simbricks-client``.
 
-This package is particularly useful if users want to interact with SimBricks virtual prototypes in python directly. This can e.g. be very useful when integrating SimBricks into yout CI/CD setup.
+This package is particularly useful if users want to interact with SimBricks virtual prototypes in python directly. This can e.g. be very useful when integrating SimBricks into your CI/CD setup.
 
 Through the Client Library you can:
 
-- extend the experiment script to send the virtual prototype through the python API to the SimBricks Backend: 
+- extend the experiment script to send the virtual prototype through the python API to the SimBricks Backend and follow its console output:
 
   .. code-block:: python
 
+    import asyncio
+    from simbricks.client.opus import base as opus_base
+
     ...
-    sys = system.System()
+    syst = system.System()
     ...
-    simulation = sim.Simulation("My-very-first-test-simulation", sys)
+    sim = simulation.Simulation("My-very-first-test-simulation", syst)
     ...
-    instance = inst.Instantiation(simulation)
-    ...
-    await opus_base.create_run(instance)
+    instance = instantiation.Instantiation(sim)
     ...
 
+    async def main():
+        run_id = await opus_base.create_run(instance)
+        line_gen = opus_base.ConsoleLineGenerator(run_id=run_id, follow=True)
+        async for _, line in line_gen.generate_lines():
+            print(line)
+
+    asyncio.run(main())
 
 - re-submit script: submit via python script itself using the api:
 
   .. code-block:: bash
 
-    python3 simple_demo.py
+    python3 my-simple-experiment-verbose.py
 
 .. hint::
-  If you want to have a closer look at the funcitons offered by our python client library check out its refernce :ref:`here <sec-client-ref>`.
+  If you want to have a closer look at the functions offered by our python client library check out its reference :ref:`here <sec-client-ref>`.
+  A complete example of submitting runs and processing their results programmatically (including plotting) can be found in the ``prog-api-demo`` directory of the examples repository.
 
-..
-  * **Data Analysis** - *How to retrieve and process data from Executions in the Cloud?*
-
-
-
-On-Premise 
+On-Premise
 ==============================
 
 .. attention::
-  The SimBricks on-premise version for local execution is designed to provide a lightweight solution for running simulations on a single machine and is **primarily meant to facilitate testing, debugging**, and running very small simulations. 
-  Compared to the loud offering it comes with some following limitations and a reduced feature set (e.g. no distributed simulations) and generally limited support.
+  The SimBricks on-premise version for local execution is designed to provide a lightweight solution for running simulations on a single machine and is **primarily meant to facilitate testing, debugging**, and running very small simulations.
+  Compared to the cloud offering it comes with some limitations and a reduced feature set (e.g. no distributed simulations) and generally limited support.
 
 It is also possible to run SimBricks virtual prototypes locally without a cloud setup or Runners.
 
-For this SimBricks ships the `simbricks-local` python package that comes with a command line tool to execute simulations.
-You can check that it is installed by invoking `simbricks-run --help`. In that case you should see output similar to the following:
+For this SimBricks ships the ``simbricks-local`` python package that comes with a command line tool to execute simulations.
+You can check that it is installed by invoking ``simbricks-run --help``. In that case you should see output similar to the following:
 
 .. code-block::
 
-  usage: simbricks-run [-h] [--list] [--filter PATTERN [PATTERN ...]] [--runs N] [--firstrun N] [--force] [--verbose] [--pcap] [--profile-int S] [--repo DIR] [--workdir DIR] [--parallel] [--cores N] [--mem N] EXP [EXP ...]
+  usage: simbricks-run [-h] [--list] [--filter PATTERN [PATTERN ...]] [--runs N] [--firstrun N] [--force] [--verbose] [--pcap] [--profile-int S] [--global-input-dir DIR] [--workdir DIR] [--parallel] [--cores N] [--mem N] EXP [EXP ...]
 
   positional arguments:
     EXP                   Python modules to load the experiments from
@@ -239,7 +243,8 @@ You can check that it is installed by invoking `simbricks-run --help`. In that c
     --profile-int S       Enable periodic sigusr1 to each simulator every S seconds.
 
   Environment:
-    --repo DIR            SimBricks repository directory
+    --global-input-dir DIR
+                          Global input directory
     --workdir DIR         Work directory base
 
   Parallel Runtime:
@@ -247,16 +252,23 @@ You can check that it is installed by invoking `simbricks-run --help`. In that c
     --cores N             Number of cores to use for parallel runs
     --mem N               Memory limit for parallel runs (in MB)
 
-Having it installed, users can simply execute their virtual prototypes (assuming the necessary simulators and their dependencies are available locally) by running the following:
+Having it installed, users can simply execute their virtual prototypes by running the following:
 
 .. code-block:: bash
 
-  simbricks-run --verbose <path to your virtual prototype python script>
+  simbricks-run --verbose --global-input-dir <dir with disk images> <path to your virtual prototype python script>
 
 This command will cause SimBricks to run your virtual prototype locally.
 
-.. hint::
-  You can simply install SimBricks package for local execution by running ``pip install simbricks-local``
+Local execution requires the simulators used by your virtual prototype and their dependencies to
+be available locally: install the respective ``simbricks-*-bin`` conda packages from the SimBricks
+conda channel (see :ref:`sec-conda-packages`), and provide a global input directory containing the
+disk images your script references (see :ref:`sec-disk-images` and :ref:`sec-image-builder`).
+Alternatively, you can run inside the pre-built ``simbricks/simbricks-executor`` Docker container,
+which has both already set up (see :ref:`sec-docker-images`).
 
-All output is collected in a JSON file, which allows easy post-processing afterwards.
-Output files generated through local execution will be placed in a local folder that user can investigate to extract data from the execution. 
+.. hint::
+  You can simply install the SimBricks package for local execution by running ``pip install simbricks-local``, or install it from the SimBricks conda channel together with the simulators.
+
+All output is collected in a JSON file (``<workdir>/.../output/out.json``), which allows easy post-processing afterwards.
+Output files generated through local execution will be placed in a local folder (``./out/`` by default, configurable via ``--workdir``) that users can investigate to extract data from the execution.

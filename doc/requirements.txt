@@ -1,7 +1,0 @@
-breathe
-sphinx
-pydata-sphinx-theme
-simbricks-cli
-simbricks-client
-simbricks-orchestration
-simbricks-runner
