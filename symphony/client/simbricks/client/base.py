@@ -63,12 +63,12 @@ def validate_response_model(response_model: object, expected_type: type[T]) -> T
 
 @contextlib.asynccontextmanager
 async def base_client(
-    base_url: str = client_settings().base_url,
+    base_url: str = client_settings().base_url, timeout_sec: int = client_settings().timeout_sec
 ) -> typing.AsyncIterator[AuthenticatedClient]:
 
     # custom httpx client using our authentication class
     sb_auth = simbricks_httpx_auth()
-    httpx_client = httpx.AsyncClient(base_url=base_url, auth=sb_auth)
+    httpx_client = httpx.AsyncClient(base_url=base_url, auth=sb_auth, timeout=timeout_sec)
 
     # create the auto generated client instance to pass on
     client = AuthenticatedClient(
