@@ -1,6 +1,6 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -57,11 +57,34 @@ Mem
    :undoc-members:
    :inherited-members:
 
-
 NIC
 ------------------------------------------
 
 .. automodule:: simbricks.orchestration.system.nic
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+Host
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.system.host.base
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+Applications
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.system.host.app
+   :members:
+   :undoc-members:
+   :inherited-members:
+
+Disk Images
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.system.disk_images
    :members:
    :undoc-members:
    :inherited-members:

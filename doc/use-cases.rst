@@ -1,9 +1,8 @@
-
 Concrete use-cases for SimBricks:
 **************************************
 
-Modern hardware design increasingly relies on specialized accelerators and 
-heterogeneous architectures. However, simulating these components in isolation 
+Modern hardware design increasingly relies on specialized accelerators and
+heterogeneous architectures. However, simulating these components in isolation
 often masks critical system-level bottlenecks, such as PCIe interconnect
 limitations, memory controller inefficiencies, or network latency. SimBricks
 addresses this visibility gap by providing a framework for comprehensive

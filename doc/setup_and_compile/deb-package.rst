@@ -1,6 +1,6 @@
 ..
-  Copyright 2021 Max Planck Institute for Software Systems, and
-  National University of Singapore
+  Copyright 2026 Max Planck Institute for Software Systems,
+  National University of Singapore, and SimBricks UG (haftungsbeschraenkt)
 ..
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -21,20 +21,22 @@
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+.. _sec-deb-package:
+
 Building the Core Library Debian Package
-========================================
+****************************************
 
-If you are developing custom hardware adapters or integrating third-party
-simulators, you do not need to build the entire SimBricks framework. Instead,
-you can generate a standalone Debian package containing the SimBricks C/C++ core
-library.
-
-To create the package, run:
+Adapter and simulator developers need the SimBricks core library (headers and static libraries)
+to build against. The recommended way to get it is the ``simbricks-lib`` conda package (see
+:ref:`sec-conda-packages`). For environments where conda is not an option, the main repository can
+alternatively package the core library as a Debian package:
 
 .. code-block:: bash
 
-   make package
+  git clone https://github.com/simbricks/simbricks.git
+  cd simbricks
+  make package
 
-This command outputs a ``.deb`` package. Installing this package on your target
-system or Docker image dramatically simplifies the setup process for adapter
-development, allowing you to link against the core library instantly.
+This produces a ``simbricks-core-dev_*_amd64.deb`` in ``lib/`` containing the SimBricks protocol
+headers (installed under ``/usr/include/simbricks``) and static libraries, which you can install
+with ``dpkg -i`` on Debian/Ubuntu systems.

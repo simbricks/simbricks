@@ -1,0 +1,40 @@
+# Conda environment for building this documentation (readthedocs + local builds).
+#
+# The SimBricks packages autodoc'ed in reference/ are installed from the SimBricks
+# conda channel. The released documentation is built against the `stable` channel.
+# During development, you can switch to the `latest` channel (continuous builds
+# from the main branches) to check how the docs look against the upcoming release:
+# simply replace `/stable` with `/latest` in the channel URL below.
+name: simbricks-docs
+channels:
+  - https://conda.simbricks.io/latest
+  - conda-forge
+dependencies:
+  - python=3.12
+  - doxygen
+  - sphinx>=7,<9
+  - breathe
+  - pydata-sphinx-theme
+  - graphviz
+  # SimBricks core Python packages (autodoc'ed in reference/)
+  - simbricks-utils
+  - simbricks-orchestration
+  - simbricks-runtime
+  - simbricks-client
+  - simbricks-telemetry
+  - simbricks-cli
+  - simbricks-runner
+  - simbricks-local
+  # SimBricks component packages (autodoc'ed in reference/components/)
+  - simbricks-qemu-sim-py
+  - simbricks-gem5-sim-py
+  - simbricks-ns3-sim-py
+  - simbricks-net-base-sim-py
+  - simbricks-mem-base-sim-py
+  - simbricks-i40e-sys-py
+  - simbricks-i40e-sim-bm-py
+  - simbricks-e1000-sys-py
+  - simbricks-e1000-sim-bm-py
+  - simbricks-corundum-sys-py
+  - simbricks-corundum-sim-rtl-py
+  - simbricks-femu-sim-py

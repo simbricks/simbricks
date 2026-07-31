@@ -31,5 +31,3 @@ Concepts
 
    abstractions/index
    architecture/index
-
-
