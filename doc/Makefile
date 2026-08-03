@@ -29,7 +29,7 @@ sphinx_outdir := _build
 sphinx_srcs := $(wildcard ./*.rst ./*/*.rst)
 
 documentation: $(doxygen_outdir)/ready $(sphinx_outdir)/ready
-.PHONY: documentation
+.PHONY: documentation clean
 
 $(doxygen_outdir)/ready: $(d)Doxyfile $(doxygen_srcs)
 	cd $(base_dir). && doxygen Doxyfile
@@ -39,4 +39,5 @@ $(sphinx_outdir)/ready: $(d)conf.py $(sphinx_srcs)
 	cd $(base_dir). && sphinx-build . $(sphinx_outdir)
 	touch $@
 
-CLEAN := $(doxygen_outdir) $(sphinx_outdir)
+clean:
+	rm -r $(doxygen_outdir) $(sphinx_outdir)
