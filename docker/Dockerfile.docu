@@ -1,5 +1,5 @@
 ARG REGISTRY=
-ARG TAG=:latest
+ARG TAG=:stable
 FROM ${REGISTRY}simbricks-baseenv${TAG}
 
 USER simbricks

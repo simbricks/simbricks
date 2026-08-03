@@ -6,9 +6,6 @@
 # from the main branches) to check how the docs look against the upcoming release:
 # simply replace `/stable` with `/latest` in the channel URL below.
 name: simbricks-docs
-channels:
-  - https://conda.simbricks.io/stable
-  - conda-forge
 dependencies:
   - make
   - python=3.12
