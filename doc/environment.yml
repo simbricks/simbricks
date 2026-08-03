@@ -17,6 +17,8 @@ dependencies:
   - breathe
   - pydata-sphinx-theme
   - graphviz
+  # SimBricks core C/C++ library
+  - simbricks-lib
   # SimBricks core Python packages (autodoc'ed in reference/)
   - simbricks-utils
   - simbricks-orchestration
