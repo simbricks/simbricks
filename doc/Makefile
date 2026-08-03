@@ -20,13 +20,13 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-include mk/subdir_pre.mk
+header_dir := $(CONDA_PREFIX)/include/simbricks
 
-doxygen_outdir := $(d)doxygen
-doxygen_srcs := $(wildcard $(d)/*.h)
+doxygen_outdir := doxygen
+doxygen_srcs := $(wildcard $(header_dir)/*/*.h $(header_dir)/*/*.hh $(header_dir)/*/*.hpp)
 
-sphinx_outdir := $(d)_build
-sphinx_srcs := $(wildcard $(d)/*.rst $(d)/*/*.rst)
+sphinx_outdir := _build
+sphinx_srcs := $(wildcard ./*.rst ./*/*.rst)
 
 documentation: $(doxygen_outdir)/ready $(sphinx_outdir)/ready
 .PHONY: documentation
@@ -36,9 +36,7 @@ $(doxygen_outdir)/ready: $(d)Doxyfile $(doxygen_srcs)
 	touch $@
 
 $(sphinx_outdir)/ready: $(d)conf.py $(sphinx_srcs)
-	cd $(base_dir). && sphinx-build doc/ doc/_build
+	cd $(base_dir). && sphinx-build . $(sphinx_outdir)
 	touch $@
 
 CLEAN := $(doxygen_outdir) $(sphinx_outdir)
-
-include mk/subdir_post.mk
