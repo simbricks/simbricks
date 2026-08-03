@@ -32,7 +32,7 @@ documentation: $(doxygen_outdir)/ready $(sphinx_outdir)/ready
 .PHONY: documentation
 
 $(doxygen_outdir)/ready: $(d)Doxyfile $(doxygen_srcs)
-	cd $(base_dir). && doxygen doc/Doxyfile
+	cd $(base_dir). && doxygen Doxyfile
 	touch $@
 
 $(sphinx_outdir)/ready: $(d)conf.py $(sphinx_srcs)
