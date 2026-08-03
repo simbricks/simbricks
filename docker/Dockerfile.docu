@@ -4,7 +4,7 @@ FROM ${REGISTRY}simbricks-baseenv${TAG}
 
 USER simbricks
 
-COPY --chown=simbricks doc /tmp/doc
+COPY --chown=simbricks . /tmp/doc
 WORKDIR /tmp/doc
 
 # cerate environment and build docs

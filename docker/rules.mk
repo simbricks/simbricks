@@ -78,6 +78,6 @@ docker-documentation:
 		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
 		--build-arg="TAG=$(DOCKER_TAG)" \
 		--no-cache \
-		-f docker/Dockerfile.docu .
+		-f docker/Dockerfile.docu doc
 
 include mk/subdir_post.mk
