@@ -1,0 +1,12 @@
+ARG REGISTRY=
+ARG TAG=:latest
+FROM ${REGISTRY}simbricks-baseenv${TAG}
+
+USER simbricks
+
+COPY --chown=simbricks doc /tmp/doc
+WORKDIR /tmp/doc
+
+# cerate environment and build docs
+RUN micromamba create --file environment.yml -n bld-doc-env
+RUN micromamba run -n bld-doc-env make documentation

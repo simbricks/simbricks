@@ -43,7 +43,6 @@ $(eval $(call subdir,conda-recipes))
 $(eval $(call subdir,docker))
 $(eval $(call subdir,lib))
 $(eval $(call subdir,dist))
-$(eval $(call subdir,doc))
 $(eval $(call subdir,symphony))
 
 

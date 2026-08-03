@@ -7,9 +7,10 @@
 # simply replace `/stable` with `/latest` in the channel URL below.
 name: simbricks-docs
 channels:
-  - https://conda.simbricks.io/latest
+  - https://conda.simbricks.io/stable
   - conda-forge
 dependencies:
+  - make
   - python=3.12
   - doxygen
   - sphinx>=7,<9

@@ -71,4 +71,13 @@ docker-pull:
 		docker pull $$i ; \
 		done
 
+# this is on purpose not in the list above
+docker-documentation:
+	docker build -t \
+		$(DOCKER_REGISTRY)simbricks-docu$(DOCKER_TAG) \
+		--build-arg="REGISTRY=$(DOCKER_REGISTRY)" \
+		--build-arg="TAG=$(DOCKER_TAG)" \
+		--no-cache \
+		-f docker/Dockerfile.docu .
+
 include mk/subdir_post.mk
