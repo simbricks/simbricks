@@ -106,6 +106,9 @@ from simbricks.orchestration.system.disk_images import (
     DynamicDiskImage,
     LinuxConfigDiskImage,
     PackerDiskImage,
+    ConfigFile,
+    ConfigFileLocal,
+    ConfigFileStr,
 )
 
 __all__ += [
@@ -116,6 +119,9 @@ __all__ += [
     "DynamicDiskImage",
     "LinuxConfigDiskImage",
     "PackerDiskImage",
+    "ConfigFile",
+    "ConfigFileLocal",
+    "ConfigFileStr",
 ]
 
 from simbricks.orchestration.system.host import (
