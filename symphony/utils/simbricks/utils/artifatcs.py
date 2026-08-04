@@ -70,6 +70,7 @@ def create_artifact(
     base_path: pathlib.Path = pathlib.Path("./"),
     check_relative: bool = False,
     recursive: bool = True,
+    flat: bool = False,
 ) -> None:
     if len(paths_to_include) < 1:
         return
@@ -81,7 +82,11 @@ def create_artifact(
             path = pathlib.Path(base_path, path_str).resolve()
             if check_relative and not path.is_relative_to(base_path):
                 raise RuntimeError("output artifact path must be relative to work directory")
-            _add_to_zip(zip_file, path, base_path, check_relative, recursive)
+            if flat:
+                base_zip = path.parent
+            else:
+                base_zip = base_path
+            _add_to_zip(zip_file, path, base_zip, check_relative or flat, recursive)
 
 
 def unpack_artifact(file: str | tp.IO[bytes], dest_path: str) -> None:
