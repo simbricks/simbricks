@@ -171,8 +171,7 @@ async def submit_instantiation(
 
     if instantiation.input_artifact_paths:
         utils_artifacts.create_artifact(
-            instantiation.input_artifact_name, instantiation.input_artifact_paths
-        )
+            instantiation.input_artifact_name, instantiation.input_artifact_paths, flat=True)
         await simbricks_client.set_inst_input_artifact(inst.id, instantiation.input_artifact_name)
 
     fragment_id_map: dict[int, int] = {}
@@ -181,7 +180,9 @@ async def submit_instantiation(
     for fragment in instantiation.fragments:
         if not fragment.input_artifact_paths:
             continue
-        utils_artifacts.create_artifact(fragment.input_artifact_name, fragment.input_artifact_paths)
+        utils_artifacts.create_artifact(
+            fragment.input_artifact_name, fragment.input_artifact_paths, flat=True
+        )
         await simbricks_client.set_fragment_input_artifact(
             inst.id, fragment_id_map[fragment.id()], fragment.input_artifact_name
         )
