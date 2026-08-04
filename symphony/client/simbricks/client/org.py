@@ -21,7 +21,11 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-from .base import base_client, validate_response_model
+from .base import (
+    base_client,
+    validate_response_model,
+    validate_no_response_model,
+)
 from .auth import Token
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.org import (
     org_invite_member,
@@ -53,12 +57,14 @@ class OrgClient:
     async def invite_member(self, org: str, email: str, first_name: str, last_name: str):
         invite = OrgMember(email, first_name, last_name)
         async with base_client() as client:
-            await org_invite_member.asyncio(org, client=client, body=invite)
+            response = await org_invite_member.asyncio(org, client=client, body=invite)
+            validate_no_response_model(response)
 
     async def create_guest(self, org: str, email: str, first_name: str, last_name: str):
         member = OrgMember(email, first_name, last_name)
         async with base_client() as client:
-            await org_guest_create.asyncio(org, client=client, body=member)
+            response = await org_guest_create.asyncio(org, client=client, body=member)
+            validate_no_response_model(response)
 
     async def guest_token(self, org: str, email: str) -> Token:
         guest_cred = OrgGuestCred(email)

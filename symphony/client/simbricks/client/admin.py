@@ -21,7 +21,11 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-from .base import base_client, validate_response_model
+from .base import (
+    base_client,
+    validate_response_model,
+    validate_no_response_model,
+)
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.admin import (
     admin_namespaces_create,
     admin_namespaces_get_name,
@@ -70,11 +74,13 @@ class AdminClient:
 
     async def delete(self, ns_id: str) -> None:
         async with base_client() as client:
-            await admin_namespaces_delete.asyncio(ns_id, client=client)
+            response = await admin_namespaces_delete.asyncio(ns_id, client=client)
+            validate_no_response_model(response)
 
     async def schedule_ns(self, ns_id: str) -> None:
         async with base_client() as client:
-            await admin_namespaces_schedule.asyncio(ns_id, client=client)
+            response = await admin_namespaces_schedule.asyncio(ns_id, client=client)
+            validate_no_response_model(response)
 
 
 async def admin_client() -> AdminClient:
