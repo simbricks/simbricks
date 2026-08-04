@@ -312,7 +312,7 @@ class ConfigFile(utils_base.IdObj):
 
 class ConfigFileLocal(ConfigFile):
 
-    def __init__(self, file_name: str, path: str, from_artifact: bool):
+    def __init__(self, file_name: str, path: str):
         super().__init__(file_name)
         # Path of the local file to be added to the image
         self.path: str = path
