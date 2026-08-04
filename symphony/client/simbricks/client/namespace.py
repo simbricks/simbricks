@@ -24,7 +24,12 @@ import json
 import typing
 from datetime import datetime
 from pathlib import Path
-from .base import base_client, validate_response_model
+from .base import (
+    base_client,
+    validate_response_model,
+    validate_no_response_model,
+    check_response_error,
+)
 from .settings import client_settings
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.user import (
     user_default_membership,
@@ -142,7 +147,6 @@ from simbricks.orchestration.system import System as OrchSystem
 from simbricks.orchestration.simulation import Simulation as OrchSimulation
 from simbricks.orchestration.instantiation import Instantiation as OrchInstantiation
 
-
 EventFromRunner_U = (
     RunnerStarted
     | RunnerHeartbeat
@@ -198,7 +202,8 @@ class NSClient:
     async def delete_ns(self, ns_name: str) -> None:
         async with base_client(self.base_url) as client:
             to_delete = self.__build_ns_path(self.namespace_path, ns_name)
-            await namespaces_delete.asyncio(to_delete, client=client)
+            response = await namespaces_delete.asyncio(to_delete, client=client)
+            validate_no_response_model(response)
 
     async def get_ns_by_name(self, ns_name: str) -> Namespace | None:
         async with base_client(self.base_url) as client:
@@ -262,7 +267,8 @@ class NSClient:
 
     async def delete_member(self, username: str) -> None:
         async with base_client(self.base_url) as client:
-            await members_delete.asyncio(self.namespace_path, username, client=client)
+            response = await members_delete.asyncio(self.namespace_path, username, client=client)
+            validate_no_response_model(response)
 
 
 class SimBricksClient:
@@ -286,7 +292,8 @@ class SimBricksClient:
 
     async def delete_system(self, sys_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            await systems_delete.asyncio(self._ns_client.namespace_path, sys_id, client=client)
+            response = await systems_delete.asyncio(self._ns_client.namespace_path, sys_id, client=client)
+            validate_no_response_model(response)
 
     async def get_systems(self) -> SystemsList200Response:
         async with base_client(self._ns_client.base_url) as client:
@@ -317,7 +324,8 @@ class SimBricksClient:
 
     async def delete_simulation(self, sim_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            await simulations_delete.asyncio(self._ns_client.namespace_path, sim_id, client=client)
+            response = await simulations_delete.asyncio(self._ns_client.namespace_path, sim_id, client=client)
+            validate_no_response_model(response)
 
     async def get_simulation(self, sim_id: str) -> ApiSimulation | None:
         async with base_client(self._ns_client.base_url) as client:
@@ -362,9 +370,10 @@ class SimBricksClient:
 
     async def delete_instantiation(self, inst_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            await instantiations_delete.asyncio(
+            response = await instantiations_delete.asyncio(
                 self._ns_client.namespace_path, inst_id, client=client
             )
+            validate_no_response_model(response)
 
     async def get_instantiation(self, inst_id: str) -> ApiInstantiation | None:
         async with base_client(self._ns_client.base_url) as client:
@@ -395,7 +404,8 @@ class SimBricksClient:
 
     async def delete_run(self, rid: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            await runs_delete.asyncio(self._ns_client.namespace_path, rid, client=client)
+            response = await runs_delete.asyncio(self._ns_client.namespace_path, rid, client=client)
+            validate_no_response_model(response)
 
     async def update_run(
         self,
@@ -446,18 +456,20 @@ class SimBricksClient:
             artifact = BodyInstantiationsInputArtifactSet(file=artifact_file)
 
             async with base_client(self._ns_client.base_url) as client:
-                await instantiations_input_artifact_set.asyncio(
+                response = await instantiations_input_artifact_set.asyncio(
                     self._ns_client.namespace_path,
                     inst_id,
                     client=client,
                     body=artifact,
                 )
+                validate_no_response_model(response)
 
     async def get_inst_input_artifact(self, inst_id: str, store_path: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
             response = await instantiations_input_artifact_get.asyncio_detailed(
                 self._ns_client.namespace_path, inst_id, client=client
             )
+            check_response_error(response.parsed)
             with open(store_path, "wb") as fd:
                 fd.write(response.content)
 
@@ -466,6 +478,7 @@ class SimBricksClient:
             response = await instantiations_input_artifact_get.asyncio_detailed(
                 self._ns_client.namespace_path, inst_id, client=client
             )
+            check_response_error(response.parsed)
             return response.content
 
     async def set_fragment_input_artifact(
@@ -481,6 +494,7 @@ class SimBricksClient:
                 resp = await instantiations_fragment_input_artifact_set.asyncio(
                     self._ns_client.namespace_path, inst_id, frag_id, client=client, body=artifact
                 )
+                validate_no_response_model(resp)
 
     async def get_fragment_input_artifact(
         self, inst_id: str, frag_id: str, store_path: str
@@ -489,6 +503,7 @@ class SimBricksClient:
             response = await instantiations_fragment_input_artifact_get.asyncio_detailed(
                 self._ns_client.namespace_path, inst_id, frag_id, client=client
             )
+            check_response_error(response.parsed)
             with open(store_path, "wb") as fd:
                 fd.write(response.content)
 
@@ -497,6 +512,7 @@ class SimBricksClient:
             response = await instantiations_fragment_input_artifact_get.asyncio_detailed(
                 self._ns_client.namespace_path, inst_id, frag_id, client=client
             )
+            check_response_error(response.parsed)
             return response.content
 
     async def set_run_fragment_output_artifact(
@@ -510,13 +526,14 @@ class SimBricksClient:
             artifact = BodyRunsFragmentsOutputArtifactSet(file=artifact_file)
 
             async with base_client(self._ns_client.base_url) as client:
-                await runs_fragments_output_artifact_set.asyncio(
+                response = await runs_fragments_output_artifact_set.asyncio(
                     self._ns_client.namespace_path,
                     run_id,
                     run_frag_id,
                     client=client,
                     body=artifact,
                 )
+                validate_no_response_model(response)
 
     async def set_run_fragment_output_artifact_raw(
         self, run_id: str, run_frag_id: int, uploaded_data: typing.IO[bytes]
@@ -525,13 +542,14 @@ class SimBricksClient:
         file = File(payload=uploaded_data)
 
         async with base_client(self._ns_client.base_url) as client:
-            await runs_fragments_output_artifact_set.asyncio(
+            response = await runs_fragments_output_artifact_set.asyncio(
                 self._ns_client.namespace_path,
                 run_id,
                 run_frag_id,
                 client=client,
                 body=BodyRunsFragmentsOutputArtifactSet(file=file),
             )
+            validate_no_response_model(response)
 
     async def get_run_fragment_output_artifact(
         self, run_id: str, frag_id: str, store_path: str
@@ -540,6 +558,7 @@ class SimBricksClient:
             response = await runs_fragments_output_artifact_get.asyncio_detailed(
                 self._ns_client.namespace_path, run_id, frag_id, client=client
             )
+            check_response_error(response.parsed)
             with open(store_path, "wb") as fd:
                 fd.write(response.content)
 
@@ -643,7 +662,10 @@ class ResourceGroupClient:
 
     async def delete_rg(self, rg_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            await resource_groups_delete.asyncio(self._ns_client.namespace_path, rg_id, client=client)
+            response = await resource_groups_delete.asyncio(
+                self._ns_client.namespace_path, rg_id, client=client
+            )
+            validate_no_response_model(response)
 
 
 class RunnerClient:
@@ -672,9 +694,10 @@ class RunnerClient:
 
     async def delete_runner(self) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            await runners_delete.asyncio(
+            response = await runners_delete.asyncio(
                 self._ns_client.namespace_path, self.runner_id, client=client
             )
+            validate_no_response_model(response)
 
     async def get_runner(self) -> Runner | None:
         async with base_client(self._ns_client.base_url) as client:
@@ -737,12 +760,13 @@ class RunnerClient:
 
     async def delete_retrieved_events_until_event(self, event_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            await runners_to_events_delete.asyncio(
+            response = await runners_to_events_delete.asyncio(
                 self._ns_client.namespace_path,
                 self.runner_id,
                 event_id,
                 client=client,
             )
+            validate_no_response_model(response)
 
 
 async def resolve_default_ns(base_url: str) -> str:

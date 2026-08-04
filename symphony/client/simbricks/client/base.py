@@ -23,10 +23,12 @@
 import httpx
 import typing
 import contextlib
+from http import HTTPStatus
 from typing import TypeVar
 from .settings import client_settings
 from .auth import simbricks_httpx_auth
 from simbricks.client.openapi.client.python.sim_bricks_api_client.client import AuthenticatedClient
+from simbricks.client.openapi.client.python.sim_bricks_api_client.types import Response
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     HTTPValidationError,
     InlineObject,
@@ -46,19 +48,46 @@ def non_close_file(handle: typing.IO):
 T = TypeVar("T")
 
 
-def validate_response_model(response_model: object, expected_type: type[T]) -> T | None:
-    if response_model is None:
-        return None
+def _raise_unexpected(response_model: object):
+    raise RuntimeError(f"encountered unexpected repsonse model: {response_model}")
 
+
+def check_response_error(response_model: object) -> None:
+    """Raise for the server's known error response models.
+
+    Shared by :func:`validate_response_model` and :func:`validate_no_response_model`.
+    """
     match response_model:
-        case expected_type():
-            return response_model
         case HTTPValidationError():
-            raise Exception(f"encountered http validation error: {response_model.detail}")
+            raise RuntimeError(f"encountered http validation error: {response_model.detail}")
         case InlineObject():
-            raise Exception(f"encountered error: {response_model.detail}")
-        case _:
-            raise Exception(f"encountered unexpected repsonse model: {response_model}")
+            raise RuntimeError(f"encountered error: {response_model.detail}")
+
+
+def validate_response_model(response_model: object, expected_type: type[T]) -> T | None:
+    """Validate a response expected to carry a model of ``expected_type``.
+
+    Returns the model on success and raises if the server returned an error model
+    or anything unexpected.
+    """
+    if isinstance(response_model, expected_type):
+        return response_model
+
+    check_response_error(response_model)
+    _raise_unexpected(response_model)
+
+
+def validate_no_response_model(response_model: object | None) -> None:
+    """Validate a response expected to carry no content (``None``).
+
+    Use for endpoints whose success case returns ``None`` (e.g. uploads/setters).
+    Raises if the server returned an error model, or any other unexpected content.
+    """
+    if response_model is None:
+        return
+
+    check_response_error(response_model)
+    _raise_unexpected(response_model)
 
 
 @contextlib.asynccontextmanager
