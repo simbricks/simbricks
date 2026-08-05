@@ -21,8 +21,8 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from simbricks.orchestration.instantiation.base import (
-    InstantiationEnvironment,
     Instantiation,
+    InstantiationEnvironment,
 )
 
 __all__ = [
@@ -35,11 +35,11 @@ from simbricks.orchestration.instantiation.fragment import Fragment
 __all__ += ["Fragment"]
 
 from simbricks.orchestration.instantiation.proxy import (
-    Proxy,
     DummyProxy,
-    TCPProxy,
-    RDMAProxy,
+    Proxy,
     ProxyPair,
+    RDMAProxy,
+    TCPProxy,
 )
 
 __all__ += [

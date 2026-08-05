@@ -1,49 +1,47 @@
 from __future__ import annotations
 
-import abc
 import asyncio
 import base64
 import itertools
-import io
 import json
 import logging
 import traceback
 import typing as tp
+
 import yaml
 
 from simbricks import client
+from simbricks.client.namespace import EventFromRunner_U, EventToRunner_U
+from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
+    Fragment,
+    FragmentOutputArtifact,
+    FragmentStateChange,
+    # events to runner
+    KillRunReq,
+    PaginationLinks,
+    ProxyChangedState,
+    ProxyOutput,
+    ProxyStateChange,
+    RunnerHeartbeat,
+    RunnerHeartbeatReq,
+    # events from runner
+    RunnerStarted,
+    RunnerTag,
+    RunState,
+    RunStatus,
+    SimulationSigusr1,
+    SimulatorChangedState,
+    SimulatorOutput,
+    SimulatorStateChange,
+    StartRunReq,
+)
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
-from simbricks.runner.main_runner import settings
-from simbricks.runner.main_runner.plugins import plugin
-from simbricks.runner.main_runner.plugins import plugin_loader
 from simbricks.runner import utils as runner_utils
+from simbricks.runner.main_runner import settings
+from simbricks.runner.main_runner.plugins import plugin, plugin_loader
 from simbricks.telemetry.base import setup_telemetry
-from simbricks.client.namespace import EventToRunner_U, EventFromRunner_U
-from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
-    Fragment,
-    RunnerTag,
-    RunState,
-    PaginationLinks,
-    # events to runner
-    KillRunReq,
-    RunnerHeartbeatReq,
-    StartRunReq,
-    SimulationSigusr1,
-    SimulatorChangedState,
-    ProxyChangedState,
-    # events from runner
-    RunnerStarted,
-    RunnerHeartbeat,
-    RunStatus,
-    FragmentStateChange,
-    FragmentOutputArtifact,
-    SimulatorStateChange,
-    SimulatorOutput,
-    ProxyStateChange,
-    ProxyOutput,
-)
 
 
 class MainRun:
@@ -297,7 +295,7 @@ class MainRunner:
                     case RunnerHeartbeatReq():
                         heartbeat = RunnerHeartbeat()
                         await self._rc.submit_event(heartbeat)
-                        LOGGER.debug(f"heartbeat sent")
+                        LOGGER.debug("heartbeat sent")
 
                     case StartRunReq():
                         if event.run_id in self._run_map:

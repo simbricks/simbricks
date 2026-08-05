@@ -5,6 +5,7 @@ import typing as tp
 from simbricks.runner.main_runner import settings
 from simbricks.runner.main_runner.plugins import plugin
 
+
 class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
 
     def __init__(self):

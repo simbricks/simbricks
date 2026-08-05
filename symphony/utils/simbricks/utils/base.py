@@ -21,12 +21,13 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import abc
+import enum
+import importlib
 import importlib.util
 import itertools
-import importlib
 import typing as tp
+
 import typing_extensions as tpe
-import enum
 
 
 class IdObj(abc.ABC):
@@ -110,7 +111,7 @@ def get_json_attr_top_or_none(json_obj: dict, attr: str) -> tp.Any | None:
 
 
 def has_json_attr_top(json_obj: dict, attr: str) -> None:
-    if not attr in json_obj:
+    if attr not in json_obj:
         raise Exception(f"{json_obj} does not contain key {attr}")
 
 

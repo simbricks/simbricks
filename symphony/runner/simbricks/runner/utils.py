@@ -1,6 +1,6 @@
 import json
-from typing import get_args
 from collections import abc
+from typing import get_args
 
 from simbricks.client.namespace import EventFromRunner_U, EventToRunner_U
 

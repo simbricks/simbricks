@@ -1,8 +1,9 @@
-from typer import Typer, Option
 from typing import Annotated
-from ..utils import async_cli, print_table_generic
-from ..settings import rg_client
 
+from typer import Option, Typer
+
+from ..settings import rg_client
+from ..utils import async_cli, print_table_generic
 
 app = Typer(help="Managing SimBricks resource groups used by runners.")
 

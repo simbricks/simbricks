@@ -21,9 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from simbricks.orchestration.simulation.base import (
-    Simulator,
     DummySimulator,
     Simulation,
+    Simulator,
 )
 
 __all__ = [
@@ -41,8 +41,8 @@ from simbricks.orchestration.simulation.host import HostSim
 __all__ += ["HostSim"]
 
 from simbricks.orchestration.simulation.pcidev import (
-    PCIDevSim,
     NICSim,
+    PCIDevSim,
 )
 
 __all__ += [

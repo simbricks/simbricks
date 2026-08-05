@@ -21,8 +21,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from typer import Typer
-from ..utils import async_cli, print_table_generic, print_members_table
+
 from ..settings import ns_client
+from ..utils import async_cli, print_members_table, print_table_generic
 
 app = Typer(help="Managing SimBricks namespaces.")
 

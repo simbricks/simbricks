@@ -28,20 +28,20 @@ import typing
 
 import rich
 import rich.color
+import rich.console
 import rich.style
 import rich.text
-import rich.console
 
 from simbricks.orchestration import instantiation, simulation, system
 from simbricks.utils import artifatcs as utils_artifacts
 
-from ..namespace import simb_client, SimBricksClient
+from ..namespace import SimBricksClient, simb_client
 from ..openapi.client.python.sim_bricks_api_client.models import (
-    RunState,
     PaginationLinks,
     RunOutput,
     RunOutputProxiesType0,
     RunOutputSimulatorsType0,
+    RunState,
 )
 
 

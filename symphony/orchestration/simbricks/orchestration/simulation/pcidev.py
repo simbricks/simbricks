@@ -24,13 +24,13 @@ from __future__ import annotations
 
 import typing_extensions as tpe
 
-from simbricks.orchestration.system import base as sys_base
-from simbricks.orchestration.system import pcie as sys_pcie
-from simbricks.orchestration.system import eth as sys_eth
-from simbricks.orchestration.system import nic as sys_nic
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.orchestration.simulation import base as sim_base
+from simbricks.orchestration.system import base as sys_base
+from simbricks.orchestration.system import eth as sys_eth
+from simbricks.orchestration.system import nic as sys_nic
+from simbricks.orchestration.system import pcie as sys_pcie
 from simbricks.utils import base as utils_base
 
 

@@ -1,5 +1,6 @@
-from simbricks.orchestration import system
 import re
+
+from simbricks.orchestration import system
 
 """
 Helper functions that are used within the other files in this folder.

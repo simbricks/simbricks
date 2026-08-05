@@ -1,14 +1,16 @@
-import sys, os
+import os
+import sys
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
+from helpers import sys_host_nic
+
 from simbricks.orchestration import simulation as sim
 from simbricks.orchestration import system
 from simbricks.orchestration.helpers import instantiation as inst_helpers
 from simbricks.orchestration.helpers import simulation as sim_helpers
-from helpers import sys_host_nic
 
 """
 Simple example of a simulation: All components are executed in the same fragment.

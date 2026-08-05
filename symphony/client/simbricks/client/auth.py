@@ -21,14 +21,16 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
-import httpx
+import asyncio
 import json
-import aiohttp
-import time
 import os
 import sys
-import asyncio
+import time
+
+import aiohttp
+import httpx
 from requests.auth import AuthBase
+
 from .settings import client_settings
 
 
@@ -284,7 +286,7 @@ class SimBricksRequestsAuth(AuthBase):
     Example:
         the OTEL export batch is sent.
     """
-    
+
     prefix: str = "Bearer"
     auth_header_name: str = "Authorization"
 

@@ -3,6 +3,7 @@ import importlib
 from simbricks.runner.main_runner.plugins import plugin
 from simbricks.utils import load_mod
 
+
 class RunnerPluginLoadError(Exception):
     pass
 
@@ -43,5 +44,5 @@ def load_plugins_from_files(paths: list[str]) -> dict[str, type[plugin.FragmentR
         if name in plugins:
             raise KeyError(f"Plugin {name} already exists")
         plugins[name] = plugin
-    
+
     return plugins

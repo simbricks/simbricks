@@ -21,18 +21,19 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-from .base import base_client, validate_response_model
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.user import (
+    set_user_default_membership,
     user_default_membership,
     user_info,
     user_ns_memberships,
-    set_user_default_membership,
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     MembersList200Response,
     NsMember,
     User,
 )
+
+from .base import base_client, validate_response_model
 
 
 class UserClient:
@@ -51,13 +52,13 @@ class UserClient:
             default_membership = await user_default_membership.asyncio(client=client)
             default_membership = validate_response_model(default_membership, NsMember)
             return default_membership
-        
+
     async def memberships(self) -> MembersList200Response:
         async with base_client() as client:
             memberships = await user_ns_memberships.asyncio(client=client)
             memberships = validate_response_model(memberships, MembersList200Response)
             return memberships
-        
+
     async def set_default_ns_membership(self, ns_path: str) -> NsMember:
         async with base_client() as client:
             default_membership = await set_user_default_membership.asyncio(ns_path, client=client)

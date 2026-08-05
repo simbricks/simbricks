@@ -22,8 +22,10 @@
 
 import asyncio
 import functools
-from rich.table import Table
+
 from rich.console import Console
+from rich.table import Table
+
 from simbricks.client.namespace import NsMember, NsRole
 
 

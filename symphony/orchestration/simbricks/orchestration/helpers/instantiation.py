@@ -20,10 +20,10 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from simbricks.utils import base as utils_base
-from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.instantiation import base as inst
 from simbricks.orchestration.instantiation import fragment as frag
+from simbricks.orchestration.simulation import base as sim_base
+from simbricks.utils import base as utils_base
 
 
 def simple_instantiation(

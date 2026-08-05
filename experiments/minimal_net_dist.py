@@ -8,14 +8,14 @@ allows executing them on separate runners or machines.
 |___________________________| |________________|
 """
 
-from simbricks.orchestration import system
 from simbricks.components.i40e import system as i40e_sys
-from simbricks.orchestration import instantiation as inst
-from simbricks.components.qemu import simulation as qemu_sim
-from simbricks.components.net.simulation import base as net_sim
-from simbricks.orchestration.helpers import simulation as sim_helpers
 from simbricks.components.i40e.simulation import behavioral as i40e_sim
+from simbricks.components.net.simulation import base as net_sim
+from simbricks.components.qemu import simulation as qemu_sim
+from simbricks.orchestration import instantiation as inst
+from simbricks.orchestration import system
 from simbricks.orchestration.helpers import instantiation as inst_helpers
+from simbricks.orchestration.helpers import simulation as sim_helpers
 
 sys = system.System()
 

@@ -1,9 +1,11 @@
 import asyncio
-from matplotlib import pyplot as plt
-from simbricks.client import simb_client
-from simbricks.client.opus.base import create_run, ConsoleLineGenerator
-from loop import instantiations, iperf_rates
+
 from helpers import parse_Iperf_line_bytes
+from loop import instantiations, iperf_rates
+from matplotlib import pyplot as plt
+
+from simbricks.client import simb_client
+from simbricks.client.opus.base import ConsoleLineGenerator, create_run
 
 """
 Simple example of how to use SimBRicks api to start and analyse a simulation programatically.

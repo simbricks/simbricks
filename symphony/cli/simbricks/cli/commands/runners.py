@@ -20,10 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer, Option
+from typer import Option, Typer
 from typing_extensions import Annotated
-from ..utils import async_cli, print_table_generic
+
 from ..settings import runner_client
+from ..utils import async_cli, print_table_generic
 
 app = Typer(help="Managing SimBricks runners.")
 

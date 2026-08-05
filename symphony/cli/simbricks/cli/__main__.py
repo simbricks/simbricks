@@ -20,24 +20,25 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer, Option
+from typer import Option, Typer
 from typing_extensions import Annotated
-from simbricks.cli.settings import cli_settings
+
 from simbricks.cli.commands import (
-    audit,
     admin,
-    org,
-    namespaces,
-    rg,
-    runs,
-    systems,
-    simulations,
+    audit,
     instantiations,
+    namespaces,
+    org,
+    rg,
     runners,
+    runs,
+    simulations,
+    systems,
     user,
 )
-from simbricks.telemetry.base import setup_telemetry
+from simbricks.cli.settings import cli_settings
 from simbricks.cli.utils import async_cli
+from simbricks.telemetry.base import setup_telemetry
 
 app = Typer(pretty_exceptions_show_locals=False)
 app.add_typer(namespaces.app, name="ns")

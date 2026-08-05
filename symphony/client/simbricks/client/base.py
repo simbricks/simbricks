@@ -20,19 +20,20 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import httpx
-import typing
 import contextlib
-from http import HTTPStatus
+import typing
 from typing import TypeVar
-from .settings import client_settings
-from .auth import simbricks_httpx_auth
+
+import httpx
+
 from simbricks.client.openapi.client.python.sim_bricks_api_client.client import AuthenticatedClient
-from simbricks.client.openapi.client.python.sim_bricks_api_client.types import Response
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     HTTPValidationError,
     InlineObject,
 )
+
+from .auth import simbricks_httpx_auth
+from .settings import client_settings
 
 
 @contextlib.contextmanager
