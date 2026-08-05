@@ -1,0 +1,19 @@
+# Ruff configuration for the SimBricks Python packages (symphony/, experiments/, doc/).
+# Replaces the previous pylint + isort + yapf setup; type checking stays separate (pyright).
+target-version = "py310"
+line-length = 100
+extend-exclude = ["symphony/utils/simbricks/utils/graphlib.py"]
+
+[lint]
+# E/W: pycodestyle, F: pyflakes, I: isort (import sorting). Conservative baseline;
+# tighten (e.g. add "UP", "B") once the codebase is clean.
+select = ["E", "F", "I", "W"]
+
+[lint.isort]
+known-first-party = ["simbricks"]
+
+[lint.per-file-ignores]
+# Sphinx conf and the example scripts intentionally set up sys.path / config
+# before their imports, so module-level-import-not-at-top (E402) is expected.
+"doc/conf.py" = ["E402"]
+"experiments/**/*.py" = ["E402"]

@@ -33,12 +33,6 @@ CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu11 $(EXTRA_CFLAG
 CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu++17 $(EXTRA_CXXFLAGS)
 CPPFLAGS += -I$(base_dir)/lib -iquote$(base_dir) $(EXTRA_CPPFLAGS)
 
-VERILATOR = verilator
-VFLAGS = +1364-2005ext+v \
-    -Wno-WIDTH -Wno-PINMISSING -Wno-LITENDIAN -Wno-IMPLICIT -Wno-SELRANGE \
-    -Wno-CASEINCOMPLETE -Wno-UNSIGNED $(EXTRA_VFLAGS)
-
-
 $(eval $(call subdir,conda-recipes))
 $(eval $(call subdir,docker))
 $(eval $(call subdir,lib))
@@ -52,10 +46,6 @@ all: $(ALL_ALL)
 clean:
 	rm -rf $(CLEAN_ALL)
 
-clean-external: $(EXTERNAL_CLEAN_TASKS_ALL)
-
-clean-all: clean clean-external
-
 distclean:
 	rm -rf $(CLEAN_ALL) $(DISTCLEAN_ALL)
 
@@ -63,8 +53,7 @@ lint-cpplint:
 	$(CPPLINT) --quiet --recursive .
 
 lint-clang-tidy:
-	./.clang-tidy-wrapper.sh $(CLANG_TIDY) -I$(base_dir) -I$(base_dir)lib \
-	    -I/usr/share/verilator/include
+	./.clang-tidy-wrapper.sh $(CLANG_TIDY) -I$(base_dir) -I$(base_dir)lib
 
 clang-format:
 	$(CLANG_FORMAT) -i --style=file `cat .lint-files`
@@ -72,32 +61,16 @@ clang-format:
 lint-clang-format:
 	$(CLANG_FORMAT) --Werror --dry-run --style=file `cat .lint-files`
 
-lint-yapf:
-	yapf --recursive --diff \
-		--exclude experiments/simbricks/orchestration/utils/graphlib.py \
-		-- results/ experiments/ doc/
+lint-ruff:
+	ruff check symphony/ experiments/ doc/
+	ruff format --check symphony/ experiments/ doc/
 
-format-yapf:
-	yapf --recursive --in-place \
-		--exclude experiments/simbricks/orchestration/utils/graphlib.py \
-		--exclude experiments/out/ \
-		-- results/ experiments/ doc/
+format-ruff:
+	ruff check --fix symphony/ experiments/ doc/
+	ruff format symphony/ experiments/ doc/
 
-lint-isort:
-	isort --diff \
-		--skip experiments/simbricks/orchestration/utils/graphlib.py \
-		results/ experiments/ doc/
-
-format-isort:
-	isort --skip experiments/simbricks/orchestration/utils/graphlib.py \
-		results/ experiments/ doc/
-
-lint-pylint:
-	pylint -d missing-module-docstring,missing-class-docstring \
-		--ignore-paths experiments/simbricks/orchestration/utils/graphlib.py \
-	  	experiments/ results/
-
-lint-python: lint-pylint
+lint-python: lint-ruff
+format-python: format-ruff
 lint: lint-cpplint lint-clang-format lint-python
 lint-all: lint lint-clang-tidy
 
@@ -105,21 +78,13 @@ help:
 	@echo "Targets:"
 	@echo "  all: builds all the tools directly in this repo"
 	@echo "  clean: cleans all the tool folders in this repo"
-	@echo "  clean-external: cleans all external simulators"
-	@echo "  clean-all: executes both clean and clean-external"
-	@echo "  build-images: prepare prereqs for VMs (images directory)"
-	@echo "  build-images-min: prepare minimal prereqs for VMs"
-	@echo "  documentation: build documentation in doc/build_"
-	@echo "  external: clone and build our tools in external repos "
-	@echo "            (qemu, gem5, ns-3)"
 	@echo "  lint: run quick format and style checks"
 	@echo "  lint-all: run slow & thorough format and style checks"
 	@echo "  clang-format: reformat source (use with caution)"
 
-.PHONY: all clean clean-external clean-all distclean lint lint-all \
+.PHONY: all clean distclean lint lint-all \
 	lint-cpplint lint-clang-tidy lint-clang-format clang-format help \
-	lint-yapf format-yapf lint-isort format-isort lint-pylint \
-	lint-python
+	lint-ruff format-ruff lint-python format-python
 
 include mk/subdir_post.mk
 -include $(DEPS_ALL)

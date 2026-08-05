@@ -20,15 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-[tool.black]
-line-length = 100
-
-[tool.pytype]
-inputs = ["simbricks"]
-python_version = "3.10"
-incremental = true
-pythonpath = "../utils:../runtime:../runner:../orchestration:../local:../client:../cli"
-
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -49,5 +40,6 @@ packages = [
 simbricks-run = "simbricks.local.__main__:main"
 
 [tool.poetry.dependencies]
+python = ">=3.10"
 simbricks-orchestration = ">=0.5.0"
 simbricks-runtime = ">=0.5.0"

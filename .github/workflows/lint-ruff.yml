@@ -1,4 +1,4 @@
-name: pre-commit
+name: lint-ruff
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  pre-commit:
+  lint-ruff:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
@@ -16,4 +16,4 @@ jobs:
         architecture: 'x64'
         cache: pip
     - run: pip install -r requirements.txt
-    - uses: pre-commit/action@v3.0.1
+    - run: make lint-ruff

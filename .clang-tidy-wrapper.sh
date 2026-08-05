@@ -1,5 +1,5 @@
 #!/bin/bash
-IGNORES="sims/nic/i40e_bm/base/*.h /usr/share/verilator/include/*.h"
+IGNORES=""
 
 
 
