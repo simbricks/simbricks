@@ -22,8 +22,9 @@
 
 from __future__ import annotations
 
-import uuid
 import typing as tp
+import uuid
+
 import typing_extensions as tpe
 
 from simbricks.orchestration.system import disk_images

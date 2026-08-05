@@ -1,9 +1,11 @@
-from typer import Typer, Option
 from typing import Annotated
-from simbricks.client import org_client
-from simbricks.cli.settings import cli_settings
-from ..utils import async_cli, print_table_generic
 
+from typer import Option, Typer
+
+from simbricks.cli.settings import cli_settings
+from simbricks.client import org_client
+
+from ..utils import async_cli, print_table_generic
 
 app = Typer(help="Managing SimBricks organizations.")
 

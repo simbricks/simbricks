@@ -23,14 +23,15 @@
 from __future__ import annotations
 
 import abc
+
 import typing_extensions as tpe
 
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
-from simbricks.orchestration.system import host as sys_host
 from simbricks.orchestration.system import disk_images
-from simbricks.orchestration.instantiation import socket as inst_socket
+from simbricks.orchestration.system import host as sys_host
 
 
 class HostSim(sim_base.Simulator):

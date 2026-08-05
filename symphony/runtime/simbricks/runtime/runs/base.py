@@ -23,11 +23,11 @@
 # Allow own class to be used as type for a method's argument
 from __future__ import annotations
 
-import itertools
 import abc
+import itertools
 
-from simbricks.runtime import output
 from simbricks.orchestration.instantiation import base as inst_base
+from simbricks.runtime import output
 
 
 class Run:

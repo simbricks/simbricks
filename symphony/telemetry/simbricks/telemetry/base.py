@@ -1,11 +1,13 @@
-from requests import Session
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from requests import Session
+
 from simbricks.client.auth import simbricks_requests_auth
+
 from .config import TelemetryConfig
 
 
@@ -31,7 +33,7 @@ def setup_telemetry(config: TelemetryConfig) -> None:
         "to True or set the TELEMETRY_DISABLED environment variable to True."
     )
     print("==============================================================")
-    
+
     assert not config.disabled
 
     resource = Resource(attributes={"service.name": config.service_name})

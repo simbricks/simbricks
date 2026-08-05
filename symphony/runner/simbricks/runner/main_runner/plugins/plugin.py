@@ -1,8 +1,8 @@
 import abc
 import typing as tp
 
+from simbricks.client.namespace import EventToRunner_U
 from simbricks.runner import utils
-from simbricks.client.namespace import EventToRunner_U, EventFromRunner_U
 
 
 class FragmentRunnerPlugin(abc.ABC):

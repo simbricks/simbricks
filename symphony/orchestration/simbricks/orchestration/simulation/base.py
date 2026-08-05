@@ -25,16 +25,20 @@ from __future__ import annotations
 import abc
 import asyncio
 import typing as tp
+
 import typing_extensions as tpe
-import simbricks.orchestration.system as sys_conf
+
 import simbricks.orchestration.instantiation.base as inst_base
 import simbricks.orchestration.instantiation.socket as inst_socket
 import simbricks.orchestration.simulation.channel as sim_chan
+import simbricks.orchestration.system as sys_conf
 import simbricks.utils.base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.simulation import (
         Channel,
+    )
+    from simbricks.orchestration.simulation import (
         base as sim_base,
     )
 

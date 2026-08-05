@@ -200,6 +200,7 @@ breathe_projects = {'simbricks': 'doxygen/xml/'}
 breathe_default_project = 'simbricks'
 
 import os
+
 #################################################################################
 # For RTD
 import subprocess

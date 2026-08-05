@@ -21,8 +21,10 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from typer import Typer
+
 from simbricks.client import auth
 from simbricks.client.user import user_client
+
 from ..utils import async_cli, print_table_generic
 
 app = Typer(help="Managing SimBricks User.")

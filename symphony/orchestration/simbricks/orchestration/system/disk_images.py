@@ -23,20 +23,21 @@
 from __future__ import annotations
 
 import abc
+import asyncio
 import io
 import pathlib
 import tarfile
-import asyncio
 import typing as tp
+
 import typing_extensions as tpe
 
 from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
-    from simbricks.orchestration.system.host import base as sys_host
     from simbricks.orchestration.instantiation import base as inst_base
-    from simbricks.orchestration.system import base as sys_base
     from simbricks.orchestration.simulation import host as sim_host
+    from simbricks.orchestration.system import base as sys_base
+    from simbricks.orchestration.system.host import base as sys_host
 
 
 class DiskImage(utils_base.IdObj):

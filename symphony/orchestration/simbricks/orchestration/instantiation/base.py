@@ -24,8 +24,9 @@ from __future__ import annotations
 
 import pathlib
 import typing
-import typing_extensions as tpe
 import uuid
+
+import typing_extensions as tpe
 
 from simbricks.orchestration.helpers import exceptions
 from simbricks.orchestration.instantiation import dependency_graph as inst_dep_graph
@@ -40,10 +41,11 @@ from simbricks.utils import base as utils_base
 from simbricks.utils import file as utils_file
 
 if typing.TYPE_CHECKING:
+    from os import PathLike
+
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.orchestration.system import disk_images
     from simbricks.runtime import command_executor as cmd_exec
-    from os import PathLike
 
 
 class InstantiationEnvironment(utils_base.IdObj):

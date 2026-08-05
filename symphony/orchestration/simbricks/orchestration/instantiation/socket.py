@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import enum
+
 from simbricks.utils import base as utils_base
 from simbricks.utils import file as utils_file
 

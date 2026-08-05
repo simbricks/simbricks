@@ -22,10 +22,7 @@
 
 from __future__ import annotations
 
-
-from simbricks.orchestration.system import base
-from simbricks.orchestration.system import pcie
-from simbricks.orchestration.system import eth
+from simbricks.orchestration.system import base, eth, pcie
 
 
 class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):

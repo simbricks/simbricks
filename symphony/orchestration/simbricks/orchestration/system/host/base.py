@@ -22,10 +22,11 @@
 
 from __future__ import annotations
 
-import typing as tp
-import typing_extensions as tpe
-import io
 import asyncio
+import typing as tp
+
+import typing_extensions as tpe
+
 from simbricks.orchestration.system import base as base
 from simbricks.orchestration.system import disk_images
 from simbricks.orchestration.system import eth as eth

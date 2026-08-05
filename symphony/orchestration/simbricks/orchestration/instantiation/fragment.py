@@ -23,8 +23,9 @@ from __future__ import annotations
 
 import functools
 import typing
-import typing_extensions as tpe
 import uuid
+
+import typing_extensions as tpe
 
 from simbricks.orchestration.instantiation import proxy
 from simbricks.utils import base as utils_base

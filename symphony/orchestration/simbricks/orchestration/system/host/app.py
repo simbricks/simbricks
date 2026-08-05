@@ -22,17 +22,18 @@
 
 from __future__ import annotations
 
-import typing as tp
-import typing_extensions as tpe
 import abc
-import io
-from simbricks.utils import base as utils_base
+import typing as tp
+
+import typing_extensions as tpe
+
 from simbricks.orchestration.system import base as sys_base
+from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
-    from simbricks.orchestration.system import host as sys_host
     from simbricks.orchestration.system import disk_images
+    from simbricks.orchestration.system import host as sys_host
 
 
 class Application(utils_base.IdObj):
@@ -187,7 +188,7 @@ class Sleep(BaseLinuxApplication):
 
     def run_cmds(self, inst: inst_base.Instantiation) -> list[str]:
         if self.infinite:
-            return [f"sleep infinity"]
+            return ["sleep infinity"]
         return [f"sleep {self.delay}"]
 
     def toJSON(self) -> dict:

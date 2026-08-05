@@ -20,9 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer, Option
+from typer import Option, Typer
 from typing_extensions import Annotated
+
 from simbricks.client import admin_client
+
 from ..utils import async_cli, print_table_generic
 
 app = Typer(help="SimBricks admin commands.")
@@ -55,7 +57,7 @@ async def ns_create(
     ac = await admin_client()
     namespace = await ac.create_ns(parent_id, name=name)
     print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
-    
+
 
 @app.command()
 @async_cli()

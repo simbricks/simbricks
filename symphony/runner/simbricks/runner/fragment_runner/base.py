@@ -12,36 +12,35 @@ import traceback
 import typing
 import uuid
 
+from simbricks.client.namespace import (
+    EventFromRunner_U,
+    EventToRunner_U,
+)
+from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
+    Fragment,
+    FragmentOutputArtifact,
+    FragmentStateChange,
+    KillRunReq,
+    # events to runner
+    ProxyChangedState,
+    ProxyOutput,
+    ProxyStateChange,
+    RunComponentState,
+    RunFragment,
+    RunState,
+    SimulationSigusr1,
+    SimulatorChangedState,
+    SimulatorOutput,
+    # events from runner
+    SimulatorStateChange,
+    StartRunReq,
+)
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import utils as runner_utils
 from simbricks.runtime import simulation_executor as sim_exec
-
 from simbricks.utils import artifatcs as utils_art
-from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
-    RunComponentState,
-    RunFragment,
-    RunState,
-    Fragment,
-    # events from runner
-    SimulatorStateChange,
-    SimulatorOutput,
-    ProxyStateChange,
-    ProxyOutput,
-    FragmentStateChange,
-    FragmentOutputArtifact,
-    # events to runner
-    ProxyChangedState,
-    SimulatorChangedState,
-    StartRunReq,
-    SimulationSigusr1,
-    KillRunReq,
-)
-from simbricks.client.namespace import (
-    EventFromRunner_U,
-    EventToRunner_U,
-)
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import proxy as inst_proxy
@@ -349,7 +348,7 @@ class FragmentRunner(abc.ABC):
         fragment_map: dict[str, Fragment] = {}
         for frag in start_event.inst.fragments:
             frag: Fragment = frag
-            assert isinstance(frag, Fragment) and isinstance(frag.id, str) 
+            assert isinstance(frag, Fragment) and isinstance(frag.id, str)
             fragment_map[frag.id] = frag
 
         env = inst_base.InstantiationEnvironment(run_workdir, self._global_input_dir)
@@ -473,7 +472,7 @@ class FragmentRunner(abc.ABC):
                 pass
 
     async def _handle_kill_run(self, event: KillRunReq) -> None:
-        if event.run_id and not event.run_id in self._run_map:
+        if event.run_id and event.run_id not in self._run_map:
             return
 
         run = self._run_map[event.run_id]
@@ -484,7 +483,7 @@ class FragmentRunner(abc.ABC):
         LOGGER.info(f"handled run related event {event.id}")
 
     async def _handle_sigusr1(self, event: SimulationSigusr1) -> None:
-        if not event.run_id or not event.run_id in self._run_map:
+        if not event.run_id or event.run_id not in self._run_map:
             return
 
         run = self._run_map[event.run_id]
@@ -528,7 +527,7 @@ class FragmentRunner(abc.ABC):
             return
 
         run_id = event.run_id
-        if run_id and not run_id in self._run_map:
+        if run_id and run_id not in self._run_map:
             return
 
         run = self._run_map[run_id]
@@ -603,7 +602,7 @@ class FragmentRunner(abc.ABC):
         try:
             await self.connect()
         except Exception:
-            LOGGER.error(f"failed to connect to runner")
+            LOGGER.error("failed to connect to runner")
             raise
 
         workers: list[asyncio.Task] = []

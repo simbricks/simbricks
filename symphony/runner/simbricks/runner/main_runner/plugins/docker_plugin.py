@@ -5,6 +5,7 @@ import typing as tp
 
 from simbricks.runner.main_runner.plugins import plugin
 
+
 class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
 
     def __init__(self):
@@ -65,7 +66,7 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
                 if re.fullmatch(allow_exp, docker_image) is not None:
                     break
             else:
-                raise RuntimeError(f"docker_image is not in allow list")
+                raise RuntimeError("docker_image is not in allow list")
 
         if "docker_image_deny" in config_params:
             deny_list = config_params["docker_image_deny"]
@@ -73,7 +74,7 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
                 raise RuntimeError("invalid format of docker_image_deny list")
             for deny_exp in deny_list:
                 if re.fullmatch(deny_exp, docker_image) is not None:
-                    raise RuntimeError(f"docker_image is in deny list")
+                    raise RuntimeError("docker_image is in deny list")
 
         docker_pull = plugin.get_first_match("docker_pull", config_params, default_params)
         assert isinstance(docker_pull, bool)

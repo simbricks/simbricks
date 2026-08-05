@@ -26,8 +26,8 @@ import logging
 import pathlib
 import sys
 
-from simbricks.runner.fragment_runner.local import settings
 from simbricks.runner.fragment_runner import base as runner_base
+from simbricks.runner.fragment_runner.local import settings
 
 
 class LocalRunner(runner_base.FragmentRunner):
