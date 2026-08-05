@@ -22,14 +22,12 @@ RUN conda install -n base -y conda-build poetry \
  && conda config --system --add channels https://conda.simbricks.io/${CONDA_CHANNEL} \
  && conda clean -a -y
 
-ARG USERNAME=simbricks
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-RUN groupadd --gid $USER_GID $USERNAME \
- && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME --shell /bin/bash \
- && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
- && chmod 0440 /etc/sudoers.d/$USERNAME \
- && chown -R $USERNAME:$USERNAME /opt/conda
+# Reuse the base image's existing unprivileged UID/GID 1000 user ("ubuntu" on
+# Ubuntu 24.04): it matches the host user, so it can write the bind-mounted repo,
+# and needs no creation. Give it ownership of the conda install so it can install
+# packages / run conda build -- no sudo/root for the dev user.
+ARG USERNAME=ubuntu
+RUN chown -R $USERNAME:$USERNAME /opt/conda
 
 USER $USERNAME
 ENV SB_CONDA_CHANNEL=$CONDA_CHANNEL
