@@ -1,0 +1,32 @@
+{
+  "name": "SimBricks Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "CONDA_CHANNEL": "latest"
+    }
+  },
+  // Run Docker containers inside the devcontainer (nested daemon).
+  // "features": {
+  //   "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  // },
+  "remoteUser": "simbricks",
+  "runArgs": [
+    // required for the nested Docker daemon (docker-in-docker)
+    // "--privileged",
+    "--device=/dev/kvm"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-vscode.cpptools",
+        "ms-vscode.makefile-tools"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/conda/bin/python"
+      }
+    }
+  }
+}
