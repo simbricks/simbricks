@@ -35,15 +35,8 @@ else
 REPO_OPTION := -r $(SYMPHONY_PUBLICATION_REPO)
 endif
 
-TYPECHECK_JOBS := 2
-
-typecheck-%:
-	pytype --keep-going --config=$(SYMPHONY_DIR)$*/pyproject.toml --jobs $(TYPECHECK_JOBS)
-
 symphony-typecheck:
-	for mod in $(SYMPHONY_MODS); do \
-		(pytype --keep-going --config=$(SYMPHONY_DIR)$$mod/pyproject.toml --jobs $(TYPECHECK_JOBS)); \
-	done
+	pyright
 
 symphony-dev:
 	pip install -r $(base_dir)requirements.txt
@@ -70,7 +63,7 @@ TO_CLEAN := $(addsuffix /dist, $(addprefix $(SYMPHONY_DIR), $(SYMPHONY_MODS)))
 symphony-clean:
 	rm -rf $(TO_CLEAN)
 
-.PHONY: symphony-dev symphony-build symphony-publish symphony-clean symphony-typecheck typecheck-%
+.PHONY: symphony-dev symphony-build symphony-publish symphony-clean symphony-typecheck
 
 CLEAN := $(TO_CLEAN)
 include mk/subdir_post.mk
