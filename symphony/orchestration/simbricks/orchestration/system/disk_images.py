@@ -77,7 +77,8 @@ class DiskImage(utils_base.IdObj):
 
     async def prepare(self, inst: inst_base.Instantiation, host: sys_host.Host) -> None:
         sim = inst.find_sim_by_spec(host)
-        format = self.find_format(sim) # pytype: disable=wrong-arg-types
+        assert isinstance(sim, sim_host.HostSim)
+        format = self.find_format(sim)
 
         await self._prepare_format(inst, format)
 

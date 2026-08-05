@@ -168,7 +168,7 @@ class Instantiation(utils_base.IdObj):
         self._assigned_fragment: inst_fragment.Fragment | None = None
         """The fragment that is actually executed. This is set by the runner and can also be a
         merged fragment."""
-        self.env: InstantiationEnvironment | None = None
+        self._env: InstantiationEnvironment | None = None
         self.input_artifact_name: str = f"input-artifact-{str(uuid.uuid4())}.zip"
         self.input_artifact_paths: list[str] = []
         self._create_checkpoint: bool = False
@@ -189,6 +189,16 @@ class Instantiation(utils_base.IdObj):
         if self._cmd_executor is None:
             raise RuntimeError(f"{type(self).__name__}._cmd_executor should be set")
         return self._cmd_executor
+
+    @property
+    def env(self) -> InstantiationEnvironment:
+        if self._env is None:
+            raise RuntimeError(f"{type(self).__name__}._env should be set")
+        return self._env
+
+    @env.setter
+    def env(self, new_val: InstantiationEnvironment | None) -> None:
+        self._env = new_val
 
     @property
     def fragments(self) -> list[inst_fragment.Fragment]:
