@@ -10,7 +10,7 @@
   // "features": {
   //   "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   // },
-  "remoteUser": "simbricks",
+  "remoteUser": "ubuntu",
   "runArgs": [
     // required for the nested Docker daemon (docker-in-docker)
     // "--privileged",
