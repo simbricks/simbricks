@@ -31,12 +31,14 @@ class CliSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="",
         env_nested_delimiter="_",
+        env_file="simbricks-cli.env",
+        env_file_encoding="utf-8",
     )
 
 
 @lru_cache
 def cli_settings() -> CliSettings:
-    return CliSettings(_env_file="simbricks-cli.env", _env_file_encoding="utf-8")
+    return CliSettings()
 
 
 async def ns_client() -> NSClient:

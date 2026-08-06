@@ -34,6 +34,8 @@ import simbricks.orchestration.simulation.channel as sim_chan
 import simbricks.orchestration.system as sys_conf
 import simbricks.utils.base as utils_base
 
+T = tp.TypeVar("T")
+
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.simulation import (
         Channel,
@@ -67,21 +69,19 @@ class Simulator(utils_base.IdObj):
         self._extra_args: str | None = None
         simulation.add_sim(self)
 
-    T = tp.TypeVar("T")
-
     def filter_components_by_pred(
         self,
         pred: tp.Callable[[sys_conf.Component], bool],
         ty: type[T] = sys_conf.Component,
     ) -> list[T]:
-        return list(filter(pred, self._components))
+        return tp.cast(list[T], list(filter(pred, self._components)))
 
     def filter_components_by_type(self, ty: type[T]) -> list[T]:
         return self.filter_components_by_pred(pred=lambda comp: isinstance(comp, ty), ty=ty)
 
     @property
     def extra_args(self) -> str:
-        return self._extra_args
+        return self._extra_args or ""
 
     @extra_args.setter
     def extra_args(self, extra_args: str):
@@ -192,7 +192,7 @@ class Simulator(utils_base.IdObj):
         latency: int | None = None,
         sync_period: int | None = None,
     ) -> str:
-        if not channel and (sync == None or latency == None or sync_period == None):
+        if not channel and (sync is None or latency is None or sync_period is None):
             raise ValueError(
                 "Cannot generate parameters url if channel and at least one of sync, "
                 "latency, sync_period are None"
@@ -223,11 +223,18 @@ class Simulator(utils_base.IdObj):
         inst: inst_base.Instantiation,
         intf: sys_conf.Interface,
     ) -> str:
-            socket = inst.get_socket(interface=intf)
-            chan = self._get_channel(intf.channel)
-            return self.get_parameters_url(
-                inst, socket, sync=chan._synchronized, latency=intf.channel.latency, sync_period=chan.sync_period
-            )
+        socket = inst.get_socket(interface=intf)
+        assert socket is not None
+        assert intf.channel is not None
+        chan = self._get_channel(intf.channel)
+        assert chan is not None
+        return self.get_parameters_url(
+            inst,
+            socket,
+            sync=chan._synchronized,
+            latency=intf.channel.latency,
+            sync_period=chan.sync_period,
+        )
 
     def components(self) -> set[sys_conf.Component]:
         return self._components
@@ -305,9 +312,10 @@ class Simulator(utils_base.IdObj):
         return channels
 
     @staticmethod
-    def filter_channels_by_sys_type(channels: list[sim_chan.Channel], ty: type[T]) -> list[T]:
-        filtered = list(filter(lambda chan: isinstance(chan.sys_channel, ty), channels))
-        return filtered
+    def filter_channels_by_sys_type(
+        channels: list[sim_chan.Channel], ty: type
+    ) -> list[sim_chan.Channel]:
+        return list(filter(lambda chan: isinstance(chan.sys_channel, ty), channels))
 
     # pylint: disable=unused-argument
     @abc.abstractmethod
@@ -350,7 +358,6 @@ class Simulator(utils_base.IdObj):
 
 
 class DummySimulator(Simulator):
-
     def __init__(
         self,
         simulation: sim_base.Simulation,
@@ -428,10 +435,10 @@ class Simulation(utils_base.IdObj):
         chan_json = []
         for (
             sys_chan,
-            sim_chan,
+            sim_channel,
         ) in self._chan_map.items():
-            utils_base.has_attribute(sim_chan, "toJSON")
-            chan_json = sim_chan.toJSON()
+            utils_base.has_attribute(sim_channel, "toJSON")
+            chan_json = sim_channel.toJSON()
             chan_map_json.append([sys_chan.id(), chan_json])
             # chan_json.append(sim_chan.toJSON())
 
@@ -443,7 +450,9 @@ class Simulation(utils_base.IdObj):
         return json_obj
 
     @classmethod
-    def fromJSON(cls, system: sys_conf.System, json_obj: dict, enforce_dummies: bool = False) -> tpe.Self:
+    def fromJSON(
+        cls, system: sys_conf.System, json_obj: dict, enforce_dummies: bool = False
+    ) -> tpe.Self:
         """
         Deserializes a Simulation.
 

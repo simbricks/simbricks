@@ -32,7 +32,6 @@ class SockType(enum.Enum):
 
 
 class Socket(utils_base.IdObj):
-
     def __init__(self, path: str = "", ty: SockType = SockType.LISTEN):
         super().__init__()
         self._path = path

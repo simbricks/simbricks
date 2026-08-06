@@ -1,62 +1,94 @@
 """Definition of external links that can be used in Sphinx as :<key>:`%s`"""
 
 extlinks = {
-    'simbricks-repo-plain': ('https://github.com/simbricks/simbricks%s', None),
-    'simbricks-repo': ('https://github.com/simbricks/simbricks%s', 'README%s'),
-    'simbricks-examples':
-        ('https://github.com/simbricks/simbricks-examples%s', None),
-    'simbricks-paper': ('https://arxiv.org/abs/2012.14219%s', 'paper%s'),
+    "simbricks-repo-plain": ("https://github.com/simbricks/simbricks%s", None),
+    "simbricks-repo": ("https://github.com/simbricks/simbricks%s", "README%s"),
+    "simbricks-examples": ("https://github.com/simbricks/simbricks-examples%s", None),
+    "simbricks-paper": ("https://arxiv.org/abs/2012.14219%s", "paper%s"),
     # SimBricks component repositories
-    'component-qemu': ('https://github.com/simbricks/component-qemu%s', 'component-qemu%s'),
-    'component-gem5': ('https://github.com/simbricks/component-gem5%s', 'component-gem5%s'),
-    'component-ns3': ('https://github.com/simbricks/component-ns3%s', 'component-ns3%s'),
-    'component-net-base':
-        ('https://github.com/simbricks/component-net-base%s', 'component-net-base%s'),
-    'component-mem-base':
-        ('https://github.com/simbricks/component-mem-base%s', 'component-mem-base%s'),
-    'component-i40e': ('https://github.com/simbricks/component-i40e%s', 'component-i40e%s'),
-    'component-e1000': ('https://github.com/simbricks/component-e1000%s', 'component-e1000%s'),
-    'component-corundum':
-        ('https://github.com/simbricks/component-corundum%s', 'component-corundum%s'),
-    'component-femu': ('https://github.com/simbricks/component-femu%s', 'component-femu%s'),
-    'image-builder': ('https://github.com/simbricks/image-builder%s', 'image-builder%s'),
-    'ci-workflows': ('https://github.com/simbricks/ci-workflows%s', 'ci-workflows%s'),
-    'conda-channel': ('https://conda.simbricks.io/%s', 'conda.simbricks.io/%s'),
+    "component-qemu": ("https://github.com/simbricks/component-qemu%s", "component-qemu%s"),
+    "component-gem5": ("https://github.com/simbricks/component-gem5%s", "component-gem5%s"),
+    "component-ns3": ("https://github.com/simbricks/component-ns3%s", "component-ns3%s"),
+    "component-net-base": (
+        "https://github.com/simbricks/component-net-base%s",
+        "component-net-base%s",
+    ),
+    "component-mem-base": (
+        "https://github.com/simbricks/component-mem-base%s",
+        "component-mem-base%s",
+    ),
+    "component-i40e": ("https://github.com/simbricks/component-i40e%s", "component-i40e%s"),
+    "component-e1000": ("https://github.com/simbricks/component-e1000%s", "component-e1000%s"),
+    "component-corundum": (
+        "https://github.com/simbricks/component-corundum%s",
+        "component-corundum%s",
+    ),
+    "component-femu": ("https://github.com/simbricks/component-femu%s", "component-femu%s"),
+    "image-builder": ("https://github.com/simbricks/image-builder%s", "image-builder%s"),
+    "ci-workflows": ("https://github.com/simbricks/ci-workflows%s", "ci-workflows%s"),
+    "conda-channel": ("https://conda.simbricks.io/%s", "conda.simbricks.io/%s"),
     # SimBricks simulator forks carrying the adapters
-    'gem5-fork': ('https://github.com/simbricks/gem5%s', None),
-    'qemu-fork': ('https://github.com/simbricks/qemu%s', None),
-    'ns3-fork': ('https://github.com/simbricks/ns-3%s', None),
-    'femu-fork': ('https://github.com/simbricks/femu%s', None),
-    'gem5-adapter': ('https://github.com/simbricks/gem5/blob/2c500a6a7527a1305e1a8e03f53ea11e90b71b73/src/simbricks/base.hh%s', 'gem5 Adapter%s'),
-    'corundum-verilator-adapter': ('https://github.com/simbricks/component-corundum/blob/main/adapter/corundum_simbricks_adapter.cpp%s', 'Corundum Verilator Adapter%s'),
-    'jped-decoder-adapter': ('https://github.com/simbricks/simbricks-examples/blob/main/hwaccel-jpeg-decoder/jpeg_decoder_verilator.cc%s', 'JPEG Decoder Verilator Adapter%s'),
-    'ns3-adapter': ('https://github.com/simbricks/ns-3/blob/1ce6dca3b68da284eb0ce4a47f7790d0a0e745d8/src/simbricks/model/simbricks-base.cc%s', 'ns3 Adapter%s'),
+    "gem5-fork": ("https://github.com/simbricks/gem5%s", None),
+    "qemu-fork": ("https://github.com/simbricks/qemu%s", None),
+    "ns3-fork": ("https://github.com/simbricks/ns-3%s", None),
+    "femu-fork": ("https://github.com/simbricks/femu%s", None),
+    "gem5-adapter": (
+        "https://github.com/simbricks/gem5/blob/2c500a6a7527a1305e1a8e03f53ea11e90b71b73/src/simbricks/base.hh%s",
+        "gem5 Adapter%s",
+    ),
+    "corundum-verilator-adapter": (
+        "https://github.com/simbricks/component-corundum/blob/main/adapter/corundum_simbricks_adapter.cpp%s",
+        "Corundum Verilator Adapter%s",
+    ),
+    "jped-decoder-adapter": (
+        "https://github.com/simbricks/simbricks-examples/blob/main/hwaccel-jpeg-decoder/jpeg_decoder_verilator.cc%s",
+        "JPEG Decoder Verilator Adapter%s",
+    ),
+    "ns3-adapter": (
+        "https://github.com/simbricks/ns-3/blob/1ce6dca3b68da284eb0ce4a47f7790d0a0e745d8/src/simbricks/model/simbricks-base.cc%s",
+        "ns3 Adapter%s",
+    ),
     # External simulator / tool homepages
-    'verilator': ('https://www.veripool.org/verilator%s', 'Verilator%s'),
-    'corundum': ('https://github.com/corundum/corundum%s', 'Corundum NIC%s'),
-    'qemu': ('https://www.qemu.org%s', 'QEMU%s'),
-    'gem5': ('https://www.gem5.org%s', 'gem5%s'),
-    'simics': ('https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html%s', 'Simics%s'),
-    'ns3': ('https://www.nsnam.org%s', 'ns-3%s'),
-    'omnet': ('https://inet.omnetpp.org%s', 'OMNeT++ INET%s'),
-    'tofino': ('https://www.intel.com/content/www/us/en/products/network-io/programmable-ethernet-switch/p4-suite/p4-studio.html%s', 'Intel Tofino SDK Simulator%s'),
-    'femu': ('https://github.com/ucare-uchicago/FEMU%s', 'FEMU%s'),
-    'packer': ('https://developer.hashicorp.com/packer%s', 'Packer%s'),
-    'micromamba': ('https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html%s', 'micromamba%s'),
-    'slack': (
-        'https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA%s',
-        None
+    "verilator": ("https://www.veripool.org/verilator%s", "Verilator%s"),
+    "corundum": ("https://github.com/corundum/corundum%s", "Corundum NIC%s"),
+    "qemu": ("https://www.qemu.org%s", "QEMU%s"),
+    "gem5": ("https://www.gem5.org%s", "gem5%s"),
+    "simics": (
+        "https://www.intel.com/content/www/us/en/developer/articles/tool/simics-simulator.html%s",
+        "Simics%s",
     ),
-    'mod-orchestration': (
-        'https://github.com/simbricks/simbricks/blob/main/symphony/orchestration/simbricks/orchestration/%s',
-        'orchestration/%s'
+    "ns3": ("https://www.nsnam.org%s", "ns-3%s"),
+    "omnet": ("https://inet.omnetpp.org%s", "OMNeT++ INET%s"),
+    "tofino": (
+        "https://www.intel.com/content/www/us/en/products/network-io/programmable-ethernet-switch/p4-suite/p4-studio.html%s",
+        "Intel Tofino SDK Simulator%s",
     ),
-    'lib-simbricks': (
-        'https://github.com/simbricks/simbricks/blob/main/lib/simbricks/%s',
-        'lib/simbricks/%s'
+    "femu": ("https://github.com/ucare-uchicago/FEMU%s", "FEMU%s"),
+    "packer": ("https://developer.hashicorp.com/packer%s", "Packer%s"),
+    "micromamba": (
+        "https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html%s",
+        "micromamba%s",
     ),
-    'website': ('https://www.simbricks.io/%s', None),
-    'docker-hub': ('https://hub.docker.com/u/simbricks%s', 'Docker Hub%s'),
-    'dev-container': ('https://code.visualstudio.com/docs/remote/containers%s', 'Visual Studio Code Development Container%s'),
-    'dev-container-ext': ('https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers%s', 'VS Code Dev Containers extension%s'),
+    "slack": (
+        "https://join.slack.com/t/simbricks/shared_invite/zt-16y96155y-xspnVcm18EUkbUHDcSVonA%s",
+        None,
+    ),
+    "mod-orchestration": (
+        "https://github.com/simbricks/simbricks/blob/main/symphony/orchestration/simbricks/orchestration/%s",
+        "orchestration/%s",
+    ),
+    "lib-simbricks": (
+        "https://github.com/simbricks/simbricks/blob/main/lib/simbricks/%s",
+        "lib/simbricks/%s",
+    ),
+    "website": ("https://www.simbricks.io/%s", None),
+    "docker-hub": ("https://hub.docker.com/u/simbricks%s", "Docker Hub%s"),
+    "dev-container": (
+        "https://code.visualstudio.com/docs/remote/containers%s",
+        "Visual Studio Code Development Container%s",
+    ),
+    "dev-container-ext": (
+        "https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers%s",
+        "VS Code Dev Containers extension%s",
+    ),
 }

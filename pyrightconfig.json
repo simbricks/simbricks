@@ -1,6 +1,12 @@
 {
-  "include": ["symphony/*/simbricks"],
-  "exclude": ["**/node_modules", "**/__pycache__", "**/.*", "**/graphlib.py"],
+  "include": ["symphony"],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    "**/graphlib.py",
+    "symphony/client/simbricks/client/openapi"
+  ],
   "extraPaths": [
     "symphony/utils",
     "symphony/orchestration",

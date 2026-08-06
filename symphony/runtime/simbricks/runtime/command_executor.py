@@ -36,7 +36,6 @@ if typing.TYPE_CHECKING:
 
 
 class CommandExecutor:
-
     def __init__(
         self,
         cmd: str,
@@ -65,8 +64,8 @@ class CommandExecutor:
         start = 0
         for i in range(0, len(buf)):
             if buf[i] == ord("\n"):
-                l = buf[start:i].decode("utf-8")
-                lines.append(l)
+                line = buf[start:i].decode("utf-8")
+                lines.append(line)
                 start = i + 1
         del buf[0:start]
 
@@ -99,6 +98,7 @@ class CommandExecutor:
             await asyncio.sleep(1)
 
     async def _waiter(self) -> None:
+        assert self._proc.stdout is not None and self._proc.stderr is not None
         stdout_handler = asyncio.create_task(
             self._consume_stream_loop(self._proc.stdout, self._consume_stdout)
         )
@@ -110,6 +110,7 @@ class CommandExecutor:
         await self._exited_cb(rc)
 
     async def send_input(self, bs: bytes, eof=False) -> None:
+        assert self._proc.stdin is not None
         self._proc.stdin.write(bs)
         if eof:
             self._proc.stdin.close()
@@ -158,7 +159,7 @@ class CommandExecutor:
         # before Python 3.11, asyncio.wait_for() throws asyncio.TimeoutError -_-
         except (TimeoutError, asyncio.TimeoutError):
             print(
-                f"terminating component {self._cmd_parts[0]} pid" f" {self._proc.pid}",
+                f"terminating component {self._cmd_parts[0]} pid {self._proc.pid}",
                 flush=True,
             )
             await self.terminate()
@@ -181,7 +182,6 @@ class CommandExecutor:
 
 
 class CommandExecutorFactory:
-
     def __init__(self, sim_exec_cbs: sim_exec.SimulationExecutorCallbacks):
         self._sim_exec_cbs = sim_exec_cbs
 
@@ -260,8 +260,6 @@ class CommandExecutorFactory:
         async def stderr_cb(lines: list[str]) -> None:
             await self._sim_exec_cbs.proxy_stderr(proxy, lines)
 
-        executor = CommandExecutor(
-            cmd, proxy.name, started_cb, exited_cb, stdout_cb, stderr_cb
-        )
+        executor = CommandExecutor(cmd, proxy.name, started_cb, exited_cb, stdout_cb, stderr_cb)
         await executor.start()
         return executor

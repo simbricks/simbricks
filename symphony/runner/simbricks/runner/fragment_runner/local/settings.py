@@ -23,10 +23,14 @@
 from functools import lru_cache
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class RunnerSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file="runner.env",
+        env_file_encoding="utf-8",
+    )
     base_url: str = "https://app.simbricks.io/api"
     auth_client_id: str = "api.auth.simbricks.io"
     auth_token_url: str = "https://auth.simbricks.io/realms/SimBricks/protocol/openid-connect/token"
@@ -54,6 +58,7 @@ class RunnerSettings(BaseSettings):
     sending_delay_sec: int = Field(default=5, gt=1, lt=60)
     event_batch_size: int = Field(default=5, gt=0, lt=200)
 
+
 @lru_cache
 def runner_settings() -> RunnerSettings:
-    return RunnerSettings(_env_file="runner.env", _env_file_encoding="utf-8")
+    return RunnerSettings()

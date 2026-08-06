@@ -96,7 +96,7 @@ class System(utils_base.IdObj):
     def latencies(
         self, amount: int, ratio: utils_base.Time, channel_type: tp.Any | None = None
     ) -> None:
-        relevant_channels = self._all_channels
+        relevant_channels = list(self._all_channels.values())
         if channel_type:
             relevant_channels = list(
                 filter(
@@ -231,7 +231,7 @@ class Component(utils_base.IdObj):
         self.ifs.append(interface)
 
     def channels(self) -> list[Channel]:
-        return [i.channel for i in self.interfaces() if i.is_connected()]
+        return [i.get_chan_raise() for i in self.interfaces() if i.is_connected()]
 
     async def prepare(self, inst: inst_base.Instantiation) -> None:
         pass
@@ -290,9 +290,19 @@ class Interface(utils_base.IdObj):
 
     def __init__(self, c: Component) -> None:
         super().__init__()
-        self.component: Component = c
+        self._component: Component | None = c
         c.system._add_interface(self)
         self.channel: Channel | None = None
+
+    @property
+    def component(self) -> Component:
+        if self._component is None:
+            raise RuntimeError(f"{type(self).__name__}._component should be set")
+        return self._component
+
+    @component.setter
+    def component(self, new_val: Component | None) -> None:
+        self._component = new_val
 
     def is_connected(self) -> bool:
         return self.channel is not None
@@ -318,6 +328,7 @@ class Interface(utils_base.IdObj):
     def get_chan_raise(self) -> Channel:
         if not self.is_connected():
             raise Exception(f"interface(id={self._id}) is not connected to channel")
+        assert self.channel is not None
         return self.channel
 
     def get_opposing_interface(self) -> Interface:
@@ -328,12 +339,12 @@ class Interface(utils_base.IdObj):
 
     @staticmethod
     def filter_by_type(interfaces: list[Interface], ty: type[T]) -> list[T]:
-        return list(filter(lambda inf: isinstance(inf, ty), interfaces))
+        return [inf for inf in interfaces if isinstance(inf, ty)]
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["component"] = self.component.id()
-        json_obj["channel"] = self.channel.id()
+        json_obj["channel"] = self.channel.id() if self.channel is not None else None
         return json_obj
 
     @classmethod
@@ -352,7 +363,6 @@ class Interface(utils_base.IdObj):
 
 
 class DummyInterface(Interface):
-
     def __init__(self, c: Component) -> None:
         super().__init__(c)
 

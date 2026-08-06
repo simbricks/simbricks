@@ -66,7 +66,7 @@ lint-ruff:
 	ruff format --check symphony/ experiments/ doc/
 
 format-ruff:
-	ruff check --fix symphony/ experiments/ doc/
+	ruff check --fix --exit-zero symphony/ experiments/ doc/
 	ruff format symphony/ experiments/ doc/
 
 lint-python: lint-ruff

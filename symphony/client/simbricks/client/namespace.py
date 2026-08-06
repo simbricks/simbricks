@@ -252,9 +252,9 @@ class NSClient:
             map = {}
             if members.data:
                 for m in members.data:
-                    l = map.get(m.role, [])
-                    l.append(m)
-                    map[m.role] = l
+                    role_members = map.get(m.role, [])
+                    role_members.append(m)
+                    map[m.role] = role_members
             return map
 
     async def get_role_members(self, role: NsRole) -> list[NsMember]:
@@ -282,7 +282,6 @@ class NSClient:
 
 
 class SimBricksClient:
-
     def __init__(self, ns_client: NSClient) -> None:
         self._ns_client: NSClient = ns_client
 
@@ -302,7 +301,9 @@ class SimBricksClient:
 
     async def delete_system(self, sys_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            response = await systems_delete.asyncio(self._ns_client.namespace_path, sys_id, client=client)
+            response = await systems_delete.asyncio(
+                self._ns_client.namespace_path, sys_id, client=client
+            )
             validate_no_response_model(response)
 
     async def get_systems(self) -> SystemsList200Response:
@@ -334,7 +335,9 @@ class SimBricksClient:
 
     async def delete_simulation(self, sim_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
-            response = await simulations_delete.asyncio(self._ns_client.namespace_path, sim_id, client=client)
+            response = await simulations_delete.asyncio(
+                self._ns_client.namespace_path, sim_id, client=client
+            )
             validate_no_response_model(response)
 
     async def get_simulation(self, sim_id: str) -> ApiSimulation | None:
@@ -420,7 +423,7 @@ class SimBricksClient:
     async def update_run(
         self,
         rid: str,
-        instantiation_id: int | None = None,
+        instantiation_id: str | None = None,
         state: RunState | None = None,
         output: str | None = None,
     ) -> Run:
@@ -546,7 +549,7 @@ class SimBricksClient:
                 validate_no_response_model(response)
 
     async def set_run_fragment_output_artifact_raw(
-        self, run_id: str, run_frag_id: int, uploaded_data: typing.IO[bytes]
+        self, run_id: str, run_frag_id: str, uploaded_data: typing.BinaryIO
     ) -> None:
 
         file = File(payload=uploaded_data)
@@ -605,7 +608,6 @@ class SimBricksClient:
 
 
 class ResourceGroupClient:
-
     def __init__(self, ns_client: NSClient) -> None:
         self._ns_client: NSClient = ns_client
 
@@ -679,18 +681,17 @@ class ResourceGroupClient:
 
 
 class RunnerClient:
-
     def __init__(self, ns_client: NSClient, id: str) -> None:
         self._ns_client: NSClient = ns_client
         self.runner_id = id
 
     async def create_runner(self, rg_id: str, label: str, tags: list[str]) -> Runner:
 
-        tags = list(map(lambda t: RunnerTag(t), tags))
+        runner_tags = list(map(lambda t: RunnerTag(t), tags))
         to_create = Runner(
             resource_group_id=rg_id,
             label=label,
-            tags=tags,
+            tags=runner_tags,
         )
 
         async with base_client(self._ns_client.base_url) as client:

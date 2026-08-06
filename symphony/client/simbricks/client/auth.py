@@ -35,7 +35,6 @@ from .settings import client_settings
 
 
 class Token:
-
     def __init__(
         self,
         access_token: str,
@@ -96,7 +95,6 @@ class Token:
 
 
 class TokenClient:
-
     def __init__(
         self,
         device_auth_url: str = client_settings().auth_dev_url,
@@ -113,7 +111,6 @@ class TokenClient:
 
         timeout = aiohttp.ClientTimeout(total=client_settings().timeout_sec)
         async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
-
             # get device_code, interval, verification_uri, user_code
             device_code = None
             interval = None
@@ -174,7 +171,6 @@ class TokenClient:
         token = None
         timeout = aiohttp.ClientTimeout(total=client_settings().timeout_sec)
         async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
-
             # get device_code, interval, verification_uri, user_code
             async with session.post(
                 url=self._token_url,
@@ -200,7 +196,6 @@ class TokenClient:
 
 
 class TokenProvider:
-
     def __init__(self) -> None:
         self._toke_filepath: str = "auth.json"
         self._token: Token | None = None
@@ -252,7 +247,6 @@ class TokenProvider:
 
 
 class SimBricksHttpxAuth(httpx.Auth):
-
     prefix: str = "Bearer"
     auth_header_name: str = "Authorization"
     retry: bool = True

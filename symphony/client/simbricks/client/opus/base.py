@@ -88,9 +88,7 @@ class ConsoleLineGenerator:
                     assert output_line.id is not None
                     lines.append((simulator.name, output_line.output))
 
-        assert output.data.proxies and isinstance(
-            output.data.proxies, RunOutputProxiesType0
-        )
+        assert output.data.proxies and isinstance(output.data.proxies, RunOutputProxiesType0)
         proxies: RunOutputProxiesType0 = output.data.proxies
 
         for proxy in proxies.additional_properties.values():
@@ -141,7 +139,7 @@ async def follow_run(run_id: str) -> None:
     console = rich.console.Console()
     pretty_printer = ComponentOutputPrettyPrinter(console)
 
-    with console.status(f"[bold green]Waiting for run {run_id} to finish...") as status:
+    with console.status(f"[bold green]Waiting for run {run_id} to finish..."):
         async for prefix, line in line_gen.generate_lines():
             pretty_printer.print_line(prefix, line)
 
@@ -168,14 +166,19 @@ async def submit_instantiation(
     simbricks_client = await simb_client()
 
     inst = await simbricks_client.create_instantiation(simulation_id, instantiation)
+    assert isinstance(inst.id, str)
 
     if instantiation.input_artifact_paths:
         utils_artifacts.create_artifact(
-            instantiation.input_artifact_name, instantiation.input_artifact_paths, flat=True)
+            instantiation.input_artifact_name, instantiation.input_artifact_paths, flat=True
+        )
         await simbricks_client.set_inst_input_artifact(inst.id, instantiation.input_artifact_name)
 
-    fragment_id_map: dict[int, int] = {}
+    fragment_id_map: dict[int, str] = {}
+    assert isinstance(inst.fragments, list)
     for fragment in inst.fragments:
+        assert isinstance(fragment.object_id, int)
+        assert isinstance(fragment.id, str)
         fragment_id_map[fragment.object_id] = fragment.id
     for fragment in instantiation.fragments:
         if not fragment.input_artifact_paths:

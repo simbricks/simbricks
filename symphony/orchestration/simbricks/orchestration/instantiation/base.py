@@ -49,7 +49,6 @@ if typing.TYPE_CHECKING:
 
 
 class InstantiationEnvironment(utils_base.IdObj):
-
     def __init__(
         self,
         workdir: pathlib.Path,
@@ -127,7 +126,9 @@ class InstantiationEnvironment(utils_base.IdObj):
             return self._proxy_dir.as_posix()
         return utils_file.join_paths(self._proxy_dir, relative_path, must_exist)
 
-    def input_artifacts_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
+    def input_artifacts_dir(
+        self, relative_path: str | None = None, must_exist: bool = False
+    ) -> str:
         if relative_path is None:
             return self._input_artifacts_dir.as_posix()
         return utils_file.join_paths(self._input_artifacts_dir, relative_path, must_exist)
@@ -159,7 +160,6 @@ class InstantiationEnvironment(utils_base.IdObj):
 
 
 class Instantiation(utils_base.IdObj):
-
     def __init__(
         self,
         sim: sim_base.Simulation,
@@ -292,7 +292,9 @@ class Instantiation(utils_base.IdObj):
             instance._fragments.append(frag)
 
         instance.input_artifact_name = utils_base.get_json_attr_top(json_obj, "input_artifact_name")
-        instance.input_artifact_paths = utils_base.get_json_attr_top(json_obj, "input_artifact_paths")
+        instance.input_artifact_paths = utils_base.get_json_attr_top(
+            json_obj, "input_artifact_paths"
+        )
 
         instance._create_checkpoint = bool(
             utils_base.get_json_attr_top(json_obj, "create_checkpoint")
@@ -421,8 +423,9 @@ class Instantiation(utils_base.IdObj):
     def assigned_fragment(self) -> inst_fragment.Fragment:
         if self._assigned_fragment is None:
             # TODO: use more specific exception
-            raise RuntimeError("Tried to access assigned fragment but there is no fragment "
-                               "assigned yet")
+            raise RuntimeError(
+                "Tried to access assigned fragment but there is no fragment assigned yet"
+            )
         return self._assigned_fragment
 
     @assigned_fragment.setter

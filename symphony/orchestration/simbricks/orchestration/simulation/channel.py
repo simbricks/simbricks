@@ -30,14 +30,13 @@ from simbricks.utils import base as utils_base
 
 
 class Channel(utils_base.IdObj):
-
     def __init__(self, chan: system_base.Channel):
         super().__init__()
         self._synchronized: bool = False
         self.sync_period: int = 500  # nanoseconds
         """
-        The synchronization period in nanoseconds. For SimBricks to function 
-        properly in sync mode, the sync period must not be larger than a channels 
+        The synchronization period in nanoseconds. For SimBricks to function
+        properly in sync mode, the sync period must not be larger than a channels
         latency.
         """
         assert self.sync_period <= chan.latency

@@ -92,7 +92,6 @@ class FragmentRunnerEvent:
 
 
 class MainRunner:
-
     def __init__(
         self,
         namespace_client: client.NSClient,
@@ -116,12 +115,13 @@ class MainRunner:
         self._run_map: dict[str, MainRun] = {}
 
     async def _send_events_aggregate_updates(self, event: EventToRunner_U) -> None:
-        if not hasattr(event, "run_id") or not isinstance(event.run_id, str) or event.run_id not in self._run_map:
-            msg = f"Cannot _send_events_aggregate_updates to run {event.run_id}"
+        run_id = getattr(event, "run_id", None)
+        if not isinstance(run_id, str) or run_id not in self._run_map:
+            msg = f"Cannot _send_events_aggregate_updates to run {run_id}"
             LOGGER.error(msg)
             raise Exception(msg)
 
-        run = self._run_map[event.run_id]
+        run = self._run_map[run_id]
 
         # send event to fragment runners
         senders: list[asyncio.Task] = []
@@ -179,6 +179,7 @@ class MainRunner:
 
         # get fragments
         fragment_map: dict[str, Fragment] = {}
+        assert isinstance(start_run_event.inst.fragments, list)
         for frag in start_run_event.inst.fragments:
             assert isinstance(frag, Fragment) and isinstance(frag.id, str)
             fragment_map[frag.id] = frag
@@ -186,6 +187,7 @@ class MainRunner:
         # retrieve instantiation input artifacts
         inst_artifact: bytes | None = None
         if sb_inst.input_artifact_paths:
+            assert isinstance(start_run_event.inst.id, str)
             inst_artifact = await self._simbricks_client.get_inst_input_artifact_raw(
                 start_run_event.inst.id
             )
@@ -203,6 +205,7 @@ class MainRunner:
                 await self._stop_fragment_runners(fragment_runner_map)
                 raise RuntimeError(f"unsupported fragment runner type {fragment_executor_tag}")
 
+            assert isinstance(frag.object_id, int)
             fragment_runner = await self._start_fragment_runner(
                 fragment_executor_tag, parameters_map[frag.object_id]
             )
@@ -233,8 +236,10 @@ class MainRunner:
             # set fragment specific artifact
             assert rf.fragment_id in fragment_map
             fragment = fragment_map[rf.fragment_id]
+            assert isinstance(fragment.object_id, int)
             inst_fragment = sb_inst.get_fragment(fragment.object_id)
             if inst_fragment.input_artifact_paths:
+                assert isinstance(start_run_event.inst.id, str)
                 fragment_artifact = await self._simbricks_client.get_fragment_input_artifact_raw(
                     start_run_event.inst.id, rf.fragment_id
                 )
@@ -266,7 +271,6 @@ class MainRunner:
     async def _handel_events(self) -> None:
 
         while True:
-
             for run_id in list(self._run_map.keys()):
                 run = self._run_map[run_id]
                 for fragment_state in run.fragment_run_state.values():
@@ -288,6 +292,7 @@ class MainRunner:
                 if isinstance(next_links, str):
                     cursor_next = next_links
 
+            assert isinstance(fetched_events_bundle.data, list)
             LOGGER.debug(f"events fetched ({len(fetched_events_bundle.data)})")
 
             for event in fetched_events_bundle.data:
@@ -456,9 +461,9 @@ class MainRunner:
 
 
 async def amain():
-    base_url=settings.runner_settings().base_url
-    namespace=settings.runner_settings().namespace
-    ident=settings.runner_settings().runner_id
+    base_url = settings.runner_settings().base_url
+    namespace = settings.runner_settings().namespace
+    ident = settings.runner_settings().runner_id
 
     settings.runner_settings().telemetry.service_name = f"simb-runner-{ident}"
     setup_telemetry(settings.runner_settings().telemetry)
@@ -503,7 +508,7 @@ def main():
     except KeyboardInterrupt:
         LOGGER.info("received keyboard interrupt, shutting down...")
         LOGGER.info("Bye!")
-    except:
+    except Exception:
         trace = traceback.format_exc()
         LOGGER.error(f"Fatal error:\n{trace}")
         exit(1)

@@ -25,19 +25,17 @@ from simbricks.orchestration import system
 from simbricks.utils import base as utils_base
 
 
-def connect_host_and_device(
-    host: system.Host, device: system.Component
-) -> system.pcie.PCIeChannel:
+def connect_host_and_device(host: system.Host, device: system.Component) -> system.PCIeChannel:
     utils_base.has_expected_type(obj=host, expected_type=system.Host)
     utils_base.has_expected_type(obj=device, expected_type=system.Component)
 
-    host_interface = system.pcie.PCIeHostInterface(c=host)
+    host_interface = system.PCIeHostInterface(c=host)
     host.add_if(interface=host_interface)
 
-    device_interface = system.pcie.PCIeDeviceInterface(c=device)
+    device_interface = system.PCIeDeviceInterface(c=device)
     device.add_if(interface=device_interface)
 
-    pcie_channel = system.pcie.PCIeChannel(host=host_interface, dev=device_interface)
+    pcie_channel = system.PCIeChannel(host=host_interface, dev=device_interface)
     return pcie_channel
 
 
@@ -47,18 +45,18 @@ def connect_eth_devices(
     utils_base.has_expected_type(obj=device_a, expected_type=system.Component)
     utils_base.has_expected_type(obj=device_b, expected_type=system.Component)
 
-    eth_inter_a = system.eth.EthInterface(c=device_a)
+    eth_inter_a = system.EthInterface(c=device_a)
     device_a.add_if(eth_inter_a)
 
-    eth_inter_b = system.eth.EthInterface(c=device_b)
+    eth_inter_b = system.EthInterface(c=device_b)
     device_b.add_if(eth_inter_b)
 
-    eth_channel = system.eth.EthChannel(a=eth_inter_a, b=eth_inter_b)
+    eth_channel = system.EthChannel(a=eth_inter_a, b=eth_inter_b)
     return eth_channel
 
 
 def install_app(
-    host: system.Host, app_ty: system.Application, **kwargs
+    host: system.Host, app_ty: type[system.Application], **kwargs
 ) -> system.Application:
     utils_base.has_expected_type(obj=host, expected_type=system.Host)
     utils_base.has_expected_type(obj=app_ty, expected_type=system.Application)

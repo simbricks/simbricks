@@ -31,7 +31,6 @@ from simbricks.runner.fragment_runner.local import settings
 
 
 class LocalRunner(runner_base.FragmentRunner):
-
     def __init__(
         self,
         base_url: str,

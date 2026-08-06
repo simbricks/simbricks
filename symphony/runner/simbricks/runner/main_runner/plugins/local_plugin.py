@@ -7,7 +7,6 @@ from simbricks.runner.main_runner.plugins import plugin
 
 
 class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
-
     def __init__(self):
         super().__init__()
         self.executor: subprocess.Popen | None = None
@@ -21,18 +20,21 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
         return "SimbricksLocalRunner"
 
     async def read(self, length: int) -> bytes:
+        assert self.reader is not None
         data = await self.reader.read(length)
         if length != 0 and len(data) == 0:
             raise RuntimeError("connection broken")
         return data
 
     async def write(self, data: bytes) -> None:
+        assert self.writer is not None
         self.writer.write(data)
         await self.writer.drain()
 
     def accept_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         assert self.reader is None
         assert self.writer is None
+        assert self.server is not None
         self.reader = reader
         self.writer = writer
         self.server.close()
@@ -55,6 +57,7 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
 
     async def stop(self):
         print("stop simbricks local runner")
+        assert self.server is not None
         if self.executor is None:
             return
         self.executor.terminate()
@@ -62,5 +65,6 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
         self.executor = None
         await self.server.wait_closed()
         print("successfully stopped local fragment executor")
+
 
 runner_plugin = SimbricksLocalPlugin

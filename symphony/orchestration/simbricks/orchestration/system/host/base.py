@@ -51,9 +51,9 @@ class Host(base.Component):
         json_obj = super().toJSON()
 
         applications_json = []
-        for app in self.applications:
-            utils_base.has_attribute(app, "toJSON")
-            applications_json.append(app.toJSON())
+        for application in self.applications:
+            utils_base.has_attribute(application, "toJSON")
+            applications_json.append(application.toJSON())
         json_obj["applications"] = applications_json
 
         return json_obj
@@ -143,12 +143,10 @@ class BaseLinuxHost(FullSystemHost):
         application on this host and concatenating the commands.
         """
         cmds = []
-        for app in self.applications:
-            mapper = getattr(app, mapper_name, None)
+        for application in self.applications:
+            mapper = getattr(application, mapper_name, None)
             if mapper is None:
-                raise Exception(
-                    f"coulkd not determine mapper function with name {mapper_name}"
-                )
+                raise Exception(f"coulkd not determine mapper function with name {mapper_name}")
             cmds += mapper(inst)
 
         return cmds
@@ -159,9 +157,7 @@ class BaseLinuxHost(FullSystemHost):
 
     def cleanup_cmds(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to cleanup node."""
-        cmds = self._concat_app_cmds(
-            inst, app.BaseLinuxApplication.cleanup_cmds.__name__
-        )
+        cmds = self._concat_app_cmds(inst, app.BaseLinuxApplication.cleanup_cmds.__name__)
         sim = inst.find_sim_by_spec(spec=self)
         cleanup = sim.cleanup_commands()
         cmds += cleanup
@@ -177,22 +173,18 @@ class BaseLinuxHost(FullSystemHost):
         """
         cfg_files = []
         cfg_files += self._config_files
-        for app in self.applications:
-            cfg_files += app.config_files(inst)
+        for application in self.applications:
+            cfg_files += application.config_files(inst)
         cfg_files.append(disk_images.ConfigFileStr("run.sh", self.config_str(inst)))
         return cfg_files
 
     def prepare_pre_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node before checkpointing."""
-        return self._concat_app_cmds(
-            inst, app.BaseLinuxApplication.prepare_pre_cp.__name__
-        )
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_pre_cp.__name__)
 
     def prepare_post_cp(self, inst: instantiation.Instantiation) -> list[str]:
         """Commands to run to prepare node after checkpoint restore."""
-        return self._concat_app_cmds(
-            inst, app.BaseLinuxApplication.prepare_post_cp.__name__
-        )
+        return self._concat_app_cmds(inst, app.BaseLinuxApplication.prepare_post_cp.__name__)
 
     def config_str(self, inst: instantiation.Instantiation) -> str:
         sim = inst.find_sim_by_spec(spec=self)
@@ -266,20 +258,17 @@ class LinuxHost(BaseLinuxHost):
                 cmds.append(f"modprobe {d}")
 
         index = 0
-        for host_inf in base.Interface.filter_by_type(
-            self.interfaces(), pcie.PCIeHostInterface
-        ):
+        for host_inf in base.Interface.filter_by_type(self.interfaces(), pcie.PCIeHostInterface):
             if not host_inf.is_connected():
                 continue
 
             inf = host_inf.get_opposing_interface()
-            if not utils_base.check_types(
-                inf.component, eth.EthSimpleNIC, nic.SimplePCIeNIC
-            ):
+            if not utils_base.check_types(inf.component, eth.EthSimpleNIC, nic.SimplePCIeNIC):
                 continue
             # Get ifname parameter if set, otherwise default to ethX
             ifn = f"eth{index}"
             index += 1
+            assert isinstance(inf.component, (eth.EthSimpleNIC, nic.SimplePCIeNIC))
             com: eth.EthSimpleNIC | nic.SimplePCIeNIC = inf.component
 
             # Force MAC if requested TODO: FIXME
@@ -311,7 +300,6 @@ class LinuxHost(BaseLinuxHost):
 
 
 class NVMeLinuxHost(LinuxHost):
-
     def __init__(self, sys: base.System) -> None:
         super().__init__(sys)
-        self.drivers.append('nvme')
+        self.drivers.append("nvme")

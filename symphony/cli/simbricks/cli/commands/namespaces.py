@@ -87,5 +87,5 @@ async def members():
 async def member_add(user: str, role: str):
     """Add member to namespace."""
     nsc = await ns_client()
-    members = await nsc.add_member(role, user)
+    await nsc.add_member(role, user)
     print(f"Added user {user} with role {role}.")

@@ -46,9 +46,7 @@ class NetSim(sim_base.Simulator):
     def init_network(self) -> None:
         pass
 
-    def supported_socket_types(
-        self, interface: sys_base.Interface
-    ) -> set[inst_socket.SockType]:
+    def supported_socket_types(self, interface: sys_base.Interface) -> set[inst_socket.SockType]:
         return {inst_socket.SockType.CONNECT}
 
     def toJSON(self) -> dict:

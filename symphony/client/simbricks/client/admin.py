@@ -42,7 +42,6 @@ from .base import (
 
 
 class AdminClient:
-
     def __init__(self):
         pass
 

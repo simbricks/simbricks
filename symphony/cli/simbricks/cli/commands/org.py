@@ -15,7 +15,9 @@ organization = ""
 @app.callback()
 @async_cli()
 async def amain(
-    org: Annotated[str, Option(help="Organization to operate in.")] = cli_settings().client.organization,
+    org: Annotated[
+        str, Option(help="Organization to operate in.")
+    ] = cli_settings().client.organization,
 ):
     global organization
     organization = org
@@ -45,8 +47,10 @@ async def guest(
     email: str,
     first_name: str,
     last_name: str,
-    generate_token: Annotated[str, Option(help='File name to store an auth token into, if specified.', show_default=False)] = ''
-    ):
+    generate_token: Annotated[
+        str, Option(help="File name to store an auth token into, if specified.", show_default=False)
+    ] = "",
+):
     """Create a new guest user."""
     client = await org_client()
     await client.create_guest(organization, email, first_name, last_name)

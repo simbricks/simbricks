@@ -1,7 +1,7 @@
 """
 Simple example of a distributed simulation: host0, nic0, and switch are executed in one fragment and
 nic1 and host1 in another. We connect the two fragments via a TCP proxy in each fragment, which
-allows executing them on separate runners or machines. 
+allows executing them on separate runners or machines.
  ___________________________   ________________
 |                           | |                |
 |  host0 -- nic0 -- switch -|-|- nic1 -- host1 |

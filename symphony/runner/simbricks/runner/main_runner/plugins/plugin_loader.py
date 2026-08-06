@@ -7,6 +7,7 @@ from simbricks.utils import load_mod
 class RunnerPluginLoadError(Exception):
     pass
 
+
 def load_plugin(path: str) -> type[plugin.FragmentRunnerPlugin]:
     module = None
 
@@ -28,6 +29,7 @@ def load_plugin(path: str) -> type[plugin.FragmentRunnerPlugin]:
         raise RunnerPluginLoadError(f"Plugin {path} does not have the correct type")
     return module.runner_plugin
 
+
 def load_plugin_from_file(path: str) -> type[plugin.FragmentRunnerPlugin]:
     module = load_mod.load_module(path)
     if "runner_plugin" not in module.__dict__:
@@ -35,6 +37,7 @@ def load_plugin_from_file(path: str) -> type[plugin.FragmentRunnerPlugin]:
     if not issubclass(module.runner_plugin, plugin.FragmentRunnerPlugin):
         raise RunnerPluginLoadError(f"Plugin {path} does not have the correct type")
     return module.runner_plugin
+
 
 def load_plugins_from_files(paths: list[str]) -> dict[str, type[plugin.FragmentRunnerPlugin]]:
     plugins = {}

@@ -44,7 +44,6 @@ from .base import (
 
 
 class OrgClient:
-
     def __init__(self):
         pass
 
@@ -71,7 +70,7 @@ class OrgClient:
         guest_cred = OrgGuestCred(email)
         async with base_client() as client:
             token = await org_guest_token_create.asyncio(org, client=client, body=guest_cred)
-            return Token.parse_from_resp(token)
+            return Token.parse_from_resp(token, is_offline_token=False)
 
     async def guest_magic_link(self, org: str, email: str) -> OrgGuestMagicLinkResp:
         guest = OrgGuestCred(email)
@@ -80,6 +79,7 @@ class OrgClient:
             link = validate_response_model(link, OrgGuestMagicLinkResp)
             assert link
             return link
+
 
 async def org_client() -> OrgClient:
     return OrgClient()

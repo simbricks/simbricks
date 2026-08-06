@@ -20,6 +20,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import typing
+
 from simbricks.orchestration import system
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.utils import base as utils_base
@@ -38,12 +40,12 @@ def enable_sync_simulation(
     utils_base.has_expected_type(obj=simulation, expected_type=sim_base.Simulation)
     set_period: bool = amount is not None and ratio is not None
     if set_period:
-        utils_base.has_expected_type(obj=amount, expected_type=int)
-        utils_base.has_expected_type(obj=ratio, expected_type=utils_base.Time)
+        assert isinstance(amount, int)
+        assert isinstance(ratio, utils_base.Time)
 
     for chan in simulation.get_all_channels():
         chan._synchronized = True
-        if set_period:
+        if amount is not None and ratio is not None:
             chan.set_sync_period(amount=amount, ratio=ratio)
 
 
@@ -57,26 +59,26 @@ def disalbe_sync_simulation(simulation: sim_base.Simulation) -> None:
 def simple_simulation(
     system: system.System,
     sync=False,
-    compmap=dict[type[system.Component], type[sim_base.Simulator]]
+    compmap: dict[
+        type[system.Component], typing.Callable[[sim_base.Simulation], sim_base.Simulator]
+    ] = {},
 ):
-  """Create simple simulation from system. Uses a map from component type to
-  simulator type and then creates one simulator per component."""
-  simulation = sim_base.Simulation(
-      name=f"simulation-{system.name}", system=system
-  )
+    """Create simple simulation from system. Uses a map from component type to
+    simulator type and then creates one simulator per component."""
+    simulation = sim_base.Simulation(name=f"simulation-{system.name}", system=system)
 
-  for comp in system._all_components.values():
-    if comp in simulation._sys_sim_map:
-      continue
+    for comp in system._all_components.values():
+        if comp in simulation._sys_sim_map:
+            continue
 
-    for (ct,st) in compmap.items():
-      if isinstance(comp, ct):
-        simulator = st(simulation)
-        simulator.add(comp)
-        if comp.name:
-          simulator.name = comp.name
+        for ct, st in compmap.items():
+            if isinstance(comp, ct):
+                simulator = st(simulation)
+                simulator.add(comp)
+                if comp.name:
+                    simulator.name = comp.name
 
-    if not sync:
-      disalbe_sync_simulation(simulation=simulation)
+        if not sync:
+            disalbe_sync_simulation(simulation=simulation)
 
-  return simulation
+    return simulation

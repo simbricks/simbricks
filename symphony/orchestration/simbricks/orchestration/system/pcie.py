@@ -50,9 +50,11 @@ class PCIeChannel(base.Channel):
         super().__init__(host, dev)
 
     def host_if(self) -> PCIeHostInterface:
+        assert isinstance(self.a, PCIeHostInterface)
         return self.a
 
     def dev_if(self) -> PCIeDeviceInterface:
+        assert isinstance(self.b, PCIeDeviceInterface)
         return self.b
 
 
@@ -77,12 +79,13 @@ class PCIeSimpleDevice(base.Component):
     def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system=system, json_obj=json_obj)
         inf_id = int(utils_base.get_json_attr_top(json_obj, "pci_if"))
-        instance._pci_if = system.get_inf(inf_id)
+        pci_if = system.get_inf(inf_id)
+        assert isinstance(pci_if, PCIeDeviceInterface)
+        instance._pci_if = pci_if
         return instance
 
 
 class NVMeSSD(PCIeSimpleDevice):
-
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
 

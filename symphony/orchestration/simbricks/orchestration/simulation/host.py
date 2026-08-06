@@ -35,7 +35,6 @@ from simbricks.orchestration.system import host as sys_host
 
 
 class HostSim(sim_base.Simulator):
-
     def __init__(self, simulation: sim_base.Simulation, executable: str, name=""):
         super().__init__(simulation=simulation, executable=executable, name=name)
         self._disk_images: dict[
@@ -82,7 +81,5 @@ class HostSim(sim_base.Simulator):
                     host_disks.append((disk, disk.path(inst, disk.find_format(self))))
             self._disk_images[host] = host_disks
 
-    def supported_socket_types(
-        self, interface: sys_base.Interface
-    ) -> set[inst_socket.SockType]:
+    def supported_socket_types(self, interface: sys_base.Interface) -> set[inst_socket.SockType]:
         return {inst_socket.SockType.CONNECT}

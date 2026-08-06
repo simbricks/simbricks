@@ -189,5 +189,5 @@ async def create(
     run = await sbc.create_run(inst_id)
     print_table_generic("Run", [run], "id", "instantiation_id", "state")
 
-    if follow and run.id is not None:
+    if follow and isinstance(run.id, str):
         await opus_base.follow_run(run_id=run.id)

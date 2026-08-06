@@ -2,12 +2,19 @@
 # Replaces the previous pylint + isort + yapf setup; type checking stays separate (pyright).
 target-version = "py310"
 line-length = 100
-extend-exclude = ["symphony/utils/simbricks/utils/graphlib.py"]
+extend-exclude = [
+    "symphony/utils/simbricks/utils/graphlib.py",
+    # Auto-generated OpenAPI client — regenerated from the spec, not ours to lint/format.
+    "symphony/client/simbricks/client/openapi",
+]
 
 [lint]
 # E/W: pycodestyle, F: pyflakes, I: isort (import sorting). Conservative baseline;
 # tighten (e.g. add "UP", "B") once the codebase is clean.
 select = ["E", "F", "I", "W"]
+# Line length is enforced by the formatter (line-length above). E501 only fires on
+# comments/strings the formatter can't wrap, so we don't lint it.
+ignore = ["E501"]
 
 [lint.isort]
 known-first-party = ["simbricks"]
@@ -17,3 +24,6 @@ known-first-party = ["simbricks"]
 # before their imports, so module-level-import-not-at-top (E402) is expected.
 "doc/conf.py" = ["E402"]
 "experiments/**/*.py" = ["E402"]
+# __init__.py aggregators interleave imports with `__all__ += [...]` to group each
+# import with the names it exports, which reads as imports-not-at-top (E402).
+"**/__init__.py" = ["E402"]
