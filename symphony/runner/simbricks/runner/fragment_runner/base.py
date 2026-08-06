@@ -47,7 +47,6 @@ if typing.TYPE_CHECKING:
 
 
 class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
-
     def __init__(
         self,
         instantiation: inst_base.Instantiation,
@@ -68,13 +67,13 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         # TODO Send executed prepare command to backend
 
     async def simulation_prepare_cmd_stdout(self, cmd: str, lines: list[str]) -> None:
-        super().simulation_prepare_cmd_stdout(cmd, lines)
+        await super().simulation_prepare_cmd_stdout(cmd, lines)
         for line in lines:
             LOGGER.debug(f"[prepare] {line}")
         # TODO Send simulation prepare output to backend
 
     async def simulation_prepare_cmd_stderr(self, cmd: str, lines: list[str]) -> None:
-        super().simulation_prepare_cmd_stderr(cmd, lines)
+        await super().simulation_prepare_cmd_stderr(cmd, lines)
         for line in lines:
             LOGGER.debug(f"[prepare] {line}")
         # TODO Send simulation prepare output to backend
@@ -176,10 +175,11 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         proxy_id: int,
         proxy_name: str,
         state: RunComponentState,
-        proxy_ip: str,
-        proxy_port: int,
+        proxy_ip: str | None,
+        proxy_port: int | None,
         proxy_cmd: str | None = None,
     ) -> None:
+        assert proxy_ip is not None and proxy_port is not None
         event = ProxyStateChange(
             run_id=self._run_id,
             proxy_name=proxy_name,
@@ -260,7 +260,6 @@ class Run:
 
 
 class FragmentRunner(abc.ABC):
-
     def __init__(
         self,
         base_url: str,
@@ -305,11 +304,13 @@ class FragmentRunner(abc.ABC):
     async def write(self, data: bytes) -> None:
         pass
 
-    async def send_events(self, events: list[EventToRunner_U] | list[EventFromRunner_U]) -> None:
+    async def send_events(self, events: list[EventFromRunner_U]) -> None:
         await runner_utils.send_events(self.write, events)
 
-    async def get_events(self) -> list[EventToRunner_U] | list[EventFromRunner_U]:
-        return await runner_utils.get_events(self.read)
+    async def get_events(self) -> list[EventToRunner_U]:
+        # This connection receives commands from the main runner (EventToRunner_U);
+        # runner_utils.get_events' return type is broader because it deserializes either direction.
+        return typing.cast(list[EventToRunner_U], await runner_utils.get_events(self.read))
 
     async def _enqueue_fragment_state_change(
         self, run_id: str, run_fragment_id: str, run_state: RunState
@@ -337,6 +338,9 @@ class FragmentRunner(abc.ABC):
             run_workdir = self._workdir / f"run-{start_event.run_id}-{str(uuid.uuid4())}"
         run_workdir.mkdir(parents=True)
 
+        assert isinstance(start_event.system.sb_json, str)
+        assert isinstance(start_event.simulation.sb_json, str)
+        assert isinstance(start_event.inst.sb_json, str)
         system = sys_base.System.fromJSON(json.loads(start_event.system.sb_json))
         simulation = sim_base.Simulation.fromJSON(
             system, json.loads(start_event.simulation.sb_json)
@@ -346,6 +350,7 @@ class FragmentRunner(abc.ABC):
         # build inst fragments map
         # NOTE: do not use the parsed simbricks instantiation
         fragment_map: dict[str, Fragment] = {}
+        assert isinstance(start_event.inst.fragments, list)
         for frag in start_event.inst.fragments:
             frag: Fragment = frag
             assert isinstance(frag, Fragment) and isinstance(frag.id, str)
@@ -355,7 +360,10 @@ class FragmentRunner(abc.ABC):
         inst.env = env
 
         assert len(start_event.fragments) == 1
-        req_frag = fragment_map[start_event.fragments[0].fragment_id]
+        req_frag_id = start_event.fragments[0].fragment_id
+        assert isinstance(req_frag_id, str)
+        req_frag = fragment_map[req_frag_id]
+        assert isinstance(req_frag.object_id, int)
         inst.assigned_fragment = inst.get_fragment(req_frag.object_id)
 
         # retrieve input artifacts
@@ -397,6 +405,7 @@ class FragmentRunner(abc.ABC):
         return run
 
     async def _start_run(self, run: Run) -> None:
+        assert isinstance(run.run_fragment.id, str)
         sim_task = None
         try:
             LOGGER.info(f"start run {run.run_id}")
@@ -462,7 +471,7 @@ class FragmentRunner(abc.ABC):
 
     async def _cancel_all_tasks(self) -> None:
         for _, run in self._run_map.items():
-            if run.exec_task.done():
+            if run.exec_task is None or run.exec_task.done():
                 continue
 
             run.exec_task.cancel()
@@ -476,6 +485,8 @@ class FragmentRunner(abc.ABC):
             return
 
         run = self._run_map[event.run_id]
+        if run.exec_task is None:
+            return
         run.exec_task.cancel()
         await run.exec_task
 
@@ -516,9 +527,9 @@ class FragmentRunner(abc.ABC):
             LOGGER.error(f"could not prepare run {event.run_id}: {trace}")
 
             assert len(event.fragments) == 1
-            await self._enqueue_fragment_state_change(
-                event.run_id, event.fragments[0].id, RunState.ERROR
-            )
+            frag_id = event.fragments[0].id
+            assert isinstance(frag_id, str)
+            await self._enqueue_fragment_state_change(event.run_id, frag_id, RunState.ERROR)
 
         LOGGER.info(f"handled run related event {event.id}")
 
@@ -571,7 +582,6 @@ class FragmentRunner(abc.ABC):
 
         # TODO: Is there now a better place to do this?
         while True:
-
             for run_id in list(self._run_map.keys()):
                 run = self._run_map[run_id]
                 # check if run finished and cleanup map
@@ -629,4 +639,4 @@ class FragmentRunner(abc.ABC):
         LOGGER.info("TERMINATED RUNNER")
 
 
-LOGGER: logging.Logger
+LOGGER: logging.Logger = logging.getLogger(__name__)

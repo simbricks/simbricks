@@ -33,6 +33,8 @@ class RunnerSettings(BaseSettings):
         cli_parse_args=True,
         env_prefix="",
         env_nested_delimiter="_",
+        env_file="runner.env",
+        env_file_encoding="utf-8",
     )
     base_url: str = "https://app.simbricks.io/api"
     auth_client_id: str = "api.auth.simbricks.io"
@@ -59,4 +61,4 @@ class RunnerSettings(BaseSettings):
 
 @lru_cache
 def runner_settings() -> RunnerSettings:
-    return RunnerSettings(_env_file="runner.env", _env_file_encoding="utf-8")
+    return RunnerSettings()

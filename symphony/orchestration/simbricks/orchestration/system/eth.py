@@ -75,7 +75,9 @@ class EthSimpleNIC(base.Component):
         instance = super().fromJSON(system, json_obj)
         instance._ip = utils_base.get_json_attr_top(json_obj, "ip")
         eth_inf_id = int(utils_base.get_json_attr_top(json_obj, "eth_if"))
-        instance._eth_if = system.get_inf(eth_inf_id)
+        eth_if = system.get_inf(eth_inf_id)
+        assert isinstance(eth_if, EthInterface)
+        instance._eth_if = eth_if
         return instance
 
 

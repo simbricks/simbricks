@@ -49,7 +49,6 @@ class ProxyReadyInfo:
 
 
 class SimulationExecutorCallbacks:
-
     def __init__(self, instantiation: inst_base.Instantiation) -> None:
         self._instantiation = instantiation
         self._output: output.SimulationOutput = output.SimulationOutput(
@@ -131,7 +130,6 @@ class SimulationExecutorCallbacks:
 
 
 class SimulationExecutor:
-
     def __init__(
         self,
         instantiation: inst_base.Instantiation,
@@ -205,7 +203,6 @@ class SimulationExecutor:
         assert proxy_info.port is not None
         external_proxy._ip = proxy_info.ip
         external_proxy._port = proxy_info.port
-
 
     async def _start_sim(self, sim: sim_base.Simulator) -> None:
         """Start a simulator and wait for it to be ready."""
@@ -282,8 +279,10 @@ class SimulationExecutor:
             # add a ProxyReadyInfo mapping for each external proxy in the graph
             for node in graph:
                 for dep in graph[node]:
-                    if (dep.type == dep_graph.SimulationDependencyNodeType.EXTERNAL_PROXY
-                        and dep.get_proxy().id() not in self._external_proxy_running):
+                    if (
+                        dep.type == dep_graph.SimulationDependencyNodeType.EXTERNAL_PROXY
+                        and dep.get_proxy().id() not in self._external_proxy_running
+                    ):
                         proxy_id = dep.get_proxy().id()
                         self._external_proxy_running[proxy_id] = ProxyReadyInfo(proxy_id)
 
@@ -307,9 +306,7 @@ class SimulationExecutor:
                             topo_comps.append(comp)
                         case dep_graph.SimulationDependencyNodeType.EXTERNAL_PROXY:
                             starting.append(
-                                asyncio.create_task(
-                                    self._wait_for_external_proxy(comp.get_proxy())
-                                )
+                                asyncio.create_task(self._wait_for_external_proxy(comp.get_proxy()))
                             )
                             topo_comps.append(comp)
                         case _:
@@ -336,7 +333,7 @@ class SimulationExecutor:
             if self._verbose:
                 print(f"{self._instantiation.simulation.name}: interrupted")
             await self._callbacks.simulation_exited(output.SimulationExitState.INTERRUPTED)
-        except:  # pylint: disable=bare-except
+        except Exception:
             await self._callbacks.simulation_exited(output.SimulationExitState.FAILED)
             traceback.print_exc()
 

@@ -41,7 +41,6 @@ class SimulationExitState(enum.Enum):
 
 
 class ProcessOutput:
-
     def __init__(self, cmd: str):
         self.cmd = cmd
         self.stdout: list[str] = []

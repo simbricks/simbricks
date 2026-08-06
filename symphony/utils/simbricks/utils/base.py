@@ -57,7 +57,8 @@ class IdObj(abc.ABC):
 
 
 class Time(enum.IntEnum):
-    Picoseconds = 10 ** (-3)
+    # FIXME: this is wrong, see https://github.com/simbricks/simbricks/issues/178
+    Picoseconds = 10 ** (-3)  # pyright: ignore[reportAssignmentType]
     Nanoseconds = 1
     Microseconds = 10 ** (3)
     Milliseconds = 10 ** (6)

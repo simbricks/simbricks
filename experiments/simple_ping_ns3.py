@@ -62,11 +62,11 @@ switch = system.EthSwitch(sys)
 switch_nic0 = system.EthInterface(switch)
 switch.add_if(switch_nic0)
 switch_nic0_chan = system.EthChannel(nic0._eth_if, switch_nic0)
-switch_nic0_chan.latency = 2 * 10**6 # 2ms
+switch_nic0_chan.latency = 2 * 10**6  # 2ms
 switch_nic1 = system.EthInterface(switch)
 switch.add_if(switch_nic1)
 switch_nic1_chan = system.EthChannel(nic1._eth_if, switch_nic1)
-switch_nic1_chan.latency = 2 * 10**6 # 2ms
+switch_nic1_chan.latency = 2 * 10**6  # 2ms
 
 # # connect switch to ns-3 hosts
 # switch_host2 = system.EthInterface(switch)
@@ -123,8 +123,8 @@ net_inst = ns3.NS3Net(simulation)
 # net_inst.add(host2)
 # net_inst.add(host3)
 net_inst.add(switch)
-#net_inst.use_file = False
-net_inst.global_conf.stop_time = '60s'
+# net_inst.use_file = False
+net_inst.global_conf.stop_time = "60s"
 # net_inst.global_conf.mapping["Progress"] = "100ms,20s"
 # net_inst.logging.add_logging("Ping", ns3_components.NS3LoggingLevel.LEVEL_ALL)
 # net_inst.logging.add_logging("BridgeNetDevice", ns3_components.NS3LoggingLevel.LEVEL_ALL)

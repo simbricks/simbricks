@@ -43,7 +43,7 @@ async def info():
     """Retrieve information about my user."""
     uc = await user_client()
     user = await uc.user_info()
-    print_table_generic("User", [user],  "id", "username", "email", "first_name", "last_name")
+    print_table_generic("User", [user], "id", "username", "email", "first_name", "last_name")
 
 
 @app.command()
@@ -52,7 +52,16 @@ async def def_ns_mem():
     """Retrieve the current users default namespace membership."""
     uc = await user_client()
     membership = await uc.default_namespace_membership()
-    print_table_generic("Default Namesapce Membership", [membership],  "username", "email", "first_name", "last_name", "role", "namespace_full_path")
+    print_table_generic(
+        "Default Namesapce Membership",
+        [membership],
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "role",
+        "namespace_full_path",
+    )
 
 
 @app.command()
@@ -61,8 +70,16 @@ async def set_def_ns_mem(ns_path: str):
     """Set the current users default namespace membership."""
     uc = await user_client()
     membership = await uc.set_default_ns_membership(ns_path)
-    print_table_generic("Default Namesapce Membership", [membership],  "username", "email", "first_name", "last_name", "role", "namespace_full_path")
-
+    print_table_generic(
+        "Default Namesapce Membership",
+        [membership],
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "role",
+        "namespace_full_path",
+    )
 
 
 @app.command()
@@ -71,4 +88,13 @@ async def memberships():
     """List a users namespace memberships."""
     uc = await user_client()
     memberships = await uc.memberships()
-    print_table_generic("Namesapce Memberships", memberships.data,  "username", "email", "first_name", "last_name", "role", "namespace_full_path")
+    print_table_generic(
+        "Namesapce Memberships",
+        memberships.data,
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "role",
+        "namespace_full_path",
+    )

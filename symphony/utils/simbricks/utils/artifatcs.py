@@ -51,7 +51,7 @@ def _add_to_zip(
     path: pathlib.Path,
     base_path: pathlib.Path,
     relative: bool,
-    recursive: bool
+    recursive: bool,
 ) -> None:
     if path.is_file():
         _add_file_to_zip(zip_file, path, base_path, relative)

@@ -57,7 +57,9 @@ app.add_typer(user.app, name="user")
 @app.callback()
 @async_cli()
 async def amain(
-    ns: Annotated[str, Option(help="Namespace to operate in.")] = cli_settings().client.namespace,
+    ns: Annotated[
+        str | None, Option(help="Namespace to operate in.")
+    ] = cli_settings().client.namespace,
     disable_telemetry: Annotated[
         bool, Option(help="Disable Telemetry.")
     ] = cli_settings().telemetry.disabled,

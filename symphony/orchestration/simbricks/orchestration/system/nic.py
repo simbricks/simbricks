@@ -32,9 +32,9 @@ class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):
     def add_if(self, interface: eth.EthInterface | pcie.PCIeDeviceInterface) -> None:
         match interface:
             case eth.EthInterface():
-                eth.EthSimpleNIC.add_if(interface)
+                eth.EthSimpleNIC.add_if(self, interface)
             case pcie.PCIeDeviceInterface():
-                pcie.PCIeSimpleDevice.add_if(interface)
+                pcie.PCIeSimpleDevice.add_if(self, interface)
             case _:
                 raise Exception(
                     f"interface must have type EthInterface or PCIeDeviceInterface but has type {type(interface)}"
@@ -44,4 +44,3 @@ class SimplePCIeNIC(pcie.PCIeSimpleDevice, eth.EthSimpleNIC):
 class VirtIONic(SimplePCIeNIC):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
-

@@ -121,7 +121,6 @@ class BaseLinuxApplication(Application):
 
 
 class GenericRawCommandApplication(BaseLinuxApplication):
-
     def __init__(self, h: sys_host.LinuxHost, commands: list[str] = []) -> None:
         super().__init__(h)
         self.commands: list[str] = commands
@@ -143,7 +142,6 @@ class GenericRawCommandApplication(BaseLinuxApplication):
 
 
 class NVMEFsTest(BaseLinuxApplication):
-
     def __init__(self, h: sys_host.LinuxHost) -> None:
         super().__init__(h)
 
@@ -252,7 +250,6 @@ class NetperfClient(BaseLinuxApplication):
 
 
 class IperfTCPServer(BaseLinuxApplication):
-
     def __init__(self, h: sys_host.LinuxHost) -> None:
         super().__init__(h)
 
@@ -269,7 +266,6 @@ class IperfTCPServer(BaseLinuxApplication):
 
 
 class IperfUDPServer(BaseLinuxApplication):
-
     def __init__(self, h: sys_host.LinuxHost) -> None:
         super().__init__(h)
 
@@ -286,7 +282,6 @@ class IperfUDPServer(BaseLinuxApplication):
 
 
 class IperfTCPClient(BaseLinuxApplication):
-
     def __init__(self, h: sys_host.LinuxHost, server_ip: str = "10.0.0.1", procs: int = 1) -> None:
         super().__init__(h)
         self.server_ip: str = server_ip
@@ -311,7 +306,6 @@ class IperfTCPClient(BaseLinuxApplication):
 
 
 class IperfUDPClient(BaseLinuxApplication):
-
     def __init__(
         self, h: sys_host.LinuxHost, server_ip: str = "10.0.0.1", rate: str = "150m"
     ) -> None:

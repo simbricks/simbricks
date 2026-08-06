@@ -37,7 +37,6 @@ if typing.TYPE_CHECKING:
 
 
 class LocalSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
-
     def __init__(self, instantiation: inst_base.Instantiation, verbose: bool):
         super().__init__(instantiation)
         self._instantiation = instantiation

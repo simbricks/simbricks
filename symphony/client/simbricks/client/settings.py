@@ -43,9 +43,11 @@ class ClientSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="",
         env_nested_delimiter="_",
+        env_file="simbricks-client.env",
+        env_file_encoding="utf-8",
     )
 
 
 @lru_cache
 def client_settings() -> ClientSettings:
-    return ClientSettings(_env_file="simbricks-client.env", _env_file_encoding="utf-8")
+    return ClientSettings()

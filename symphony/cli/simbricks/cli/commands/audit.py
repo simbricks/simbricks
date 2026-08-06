@@ -24,9 +24,8 @@ from typer import Typer
 
 from ..utils import async_cli
 
-app = Typer(
-    help="Auditing user actions."
-)
+app = Typer(help="Auditing user actions.")
+
 
 @app.command()
 @async_cli()

@@ -7,7 +7,8 @@ from simbricks.client.namespace import EventFromRunner_U, EventToRunner_U
 START_RUN_ADD_INST_ART = "inst_input_artifact"
 START_RUN_ADD_FRAG_ART = "fragment_input_artifact"
 
-def __event_to_dict(event: EventToRunner_U | EventToRunner_U) -> dict:
+
+def __event_to_dict(event: EventToRunner_U | EventFromRunner_U) -> dict:
     assert hasattr(event, "to_dict")
     return {"type": event.__class__.__name__, "data": event.to_dict()}
 
@@ -34,8 +35,8 @@ async def send_events(
     write: abc.Callable[[bytes], abc.Awaitable[None]],
     events: list[EventToRunner_U] | list[EventFromRunner_U],
 ) -> None:
-    events = [__event_to_dict(event) for event in events]
-    events_json = json.dumps(events)
+    event_dicts = [__event_to_dict(event) for event in events]
+    events_json = json.dumps(event_dicts)
     payload = f",{events_json}"
     data = bytes(f"{len(payload):12x}{payload}", encoding="utf-8")
     await write(data)
@@ -54,7 +55,7 @@ async def _read_all(read: abc.Callable[[int], abc.Awaitable[bytes]], length: int
 
 async def get_events(
     read: abc.Callable[[int], abc.Awaitable[bytes]],
-) -> list[EventFromRunner_U] | list[EventToRunner_U]:
+) -> list[EventToRunner_U | EventFromRunner_U]:
 
     length_str = (await _read_all(read, 12)).decode("utf-8")
     length = int(length_str, 16)
@@ -64,7 +65,7 @@ async def get_events(
     if separator == -1:
         raise RuntimeError("invalid format of event bundle payload")
 
-    events_json = json.loads(payload[separator + 1:])
+    events_json = json.loads(payload[separator + 1 :])
     events = [__event_from_dict(event) for event in events_json]
 
     return events

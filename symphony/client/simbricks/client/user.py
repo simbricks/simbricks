@@ -37,7 +37,6 @@ from .base import base_client, validate_response_model
 
 
 class UserClient:
-
     def __init__(self):
         pass
 

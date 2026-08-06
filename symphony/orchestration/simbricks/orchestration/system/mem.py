@@ -51,9 +51,11 @@ class MemChannel(base.Channel):
         super().__init__(host, dev)
 
     def host_if(self) -> MemHostInterface:
+        assert isinstance(self.a, MemHostInterface)
         return self.a
 
     def dev_if(self) -> MemDeviceInterface:
+        assert isinstance(self.b, MemDeviceInterface)
         return self.b
 
 
@@ -88,7 +90,9 @@ class MemSimpleDevice(base.Component):
         addr = utils_base.get_json_attr_top(json_obj, "addr")
         size = utils_base.get_json_attr_top(json_obj, "size")
         as_id = utils_base.get_json_attr_top(json_obj, "as_id")
-        instance._mem_if = system.get_inf(mem_if_id)
+        mem_if = system.get_inf(mem_if_id)
+        assert isinstance(mem_if, MemDeviceInterface)
+        instance._mem_if = mem_if
         instance._addr = addr
         instance._size = size
         instance._as_id = as_id
@@ -100,7 +104,6 @@ class MemInterconnect(base.Component):
     def __init__(self, s: base.System):
         super().__init__(s)
         self._routes: list[dict] = []
-
 
     def add_if(self, interface: MemDeviceInterface | MemHostInterface) -> None:
         super().add_if(interface)
@@ -119,12 +122,14 @@ class MemInterconnect(base.Component):
 
     def add_route(self, dev: MemHostInterface, vaddr: int, len: int, paddr: int = 0):
         assert dev in self.interfaces()
-        self._routes.append({
-            'dev': dev.id(),
-            'vaddr': vaddr,
-            'len': len,
-            'paddr': paddr,
-        })
+        self._routes.append(
+            {
+                "dev": dev.id(),
+                "vaddr": vaddr,
+                "len": len,
+                "paddr": paddr,
+            }
+        )
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -159,5 +164,7 @@ class MemTerminal(base.Component):
     def fromJSON(cls, system: base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         mem_if_id = int(utils_base.get_json_attr_top(json_obj, "mem_if"))
-        instance._mem_if = system.get_inf(mem_if_id)
+        mem_if = system.get_inf(mem_if_id)
+        assert isinstance(mem_if, MemDeviceInterface)
+        instance._mem_if = mem_if
         return instance

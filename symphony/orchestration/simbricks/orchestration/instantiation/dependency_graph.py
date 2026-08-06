@@ -21,6 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """Module for building graph for determinining starting order of components like simulators and
 proxies that runner starts."""
+
 from __future__ import annotations
 
 import enum
@@ -46,7 +47,6 @@ class SimulationDependencyNodeType(enum.Enum):
 
 
 class SimulationDependencyNode:
-
     def __init__(
         self,
         type: SimulationDependencyNodeType,
@@ -200,9 +200,9 @@ def build_simulation_dependency_graph(
     for proxy_a in inst.assigned_fragment.all_proxies():
         node_a = nodes_proxy[proxy_a]  # was added with proxy-simulator dependencies
         proxy_b = inst._find_opposing_proxy(proxy_a)
-        assert (
-            proxy_b not in inst.assigned_fragment.all_proxies()
-        ), "connection between proxies in the same fragment should have been optimized out earlier"
+        assert proxy_b not in inst.assigned_fragment.all_proxies(), (
+            "connection between proxies in the same fragment should have been optimized out earlier"
+        )
         node_b = nodes_proxy.setdefault(
             proxy_b,
             SimulationDependencyNode(SimulationDependencyNodeType.EXTERNAL_PROXY, proxy_b),

@@ -290,7 +290,6 @@ class PackerDiskImage(DynamicDiskImage):
 
 
 class ConfigFile(utils_base.IdObj):
-
     def __init__(self, file_name: str):
         super().__init__()
         # Name of the file in the image
@@ -313,12 +312,11 @@ class ConfigFile(utils_base.IdObj):
 
 
 class ConfigFileLocal(ConfigFile):
-
     def __init__(self, file_name: str, path: str):
         super().__init__(file_name)
         # Path of the local file to be added to the image
         self.path: str = path
-        self.open_mode: str = 'rb'
+        self.open_mode: str = "rb"
 
     def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
         path = inst.env.work_dir_or_abs(self.path, True)
@@ -339,7 +337,6 @@ class ConfigFileLocal(ConfigFile):
 
 
 class ConfigFileStr(ConfigFile):
-
     def __init__(self, file_name: str, string: str):
         super().__init__(file_name)
         self.string = string

@@ -41,13 +41,12 @@ if typing.TYPE_CHECKING:
 
 
 class Proxy(utils_base.IdObj, abc.ABC):
-
     def __init__(self):
         super().__init__()
         self._interfaces: list[sys_base.Interface] = []
         """
         The interfaces this proxy handles.
-        
+
         Order is important here because proxies forward messages for SimBricks
         sockets in the order these sockets are passed on the command-line. So
         for two connecting proxies executing on separate runners, this order
@@ -139,7 +138,6 @@ class Proxy(utils_base.IdObj, abc.ABC):
 
 
 class DummyProxy(Proxy):
-
     async def read_listening_info(self) -> None:
         pass
 
@@ -148,7 +146,6 @@ class DummyProxy(Proxy):
 
 
 class TCPProxy(Proxy):
-
     def run_cmd(self, inst: inst_base.Instantiation, proxy_host_ip: str) -> str:
         proxy_bin = "net_sockets"
         cmd_args = [proxy_bin]
@@ -201,7 +198,6 @@ class RDMAProxy(Proxy):
 
 
 class ProxyPair(utils_base.IdObj):
-
     def __init__(
         self,
         instantiation: inst_base.Instantiation,

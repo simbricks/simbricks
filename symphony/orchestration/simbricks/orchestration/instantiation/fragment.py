@@ -37,7 +37,6 @@ if typing.TYPE_CHECKING:
 
 
 class Fragment(utils_base.IdObj):
-
     def __init__(
         self, fragment_executor_tag: str | None = None, runner_tags: set[str] | None = None
     ):
@@ -106,9 +105,15 @@ class Fragment(utils_base.IdObj):
         )
 
         instance.input_artifact_name = utils_base.get_json_attr_top(json_obj, "input_artifact_name")
-        instance.input_artifact_paths = utils_base.get_json_attr_top(json_obj, "input_artifact_paths")
-        instance.output_artifact_name = utils_base.get_json_attr_top(json_obj, "output_artifact_name")
-        instance.output_artifact_paths = utils_base.get_json_attr_top(json_obj, "output_artifact_paths")
+        instance.input_artifact_paths = utils_base.get_json_attr_top(
+            json_obj, "input_artifact_paths"
+        )
+        instance.output_artifact_name = utils_base.get_json_attr_top(
+            json_obj, "output_artifact_name"
+        )
+        instance.output_artifact_paths = utils_base.get_json_attr_top(
+            json_obj, "output_artifact_paths"
+        )
 
         return instance
 
@@ -137,11 +142,13 @@ class Fragment(utils_base.IdObj):
         if not fragments:
             raise RuntimeError("cannot merge 0 fragments")
         for fragment in fragments:
-            if (fragment.fragment_executor_tag != fragments[0].fragment_executor_tag
-                or not compare_labels(fragment, fragments[0])
-            ):
-                raise RuntimeError("cannot merge fragments with different fragment executor tags "
-                                   "or different runner tags")
+            if fragment.fragment_executor_tag != fragments[
+                0
+            ].fragment_executor_tag or not compare_labels(fragment, fragments[0]):
+                raise RuntimeError(
+                    "cannot merge fragments with different fragment executor tags "
+                    "or different runner tags"
+                )
         merged_fragment = Fragment(fragments[0].fragment_executor_tag, fragments[0].runner_tags)
         proxies = set()
         simulators = set()
@@ -165,9 +172,9 @@ class Fragment(utils_base.IdObj):
         return self._proxies
 
     def find_proxy_by_interface(self, interface: sys_base.Interface) -> proxy.Proxy | None:
-        for proxy in self._proxies:
-            if interface in proxy._interfaces:
-                return proxy
+        for prox in self._proxies:
+            if interface in prox._interfaces:
+                return prox
         return None
 
     def get_proxy_by_interface(self, interface: sys_base.Interface) -> proxy.Proxy:

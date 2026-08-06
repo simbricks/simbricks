@@ -28,9 +28,10 @@ if N_RACKS * N_DETAILED_HOSTS_PER_RACK % 2 != 0 or N_RACKS * N_NS3_HOSTS_PER_RAC
     print("Number of detailed hosts and ns-3 hosts must each be even")
     exit(1)
 
-LINK_LATENCY = 100000 # in nanoseconds
+LINK_LATENCY = 100000  # in nanoseconds
 LINK_BANDWIDTH_SPINE = "10Gbps"
 LINK_BANDWIDTH_TOR = "1Gbps"
+
 
 class Host:
     def __init__(self, host: system.Host):
@@ -39,6 +40,7 @@ class Host:
         self.channel: system.EthChannel | None = None
         self.ip: str | None = None
         self.ip_prefix: str | None = None
+
 
 instantiations: list[inst.Instantiation] = []
 
@@ -62,7 +64,7 @@ for i_tor in range(N_RACKS):
     tor_switch.name = f"TOR Switch-{i_tor}"
     channel = sys_helpers.connect_eth_devices(spine_switch, tor_switch)
     channel.set_latency(LINK_LATENCY)
-    channel.parameters['data_rate'] = LINK_BANDWIDTH_SPINE
+    channel.parameters["data_rate"] = LINK_BANDWIDTH_SPINE
     tor_switches.append((tor_switch, channel))
 
 # Create ns-3 hosts and connect them to TOR
@@ -76,7 +78,7 @@ for i_tor_switch in range(N_RACKS):
 
         channel = sys_helpers.connect_eth_devices(tor_switches[i_tor_switch][0], sys_host)
         channel.set_latency(LINK_LATENCY)
-        channel.parameters['data_rate'] = LINK_BANDWIDTH_TOR
+        channel.parameters["data_rate"] = LINK_BANDWIDTH_TOR
         host.channel = channel
 
         host.ip = str(next(ips))
@@ -107,7 +109,7 @@ for i_tor_switch in range(N_RACKS):
 
         channel = tor_switches[i_tor_switch][0].connect_eth_peer_if(nic._eth_if)
         channel.set_latency(LINK_LATENCY)
-        channel.parameters['data_rate'] = LINK_BANDWIDTH_TOR
+        channel.parameters["data_rate"] = LINK_BANDWIDTH_TOR
         host.channel = channel
 
         host.ip = str(next(ips))
@@ -121,8 +123,8 @@ for i_tor_switch in range(N_RACKS):
 ns3_pairs = [i for i in range(N_RACKS * N_NS3_HOSTS_PER_RACK)]
 random.shuffle(ns3_pairs)
 for i in range(N_RACKS * N_NS3_HOSTS_PER_RACK // 2):
-    host0_rack_id = ns3_pairs[2*i] // N_NS3_HOSTS_PER_RACK
-    host0_host_id = ns3_pairs[2*i] % N_NS3_HOSTS_PER_RACK
+    host0_rack_id = ns3_pairs[2 * i] // N_NS3_HOSTS_PER_RACK
+    host0_host_id = ns3_pairs[2 * i] % N_NS3_HOSTS_PER_RACK
     host0 = ns3_hosts[host0_rack_id][host0_host_id]
 
     packet_sink = system.Application(host0.host)
@@ -133,8 +135,8 @@ for i in range(N_RACKS * N_NS3_HOSTS_PER_RACK // 2):
     }
     host0.host.add_app(packet_sink)
 
-    host1_rack_id = ns3_pairs[2*i+1] // N_NS3_HOSTS_PER_RACK
-    host1_host_id = ns3_pairs[2*i+1] % N_NS3_HOSTS_PER_RACK
+    host1_rack_id = ns3_pairs[2 * i + 1] // N_NS3_HOSTS_PER_RACK
+    host1_host_id = ns3_pairs[2 * i + 1] % N_NS3_HOSTS_PER_RACK
     host1 = ns3_hosts[host1_rack_id][host1_host_id]
 
     on_off_app = system.Application(host1.host)
@@ -155,14 +157,14 @@ for i in range(N_RACKS * N_NS3_HOSTS_PER_RACK // 2):
 detailed_pairs = [i for i in range(N_RACKS * N_DETAILED_HOSTS_PER_RACK)]
 random.shuffle(detailed_pairs)
 for i in range(N_RACKS * N_DETAILED_HOSTS_PER_RACK // 2):
-    host0_rack_id = detailed_pairs[2*i] // N_DETAILED_HOSTS_PER_RACK
-    host0_host_id = detailed_pairs[2*i] % N_DETAILED_HOSTS_PER_RACK
+    host0_rack_id = detailed_pairs[2 * i] // N_DETAILED_HOSTS_PER_RACK
+    host0_host_id = detailed_pairs[2 * i] % N_DETAILED_HOSTS_PER_RACK
     host0 = detailed_hosts[host0_rack_id][host0_host_id]
     iperf_server_app = system.IperfTCPServer(host0.host)
     host0.host.add_app(iperf_server_app)
 
-    host1_rack_id = detailed_pairs[2*i+1] // N_DETAILED_HOSTS_PER_RACK
-    host1_host_id = detailed_pairs[2*i+1] % N_DETAILED_HOSTS_PER_RACK
+    host1_rack_id = detailed_pairs[2 * i + 1] // N_DETAILED_HOSTS_PER_RACK
+    host1_host_id = detailed_pairs[2 * i + 1] % N_DETAILED_HOSTS_PER_RACK
     host1 = detailed_hosts[host1_rack_id][host1_host_id]
     iperf_client_app = system.IperfTCPClient(host1.host, host0.ip)
     iperf_client_app.wait = True
@@ -191,7 +193,7 @@ for i_tor_switch in range(N_RACKS):
     for i_host in range(N_NS3_HOSTS_PER_RACK):
         net_inst.add(ns3_hosts[i_tor_switch][i_host].host)
 
-#simulation.enable_synchronization()
+# simulation.enable_synchronization()
 
 # ============ INSTANTIATION ============
 

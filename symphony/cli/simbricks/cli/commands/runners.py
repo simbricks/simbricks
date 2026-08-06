@@ -72,9 +72,7 @@ async def rm(runner_id: str):
 async def create(resource_group_id: str, label: str, tags: list[str]):
     """Update a runner with the the given label and tags."""
     rc = await runner_client("undefined")
-    runner = await rc.create_runner(
-        resource_group_id, label, tags
-    )
+    runner = await rc.create_runner(resource_group_id, label, tags)
     print_table_generic(
         "Runner", [runner], "id", "label", "tags", "namespace_id", "resource_group_id", "status"
     )

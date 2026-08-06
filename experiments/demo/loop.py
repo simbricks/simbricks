@@ -19,7 +19,7 @@ Simple example of a simulation: All components are executed in the same fragment
 |  Iperf-Server -- Server-NIC -- Switch ----- Client-NIC -- Iperf-CLient |
 |________________________________________________________________________|
 
-We define different rates at which the Iperf UDP client tries to send packets 
+We define different rates at which the Iperf UDP client tries to send packets
 and create 3 instantiations (one for each rate).
 """
 
@@ -27,7 +27,6 @@ instantiations = []
 
 iperf_rates = ["150m", "430m", "600m"]
 for rate in iperf_rates:
-
     """
     System configuration
     """

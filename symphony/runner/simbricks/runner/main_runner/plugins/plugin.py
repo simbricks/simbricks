@@ -1,12 +1,11 @@
 import abc
 import typing as tp
 
-from simbricks.client.namespace import EventToRunner_U
+from simbricks.client.namespace import EventFromRunner_U, EventToRunner_U
 from simbricks.runner import utils
 
 
 class FragmentRunnerPlugin(abc.ABC):
-
     @staticmethod
     @abc.abstractmethod
     def name() -> str:
@@ -30,11 +29,13 @@ class FragmentRunnerPlugin(abc.ABC):
     async def write(self, data: bytes) -> None:
         pass
 
-    async def send_events(self, events: list[EventToRunner_U] | list[EventToRunner_U]) -> None:
+    async def send_events(self, events: list[EventToRunner_U]) -> None:
         await utils.send_events(self.write, events)
 
-    async def get_events(self) -> list[EventToRunner_U] | list[EventToRunner_U]:
-        return await utils.get_events(self.read)
+    async def get_events(self) -> list[EventFromRunner_U]:
+        # This connection receives events produced by the fragment runner (EventFromRunner_U);
+        # utils.get_events' return type is broader because it deserializes either direction.
+        return tp.cast(list[EventFromRunner_U], await utils.get_events(self.read))
 
 
 def get_first_match(key: tp.Any, *params: dict[tp.Any, tp.Any]) -> tp.Any | None:

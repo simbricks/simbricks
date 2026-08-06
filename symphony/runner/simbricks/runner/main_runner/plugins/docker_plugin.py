@@ -7,7 +7,6 @@ from simbricks.runner.main_runner.plugins import plugin
 
 
 class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
-
     def __init__(self):
         super().__init__()
         self.executor: subprocess.Popen | None = None
@@ -21,18 +20,21 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
         return "SimbricksDockerRunner"
 
     async def read(self, length: int) -> bytes:
+        assert self.reader is not None
         data = await self.reader.read(length)
         if length != 0 and len(data) == 0:
             raise RuntimeError("connection broken")
         return data
 
     async def write(self, data: bytes) -> None:
+        assert self.writer is not None
         self.writer.write(data)
         await self.writer.drain()
 
     def accept_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         assert self.reader is None
         assert self.writer is None
+        assert self.server is not None
         self.reader = reader
         self.writer = writer
         self.server.close()
@@ -94,12 +96,17 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
             docker_opts = []
 
         port = self.server.sockets[0].getsockname()[1]
-        self.executor = subprocess.Popen([
-            "docker", "run", "--rm", "--device=/dev/kvm",
-            "--add-host=host.docker.internal:host-gateway"]
+        self.executor = subprocess.Popen(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "--device=/dev/kvm",
+                "--add-host=host.docker.internal:host-gateway",
+            ]
             + docker_opts
-            + [docker_image,
-            "host.docker.internal", str(port), "host.docker.internal"])
+            + [docker_image, "host.docker.internal", str(port), "host.docker.internal"]
+        )
 
         # wait for the fragment executor to connect
         await self.connected.wait()
@@ -109,6 +116,8 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
         if self.executor is None:
             return
 
+        assert self.writer is not None
+        assert self.server is not None
         self.writer.close()
         await self.writer.wait_closed()
         await self.server.wait_closed()
@@ -116,5 +125,6 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
         self.executor.wait()
         self.executor = None
         print("successfully stopped docker fragment executor")
+
 
 runner_plugin = SimbricksDockerPlugin
