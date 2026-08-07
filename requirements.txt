@@ -1,4 +1,3 @@
-cpplint==1.6.1
 ruff==0.16.1
 pyright==1.1.390
 poetry==1.8.4

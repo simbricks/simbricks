@@ -26,7 +26,6 @@ include mk/recipes.mk
 
 base_dir := $(d)./
 
-CPPLINT ?= cpplint
 CLANG_TIDY ?= clang-tidy
 CLANG_FORMAT ?= clang-format
 CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3 -fPIC -std=gnu11 $(EXTRA_CFLAGS)
@@ -49,9 +48,6 @@ clean:
 distclean:
 	rm -rf $(CLEAN_ALL) $(DISTCLEAN_ALL)
 
-lint-cpplint:
-	$(CPPLINT) --quiet --recursive .
-
 lint-clang-tidy:
 	./.clang-tidy-wrapper.sh $(CLANG_TIDY) -I$(base_dir) -I$(base_dir)lib
 
@@ -71,7 +67,7 @@ format-ruff:
 
 lint-python: lint-ruff
 format-python: format-ruff
-lint: lint-cpplint lint-clang-format lint-python
+lint: lint-clang-format lint-python
 lint-all: lint lint-clang-tidy
 
 help:
@@ -83,7 +79,7 @@ help:
 	@echo "  clang-format: reformat source (use with caution)"
 
 .PHONY: all clean distclean lint lint-all \
-	lint-cpplint lint-clang-tidy lint-clang-format clang-format help \
+	lint-clang-tidy lint-clang-format clang-format help \
 	lint-ruff format-ruff lint-python format-python
 
 include mk/subdir_post.mk

@@ -22,8 +22,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef UTILS_LOG_H_
-#define UTILS_LOG_H_
+#ifndef SIMBRICKS_UTILS_LOG_H_
+#define SIMBRICKS_UTILS_LOG_H_
 
 #include <stdio.h>
 
@@ -338,4 +338,4 @@ inline void FlushLog() {
 
 }  // namespace sim_log
 
-#endif  // UTILS_LOG_H_
+#endif  // SIMBRICKS_UTILS_LOG_H_
