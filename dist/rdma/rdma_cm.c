@@ -148,8 +148,8 @@ int RdmaCMConnect(struct sockaddr_in *addr) {
     return 1;
   }
   if (event->event != RDMA_CM_EVENT_ADDR_RESOLVED) {
-    fprintf(stderr, "RdmaConnect: unexpected event (%u instead of %u)\n",
-            event->event, RDMA_CM_EVENT_ADDR_RESOLVED);
+    fprintf(stderr, "RdmaConnect: unexpected event (%u instead of %u)\n", event->event,
+            RDMA_CM_EVENT_ADDR_RESOLVED);
     return 1;
   }
   rdma_ack_cm_event(event);
@@ -167,8 +167,8 @@ int RdmaCMConnect(struct sockaddr_in *addr) {
     return 1;
   }
   if (event->event != RDMA_CM_EVENT_ROUTE_RESOLVED) {
-    fprintf(stderr, "RdmaConnect: unexpected event (%u instead of %u)\n",
-            event->event, RDMA_CM_EVENT_ROUTE_RESOLVED);
+    fprintf(stderr, "RdmaConnect: unexpected event (%u instead of %u)\n", event->event,
+            RDMA_CM_EVENT_ROUTE_RESOLVED);
     return 1;
   }
   rdma_ack_cm_event(event);
@@ -204,8 +204,7 @@ int RdmaCMConnect(struct sockaddr_in *addr) {
   return 0;
 }
 
-struct ibv_qp *RdmaCMCreateQP(struct ibv_pd *pd,
-                              struct ibv_qp_init_attr *attr) {
+struct ibv_qp *RdmaCMCreateQP(struct ibv_pd *pd, struct ibv_qp_init_attr *attr) {
   if (rdma_create_qp(cm_id, pd, attr)) {
     perror("RdmaCommonInit: rdma_create_qp failed");
     return NULL;

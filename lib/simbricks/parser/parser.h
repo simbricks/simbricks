@@ -27,17 +27,18 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
 #include <simbricks/base/if.h>
 
 struct SimbricksAdapterParams {
-    bool listen;
-    char *socket_path;
-    char *shm_path;
-    bool sync;
-    bool link_latency_set;
-    uint64_t link_latency;
-    bool sync_interval_set;
-    uint64_t sync_interval;
+  bool listen;
+  char *socket_path;
+  char *shm_path;
+  bool sync;
+  bool link_latency_set;
+  uint64_t link_latency;
+  bool sync_interval_set;
+  uint64_t sync_interval;
 };
 
 struct SimbricksAdapterParams *SimbricksParametersParse(const char *url);
@@ -52,9 +53,8 @@ void SimbricksParametersFree(struct SimbricksAdapterParams *params);
  * establish listening connections, and wait for outgoing connections. Returns
  * once all interfaces are connected.
  */
-int SimbricksParametersEstablish(struct SimBricksBaseIfEstablishData *ifs,
-                                 const char **urls, size_t n,
-                                 struct SimbricksBaseIfSHMPool *pool,
+int SimbricksParametersEstablish(struct SimBricksBaseIfEstablishData *ifs, const char **urls,
+                                 size_t n, struct SimbricksBaseIfSHMPool *pool,
                                  const char *pool_path);
 
 #endif  // SIMBRICKS_PARSER_PARSER_H_

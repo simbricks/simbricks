@@ -39,9 +39,7 @@ struct SimbricksMemIf {
 };
 
 /** Generate queue access functions for both directions */
-SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfH2M, SimbricksProtoMemH2M,
-                         SimbricksMemIf);
-SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfM2H, SimbricksProtoMemM2H,
-                         SimbricksMemIf);
+SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfH2M, SimbricksProtoMemH2M, SimbricksMemIf);
+SIMBRICKS_BASEIF_GENERIC(SimbricksMemIfM2H, SimbricksProtoMemM2H, SimbricksMemIf);
 
 #endif  // SIMBRICKS_MEM_IF_H_

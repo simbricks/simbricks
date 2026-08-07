@@ -168,13 +168,12 @@ int BasePeerSetupQueues(struct Peer *peer) {
     return 0;
   }
 
-  struct SimbricksProtoListenerIntro *li =
-      (struct SimbricksProtoListenerIntro *)peer->intro_remote;
+  struct SimbricksProtoListenerIntro *li = (struct SimbricksProtoListenerIntro *)peer->intro_remote;
 
 #ifdef DEBUG
   fprintf(stderr, "PeerNetSetupQueues(%s)\n", peer->sock_path);
-  fprintf(stderr, "  l2c_el=%lu l2c_n=%lu c2l_el=%lu c2l_n=%lu\n", li->l2c_elen,
-          li->l2c_nentries, li->c2l_elen, li->c2l_nentries);
+  fprintf(stderr, "  l2c_el=%lu l2c_n=%lu c2l_el=%lu c2l_n=%lu\n", li->l2c_elen, li->l2c_nentries,
+          li->c2l_elen, li->c2l_nentries);
 #endif
 
   uint64_t l2c_offset = 0;
@@ -225,34 +224,29 @@ int BasePeerSendIntro(struct Peer *peer) {
   }
 
   int shm_fd = (peer->is_listener ? peer->shm_fd : -1);
-  if (UxsocketSendFd(peer->sock_fd, peer->intro_remote, peer->intro_remote_len,
-                     shm_fd)) {
+  if (UxsocketSendFd(peer->sock_fd, peer->intro_remote, peer->intro_remote_len, shm_fd)) {
     perror("BasePeerSendIntro: send failed");
     return 1;
   }
   return 0;
 }
 
-int BasePeerReport(struct Peer *peer, uint32_t written_pos,
-                   uint32_t clean_pos) {
+int BasePeerReport(struct Peer *peer, uint32_t written_pos, uint32_t clean_pos) {
   uint32_t pos = peer->local_pos_cleaned;
   if (written_pos == peer->cleanup_pos_last && clean_pos == pos)
     return 0;
 
 #ifdef DEBUG
-  fprintf(stderr, "PeerReport: peer %s written %u -> %u, cleaned %u -> %u\n",
-          peer->sock_path, peer->cleanup_pos_last, written_pos,
-          peer->local_pos_cleaned, clean_pos);
+  fprintf(stderr, "PeerReport: peer %s written %u -> %u, cleaned %u -> %u\n", peer->sock_path,
+          peer->cleanup_pos_last, written_pos, peer->local_pos_cleaned, clean_pos);
 #endif
 
   peer->cleanup_pos_last = written_pos;
   while (pos != clean_pos) {
     void *entry = (peer->local_base + pos * peer->local_elen);
-    volatile union SimbricksProtoBaseMsg *msg =
-        (volatile union SimbricksProtoBaseMsg *)entry;
+    volatile union SimbricksProtoBaseMsg *msg = (volatile union SimbricksProtoBaseMsg *)entry;
     msg->header.own_type =
-        (msg->header.own_type & (~SIMBRICKS_PROTO_MSG_OWN_MASK)) |
-        SIMBRICKS_PROTO_MSG_OWN_PRO;
+        (msg->header.own_type & (~SIMBRICKS_PROTO_MSG_OWN_MASK)) | SIMBRICKS_PROTO_MSG_OWN_PRO;
 
     pos += 1;
     if (pos >= peer->local_enum)
@@ -292,12 +286,10 @@ static int PeerAcceptEvent(struct Peer *peer) {
      that case, send it now. */
   if (peer->intro_valid_remote) {
 #ifdef DEBUG
-    fprintf(stderr, "PeerAcceptEvent(%s): sending welcome message\n",
-            peer->sock_path);
+    fprintf(stderr, "PeerAcceptEvent(%s): sending welcome message\n", peer->sock_path);
 #endif
     if (BasePeerSendIntro(peer)) {
-      fprintf(stderr, "PeerAcceptEvent(%s): sending intro failed\n",
-              peer->sock_path);
+      fprintf(stderr, "PeerAcceptEvent(%s): sending intro failed\n", peer->sock_path);
       return 1;
     }
   }
@@ -311,8 +303,7 @@ int BasePeerEvent(struct Peer *peer, uint32_t events) {
 
   // disable peer if not an input event
   if (!(events & EPOLLIN)) {
-    fprintf(stderr, "PeerEvent: non-input event, disabling peer (%s)",
-            peer->sock_path);
+    fprintf(stderr, "PeerEvent: non-input event, disabling peer (%s)", peer->sock_path);
     peer->ready = false;
     return 1;
   }
@@ -324,8 +315,7 @@ int BasePeerEvent(struct Peer *peer, uint32_t events) {
 
   // if we already have the intro, this is not expected
   if (peer->intro_valid_local) {
-    fprintf(stderr, "PeerEvent: receive event after intro (%s)\n",
-            peer->sock_path);
+    fprintf(stderr, "PeerEvent: receive event after intro (%s)\n", peer->sock_path);
     return 1;
   }
 
@@ -333,8 +323,8 @@ int BasePeerEvent(struct Peer *peer, uint32_t events) {
   ssize_t ret;
   if (!peer->is_listener) {
     /* not a listener, so we're expecting an fd for the shm region */
-    ret = UxsocketRecvFd(peer->sock_fd, peer->intro_local,
-                         sizeof(peer->intro_local), &peer->shm_fd);
+    ret =
+        UxsocketRecvFd(peer->sock_fd, peer->intro_local, sizeof(peer->intro_local), &peer->shm_fd);
     if (ret <= 0)
       return 1;
 
@@ -381,8 +371,7 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
   uint32_t n;
   for (n = 0; n < kPollMax && peer->local_pos + n < peer->local_enum; n++) {
     // stop if we would pass the cleanup position
-    if ((peer->local_pos + n + 1) % peer->local_enum ==
-        peer->local_pos_cleaned) {
+    if ((peer->local_pos + n + 1) % peer->local_enum == peer->local_pos_cleaned) {
 #ifdef DEBUG
       fprintf(stderr, "PollPeerTransfer: waiting for cleanup (%u %u)\n", n,
               peer->local_pos_cleaned);
@@ -391,26 +380,21 @@ static inline void PollPeerTransfer(struct Peer *peer, bool *report) {
     }
 
     void *entry = (peer->local_base + (peer->local_pos + n) * peer->local_elen);
-    volatile union SimbricksProtoBaseMsg *msg =
-        (volatile union SimbricksProtoBaseMsg *)entry;
-    if ((msg->header.own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) !=
-        SIMBRICKS_PROTO_MSG_OWN_CON)
+    volatile union SimbricksProtoBaseMsg *msg = (volatile union SimbricksProtoBaseMsg *)entry;
+    if ((msg->header.own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) != SIMBRICKS_PROTO_MSG_OWN_CON)
       break;
   }
 
   if (n > 0) {
 #ifdef DEBUG
-    fprintf(stderr, "PollPeerTransfer: transferring [%u,%u] (lpc=%u lpr=%u)\n",
-            peer->local_pos, peer->local_pos + n, peer->local_pos_cleaned,
-            peer->local_pos_reported);
+    fprintf(stderr, "PollPeerTransfer: transferring [%u,%u] (lpc=%u lpr=%u)\n", peer->local_pos,
+            peer->local_pos + n, peer->local_pos_cleaned, peer->local_pos_reported);
 #endif
     BaseOpPassEntries(peer, peer->local_pos, n);
     uint32_t newpos = peer->local_pos + n;
-    peer->local_pos =
-        (newpos < peer->local_enum ? newpos : newpos - peer->local_enum);
+    peer->local_pos = (newpos < peer->local_enum ? newpos : newpos - peer->local_enum);
 
-    uint64_t unreported =
-        (peer->local_pos - peer->local_pos_reported) % peer->local_enum;
+    uint64_t unreported = (peer->local_pos - peer->local_pos_reported) % peer->local_enum;
     if (unreported >= kPollReportThreshold)
       *report = true;
   }
@@ -422,29 +406,24 @@ static inline void PollPeerCleanup(struct Peer *peer, bool *report) {
 
   uint64_t cnt = 0;
   do {
-    void *entry =
-        (peer->cleanup_base + peer->cleanup_pos_next * peer->cleanup_elen);
-    volatile union SimbricksProtoBaseMsg *msg =
-        (volatile union SimbricksProtoBaseMsg *)entry;
+    void *entry = (peer->cleanup_base + peer->cleanup_pos_next * peer->cleanup_elen);
+    volatile union SimbricksProtoBaseMsg *msg = (volatile union SimbricksProtoBaseMsg *)entry;
 
-    if ((msg->header.own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) !=
-        SIMBRICKS_PROTO_MSG_OWN_PRO)
+    if ((msg->header.own_type & SIMBRICKS_PROTO_MSG_OWN_MASK) != SIMBRICKS_PROTO_MSG_OWN_PRO)
       break;
 
 #ifdef DEBUG
-    fprintf(stderr, "PollPeerCleanup: peer %s has clean entry at %u\n",
-            peer->sock_path, peer->cleanup_pos_next);
+    fprintf(stderr, "PollPeerCleanup: peer %s has clean entry at %u\n", peer->sock_path,
+            peer->cleanup_pos_next);
 #endif
     peer->cleanup_pos_next += 1;
     if (peer->cleanup_pos_next >= peer->cleanup_enum)
       peer->cleanup_pos_next -= peer->cleanup_enum;
-  } while (++cnt <= kCleanupMax &&
-           peer->cleanup_pos_next != peer->cleanup_pos_last);
+  } while (++cnt <= kCleanupMax && peer->cleanup_pos_next != peer->cleanup_pos_last);
 
   if (cnt > 0) {
     uint64_t unreported =
-        (peer->cleanup_pos_next - peer->cleanup_pos_reported) %
-        peer->cleanup_enum;
+        (peer->cleanup_pos_next - peer->cleanup_pos_reported) % peer->cleanup_enum;
     if (unreported >= kCleanReportThreshold)
       *report = true;
   }
@@ -467,24 +446,21 @@ void BasePoll() {
 
 void BaseEntryReceived(struct Peer *peer, uint32_t pos, void *data) {
 #ifdef DEBUG
-  fprintf(stderr, "BaseEntryReceived: pos=%u (cpr=%u cpl=%u)\n", pos,
-          peer->cleanup_pos_reported, peer->cleanup_pos_last);
+  fprintf(stderr, "BaseEntryReceived: pos=%u (cpr=%u cpl=%u)\n", pos, peer->cleanup_pos_reported,
+          peer->cleanup_pos_last);
 #endif
 
   uint64_t off = (uint64_t)pos * peer->cleanup_elen;
   void *entry = peer->cleanup_base + off;
-  volatile union SimbricksProtoBaseMsg *msg =
-      (volatile union SimbricksProtoBaseMsg *)entry;
+  volatile union SimbricksProtoBaseMsg *msg = (volatile union SimbricksProtoBaseMsg *)entry;
 
   // first copy data after header
-  memcpy((void *)(msg + 1), (uint8_t *)data + sizeof(*msg),
-         peer->cleanup_elen - sizeof(*msg));
+  memcpy((void *)(msg + 1), (uint8_t *)data + sizeof(*msg), peer->cleanup_elen - sizeof(*msg));
   // then copy header except for last byte
   memcpy((void *)msg, data, sizeof(*msg) - 1);
   // WMB()
   // now copy last byte
-  volatile union SimbricksProtoBaseMsg *src_msg =
-      (volatile union SimbricksProtoBaseMsg *)data;
+  volatile union SimbricksProtoBaseMsg *src_msg = (volatile union SimbricksProtoBaseMsg *)data;
   asm volatile("sfence" ::: "memory");
   msg->header.own_type = src_msg->header.own_type;
 }

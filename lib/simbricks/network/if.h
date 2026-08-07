@@ -36,8 +36,7 @@ struct SimbricksNetIf {
 };
 
 void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params);
-int SimbricksNetIfInit(struct SimbricksNetIf *nsif,
-                       struct SimbricksBaseIfParams *params,
+int SimbricksNetIfInit(struct SimbricksNetIf *nsif, struct SimbricksBaseIfParams *params,
                        const char *eth_socket_path, int *sync_eth);
 
 /** Generate queue access functions */

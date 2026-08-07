@@ -161,10 +161,10 @@ static int CommonInit() {
   }
 
 #ifdef RDMA_DEBUG
-  fprintf(stderr, "out: lid=%x qpn=%x psn=%x iid=%lx\n", out_msg.lid,
-          out_msg.qpn, out_msg.psn, out_msg.gid.global.interface_id);
-  fprintf(stderr, "in: lid=%x qpn=%x psn=%x iid=%lx\n", in_msg.lid, in_msg.qpn,
-          in_msg.psn, in_msg.gid.global.interface_id);
+  fprintf(stderr, "out: lid=%x qpn=%x psn=%x iid=%lx\n", out_msg.lid, out_msg.qpn, out_msg.psn,
+          out_msg.gid.global.interface_id);
+  fprintf(stderr, "in: lid=%x qpn=%x psn=%x iid=%lx\n", in_msg.lid, in_msg.qpn, in_msg.psn,
+          in_msg.gid.global.interface_id);
 #endif
 
   // change queue pair to "ready to receive"
@@ -189,8 +189,7 @@ static int CommonInit() {
     attr.ah_attr.grh.sgid_index = ib_sgid_idx;
   }
   if (ibv_modify_qp(ib_qp, &attr,
-                    IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU |
-                        IBV_QP_DEST_QPN | IBV_QP_RQ_PSN |
+                    IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN | IBV_QP_RQ_PSN |
                         IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER)) {
     perror("CommonInit: Failed to modify QP to RTR");
     return 1;
@@ -204,9 +203,8 @@ static int CommonInit() {
   attr.sq_psn = psn_local;
   attr.max_rd_atomic = 1;
   if (ibv_modify_qp(ib_qp, &attr,
-                    IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT |
-                        IBV_QP_RNR_RETRY | IBV_QP_SQ_PSN |
-                        IBV_QP_MAX_QP_RD_ATOMIC)) {
+                    IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY |
+                        IBV_QP_SQ_PSN | IBV_QP_MAX_QP_RD_ATOMIC)) {
     perror("CommonInit: Failed to modify QP to RTS");
     return 1;
   }
@@ -228,8 +226,7 @@ int RdmaIBConnect(struct sockaddr_in *addr) {
   return CommonInit();
 }
 
-struct ibv_qp *RdmaIBCreateQP(struct ibv_pd *pd,
-                              struct ibv_qp_init_attr *attr) {
+struct ibv_qp *RdmaIBCreateQP(struct ibv_pd *pd, struct ibv_qp_init_attr *attr) {
   // create queue pair in reset state
   if (!(ib_qp = ibv_create_qp(pd, attr))) {
     perror("RdmaIBCreateQP: ibv_create_qp failed");
@@ -237,13 +234,10 @@ struct ibv_qp *RdmaIBCreateQP(struct ibv_pd *pd,
   }
 
   // transition queue pair from reset to init state
-  struct ibv_qp_attr attr_init = {.qp_state = IBV_QPS_INIT,
-                                  .pkey_index = 0,
-                                  .port_num = ib_port,
-                                  .qp_access_flags = 0};
+  struct ibv_qp_attr attr_init = {
+      .qp_state = IBV_QPS_INIT, .pkey_index = 0, .port_num = ib_port, .qp_access_flags = 0};
   if (ibv_modify_qp(ib_qp, &attr_init,
-                    IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT |
-                        IBV_QP_ACCESS_FLAGS)) {
+                    IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS)) {
     perror("RdmaIBCreateQP: ibv_modify_qp failed (reset -> init)");
     ibv_destroy_qp(ib_qp);
     return NULL;

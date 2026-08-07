@@ -22,11 +22,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <simbricks/network/if.h>
-
 #include <poll.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <simbricks/network/if.h>
 
 void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params) {
   SimbricksBaseIfDefaultParams(params);
@@ -34,8 +34,7 @@ void SimbricksNetIfDefaultParams(struct SimbricksBaseIfParams *params) {
   params->upper_layer_proto = SIMBRICKS_PROTO_ID_NET;
 }
 
-int SimbricksNetIfInit(struct SimbricksNetIf *nsif,
-                       struct SimbricksBaseIfParams *params,
+int SimbricksNetIfInit(struct SimbricksNetIf *nsif, struct SimbricksBaseIfParams *params,
                        const char *eth_socket_path, int *sync_eth) {
   // some threaded code using this interface
   struct SimbricksBaseIfParams params_ = *params;

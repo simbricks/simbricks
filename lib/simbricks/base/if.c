@@ -24,8 +24,6 @@
 
 #define _GNU_SOURCE
 
-#include <simbricks/base/if.h>
-
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -38,6 +36,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <simbricks/base/if.h>
 #include <simbricks/base/proto.h>
 
 enum ConnState {
@@ -50,8 +49,8 @@ enum ConnState {
   kConnOpen,
 };
 
-int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
-                                 const char *path, size_t pool_size) {
+int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool, const char *path,
+                                 size_t pool_size) {
   pool->path = path;
   pool->size = pool_size;
   pool->pos = 0;
@@ -67,8 +66,8 @@ int SimbricksBaseIfSHMPoolCreate(struct SimbricksBaseIfSHMPool *pool,
     return -1;
   }
 
-  pool->base = mmap(NULL, pool_size, PROT_READ | PROT_WRITE,
-                    MAP_SHARED | MAP_POPULATE, pool->fd, 0);
+  pool->base =
+      mmap(NULL, pool_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, pool->fd, 0);
   if (pool->base == (void *)-1) {
     perror("SimbricksBaseIfSHMPoolCreate: mmap failed");
     return -1;
@@ -87,8 +86,7 @@ int SimbricksBaseIfSHMPoolMapFd(struct SimbricksBaseIfSHMPool *pool, int fd) {
     return -1;
   }
 
-  pool->base =
-      mmap(NULL, statbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  pool->base = mmap(NULL, statbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (pool->base == MAP_FAILED) {
     perror("SimbricksBaseIfSHMPoolMap: mmap failed");
     return -1;
@@ -101,8 +99,7 @@ int SimbricksBaseIfSHMPoolMapFd(struct SimbricksBaseIfSHMPool *pool, int fd) {
   return 0;
 }
 
-int SimbricksBaseIfSHMPoolMap(struct SimbricksBaseIfSHMPool *pool,
-                              const char *path) {
+int SimbricksBaseIfSHMPoolMap(struct SimbricksBaseIfSHMPool *pool, const char *path) {
   int fd;
 
   if ((fd = open(path, O_RDWR, 0666) == -1)) {
@@ -150,8 +147,7 @@ size_t SimbricksBaseIfSHMSize(struct SimbricksBaseIfParams *params) {
          params->out_num_entries * params->out_entries_size;
 }
 
-int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if,
-                        struct SimbricksBaseIfParams *params) {
+int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if, struct SimbricksBaseIfParams *params) {
   /* ensure latency >= sync interval in synchronization case */
   bool must_check_sync = params->sync_mode == kSimbricksBaseIfSyncOptional ||
                          params->sync_mode == kSimbricksBaseIfSyncRequired;
@@ -185,8 +181,7 @@ static int AcceptOnBaseIf(struct SimbricksBaseIf *base_if) {
   }
 }
 
-int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
-                          struct SimbricksBaseIfSHMPool *pool) {
+int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if, struct SimbricksBaseIfSHMPool *pool) {
   struct sockaddr_un saun;
   int flags;
   struct SimbricksBaseIfParams *params = &base_if->params;
@@ -219,8 +214,7 @@ int SimbricksBaseIfListen(struct SimbricksBaseIf *base_if,
 
   if (!params->blocking_conn) {
     flags = fcntl(base_if->listen_fd, F_GETFL);
-    if (flags == -1 ||
-        fcntl(base_if->listen_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+    if (flags == -1 || fcntl(base_if->listen_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
       perror("SimbricksBaseIfListen: fcntl set nonblock failed");
       goto out_error;
     }
@@ -288,8 +282,7 @@ int SimbricksBaseIfConnect(struct SimbricksBaseIf *base_if) {
 
   if (!params->blocking_conn) {
     flags = fcntl(base_if->conn_fd, F_GETFL);
-    if (flags == -1 ||
-        fcntl(base_if->conn_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+    if (flags == -1 || fcntl(base_if->conn_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
       perror("SimbricksBaseIfConnect: fcntl set nonblock failed");
       goto out_error;
     }
@@ -345,8 +338,7 @@ int SimbricksBaseIfConnected(struct SimbricksBaseIf *base_if) {
 
       int status = 0;
       socklen_t slen = sizeof(status);
-      if (getsockopt(base_if->conn_fd, SOL_SOCKET, SO_ERROR, &status, &slen) !=
-          0) {
+      if (getsockopt(base_if->conn_fd, SOL_SOCKET, SO_ERROR, &status, &slen) != 0) {
         perror("SimbricksBaseIfConnected: getsockopt failed");
         close(base_if->conn_fd);
         base_if->conn_fd = -1;
@@ -374,8 +366,7 @@ int SimbricksBaseIfConnected(struct SimbricksBaseIf *base_if) {
       return 0;
 
     default:
-      fprintf(stderr, "SimbricksBaseIfConnected: unexpected conn state %u\n",
-              base_if->conn_state);
+      fprintf(stderr, "SimbricksBaseIfConnected: unexpected conn state %u\n", base_if->conn_state);
       abort();
   }
 }
@@ -460,8 +451,8 @@ int SimbricksBaseIfConnsWait(struct SimbricksBaseIf **base_ifs, unsigned n) {
 }
 
 /** Send intro. */
-int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
-                             const void *payload, size_t payload_len) {
+int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if, const void *payload,
+                             size_t payload_len) {
   if (base_if->conn_state != kConnAwaitHandshakeRxTx &&
       base_if->conn_state != kConnAwaitHandshakeTx) {
     return -1;
@@ -490,13 +481,12 @@ int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
   struct SimbricksProtoConnecterIntro c_intro;
   if (base_if->listener) {
     l_intro.version = SIMBRICKS_PROTO_VERSION;
-    l_intro.flags =
-        (base_if->params.sync_mode == kSimbricksBaseIfSyncDisabled
-             ? 0
-             : (SIMBRICKS_PROTO_FLAGS_LI_SYNC |
-                (base_if->params.sync_mode == kSimbricksBaseIfSyncRequired
-                     ? SIMBRICKS_PROTO_FLAGS_LI_SYNC_FORCE
-                     : 0)));
+    l_intro.flags = (base_if->params.sync_mode == kSimbricksBaseIfSyncDisabled
+                         ? 0
+                         : (SIMBRICKS_PROTO_FLAGS_LI_SYNC |
+                            (base_if->params.sync_mode == kSimbricksBaseIfSyncRequired
+                                 ? SIMBRICKS_PROTO_FLAGS_LI_SYNC_FORCE
+                                 : 0)));
 
     l_intro.l2c_offset = base_if->out_queue - base_if->shm->base;
     l_intro.l2c_elen = base_if->out_elen;
@@ -523,13 +513,12 @@ int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
     *(int *)CMSG_DATA(cmsg) = base_if->shm->fd;
   } else {
     c_intro.version = SIMBRICKS_PROTO_VERSION;
-    c_intro.flags =
-        (base_if->params.sync_mode == kSimbricksBaseIfSyncDisabled
-             ? 0
-             : (SIMBRICKS_PROTO_FLAGS_CO_SYNC |
-                (base_if->params.sync_mode == kSimbricksBaseIfSyncRequired
-                     ? SIMBRICKS_PROTO_FLAGS_CO_SYNC_FORCE
-                     : 0)));
+    c_intro.flags = (base_if->params.sync_mode == kSimbricksBaseIfSyncDisabled
+                         ? 0
+                         : (SIMBRICKS_PROTO_FLAGS_CO_SYNC |
+                            (base_if->params.sync_mode == kSimbricksBaseIfSyncRequired
+                                 ? SIMBRICKS_PROTO_FLAGS_CO_SYNC_FORCE
+                                 : 0)));
     c_intro.upper_layer_proto = base_if->params.upper_layer_proto;
     c_intro.upper_layer_intro_off = sizeof(c_intro);
 
@@ -563,8 +552,7 @@ int SimbricksBaseIfIntroSend(struct SimbricksBaseIf *base_if,
 }
 
 /** Receive intro. */
-int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
-                             size_t *payload_len) {
+int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload, size_t *payload_len) {
   if (base_if->conn_state != kConnAwaitHandshakeRxTx &&
       base_if->conn_state != kConnAwaitHandshakeRx) {
     return -1;
@@ -611,16 +599,14 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
   bool sync, sync_force;
 
   if (base_if->listener) {
-    struct SimbricksProtoConnecterIntro *c_intro =
-        (struct SimbricksProtoConnecterIntro *)intro_buf;
+    struct SimbricksProtoConnecterIntro *c_intro = (struct SimbricksProtoConnecterIntro *)intro_buf;
     sync = c_intro->flags & SIMBRICKS_PROTO_FLAGS_CO_SYNC;
     sync_force = c_intro->flags & SIMBRICKS_PROTO_FLAGS_CO_SYNC_FORCE;
     version = c_intro->version;
     upper_proto = c_intro->upper_layer_proto;
     upper_off = c_intro->upper_layer_intro_off;
   } else {
-    struct SimbricksProtoListenerIntro *l_intro =
-        (struct SimbricksProtoListenerIntro *)intro_buf;
+    struct SimbricksProtoListenerIntro *l_intro = (struct SimbricksProtoListenerIntro *)intro_buf;
 
     sync = l_intro->flags & SIMBRICKS_PROTO_FLAGS_LI_SYNC;
     sync_force = l_intro->flags & SIMBRICKS_PROTO_FLAGS_LI_SYNC_FORCE;
@@ -630,8 +616,7 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
   }
 
   if (version != SIMBRICKS_PROTO_VERSION) {
-    fprintf(stderr, "SimbricksBaseIfIntroRecv: unexpected version (%lx)\n",
-            version);
+    fprintf(stderr, "SimbricksBaseIfIntroRecv: unexpected version (%lx)\n", version);
     return -1;
   }
 
@@ -648,8 +633,7 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
             "SimbricksBaseIfIntroRecv: peer forced sync but we haved "
             "it disabled.\n");
     return -1;
-  } else if (!sync && !sync_force &&
-             base_if->params.sync_mode == kSimbricksBaseIfSyncRequired) {
+  } else if (!sync && !sync_force && base_if->params.sync_mode == kSimbricksBaseIfSyncRequired) {
     fprintf(stderr,
             "SimbricksBaseIfIntroRecv: sync required locally, put peer "
             "offers no sync.\n");
@@ -672,8 +656,7 @@ int SimbricksBaseIfIntroRecv(struct SimbricksBaseIf *base_if, void *payload,
 
   if (!base_if->listener) {
     // handle shm setup
-    struct SimbricksProtoListenerIntro *l_intro =
-        (struct SimbricksProtoListenerIntro *)intro_buf;
+    struct SimbricksProtoListenerIntro *l_intro = (struct SimbricksProtoListenerIntro *)intro_buf;
 
     cmsg = CMSG_FIRSTHDR(&msg);
     if (msg.msg_controllen <= 0 || cmsg->cmsg_len != CMSG_LEN(sizeof(int))) {
@@ -733,8 +716,7 @@ int SimbricksBaseIfIntroFd(struct SimbricksBaseIf *base_if) {
   }
 }
 
-int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
-                             size_t n) {
+int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs, size_t n) {
   struct pollfd pfds[n];
   unsigned n_pfd;
   size_t established = 0;
@@ -763,8 +745,7 @@ int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
         return -1;
       } else if (ret > 0) {
         pfds[n_pfd].fd = SimbricksBaseIfConnFd(bif);
-        pfds[n_pfd].events =
-            (bif->conn_state == kConnListening ? POLLIN : POLLOUT);
+        pfds[n_pfd].events = (bif->conn_state == kConnListening ? POLLIN : POLLOUT);
         pfds[n_pfd].revents = 0;
         n_pfd++;
         assert(n_pfd <= n);
@@ -773,8 +754,7 @@ int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
       // next check if we are now ready to send the handshake
       if ((bif->conn_state == kConnAwaitHandshakeTx ||
            bif->conn_state == kConnAwaitHandshakeRxTx) &&
-          SimbricksBaseIfIntroSend(bif, ifs[i].tx_intro, ifs[i].tx_intro_len) !=
-              0) {
+          SimbricksBaseIfIntroSend(bif, ifs[i].tx_intro, ifs[i].tx_intro_len) != 0) {
         fprintf(stderr,
                 "SimBricksBaseIfEstablish: Sending intro on %zu "
                 "failed\n",
@@ -784,8 +764,7 @@ int SimBricksBaseIfEstablish(struct SimBricksBaseIfEstablishData *ifs,
 
       // finally check if we can receive the handshake now
       if (bif->conn_state == kConnAwaitHandshakeRx) {
-        ret = SimbricksBaseIfIntroRecv(bif, ifs[i].rx_intro,
-                                       &ifs[i].rx_intro_len);
+        ret = SimbricksBaseIfIntroRecv(bif, ifs[i].rx_intro, &ifs[i].rx_intro_len);
         if (ret < 0) {
           fprintf(stderr,
                   "SimBricksBaseIfEstablish: Receiving intro on %zu "

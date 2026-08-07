@@ -39,9 +39,7 @@ struct SimbricksPcieIf {
 };
 
 /** Generate queue access functions for both directions */
-SIMBRICKS_BASEIF_GENERIC(SimbricksPcieIfH2D, SimbricksProtoPcieH2D,
-                         SimbricksPcieIf);
-SIMBRICKS_BASEIF_GENERIC(SimbricksPcieIfD2H, SimbricksProtoPcieD2H,
-                         SimbricksPcieIf);
+SIMBRICKS_BASEIF_GENERIC(SimbricksPcieIfH2D, SimbricksProtoPcieH2D, SimbricksPcieIf);
+SIMBRICKS_BASEIF_GENERIC(SimbricksPcieIfD2H, SimbricksProtoPcieD2H, SimbricksPcieIf);
 
 #endif  // SIMBRICKS_PCIE_IF_H_

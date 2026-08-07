@@ -22,11 +22,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <simbricks/nicif/nicif.h>
-
 #include <poll.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <simbricks/nicif/nicif.h>
 
 int SimbricksNicIfInit(struct SimbricksNicIf *nicif, const char *shm_path,
                        struct SimbricksBaseIfParams *netParams,

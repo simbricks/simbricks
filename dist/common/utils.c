@@ -178,8 +178,8 @@ int ShmCreate(const char *path, size_t size, void **addr) {
     goto error_remove;
   }
 
-  if ((p = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE,
-                fd, 0)) == (void *)-1) {
+  if ((p = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd, 0)) ==
+      (void *)-1) {
     perror("util_create_shmsiszed: mmap failed");
     goto error_remove;
   }
@@ -205,8 +205,7 @@ void *ShmMap(int shm_fd, size_t *psize) {
     return NULL;
   }
 
-  p = mmap(NULL, statbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd,
-           0);
+  p = mmap(NULL, statbuf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
   if (p == MAP_FAILED) {
     perror("shm_map: mmap failed");
     return NULL;

@@ -22,17 +22,17 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
- #ifndef UTILS_UTIL_H_
- #define UTILS_UTIL_H_
- 
- #include <stddef.h>
- 
- namespace simbricks {
- 
- constexpr bool isPowerOfTwo(size_t n) {
-   return n and (~ (n & (n - 1)));
- }
- 
- }  // namespace simbricks
- 
- #endif  // UTILS_UTIL_H_
+#ifndef UTILS_UTIL_H_
+#define UTILS_UTIL_H_
+
+#include <stddef.h>
+
+namespace simbricks {
+
+constexpr bool isPowerOfTwo(size_t n) {
+  return n and (~(n & (n - 1)));
+}
+
+}  // namespace simbricks
+
+#endif  // UTILS_UTIL_H_

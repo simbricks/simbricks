@@ -44,16 +44,14 @@ int SimbricksNicIfInit(struct SimbricksNicIf *nicif, const char *shmPath,
 
 int SimbricksNicIfCleanup(struct SimbricksNicIf *nicif);
 
-static inline int SimbricksNicIfSync(struct SimbricksNicIf *nicif,
-                                     uint64_t cur_ts) {
+static inline int SimbricksNicIfSync(struct SimbricksNicIf *nicif, uint64_t cur_ts) {
   return ((SimbricksNetIfOutSync(&nicif->net, cur_ts) == 0 &&
            SimbricksPcieIfD2HOutSync(&nicif->pcie, cur_ts) == 0)
               ? 0
               : -1);
 }
 
-static inline uint64_t SimbricksNicIfNextTimestamp(
-    struct SimbricksNicIf *nicif) {
+static inline uint64_t SimbricksNicIfNextTimestamp(struct SimbricksNicIf *nicif) {
   uint64_t net_in = SimbricksNetIfInTimestamp(&nicif->net);
   uint64_t net_out = SimbricksNetIfOutNextSync(&nicif->net);
   uint64_t net = (net_in <= net_out ? net_in : net_out);
