@@ -3,3 +3,5 @@ dist/*/*.h
 lib/simbricks/*/*.c
 lib/simbricks/*/*.cc
 lib/simbricks/*/*.h
+lib/simbricks/*/*.hpp
+lib/test/*.c

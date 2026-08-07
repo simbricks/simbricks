@@ -1,0 +1,15 @@
+name: lint-clang-tidy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-clang-tidy:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - run: sudo apt update
+    - run: sudo apt install -y clang-tidy libboost-fiber-dev libibverbs-dev
+    - run: make lint-clang-tidy
