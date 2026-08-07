@@ -11,5 +11,5 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - run: sudo apt update
-    - run: sudo apt install -y clang-tidy libboost-fiber-dev libibverbs-dev
+    - run: sudo apt install -y clang-tidy libboost-fiber-dev libibverbs-dev librdmacm-dev
     - run: make lint-clang-tidy

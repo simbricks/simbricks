@@ -284,17 +284,17 @@ static int SockListen(struct sockaddr_in *addr) {
   // write port number to file
   FILE *info_file = fopen(listen_info_file_path, "w");
   if (!info_file) {
-      perror("SockListen: opening info_file failed");
-      return 1;
+    perror("SockListen: opening info_file failed");
+    return 1;
   }
   fprintf(info_file, "%d\n", ntohs(addr->sin_port));
   fclose(info_file);
-  
+
   // create another file to indicate ready
   FILE *ready_file = fopen(listen_ready_file_path, "w");
   if (!ready_file) {
-      perror("SockListen: opening ready_file failed");
-      return 1;
+    perror("SockListen: opening ready_file failed");
+    return 1;
   }
   fclose(ready_file);
 
@@ -323,12 +323,10 @@ static int SockConnect(struct sockaddr_in *addr) {
 static int SockMsgRxIntro(struct SockMsg *msg) {
   struct SockIntroMsg *intro_msg = &msg->intro;
   if (msg->id >= peer_num) {
-    fprintf(stderr, "SockMsgRxIntro: invalid peer id in message (%u)\n",
-            msg->id);
+    fprintf(stderr, "SockMsgRxIntro: invalid peer id in message (%u)\n", msg->id);
     abort();
   }
-  if (msg->msg_len <
-      offsetof(struct SockMsg, intro.data) + intro_msg->payload_len) {
+  if (msg->msg_len < offsetof(struct SockMsg, intro.data) + intro_msg->payload_len) {
     fprintf(stderr, "SockMsgRxIntro: message too short for payload len\n");
     abort();
   }
@@ -338,8 +336,7 @@ static int SockMsgRxIntro(struct SockMsg *msg) {
 #endif
 
   if (peer->intro_valid_remote) {
-    fprintf(stderr, "SockMsgRxIntro: received multiple messages (%u)\n",
-            msg->id);
+    fprintf(stderr, "SockMsgRxIntro: received multiple messages (%u)\n", msg->id);
     abort();
   }
   if (intro_msg->payload_len > (uint32_t)sizeof(peer->intro_remote)) {
@@ -352,16 +349,14 @@ static int SockMsgRxIntro(struct SockMsg *msg) {
   memcpy(peer->intro_remote, intro_msg->data, intro_msg->payload_len);
 
   if (BasePeerSetupQueues(peer)) {
-    fprintf(stderr, "SockMsgRxIntro(%s): queue setup failed\n",
-            peer->sock_path);
+    fprintf(stderr, "SockMsgRxIntro(%s): queue setup failed\n", peer->sock_path);
     abort();
   }
   if (BasePeerSendIntro(peer))
     return 1;
 
   if (peer->intro_valid_local) {
-    fprintf(stderr, "SockMsgRxIntro(%s): marking peer as ready\n",
-            peer->sock_path);
+    fprintf(stderr, "SockMsgRxIntro(%s): marking peer as ready\n", peer->sock_path);
     peer->ready = true;
   }
   return 0;
@@ -379,8 +374,7 @@ static int SockMsgRxReport(struct SockMsg *msg) {
       fprintf(stderr, "SockMsgRxReport: invalid ready peer number %zu\n", i);
       abort();
     }
-    BasePeerReport(&peers[i], msg->report.written_pos[i],
-                   msg->report.clean_pos[i]);
+    BasePeerReport(&peers[i], msg->report.written_pos[i], msg->report.clean_pos[i]);
   }
   return 0;
 }
@@ -388,8 +382,7 @@ static int SockMsgRxReport(struct SockMsg *msg) {
 static int SockMsgRxEntries(struct SockMsg *msg) {
   struct SockEntriesMsg *entries = &msg->entries;
   if (msg->id >= peer_num) {
-    fprintf(stderr, "SockMsgRxEntries: invalid peer id in message (%u)\n",
-            msg->id);
+    fprintf(stderr, "SockMsgRxEntries: invalid peer id in message (%u)\n", msg->id);
     abort();
   }
 
@@ -410,22 +403,20 @@ static int SockMsgRxEntries(struct SockMsg *msg) {
   uint32_t len = entries->num_entries * peer->cleanup_elen;
 
   if (len + offsetof(struct SockMsg, entries.data) != msg->msg_len) {
-    fprintf(stderr, "SockMsgRxEntries: invalid message length (m=%u l=%u)\n",
-            msg->msg_len, len);
+    fprintf(stderr, "SockMsgRxEntries: invalid message length (m=%u l=%u)\n", msg->msg_len, len);
     abort();
   }
 
   uint32_t i;
   for (i = 0; i < entries->num_entries; i++)
-    BaseEntryReceived(peer, entries->pos + i,
-                      entries->data + (i * peer->cleanup_elen));
+    BaseEntryReceived(peer, entries->pos + i, entries->data + (i * peer->cleanup_elen));
   return 0;
 }
 
 static int SockMsgRx(struct SockMsg *msg) {
 #ifdef SOCK_DEBUG
-  fprintf(stderr, "SockMsgRx(mi=%u t=%u i=%u l=%u)\n", msg->msg_id,
-          msg->msg_type, msg->id, msg->msg_len);
+  fprintf(stderr, "SockMsgRx(mi=%u t=%u i=%u l=%u)\n", msg->msg_id, msg->msg_type, msg->id,
+          msg->msg_len);
 #endif
   if (msg->msg_type == kMsgIntro)
     return SockMsgRxIntro(msg);
@@ -467,8 +458,7 @@ static int SockEvent(uint32_t events) {
 
 #ifdef SOCK_DEBUG
   if (rx_buf_pos > 0) {
-    fprintf(stderr, "SockEvent: left over data rbp=%zu ml=%u\n", rx_buf_pos,
-            msg->msg_len);
+    fprintf(stderr, "SockEvent: left over data rbp=%zu ml=%u\n", rx_buf_pos, msg->msg_len);
   } else if (had_leftover) {
     fprintf(stderr, "SockEvent: cleared leftover data\n");
   }
@@ -532,19 +522,16 @@ int BaseOpPassIntro(struct Peer *peer) {
 
 int BaseOpPassEntries(struct Peer *peer, uint32_t pos, uint32_t n) {
 #ifdef SOCK_DEBUG
-  fprintf(stderr, "BaseOpPassEntries(%s, n=%zu, pos=%u)\n", peer->sock_path, n,
-          pos);
+  fprintf(stderr, "BaseOpPassEntries(%s, n=%zu, pos=%u)\n", peer->sock_path, n, pos);
 #endif
   if (n * peer->local_elen > TXBUF_SIZE) {
-    fprintf(stderr,
-            "BaseOpPassEntries: tx buffer too small (%u) for n (%u) entries\n",
-            TXBUF_SIZE, n);
+    fprintf(stderr, "BaseOpPassEntries: tx buffer too small (%u) for n (%u) entries\n", TXBUF_SIZE,
+            n);
     abort();
   }
 
   if ((peer->last_sent_pos + 1) % peer->local_enum != pos) {
-    fprintf(stderr, "BaseOpPassEntries: entry sent repeatedly: p=%u n=%u\n",
-            pos, n);
+    fprintf(stderr, "BaseOpPassEntries: entry sent repeatedly: p=%u n=%u\n", pos, n);
     abort();
   }
   peer->last_sent_pos = pos + n - 1;
@@ -583,8 +570,7 @@ int BaseOpPassReport() {
   fprintf(stderr, "BaseOpPassReport()\n");
 #endif
   if (peer_num > MAX_PEERS) {
-    fprintf(stderr, "BaseOpPassReport: peer_num (%zu) larger than max (%u)\n",
-            peer_num, MAX_PEERS);
+    fprintf(stderr, "BaseOpPassReport: peer_num (%zu) larger than max (%u)\n", peer_num, MAX_PEERS);
     abort();
   }
 
@@ -610,8 +596,8 @@ int BaseOpPassReport() {
     peer->local_pos_reported = peer->local_pos;
     msg->report.written_pos[i] = peer->local_pos_reported;
 #ifdef SOCK_DEBUG
-    fprintf(stderr, "  peer[%zu]  clean_pos=%u  written_pos=%u\n", i,
-            peer->cleanup_pos_reported, peer->local_pos_reported);
+    fprintf(stderr, "  peer[%zu]  clean_pos=%u  written_pos=%u\n", i, peer->cleanup_pos_reported,
+            peer->local_pos_reported);
 #endif
   }
 

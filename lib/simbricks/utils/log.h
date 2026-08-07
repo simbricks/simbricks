@@ -40,13 +40,7 @@ namespace sim_log {
 
 #define SIMLOG 1
 
-enum LogLevel : int {
-  debug   = 1,
-  info    = 2,
-  warn    = 3,
-  error   = 4,
-  off     = 5
-};
+enum LogLevel : int { debug = 1, info = 2, warn = 3, error = 4, off = 5 };
 
 class Log;
 using LogPtT = std::unique_ptr<Log>;
@@ -94,12 +88,11 @@ class Log {
 };
 
 class LogRegistry {
-  const std::unordered_map<LogLevel, const char *> level_names_{
-      {LogLevel::off, "off"},
-      {LogLevel::info, "info"},
-      {LogLevel::warn, "warn"},
-      {LogLevel::debug, "debug"},
-      {LogLevel::error, "error"}};
+  const std::unordered_map<LogLevel, const char *> level_names_{{LogLevel::off, "off"},
+                                                                {LogLevel::info, "info"},
+                                                                {LogLevel::warn, "warn"},
+                                                                {LogLevel::debug, "debug"},
+                                                                {LogLevel::error, "error"}};
 
   LogLevel level_ = LogLevel::info;
   bool enforce_flush_ = false;
@@ -138,8 +131,7 @@ class Logger {
   }
 
   template <typename... Args>
-  inline void log_internal(LogLevel level, FILE *out, const char *format,
-                           Args... args) const {
+  inline void log_internal(LogLevel level, FILE *out, const char *format, Args... args) const {
     if (!ShouldLog(level)) {
       return;
     }
@@ -151,8 +143,7 @@ class Logger {
     }
   }
 
-  inline void log_internal(LogLevel level, FILE *out, const char *to_print)
-                           const {
+  inline void log_internal(LogLevel level, FILE *out, const char *to_print) const {
     if (!ShouldLog(level)) {
       return;
     }
@@ -191,8 +182,7 @@ class Logger {
   }
 
   template <typename... Args>
-  inline void log_stdout_f(LogLevel level, const char *format,
-                           const Args &...args) const {
+  inline void log_stdout_f(LogLevel level, const char *format, const Args &...args) const {
     log_internal(level, stdout, format, args...);
   }
 
@@ -201,8 +191,7 @@ class Logger {
   }
 
   template <typename... Args>
-  void log_f(LogLevel level, LogPtT &log, const char *format,
-             const Args &...args) const {
+  void log_f(LogLevel level, LogPtT &log, const char *format, const Args &...args) const {
     if (log->file_ == nullptr) {
       log_stdout(level, "log file is null. it should not be!\n");
       log_stdout_f(level, format, args...);
@@ -225,8 +214,7 @@ class Logger {
 
 template <typename... Args>
 inline void LogInfo(LogPtT &log, const char *fmt, Args &&...args) {
-  sim_log::Logger::GetLogger().log_f(LogLevel::info, log, fmt,
-                                     std::forward<Args>(args)...);
+  sim_log::Logger::GetLogger().log_f(LogLevel::info, log, fmt, std::forward<Args>(args)...);
 }
 
 inline void LogInfo(LogPtT &log, const char *msg) {
@@ -235,8 +223,7 @@ inline void LogInfo(LogPtT &log, const char *msg) {
 
 template <typename... Args>
 inline void LogInfo(const char *fmt, Args &&...args) {
-  sim_log::Logger::GetLogger().log_stdout_f(LogLevel::info, fmt,
-                                            std::forward<Args>(args)...);
+  sim_log::Logger::GetLogger().log_stdout_f(LogLevel::info, fmt, std::forward<Args>(args)...);
 }
 
 inline void LogInfo(const char *msg) {
@@ -245,8 +232,7 @@ inline void LogInfo(const char *msg) {
 
 template <typename... Args>
 inline void LogWarn(LogPtT &log, const char *fmt, Args &&...args) {
-  sim_log::Logger::GetLogger().log_f(LogLevel::warn, log, fmt,
-                                     std::forward<Args>(args)...);
+  sim_log::Logger::GetLogger().log_f(LogLevel::warn, log, fmt, std::forward<Args>(args)...);
 }
 
 inline void LogWarn(LogPtT &log, const char *msg) {
@@ -255,8 +241,7 @@ inline void LogWarn(LogPtT &log, const char *msg) {
 
 template <typename... Args>
 inline void LogWarn(const char *fmt, Args &&...args) {
-  sim_log::Logger::GetLogger().log_stdout_f(LogLevel::warn, fmt,
-                                            std::forward<Args>(args)...);
+  sim_log::Logger::GetLogger().log_stdout_f(LogLevel::warn, fmt, std::forward<Args>(args)...);
 }
 
 inline void LogWarn(const char *msg) {
@@ -265,8 +250,7 @@ inline void LogWarn(const char *msg) {
 
 template <typename... Args>
 inline void LogError(LogPtT &log, const char *fmt, Args &&...args) {
-  sim_log::Logger::GetLogger().log_f(LogLevel::error, log, fmt,
-                                     std::forward<Args>(args)...);
+  sim_log::Logger::GetLogger().log_f(LogLevel::error, log, fmt, std::forward<Args>(args)...);
 }
 
 inline void LogError(LogPtT &log, const char *msg) {
@@ -275,8 +259,7 @@ inline void LogError(LogPtT &log, const char *msg) {
 
 template <typename... Args>
 inline void LogError(const char *fmt, Args &&...args) {
-  sim_log::Logger::GetLogger().log_stdout_f(LogLevel::error, fmt,
-                                            std::forward<Args>(args)...);
+  sim_log::Logger::GetLogger().log_stdout_f(LogLevel::error, fmt, std::forward<Args>(args)...);
 }
 
 inline void LogError(const char *msg) {

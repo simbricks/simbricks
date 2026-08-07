@@ -22,13 +22,13 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <simbricks/nicbm/multinic.h>
-
 #include <string.h>
 
 #include <boost/fiber/all.hpp>
 #include <thread>
 #include <vector>
+
+#include <simbricks/nicbm/multinic.h>
 
 namespace nicbm {
 

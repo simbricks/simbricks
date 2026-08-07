@@ -87,15 +87,13 @@ class Runner {
      * execute a register read from `bar`:`addr` of length `len`.
      * Should store result in `dest`.
      */
-    virtual void RegRead(uint8_t bar, uint64_t addr, void *dest,
-                         size_t len) = 0;
+    virtual void RegRead(uint8_t bar, uint64_t addr, void *dest, size_t len) = 0;
 
     /**
      * execute a register write to `bar`:`addr` of length `len`,
      * with the data in `src`.
      */
-    virtual void RegWrite(uint8_t bar, uint64_t addr, const void *src,
-                          size_t len) = 0;
+    virtual void RegWrite(uint8_t bar, uint64_t addr, const void *src, size_t len) = 0;
 
     /**
      * the previously issued DMA operation `op` completed.
@@ -122,8 +120,7 @@ class Runner {
  protected:
   struct EventCmp {
     bool operator()(TimedEvent *a, TimedEvent *b) const {
-      return a->time_ < b->time_ ||
-             (a->time_ == b->time_ && a->priority_ < b->priority_);
+      return a->time_ < b->time_ || (a->time_ == b->time_ && a->priority_ < b->priority_);
     }
   };
 
@@ -210,8 +207,7 @@ class SimpleDevice : public Runner::Device {
     memcpy(dest, &r, sizeof(r));
   }
 
-  void RegWrite(uint8_t bar, uint64_t addr, const void *src,
-                size_t len) override {
+  void RegWrite(uint8_t bar, uint64_t addr, const void *src, size_t len) override {
     assert(len == sizeof(TReg));
     TReg r;
     memcpy(&r, src, sizeof(r));
