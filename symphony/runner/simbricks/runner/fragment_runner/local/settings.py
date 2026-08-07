@@ -54,9 +54,9 @@ class RunnerSettings(BaseSettings):
 
     verbose: bool = True
     log_level: str = "DEBUG"
-    polling_delay_sec: int = Field(default=10, gt=5, lt=60)
-    sending_delay_sec: int = Field(default=5, gt=1, lt=60)
-    event_batch_size: int = Field(default=5, gt=0, lt=200)
+    polling_delay_sec: float = Field(default=10, gt=5, lt=60)
+    sending_delay_sec: float = Field(default=2, ge=0, lt=60)
+    event_batch_size: int = Field(default=100, gt=0, lt=200)
 
 
 @lru_cache

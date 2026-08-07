@@ -50,7 +50,7 @@ class RunnerSettings(BaseSettings):
 
     verbose: bool = True
     log_level: str = "DEBUG"
-    polling_delay_sec: int = Field(default=10, gt=5, lt=60)
+    polling_delay_sec: float = Field(default=10, gt=5, lt=60)
 
     configuration_file: str = (
         "./symphony/runner/simbricks/runner/main_runner/runner_config_example.yaml"

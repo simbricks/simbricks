@@ -98,7 +98,7 @@ class MainRunner:
         runner_client: client.RunnerClient,
         simbricks_client: client.SimBricksClient,
         ident: str,
-        polling_delay_sec: int,
+        polling_delay_sec: float,
     ):
         self._ident = ident
         self._polling_delay_sec = polling_delay_sec

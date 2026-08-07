@@ -267,8 +267,8 @@ class FragmentRunner(abc.ABC):
         global_input_dir: pathlib.Path | None,
         namespace: str,
         ident: int,
-        polling_delay_sec: int,
-        sending_delay_sec: int,
+        polling_delay_sec: float,
+        sending_delay_sec: float,
         proxy_host_ip: str,
         verbose: bool,
         output_artifact_relative: bool,
@@ -277,8 +277,8 @@ class FragmentRunner(abc.ABC):
         self._base_url: str = base_url
         self._workdir: pathlib.Path = workdir.resolve()
         self._global_input_dir: pathlib.Path | None = global_input_dir
-        self._polling_delay_sec: int = polling_delay_sec
-        self._sending_delay_sec: int = sending_delay_sec
+        self._polling_delay_sec: float = polling_delay_sec
+        self._sending_delay_sec: float = sending_delay_sec
         self._namespace: str = namespace
         self._ident: int = ident
         self._proxy_host_ip: str = proxy_host_ip
