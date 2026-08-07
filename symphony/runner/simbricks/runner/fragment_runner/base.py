@@ -595,13 +595,12 @@ class FragmentRunner(abc.ABC):
 
     async def _send_loop(self):
         while True:
-            events = []
-            while not self._send_event_queue.empty() and len(events) < self.event_batch_size:
-                event = self._send_event_queue.get_nowait()
-                events.append(event)
-            if events:
-                await self.send_events(events)
+            events = [await self._send_event_queue.get()]
             await asyncio.sleep(self._sending_delay_sec)
+            while not self._send_event_queue.empty():
+                events.append(self._send_event_queue.get_nowait())
+            for i in range(0, len(events), self.event_batch_size):
+                await self.send_events(events[i : i + self.event_batch_size])
 
     async def run(self) -> None:
         LOGGER.info("STARTED FRAGMENT EXECUTOR")
