@@ -31,11 +31,11 @@ import typing as tp
 
 import typing_extensions as tpe
 
+from simbricks.orchestration import simulation
 from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
-    from simbricks.orchestration.simulation import host as sim_host
     from simbricks.orchestration.system import base as sys_base
     from simbricks.orchestration.system.host import base as sys_host
 
@@ -62,7 +62,7 @@ class DiskImage(utils_base.IdObj):
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
 
-    def find_format(self, host: sim_host.HostSim) -> str:
+    def find_format(self, host: simulation.HostSim) -> str:
         # Find first supported disk image format in order of simulator pref.
         format = None
         av_fmt = self.available_formats()
@@ -78,7 +78,7 @@ class DiskImage(utils_base.IdObj):
 
     async def prepare(self, inst: inst_base.Instantiation, host: sys_host.Host) -> None:
         sim = inst.find_sim_by_spec(host)
-        assert isinstance(sim, sim_host.HostSim)
+        assert isinstance(sim, simulation.HostSim)
         format = self.find_format(sim)
 
         await self._prepare_format(inst, format)
