@@ -49,6 +49,7 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
             "listen_ip": "0.0.0.0",
             "docker_image": "simbricks/simbricks-executor",
             "docker_pull": False,
+            "convert_images": True,
         }
 
         listen_ip = plugin.get_first_match("listen_ip", config_params, default_params)
@@ -85,6 +86,9 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
             if pull.returncode != 0:
                 raise RuntimeError(f"docker pull of image {docker_image} failed")
 
+        convert_images = plugin.get_first_match("convert_images", config_params, default_params)
+        assert isinstance(convert_images, bool)
+
         if "docker_opts" in config_params:
             docker_opts = config_params["docker_opts"]
             if not isinstance(docker_opts, list):
@@ -105,7 +109,13 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
                 "--add-host=host.docker.internal:host-gateway",
             ]
             + docker_opts
-            + [docker_image, "host.docker.internal", str(port), "host.docker.internal"]
+            + [
+                docker_image,
+                "host.docker.internal",
+                str(port),
+                "host.docker.internal",
+                str(convert_images),
+            ]
         )
 
         # wait for the fragment executor to connect
