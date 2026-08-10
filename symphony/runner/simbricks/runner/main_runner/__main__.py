@@ -12,6 +12,7 @@ import yaml
 
 from simbricks import client
 from simbricks.client.namespace import EventFromRunner_U, EventToRunner_U
+from simbricks.client.openapi.client.python.sim_bricks_api_client import types as api_types
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     Fragment,
     FragmentOutputArtifact,
@@ -195,11 +196,12 @@ class MainRunner:
         fragment_runner_map: dict[str, FragmentRunner] = {}
         for rf in start_run_event.fragments:
             assert rf.fragment_id in fragment_map
+            assert isinstance(rf.fragment_id, str)
             frag = fragment_map[rf.fragment_id]
 
             fragment_executor_tag = frag.fragment_executor_tag
 
-            if fragment_executor_tag is None:
+            if fragment_executor_tag is None or isinstance(fragment_executor_tag, api_types.Unset):
                 fragment_executor_tag = self._available_fragment_executors[0]
             elif fragment_executor_tag not in self._fragment_executor_configs:
                 await self._stop_fragment_runners(fragment_runner_map)
@@ -235,6 +237,7 @@ class MainRunner:
 
             # set fragment specific artifact
             assert rf.fragment_id in fragment_map
+            assert isinstance(rf.fragment_id, str)
             fragment = fragment_map[rf.fragment_id]
             assert isinstance(fragment.object_id, int)
             inst_fragment = sb_inst.get_fragment(fragment.object_id)
@@ -247,6 +250,7 @@ class MainRunner:
                     fragment_artifact
                 ).decode("utf-8")
 
+            assert isinstance(rf.id, str)
             senders.append(
                 asyncio.create_task(
                     fragment_runner_map[rf.id].fragment_runner.send_events([start_fragment_event])
