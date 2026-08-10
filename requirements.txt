@@ -1,4 +1,4 @@
 ruff==0.16.1
-pyright==1.1.390
+pyright==1.1.411
 poetry==1.8.4
 pyyaml==6.0.2
