@@ -263,9 +263,9 @@ class Component(utils_base.IdObj):
         for inf_json in interfaces_json:
             inf_id = int(inf_json)
             inf = system.get_inf(inf_id)
-            assert inf.component is None
+            assert inf._component is None
             instance.ifs.append(inf)
-            inf.component = instance
+            inf._component = instance
 
         return instance
 
@@ -299,10 +299,6 @@ class Interface(utils_base.IdObj):
         if self._component is None:
             raise RuntimeError(f"{type(self).__name__}._component should be set")
         return self._component
-
-    @component.setter
-    def component(self, new_val: Component | None) -> None:
-        self._component = new_val
 
     def is_connected(self) -> bool:
         return self.channel is not None
@@ -357,7 +353,7 @@ class Interface(utils_base.IdObj):
         instance = super().fromJSON(json_obj)
 
         instance.channel = None
-        instance.component = None
+        instance._component = None
 
         return instance
 
