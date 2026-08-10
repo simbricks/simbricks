@@ -3,10 +3,10 @@ ARG TAG=:latest
 FROM ${REGISTRY}simbricks-baseenv${TAG}
 
 RUN micromamba install -y simbricks-runner \
-  && micromamba clean --all -y \
-  && rm -rf $MAMBA_ROOT_PREFIX/include
+  && micromamba clean --all -y
 
 COPY run_runner.sh /run_runner.sh
 COPY runner_config.yaml /runner_config.yaml
+COPY run_local_executor.sh /run_local_executor.sh
 
 ENTRYPOINT ["/run_runner.sh"]
