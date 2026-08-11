@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-telemetry"
-version = "0.5.1"
+version = "0.5.2"
 description = "simbricks telemetry tool for instrumenting and collecting OTEL traces in SimBricks python"
 authors  = [
   "Team SimBricks <team@simbricks.io>"

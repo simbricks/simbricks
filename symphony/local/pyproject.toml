@@ -26,7 +26,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-local"
-version = "0.5.1"
+version = "0.5.2"
 description = "simbricks lib to simulate virtual prototypes locally"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
