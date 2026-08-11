@@ -30,10 +30,10 @@ import typing
 from simbricks.orchestration.helpers import exceptions as exc
 from simbricks.orchestration.instantiation import proxy as inst_proxy
 from simbricks.orchestration.instantiation import socket as inst_socket
-from simbricks.orchestration.simulation import base as sim_base
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
+    from simbricks.orchestration.simulation import base as sim_base
     from simbricks.orchestration.system import base as sys_base
 
 
