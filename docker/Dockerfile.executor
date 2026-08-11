@@ -54,6 +54,8 @@ RUN make image INPUT=output/kernel \
 
 FROM ${REGISTRY}simbricks-runner${TAG} AS executor
 
+ARG PACKER_VERSION=1.11.2
+
 USER root
 RUN mkdir -p /global_input/images && chown -R simbricks:simbricks /global_input
 
@@ -70,6 +72,7 @@ RUN micromamba install -y simbricks-qemu-sim-bin \
                           simbricks-memnet-base-sim-bin \
                           simbricks-corundum-sim-rtl-bin \
                           simbricks-dist \
+                          packer=${PACKER_VERSION} \
   && micromamba clean --all -y \
   && rm -rf $MAMBA_ROOT_PREFIX/include
 
