@@ -57,7 +57,7 @@ class SimulationDependencyNode:
 
     def get_simulator(self) -> sim_base.Simulator:
         if self.type == SimulationDependencyNodeType.SIMULATOR:
-            return typing.cast(sim_base.Simulator, self.value)
+            return typing.cast("sim_base.Simulator", self.value)
         raise RuntimeError("Value stored is not a simulator")
 
     def get_proxy(self) -> inst_proxy.Proxy:

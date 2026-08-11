@@ -85,7 +85,7 @@ class DiskImage(utils_base.IdObj):
     async def prepare(self, inst: inst_base.Instantiation, host: sys_host.Host) -> None:
         sim = inst.find_sim_by_spec(host)
         # A system host should be simulated by a HostSim. We assume this here.
-        sim = tp.cast(sim_host.HostSim, sim)
+        sim = tp.cast("sim_host.HostSim", sim)
         format = self.find_format(sim)
 
         await self._prepare_format(inst, format)
