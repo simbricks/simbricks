@@ -31,11 +31,11 @@ import typing as tp
 
 import typing_extensions as tpe
 
-from simbricks.orchestration import simulation
 from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
+    from simbricks.orchestration.simulation import host as sim_host
     from simbricks.orchestration.system import base as sys_base
     from simbricks.orchestration.system.host import base as sys_host
 
@@ -62,7 +62,11 @@ class DiskImage(utils_base.IdObj):
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
 
-    def find_format(self, host: simulation.HostSim) -> str:
+    # Determining the format should actually happen in the simulator, since it is the choice of the
+    # host simulator what disk image format it wants to use. The choice in the simulator is
+    # constrained by the supported formats of the disk image. This also allows the simulator to
+    # implement a simulator specific strategy to pick the format (e.g. a format precedence).
+    def find_format(self, host: sim_host.HostSim) -> str:
         # Find first supported disk image format in order of simulator pref.
         format = None
         av_fmt = self.available_formats()
@@ -76,9 +80,12 @@ class DiskImage(utils_base.IdObj):
 
         return format
 
+    # It is a bit ugly that we use HostSim here. This method should directly get the needed format,
+    # so that it can prepare it. See also comment on find_format above.
     async def prepare(self, inst: inst_base.Instantiation, host: sys_host.Host) -> None:
         sim = inst.find_sim_by_spec(host)
-        assert isinstance(sim, simulation.HostSim)
+        # A system host should be simulated by a HostSim. We assume this here.
+        sim = tp.cast(sim_host.HostSim, sim)
         format = self.find_format(sim)
 
         await self._prepare_format(inst, format)
