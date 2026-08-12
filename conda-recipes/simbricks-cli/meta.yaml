@@ -47,6 +47,7 @@ requirements:
     - rich 15.0.0
     - typer 0.26.7
     - typing_extensions >=4.14.1
+    - readchar 4.2.2
     - simbricks-client >=0.5.0
     - simbricks-orchestration >=0.5.0
     - simbricks-telemetry >=0.5.0
