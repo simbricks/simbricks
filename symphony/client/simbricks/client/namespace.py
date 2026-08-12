@@ -445,12 +445,21 @@ class SimBricksClient:
             run = validate_response_model(run, Run)
             return run
 
-    async def get_runs(self) -> RunsList200Response:
+    async def get_runs(
+        self,
+        cursor_next: str | None = None,
+        cursor_prev: str | None = None,
+        limit: int | None = None,
+    ) -> RunsList200Response:
         async with base_client(self._ns_client.base_url) as client:
-            runs = await runs_list.asyncio(self._ns_client.namespace_path, client=client)
-            runs = validate_response_model(runs, RunsList200Response)
-            assert runs
-            return runs
+            runs = await runs_list.asyncio(
+                self._ns_client.namespace_path,
+                client=client,
+                cursor_next=cursor_next,
+                cursor_prev=cursor_prev,
+                limit=limit,
+            )
+            return validate_response_model(runs, RunsList200Response)
 
     async def kill_run(self, run_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
