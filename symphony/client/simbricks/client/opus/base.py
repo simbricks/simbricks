@@ -38,6 +38,7 @@ from simbricks.utils import artifatcs as utils_artifacts
 from ..namespace import SimBricksClient, simb_client
 from ..openapi.client.python.sim_bricks_api_client.models import (
     PaginationLinks,
+    Run,
     RunOutput,
     RunOutputProxiesType0,
     RunOutputRuntimeType0,
@@ -50,6 +51,30 @@ async def still_running(run_id: str) -> bool:
     sbc = await simb_client()
     run = await sbc.get_run(run_id)
     return run is not None and (run.state == RunState.PENDING or run.state == RunState.RUNNING)
+
+
+async def get_runs_page(
+    sbc: SimBricksClient,
+    cursor_next: str | None = None,
+    limit: int | None = None,
+) -> tuple[list[Run], str | None]:
+    """Fetch a page of runs.
+
+    Returns the runs on the page and the cursor for the page after it, or
+    ``None`` when the server did not hand out a next cursor. Without a
+    ``limit`` the server does not paginate and the whole list comes back in one
+    response. This is the one place unwrapping the ``Unset | None | T`` unions
+    of the generated client, so callers get plain values.
+    """
+    response = await sbc.get_runs(cursor_next=cursor_next, limit=limit)
+
+    runs: list[Run] = response.data if isinstance(response.data, list) else []
+
+    next_cursor: str | None = None
+    if isinstance(response.links, PaginationLinks) and isinstance(response.links.next_, str):
+        next_cursor = response.links.next_
+
+    return runs, next_cursor
 
 
 class ConsoleLineGenerator:
