@@ -24,12 +24,14 @@ import typing
 from pathlib import Path
 
 import rich
+import rich.console
 from typer import Argument, Option, Typer
 from typing_extensions import Annotated
 
 import simbricks.utils.load_mod as load_mod
 from simbricks.client.opus import base as opus_base
 
+from ..pager import TablePager, interactive_supported
 from ..settings import simb_client
 from ..utils import async_cli, print_table_generic
 
@@ -39,14 +41,63 @@ if typing.TYPE_CHECKING:
 
 app = Typer(help="Managing SimBricks runs.")
 
+_PAGE_SIZE = 20
+_PEEK_COUNT = 5
+_RUN_COLUMNS = ("id", "instantiation_id", "state")
+
 
 @app.command()
 @async_cli()
-async def ls():
-    """List runs."""
+async def ls(
+    limit: Annotated[int, Option("--limit", "-n", help="Number of runs per page.")] = _PAGE_SIZE,
+    fetch_all: Annotated[
+        bool,
+        Option(
+            "--all",
+            "-a",
+            help="Retrieve every run at once instead of paging through them.",
+        ),
+    ] = False,
+):
+    """List runs.
+
+    Pages interactively when there is more than one page and the output is a
+    terminal. Left and right change page, g jumps back to the first page, r
+    reloads the current one and q quits.
+    """
     sbc = await simb_client()
-    runs = await sbc.get_runs()
-    print_table_generic("Runs", runs.data, "id", "instantiation_id", "state")
+
+    if fetch_all:
+        # Without a limit the server does not paginate, so this is one request.
+        runs, _ = await opus_base.get_runs_page(sbc)
+        print_table_generic("Runs", runs, *_RUN_COLUMNS)
+        return
+
+    runs, next_cursor = await opus_base.get_runs_page(sbc, limit=limit)
+
+    if not runs or next_cursor is None or not interactive_supported():
+        # Nothing to page through, or nowhere to page it.
+        print_table_generic("Runs", runs, *_RUN_COLUMNS)
+        return
+
+    await TablePager(
+        title="Runs",
+        columns=_RUN_COLUMNS,
+        first_page=(runs, next_cursor),
+        fetch_page=lambda cursor: opus_base.get_runs_page(sbc, cursor_next=cursor, limit=limit),
+        console=rich.console.Console(),
+    ).run()
+
+
+@app.command()
+@async_cli()
+async def peek(
+    limit: Annotated[int, Option("--limit", "-n", help="Number of runs to peek.")] = _PEEK_COUNT,
+):
+    """Show the 5 most recent runs."""
+    sbc = await simb_client()
+    runs, _ = await opus_base.get_runs_page(sbc, limit=limit)
+    print_table_generic("Latest Runs", runs, *_RUN_COLUMNS)
 
 
 @app.command()
