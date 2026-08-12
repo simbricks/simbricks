@@ -25,6 +25,7 @@ import functools
 
 from rich.console import Console
 from rich.table import Table
+from typer import Exit
 
 from simbricks.client.namespace import NsMember, NsRole
 
@@ -38,14 +39,21 @@ def async_cli():
     def decorator_async_cli(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
-            return asyncio.run(f(*args, **kwargs))
+            try:
+                return asyncio.run(f(*args, **kwargs))
+            except KeyboardInterrupt:
+                # Ctrl+C surfaces out of asyncio.run, so the commands
+                # themselves cannot catch it. Interrupting an interactive or
+                # long-running command is normal, exit like a shell instead of
+                # dumping a traceback on the user.
+                raise Exit(code=130) from None
 
         return wrapper
 
     return decorator_async_cli
 
 
-def print_table_generic(title: str, to_print, *args):
+def build_table(title: str | None, to_print, *args) -> Table:
     table = Table(title=title)
 
     for key in args:
@@ -67,8 +75,12 @@ def print_table_generic(title: str, to_print, *args):
 
         table.add_row(*row)
 
+    return table
+
+
+def print_table_generic(title: str, to_print, *args):
     console = Console()
-    console.print(table)
+    console.print(build_table(title, to_print, *args))
 
 
 def print_members_table(members: dict[NsRole, list[NsMember]]):
