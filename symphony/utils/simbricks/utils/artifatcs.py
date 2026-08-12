@@ -25,8 +25,15 @@ import typing as tp
 import zipfile
 
 
-def _add_file_to_zip(
-    zip_file: zipfile.ZipFile,
+def _write_files_to_zip(
+    zip_file: zipfile.ZipFile, file_list: list[tuple[pathlib.Path, pathlib.Path]]
+) -> None:
+    for source, dest in file_list:
+        zip_file.write(filename=source, arcname=dest)
+
+
+def _add_file_to_zip_list(
+    file_list: list[tuple[pathlib.Path, pathlib.Path]],
     file_path: pathlib.Path,
     base_path: pathlib.Path,
     relative: bool,
@@ -41,24 +48,24 @@ def _add_file_to_zip(
         if not file_path.is_relative_to(base_path):
             raise RuntimeError(f"file path {file_path} is not relative to base path {base_path}")
 
-        zip_file.write(filename=file_path, arcname=file_path.relative_to(base_path))
+        file_list.append((file_path, file_path.relative_to(base_path)))
     else:
-        zip_file.write(filename=file_path, arcname=file_path)
+        file_list.append((file_path, file_path))
 
 
-def _add_to_zip(
-    zip_file: zipfile.ZipFile,
+def _add_to_zip_list(
+    file_list: list[tuple[pathlib.Path, pathlib.Path]],
     path: pathlib.Path,
     base_path: pathlib.Path,
     relative: bool,
     recursive: bool,
 ) -> None:
     if path.is_file():
-        _add_file_to_zip(zip_file, path, base_path, relative)
+        _add_file_to_zip_list(file_list, path, base_path, relative)
     elif path.is_dir() and recursive:
         for child_path in path.rglob("*"):
             if child_path.is_file():
-                _add_file_to_zip(zip_file, child_path, base_path, relative)
+                _add_file_to_zip_list(file_list, child_path, base_path, relative)
     else:
         raise Exception(f"_add_to_zip: cannot add {str(path)} to zip")
 
@@ -77,16 +84,23 @@ def create_artifact(
 
     base_path = base_path.resolve()
 
+    file_list: list[tuple[pathlib.Path, pathlib.Path]] = []
+
+    for path_str in paths_to_include:
+        path = pathlib.Path(base_path, path_str).resolve()
+        if check_relative and not path.is_relative_to(base_path):
+            raise RuntimeError("output artifact path must be relative to work directory")
+        if flat:
+            base_zip = path.parent
+        else:
+            base_zip = base_path
+        _add_to_zip_list(file_list, path, base_zip, check_relative or flat, recursive)
+
+    # Sort files to add them in a deterministic order
+    file_list.sort(key=lambda elm: elm[1])
+
     with zipfile.ZipFile(file, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for path_str in paths_to_include:
-            path = pathlib.Path(base_path, path_str).resolve()
-            if check_relative and not path.is_relative_to(base_path):
-                raise RuntimeError("output artifact path must be relative to work directory")
-            if flat:
-                base_zip = path.parent
-            else:
-                base_zip = base_path
-            _add_to_zip(zip_file, path, base_zip, check_relative or flat, recursive)
+        _write_files_to_zip(zip_file, file_list)
 
 
 def unpack_artifact(file: str | tp.IO[bytes], dest_path: str) -> None:
