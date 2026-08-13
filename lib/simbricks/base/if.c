@@ -148,6 +148,13 @@ size_t SimbricksBaseIfSHMSize(struct SimbricksBaseIfParams *params) {
 }
 
 int SimbricksBaseIfInit(struct SimbricksBaseIf *base_if, struct SimbricksBaseIfParams *params) {
+  /* a zero latency makes messages arrive at the timestamp they were sent at,
+     leaving the peer no window in which it can still process them */
+  if (params->link_latency == 0) {
+    fprintf(stderr, "SimbricksBaseIfInit: latency must be greater than zero\n");
+    return -1;
+  }
+
   /* ensure latency >= sync interval in synchronization case */
   bool must_check_sync = params->sync_mode == kSimbricksBaseIfSyncOptional ||
                          params->sync_mode == kSimbricksBaseIfSyncRequired;
