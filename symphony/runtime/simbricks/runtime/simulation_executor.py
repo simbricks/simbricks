@@ -242,6 +242,13 @@ class SimulationExecutor:
             if sim.wait_terminate:
                 self._wait_sims[sim.id()] = asyncio.Event()
 
+        if not self._wait_sims:
+            print(
+                f"{self._instantiation.simulation.name}: warning: no component has a wait flag"
+                " set, so the simulation terminates as soon as all simulators have started."
+                " Set wait_terminate on a simulator or wait on an application to wait for it."
+            )
+
     async def terminate_collect_sims(self) -> None:
         """Terminates all simulators and collects output."""
         if self._verbose:
