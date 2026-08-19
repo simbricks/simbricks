@@ -63,6 +63,14 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
         self.executor.terminate()
         self.executor.wait()
         self.executor = None
+
+        if self.writer is not None:
+            self.writer.close()
+            try:
+                await self.writer.wait_closed()
+            except OSError:
+                pass
+
         await self.server.wait_closed()
         print("successfully stopped local fragment executor")
 
