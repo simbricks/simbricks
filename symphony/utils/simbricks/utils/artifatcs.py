@@ -20,9 +20,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import abc
+import enum
+import os
 import pathlib
+import shutil
+import tempfile
 import typing as tp
 import zipfile
+
+import pydantic
 
 
 def _write_files_to_zip(
@@ -106,3 +113,111 @@ def create_artifact(
 def unpack_artifact(file: str | tp.IO[bytes], dest_path: str) -> None:
     with zipfile.ZipFile(file, "r") as zip_file:
         zip_file.extractall(dest_path)
+
+
+class ArtifactKind(str, enum.Enum):
+    """What an artifact is for, and therefore which way it travels."""
+
+    #: Produced by a run, executor -> main runner.
+    OUTPUT = "output"
+    #: Input for a whole instantiation, main runner -> executor.
+    INSTANTIATION_INPUT = "instantiation_input"
+    #: Input for a single fragment, main runner -> executor.
+    FRAGMENT_INPUT = "fragment_input"
+
+
+class ArtifactInfo(pydantic.BaseModel):
+    """
+    What identifies an artifact, wherever it happens to be on its way.
+    """
+
+    model_config = pydantic.ConfigDict(frozen=True, extra="forbid")
+
+    kind: ArtifactKind
+    name: str
+    run_id: str
+    run_fragment_id: str
+
+
+class Artifact(pydantic.BaseModel):
+    """A packed artifact held as a file, and what it is."""
+
+    model_config = pydantic.ConfigDict(frozen=True, extra="forbid")
+
+    path: pathlib.Path
+    info: ArtifactInfo
+
+
+class ArtifactSink(abc.ABC):
+    """
+    Destination for a completed artifact.
+
+    Callers use :meth:`produce`; implementations provide :meth:`store`.
+    """
+
+    @abc.abstractmethod
+    async def store(self, artifact: Artifact) -> None:
+        """
+        Consume the complete artifact.
+
+        Must not return before it is durably handed off. The caller owns the
+        file and deletes it afterwards, so an implementation that wants to keep
+        it has to move or copy it.
+        """
+
+    async def produce(
+        self,
+        info: ArtifactInfo,
+        *,
+        paths_to_include: list[str],
+        base_path: pathlib.Path,
+        staging_dir: pathlib.Path,
+        check_relative: bool = True,
+    ) -> None:
+        """
+        Pack ``paths_to_include`` into an artifact and hand it to this sink.
+
+        ``staging_dir`` must lie outside ``base_path``, so the artifact cannot
+        end up inside itself, and should be on the same filesystem as a
+        filesystem sink's destination, so storing it stays a rename.
+        """
+        if not paths_to_include:
+            return
+
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        handle, staged_path = tempfile.mkstemp(
+            dir=staging_dir, prefix=".artifact-", suffix=".partial"
+        )
+        os.close(handle)
+        staged = pathlib.Path(staged_path)
+        try:
+            create_artifact(
+                file=str(staged),
+                paths_to_include=paths_to_include,
+                base_path=base_path,
+                check_relative=check_relative,
+            )
+            await self.store(Artifact(path=staged, info=info))
+        finally:
+            staged.unlink(missing_ok=True)
+
+
+class LocalFsArtifactSink(ArtifactSink):
+    """
+    Keeps artifacts in a directory on the local filesystem.
+
+    This is the sink used when there is no backend to upload to.
+    """
+
+    def __init__(self, base_dir: pathlib.Path) -> None:
+        self._base_dir = base_dir
+
+    async def store(self, artifact: Artifact) -> None:
+        dest = self._base_dir / artifact.info.name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.replace(artifact.path, dest)
+        except OSError:
+            # Staging and destination are on different filesystems, so the
+            # rename cannot work and the bytes have to be copied instead.
+            shutil.copyfile(artifact.path, dest)

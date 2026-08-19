@@ -50,6 +50,15 @@ def rmtree(path: str) -> None:
         os.unlink(path)
 
 
+def remove_matching(directory: pathlib.Path, pattern: str) -> None:
+    """Delete the files in ``directory`` whose name matches ``pattern``."""
+    if not directory.is_dir():
+        return
+    for match in directory.glob(pattern):
+        if match.is_file():
+            match.unlink()
+
+
 def is_absolute_exists(path: str) -> bool:
     pl_path = pathlib.Path(path)
     return pl_path.is_absolute() and pl_path.is_file()
