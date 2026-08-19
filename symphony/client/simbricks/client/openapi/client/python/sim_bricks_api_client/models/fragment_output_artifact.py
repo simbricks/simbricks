@@ -17,7 +17,6 @@ T = TypeVar("T", bound="FragmentOutputArtifact")
 class FragmentOutputArtifact:
     """
     Attributes:
-        artifact (str):
         artifact_name (str):
         run_fragment_id (str):
         run_id (str):
@@ -26,7 +25,6 @@ class FragmentOutputArtifact:
         discriminator (Literal['FragmentOutputArtifact'] | Unset):  Default: 'FragmentOutputArtifact'.
     """
 
-    artifact: str
     artifact_name: str
     run_fragment_id: str
     run_id: str
@@ -36,8 +34,6 @@ class FragmentOutputArtifact:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        artifact = self.artifact
-
         artifact_name = self.artifact_name
 
         run_fragment_id = self.run_fragment_id
@@ -60,7 +56,6 @@ class FragmentOutputArtifact:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "artifact": artifact,
                 "artifact_name": artifact_name,
                 "run_fragment_id": run_fragment_id,
                 "run_id": run_id,
@@ -78,8 +73,6 @@ class FragmentOutputArtifact:
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        artifact = d.pop("artifact")
-
         artifact_name = d.pop("artifact_name")
 
         run_fragment_id = d.pop("run_fragment_id")
@@ -107,7 +100,6 @@ class FragmentOutputArtifact:
             raise ValueError(f"discriminator must match const 'FragmentOutputArtifact', got '{discriminator}'")
 
         fragment_output_artifact = cls(
-            artifact=artifact,
             artifact_name=artifact_name,
             run_fragment_id=run_fragment_id,
             run_id=run_id,
