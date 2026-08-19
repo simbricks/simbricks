@@ -25,9 +25,12 @@ from __future__ import annotations
 
 import abc
 import itertools
+import pathlib
 
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.runtime import output
+from simbricks.utils import artifatcs as utils_art
+from simbricks.utils import file as utils_file
 
 
 class Run:
@@ -90,3 +93,30 @@ class Runtime(metaclass=abc.ABCMeta):
 
     def enable_profiler(self, profile_int: int) -> None:
         self._profile_int = profile_int
+
+    async def _store_output_artifact(self, run: Run) -> None:
+        """Pack the run's output artifact into its output directory."""
+        fragment = run.instantiation.assigned_fragment
+        if not fragment.output_artifact_paths:
+            return
+
+        work_dir = pathlib.Path(run.instantiation.env.work_dir())
+        output_base = pathlib.Path(run.instantiation.env.output_base())
+
+        # The output directory ends up inside the artifact, so drop what earlier
+        # runs reusing this work directory left behind before packing a new one.
+        utils_file.remove_matching(output_base, "output-artifact-*.zip")
+
+        sink = utils_art.LocalFsArtifactSink(output_base)
+        await sink.produce(
+            utils_art.ArtifactInfo(
+                kind=utils_art.ArtifactKind.OUTPUT,
+                name=fragment.output_artifact_name,
+                run_id=str(run.instantiation.id()),
+                # No backend here to hand out ids, so the fragment identifies itself.
+                run_fragment_id=str(fragment.id()),
+            ),
+            paths_to_include=fragment.output_artifact_paths,
+            base_path=work_dir,
+            staging_dir=work_dir.parent,
+        )
