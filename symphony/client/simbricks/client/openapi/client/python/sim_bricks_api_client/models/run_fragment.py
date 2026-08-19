@@ -22,6 +22,7 @@ class RunFragment:
         fragment_id (None | str | Unset): API Object id
         runner_id (None | str | Unset): API Object id
         output_artifact_exists (bool | None | Unset):
+        output_artifact_name (None | str | Unset):
         state (None | RunState | Unset):
     """
 
@@ -30,6 +31,7 @@ class RunFragment:
     fragment_id: None | str | Unset = UNSET
     runner_id: None | str | Unset = UNSET
     output_artifact_exists: bool | None | Unset = UNSET
+    output_artifact_name: None | str | Unset = UNSET
     state: None | RunState | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -64,6 +66,12 @@ class RunFragment:
         else:
             output_artifact_exists = self.output_artifact_exists
 
+        output_artifact_name: None | str | Unset
+        if isinstance(self.output_artifact_name, Unset):
+            output_artifact_name = UNSET
+        else:
+            output_artifact_name = self.output_artifact_name
+
         state: None | str | Unset
         if isinstance(self.state, Unset):
             state = UNSET
@@ -85,6 +93,8 @@ class RunFragment:
             field_dict["runner_id"] = runner_id
         if output_artifact_exists is not UNSET:
             field_dict["output_artifact_exists"] = output_artifact_exists
+        if output_artifact_name is not UNSET:
+            field_dict["output_artifact_name"] = output_artifact_name
         if state is not UNSET:
             field_dict["state"] = state
 
@@ -139,6 +149,15 @@ class RunFragment:
 
         output_artifact_exists = _parse_output_artifact_exists(d.pop("output_artifact_exists", UNSET))
 
+        def _parse_output_artifact_name(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        output_artifact_name = _parse_output_artifact_name(d.pop("output_artifact_name", UNSET))
+
         def _parse_state(data: object) -> None | RunState | Unset:
             if data is None:
                 return data
@@ -162,6 +181,7 @@ class RunFragment:
             fragment_id=fragment_id,
             runner_id=runner_id,
             output_artifact_exists=output_artifact_exists,
+            output_artifact_name=output_artifact_name,
             state=state,
         )
 
