@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
-import base64
 import datetime
-import io
 import json
 import logging
 import pathlib
@@ -38,7 +36,8 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
-from simbricks.runner import utils as runner_utils
+from simbricks.runner import artifacts as runner_artifacts
+from simbricks.runner import framing
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.utils import artifatcs as utils_art
 
@@ -288,6 +287,14 @@ class FragmentRunner(abc.ABC):
 
         self._send_event_queue = asyncio.Queue[EventFromRunner_U]()
 
+        self._channel = framing.FrameChannel(self.read, self.write)
+        self._artifact_sink = runner_artifacts.RelayArtifactSink(self._channel)
+        self._artifact_receiver = runner_artifacts.ArtifactReceiver(self._workdir / "tmp")
+        #: Input artifacts that arrived, waiting for the run they belong to.
+        self._input_artifacts: dict[
+            tuple[str, runner_artifacts.ArtifactKind], runner_artifacts.Artifact
+        ] = {}
+
         self._run_map: dict[str, Run] = {}
 
         self._worker_tasks: list[asyncio.Task] = []
@@ -305,12 +312,7 @@ class FragmentRunner(abc.ABC):
         pass
 
     async def send_events(self, events: list[EventFromRunner_U]) -> None:
-        await runner_utils.send_events(self.write, events)
-
-    async def get_events(self) -> list[EventToRunner_U]:
-        # This connection receives commands from the main runner (EventToRunner_U);
-        # runner_utils.get_events' return type is broader because it deserializes either direction.
-        return typing.cast(list[EventToRunner_U], await runner_utils.get_events(self.read))
+        await self._channel.send(framing.EventFrame.pack(events))
 
     async def _enqueue_fragment_state_change(
         self, run_id: str, run_fragment_id: str, run_state: RunState
@@ -370,25 +372,39 @@ class FragmentRunner(abc.ABC):
         input_artifacts_dir = inst.env.input_artifacts_dir()
         pathlib.Path(input_artifacts_dir).mkdir(parents=True, exist_ok=True)
 
-        # instantiation specific input artifact
+        # The main runner streams these ahead of the start event, so by the time
+        # we get here they have already arrived and are waiting on disk.
         if inst.input_artifact_paths:
-            assert runner_utils.START_RUN_ADD_INST_ART in start_event
-            inst_artifact = base64.b64decode(
-                start_event[runner_utils.START_RUN_ADD_INST_ART].encode("utf-8")
+            self._unpack_input_artifact(
+                start_event.run_id,
+                runner_artifacts.ArtifactKind.INSTANTIATION_INPUT,
+                input_artifacts_dir,
             )
-            with io.BytesIO(inst_artifact) as inst_artifact_bytes:
-                utils_art.unpack_artifact(inst_artifact_bytes, input_artifacts_dir)
 
-        # fragment specific input artifact
         if inst.assigned_fragment.input_artifact_paths:
-            assert runner_utils.START_RUN_ADD_FRAG_ART in start_event
-            fragment_artifact = base64.b64decode(
-                start_event[runner_utils.START_RUN_ADD_FRAG_ART].encode("utf-8")
+            self._unpack_input_artifact(
+                start_event.run_id,
+                runner_artifacts.ArtifactKind.FRAGMENT_INPUT,
+                input_artifacts_dir,
             )
-            with io.BytesIO(fragment_artifact) as fragment_artifact_bytes:
-                utils_art.unpack_artifact(fragment_artifact_bytes, input_artifacts_dir)
 
         return inst
+
+    def _unpack_input_artifact(
+        self, run_id: str, kind: runner_artifacts.ArtifactKind, dest_dir: str
+    ) -> None:
+        artifact = self._input_artifacts.pop((run_id, kind), None)
+        if artifact is None:
+            raise RuntimeError(f"no {kind.value} artifact arrived for run {run_id}")
+        try:
+            utils_art.unpack_artifact(str(artifact.path), dest_dir)
+        finally:
+            artifact.path.unlink(missing_ok=True)
+
+    def _discard_input_artifacts(self, run_id: str) -> None:
+        """Drop this run's input artifacts that arrived but were never unpacked."""
+        for key in [key for key in self._input_artifacts if key[0] == run_id]:
+            self._input_artifacts.pop(key).path.unlink(missing_ok=True)
 
     async def _prepare_run(self, start_event: StartRunReq) -> Run:
         LOGGER.debug(f"prepare run {start_event.run_id}")
@@ -421,23 +437,30 @@ class FragmentRunner(abc.ABC):
             output_path = run.inst.env.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
 
-            # handle output artifacts properly
             if run.inst.assigned_fragment.output_artifact_paths:
-                with io.BytesIO() as output_artifact:
-                    utils_art.create_artifact(
-                        file=output_artifact,
-                        paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
-                        base_path=pathlib.Path(run.inst.env.work_dir()),
-                        check_relative=self._output_artifact_relative,
-                    )
-
-                    output_artifact_event = FragmentOutputArtifact(
-                        artifact=base64.b64encode(output_artifact.getvalue()).decode("utf-8"),
+                await self._artifact_sink.produce(
+                    utils_art.ArtifactInfo(
+                        kind=utils_art.ArtifactKind.OUTPUT,
+                        name=run.inst.assigned_fragment.output_artifact_name,
+                        run_id=run.run_id,
+                        run_fragment_id=run.run_fragment.id,
+                    ),
+                    paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
+                    base_path=pathlib.Path(run.inst.env.work_dir()),
+                    # Outside the work directory, otherwise the artifact ends up
+                    # inside the very tree it is packing.
+                    staging_dir=self._workdir,
+                    check_relative=self._output_artifact_relative,
+                )
+                # The bytes travelled over the connection and the main runner
+                # uploads them, so this only announces that the artifact exists.
+                await self._send_event_queue.put(
+                    FragmentOutputArtifact(
                         artifact_name=run.inst.assigned_fragment.output_artifact_name,
                         run_fragment_id=run.run_fragment.id,
                         run_id=run.run_id,
                     )
-                    await self._send_event_queue.put(output_artifact_event)
+                )
 
             status = RunState.ERROR if res.failed() else RunState.COMPLETED
             await self._enqueue_fragment_state_change(run.run_id, run.run_fragment.id, status)
@@ -458,7 +481,7 @@ class FragmentRunner(abc.ABC):
 
             LOGGER.info(f"cancelled execution of run {run.run_id}")
 
-        except Exception as ex:
+        except Exception:
             LOGGER.debug("_start_sim handle error")
             if sim_task:
                 sim_task.cancel()
@@ -467,7 +490,7 @@ class FragmentRunner(abc.ABC):
                 run.run_id, run.run_fragment.id, RunState.ERROR
             )
 
-            LOGGER.error(f"error while executing run {run.run_id}: {ex}")
+            LOGGER.error(f"error while executing run {run.run_id}: {traceback.format_exc()}")
 
     async def _cancel_all_tasks(self) -> None:
         for _, run in self._run_map.items():
@@ -530,6 +553,10 @@ class FragmentRunner(abc.ABC):
             frag_id = event.fragments[0].id
             assert isinstance(frag_id, str)
             await self._enqueue_fragment_state_change(event.run_id, frag_id, RunState.ERROR)
+        finally:
+            # A no-op once the run is set up, since _assemble_inst takes every
+            # artifact it expects. Anything left belongs to a run that failed.
+            self._discard_input_artifacts(event.run_id)
 
         LOGGER.info(f"handled run related event {event.id}")
 
@@ -559,7 +586,23 @@ class FragmentRunner(abc.ABC):
 
     async def _handle_events(self) -> None:
         while True:
-            events = await self.get_events()
+            frame = await self._channel.receive()
+
+            if isinstance(frame, framing.ArtifactFrame):
+                artifact = self._artifact_receiver.handle_frame(frame)
+                if artifact is not None:
+                    key = (artifact.info.run_id, artifact.info.kind)
+                    previous = self._input_artifacts.pop(key, None)
+                    if previous is not None:
+                        LOGGER.warning(f"replacing {key[1].value} artifact for run {key[0]}")
+                        previous.path.unlink(missing_ok=True)
+                    self._input_artifacts[key] = artifact
+                continue
+
+            # This connection only ever receives commands from the main runner;
+            # EventFrame.unpack' return type is broader.
+            assert isinstance(frame, framing.EventFrame)
+            events = typing.cast(list[EventToRunner_U], frame.unpack())
 
             LOGGER.debug(f"{len(events)} events fetched")
 
