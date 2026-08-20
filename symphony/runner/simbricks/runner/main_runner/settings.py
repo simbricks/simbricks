@@ -48,6 +48,9 @@ class RunnerSettings(BaseSettings):
 
     external_runner_ip: str = "127.0.0.1"
 
+    # Where artifacts are held while they are being received and uploaded.
+    artifact_spool_dir: str = "./runner-work/tmp"
+
     verbose: bool = True
     log_level: str = "DEBUG"
     polling_delay_sec: float = Field(default=10, gt=5, lt=60)

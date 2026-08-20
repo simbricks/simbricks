@@ -549,10 +549,10 @@ class SimBricksClient:
                 validate_no_response_model(response)
 
     async def set_run_fragment_output_artifact_raw(
-        self, run_id: str, run_frag_id: str, uploaded_data: typing.BinaryIO
+        self, run_id: str, run_frag_id: str, file_name: str, uploaded_data: typing.BinaryIO
     ) -> None:
 
-        file = File(payload=uploaded_data)
+        file = File(payload=uploaded_data, file_name=file_name)
 
         async with base_client(self._ns_client.base_url) as client:
             response = await runs_fragments_output_artifact_set.asyncio(

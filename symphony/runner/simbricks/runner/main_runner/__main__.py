@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import itertools
 import json
 import logging
+import pathlib
 import traceback
 import typing as tp
 
@@ -39,7 +39,8 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
-from simbricks.runner import utils as runner_utils
+from simbricks.runner import artifacts as runner_artifacts
+from simbricks.runner import framing
 from simbricks.runner.main_runner import settings
 from simbricks.runner.main_runner.plugins import plugin, plugin_loader
 from simbricks.telemetry.base import setup_telemetry
@@ -70,10 +71,16 @@ class FragmentExecutorConfiguration:
 
 
 class FragmentRunner:
-    def __init__(self, name: str, fragment_runner: plugin.FragmentRunnerPlugin):
+    def __init__(
+        self,
+        name: str,
+        fragment_runner: plugin.FragmentRunnerPlugin,
+        spool_dir: pathlib.Path,
+    ):
         self.name = name
         self.fragment_runner = fragment_runner
         self.read_task: asyncio.Task | None = None
+        self.artifact_receiver = runner_artifacts.ArtifactReceiver(spool_dir)
 
     async def stop(self):
         # TODO: remove
@@ -83,6 +90,7 @@ class FragmentRunner:
                 await self.read_task
             except asyncio.CancelledError:
                 pass
+        self.artifact_receiver.close()
         await self.fragment_runner.stop()
 
 
@@ -155,12 +163,30 @@ class MainRunner:
         config = self._fragment_executor_configs[name]
         runner = config.plugin()
         await runner.start(config.settings, parameters)
-        fragment_runner = FragmentRunner(name, runner)
+        fragment_runner = FragmentRunner(
+            name, runner, pathlib.Path(settings.runner_settings().artifact_spool_dir)
+        )
         fragment_runner.read_task = asyncio.create_task(
             self._read_fragment_runner_events(fragment_runner)
         )
         self.fragment_runners[name].add(fragment_runner)
         return fragment_runner
+
+    async def _send_start_run(
+        self,
+        fragment_runner: FragmentRunner,
+        event: StartRunReq,
+        input_artifacts: list[runner_artifacts.Artifact],
+    ) -> None:
+        """
+        Push a fragment's input artifacts down to it, then tell it to start.
+
+        The artifacts have to go first: once the start event arrives the
+        executor blocks on setting the run up and expects them to be there.
+        """
+        for artifact in input_artifacts:
+            await fragment_runner.fragment_runner.send_artifact(artifact)
+        await fragment_runner.fragment_runner.send_events([event])
 
     async def _start_run(self, start_run_event: StartRunReq):
 
@@ -184,14 +210,6 @@ class MainRunner:
         for frag in start_run_event.inst.fragments:
             assert isinstance(frag, Fragment) and isinstance(frag.id, str)
             fragment_map[frag.id] = frag
-
-        # retrieve instantiation input artifacts
-        inst_artifact: bytes | None = None
-        if sb_inst.input_artifact_paths:
-            assert isinstance(start_run_event.inst.id, str)
-            inst_artifact = await self._simbricks_client.get_inst_input_artifact_raw(
-                start_run_event.inst.id
-            )
 
         fragment_runner_map: dict[str, FragmentRunner] = {}
         for rf in start_run_event.fragments:
@@ -217,56 +235,97 @@ class MainRunner:
         run = MainRun(start_run_event.run_id, fragment_runner_map)
         self._run_map[start_run_event.run_id] = run
 
-        senders: list[asyncio.Task] = []
-        for rf in start_run_event.fragments:
-            start_fragment_event = StartRunReq(
-                run_id=start_run_event.run_id,
-                system=start_run_event.system,
-                simulation=start_run_event.simulation,
-                fragments=[rf],
-                inst=start_run_event.inst,
-                produced_at=start_run_event.produced_at,
-                id=start_run_event.id,
-            )
-
-            # set instantiation specific artifact
-            if inst_artifact is not None:
-                start_fragment_event[runner_utils.START_RUN_ADD_INST_ART] = base64.b64encode(
-                    inst_artifact
-                ).decode("utf-8")
-
-            # set fragment specific artifact
-            assert rf.fragment_id in fragment_map
-            assert isinstance(rf.fragment_id, str)
-            fragment = fragment_map[rf.fragment_id]
-            assert isinstance(fragment.object_id, int)
-            inst_fragment = sb_inst.get_fragment(fragment.object_id)
-            if inst_fragment.input_artifact_paths:
-                assert isinstance(start_run_event.inst.id, str)
-                fragment_artifact = await self._simbricks_client.get_fragment_input_artifact_raw(
-                    start_run_event.inst.id, rf.fragment_id
-                )
-                start_fragment_event[runner_utils.START_RUN_ADD_FRAG_ART] = base64.b64encode(
-                    fragment_artifact
-                ).decode("utf-8")
-
-            assert isinstance(rf.id, str)
-            senders.append(
-                asyncio.create_task(
-                    fragment_runner_map[rf.id].fragment_runner.send_events([start_fragment_event])
-                )
-            )
-
+        # Input artifacts travel as their own frames instead of being inlined
+        # into the start event, so they are spooled here and streamed from disk.
+        # The instantiation artifact is fetched once and pushed to every
+        # fragment runner.
+        spool_dir = pathlib.Path(settings.runner_settings().artifact_spool_dir)
+        spooled: list[pathlib.Path] = []
         try:
-            await asyncio.gather(*senders)
-        except asyncio.CancelledError:
-            for sender in senders:
-                sender.cancel()
-                try:
-                    await sender
-                except asyncio.CancelledError:
-                    pass
-            raise
+            inst_artifact_path: pathlib.Path | None = None
+            if sb_inst.input_artifact_paths:
+                assert isinstance(start_run_event.inst.id, str)
+                inst_artifact_path = runner_artifacts.spool_file(spool_dir)
+                spooled.append(inst_artifact_path)
+                await self._simbricks_client.get_inst_input_artifact(
+                    start_run_event.inst.id, str(inst_artifact_path)
+                )
+
+            senders: list[asyncio.Task] = []
+            for rf in start_run_event.fragments:
+                start_fragment_event = StartRunReq(
+                    run_id=start_run_event.run_id,
+                    system=start_run_event.system,
+                    simulation=start_run_event.simulation,
+                    fragments=[rf],
+                    inst=start_run_event.inst,
+                    produced_at=start_run_event.produced_at,
+                    id=start_run_event.id,
+                )
+
+                assert rf.fragment_id in fragment_map
+                assert isinstance(rf.fragment_id, str)
+                fragment = fragment_map[rf.fragment_id]
+                assert isinstance(fragment.object_id, int)
+                inst_fragment = sb_inst.get_fragment(fragment.object_id)
+
+                assert isinstance(rf.id, str)
+                artifacts: list[runner_artifacts.Artifact] = []
+                if inst_artifact_path is not None:
+                    artifacts.append(
+                        runner_artifacts.Artifact(
+                            path=inst_artifact_path,
+                            info=runner_artifacts.ArtifactInfo(
+                                kind=runner_artifacts.ArtifactKind.INSTANTIATION_INPUT,
+                                name=sb_inst.input_artifact_name,
+                                run_id=start_run_event.run_id,
+                                run_fragment_id=rf.id,
+                            ),
+                        )
+                    )
+
+                if inst_fragment.input_artifact_paths:
+                    assert isinstance(start_run_event.inst.id, str)
+                    path = runner_artifacts.spool_file(spool_dir)
+                    spooled.append(path)
+                    await self._simbricks_client.get_fragment_input_artifact(
+                        start_run_event.inst.id, rf.fragment_id, str(path)
+                    )
+                    artifacts.append(
+                        runner_artifacts.Artifact(
+                            path=path,
+                            info=runner_artifacts.ArtifactInfo(
+                                kind=runner_artifacts.ArtifactKind.FRAGMENT_INPUT,
+                                name=inst_fragment.input_artifact_name,
+                                run_id=start_run_event.run_id,
+                                run_fragment_id=rf.id,
+                            ),
+                        )
+                    )
+
+                senders.append(
+                    asyncio.create_task(
+                        self._send_start_run(
+                            fragment_runner_map[rf.id], start_fragment_event, artifacts
+                        )
+                    )
+                )
+
+            try:
+                await asyncio.gather(*senders)
+            except asyncio.CancelledError:
+                for sender in senders:
+                    sender.cancel()
+                    try:
+                        await sender
+                    except asyncio.CancelledError:
+                        pass
+                raise
+        finally:
+            # Every fragment runner has taken its copy by now, or the run failed
+            # to start and nobody will.
+            for path in spooled:
+                path.unlink(missing_ok=True)
 
         # TODO: should we wait here until all fragment executors sent their successful update
         # events? Only then we have also already updated the state of the StartRunEvent in the
@@ -360,6 +419,8 @@ class MainRunner:
                         | ProxyOutput()
                         | FragmentOutputArtifact()
                     ):
+                        # A FragmentOutputArtifact only announces the artifact;
+                        # _upload_artifact already sent its bytes.
                         pass
                     case FragmentStateChange():
                         run = self._run_map[event.run_id]
@@ -371,15 +432,40 @@ class MainRunner:
 
             await self._rc.submit_events(frag_runner_event.events)
 
+    async def _upload_artifact(self, artifact: runner_artifacts.Artifact) -> None:
+        try:
+            with artifact.path.open("rb") as file:
+                await self._simbricks_client.set_run_fragment_output_artifact_raw(
+                    artifact.info.run_id,
+                    artifact.info.run_fragment_id,
+                    artifact.info.name,
+                    file,
+                )
+        finally:
+            artifact.path.unlink(missing_ok=True)
+
     # TODO: abort a run if the fragment executor fails/the connection breaks
     async def _read_fragment_runner_events(self, fragment_runner: FragmentRunner):
         try:
             while True:
-                events = await fragment_runner.fragment_runner.get_events()
+                frame = await fragment_runner.fragment_runner.read_frame()
+
+                if isinstance(frame, framing.ArtifactFrame):
+                    artifact = fragment_runner.artifact_receiver.handle_frame(frame)
+                    if artifact is not None:
+                        # Uploaded before reading on, so the executor's event
+                        # announcing this artifact cannot reach the backend
+                        # before the artifact itself does.
+                        await self._upload_artifact(artifact)
+                    continue
+
+                assert isinstance(frame, framing.EventFrame)
+                events = fragment_runner.fragment_runner.decode_events(frame)
                 await self.fragment_runner_events.put(FragmentRunnerEvent(fragment_runner, events))
         except Exception:
             LOGGER.error(
-                f"failed to read events from runner {fragment_runner.fragment_runner.name()}"
+                f"failed to read events from runner {fragment_runner.fragment_runner.name()}:"
+                f" {traceback.format_exc()}"
             )
             raise
 

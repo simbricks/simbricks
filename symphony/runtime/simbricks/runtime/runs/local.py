@@ -23,12 +23,10 @@
 from __future__ import annotations
 
 import asyncio
-import pathlib
 import typing
 
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.runtime.runs import base as run_base
-from simbricks.utils import artifatcs as utils_art
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
@@ -182,13 +180,7 @@ class LocalSimpleRuntime(run_base.Runtime):
         # dump output into a file and then, before cleanup, create an artifact
         output_path = run.instantiation.env.get_simulation_output_path()
         run._output.dump(outpath=output_path)
-        if run.instantiation.assigned_fragment.output_artifact_paths:
-            utils_art.create_artifact(
-                file=run.instantiation.assigned_fragment.output_artifact_name,
-                paths_to_include=run.instantiation.assigned_fragment.output_artifact_paths,
-                base_path=pathlib.Path(run.instantiation.env._work_dir),
-                check_relative=True,
-            )
+        await self._store_output_artifact(run)
 
         await sim_executor.cleanup()
 
@@ -263,6 +255,7 @@ class LocalParallelRuntime(run_base.Runtime):
 
         output_path = run.instantiation.env.get_simulation_output_path()
         run._output.dump(outpath=output_path)
+        await self._store_output_artifact(run)
 
         await sim_executor.cleanup()
 

@@ -9,7 +9,7 @@ from ...client import AuthenticatedClient, Client
 from ...models.body_runs_fragments_output_artifact_set import BodyRunsFragmentsOutputArtifactSet
 from ...models.http_validation_error import HTTPValidationError
 from ...models.inline_object import InlineObject
-from ...types import UNSET, Response, Unset
+from ...types import Response
 
 
 def _get_kwargs(
@@ -17,7 +17,7 @@ def _get_kwargs(
     run_id: str,
     frag_id: str,
     *,
-    body: BodyRunsFragmentsOutputArtifactSet | Unset = UNSET,
+    body: BodyRunsFragmentsOutputArtifactSet,
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
 
@@ -30,10 +30,7 @@ def _get_kwargs(
         ),
     }
 
-    if not isinstance(body, Unset):
-        _kwargs["data"] = body.to_dict()
-
-    headers["Content-Type"] = "application/x-www-form-urlencoded"
+    _kwargs["files"] = body.to_multipart()
 
     _kwargs["headers"] = headers
     return _kwargs
@@ -93,7 +90,7 @@ def sync_detailed(
     frag_id: str,
     *,
     client: AuthenticatedClient,
-    body: BodyRunsFragmentsOutputArtifactSet | Unset = UNSET,
+    body: BodyRunsFragmentsOutputArtifactSet,
 ) -> Response[Any | HTTPValidationError | InlineObject]:
     """Get Run Output
 
@@ -101,7 +98,7 @@ def sync_detailed(
         ns_path (str):
         run_id (str):
         frag_id (str):
-        body (BodyRunsFragmentsOutputArtifactSet | Unset):
+        body (BodyRunsFragmentsOutputArtifactSet):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -131,7 +128,7 @@ def sync(
     frag_id: str,
     *,
     client: AuthenticatedClient,
-    body: BodyRunsFragmentsOutputArtifactSet | Unset = UNSET,
+    body: BodyRunsFragmentsOutputArtifactSet,
 ) -> Any | HTTPValidationError | InlineObject | None:
     """Get Run Output
 
@@ -139,7 +136,7 @@ def sync(
         ns_path (str):
         run_id (str):
         frag_id (str):
-        body (BodyRunsFragmentsOutputArtifactSet | Unset):
+        body (BodyRunsFragmentsOutputArtifactSet):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -164,7 +161,7 @@ async def asyncio_detailed(
     frag_id: str,
     *,
     client: AuthenticatedClient,
-    body: BodyRunsFragmentsOutputArtifactSet | Unset = UNSET,
+    body: BodyRunsFragmentsOutputArtifactSet,
 ) -> Response[Any | HTTPValidationError | InlineObject]:
     """Get Run Output
 
@@ -172,7 +169,7 @@ async def asyncio_detailed(
         ns_path (str):
         run_id (str):
         frag_id (str):
-        body (BodyRunsFragmentsOutputArtifactSet | Unset):
+        body (BodyRunsFragmentsOutputArtifactSet):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -200,7 +197,7 @@ async def asyncio(
     frag_id: str,
     *,
     client: AuthenticatedClient,
-    body: BodyRunsFragmentsOutputArtifactSet | Unset = UNSET,
+    body: BodyRunsFragmentsOutputArtifactSet,
 ) -> Any | HTTPValidationError | InlineObject | None:
     """Get Run Output
 
@@ -208,7 +205,7 @@ async def asyncio(
         ns_path (str):
         run_id (str):
         frag_id (str):
-        body (BodyRunsFragmentsOutputArtifactSet | Unset):
+        body (BodyRunsFragmentsOutputArtifactSet):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
