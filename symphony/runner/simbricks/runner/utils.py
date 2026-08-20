@@ -37,9 +37,10 @@ async def send_events(
 ) -> None:
     event_dicts = [__event_to_dict(event) for event in events]
     events_json = json.dumps(event_dicts)
-    payload = f",{events_json}"
-    data = bytes(f"{len(payload):12x}{payload}", encoding="utf-8")
-    await write(data)
+    payload = f",{events_json}".encode("utf-8")
+    # the length header counts bytes, not characters
+    header = f"{len(payload):12x}".encode("utf-8")
+    await write(header + payload)
 
 
 async def _read_all(read: abc.Callable[[int], abc.Awaitable[bytes]], length: int) -> bytes:

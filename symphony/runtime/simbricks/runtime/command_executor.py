@@ -35,6 +35,10 @@ if typing.TYPE_CHECKING:
     from simbricks.runtime import simulation_executor as sim_exec
 
 
+MAX_LINE_LEN = 64 * 1024
+"""Maximum length in bytes of a single line of component output."""
+
+
 class CommandExecutor:
     def __init__(
         self,
@@ -57,6 +61,10 @@ class CommandExecutor:
         self._proc: Process
         self._terminate_future: asyncio.Task
 
+    def _decode_line(self, raw: bytes | bytearray) -> str:
+        # NUL is valid UTF-8 but cannot be stored in the backend's text columns
+        return raw.decode("utf-8", errors="replace").replace("\x00", "\ufffd")
+
     def _parse_buf(self, buf: bytearray, data: bytes) -> list[str]:
         if data is not None:
             buf.extend(data)
@@ -64,13 +72,18 @@ class CommandExecutor:
         start = 0
         for i in range(0, len(buf)):
             if buf[i] == ord("\n"):
-                line = buf[start:i].decode("utf-8")
+                line = self._decode_line(buf[start:i])
                 lines.append(line)
                 start = i + 1
         del buf[0:start]
 
+        # flush unterminated output so a line without newline cannot grow the buffer forever
+        while len(buf) > MAX_LINE_LEN:
+            lines.append(self._decode_line(buf[0:MAX_LINE_LEN]))
+            del buf[0:MAX_LINE_LEN]
+
         if len(data) == 0 and len(buf) > 0:
-            lines.append(buf.decode("utf-8"))
+            lines.append(self._decode_line(buf))
         return lines
 
     async def _consume_stdout(self, data: bytes) -> None:
