@@ -35,6 +35,10 @@ if typing.TYPE_CHECKING:
     from simbricks.runtime import simulation_executor as sim_exec
 
 
+MAX_LINE_LEN = 64 * 1024
+"""Maximum length in bytes of a single line of component output."""
+
+
 class CommandExecutor:
     def __init__(
         self,
@@ -72,6 +76,11 @@ class CommandExecutor:
                 lines.append(line)
                 start = i + 1
         del buf[0:start]
+
+        # flush unterminated output so a line without newline cannot grow the buffer forever
+        while len(buf) > MAX_LINE_LEN:
+            lines.append(self._decode_line(buf[0:MAX_LINE_LEN]))
+            del buf[0:MAX_LINE_LEN]
 
         if len(data) == 0 and len(buf) > 0:
             lines.append(self._decode_line(buf))
