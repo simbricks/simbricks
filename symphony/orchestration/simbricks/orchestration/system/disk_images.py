@@ -271,13 +271,13 @@ class PackerDiskImage(DynamicDiskImage):
         )
 
         stdout, stderr = await process.communicate()
-        print(stdout.decode())
+        print(stdout.decode("utf-8", errors="replace"))
 
         # Check the return code to determine success
         if process.returncode == 0:
             print("Packer image built successfully!")
         else:
-            print(stderr.decode())
+            print(stderr.decode("utf-8", errors="replace"))
             raise RuntimeError("failed to build image with packer")
 
     def toJSON(self) -> dict:
