@@ -45,6 +45,7 @@ requirements:
     - python >=3.10
     - simbricks-orchestration >=0.5.0
     - simbricks-runtime >=0.5.0
+    - simbricks-utils >=0.5.0
 
 test:
   imports:

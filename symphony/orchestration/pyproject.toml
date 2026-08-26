@@ -38,4 +38,5 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.10"
+typing-extensions = ">=4.14.1"
 simbricks-utils = ">=0.5.0"
