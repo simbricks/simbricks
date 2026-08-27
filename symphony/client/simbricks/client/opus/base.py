@@ -40,6 +40,7 @@ from ..openapi.client.python.sim_bricks_api_client.models import (
     PaginationLinks,
     RunOutput,
     RunOutputProxiesType0,
+    RunOutputRuntimeType0,
     RunOutputSimulatorsType0,
     RunState,
 )
@@ -71,33 +72,35 @@ class ConsoleLineGenerator:
         if isinstance(output.links, PaginationLinks) and isinstance(output.links.next_, str):
             self._cursor_next = datetime.datetime.fromisoformat(output.links.next_)
 
-        lines = []
         if not isinstance(output.data, RunOutput):
             print("No run output fetched")
-            return lines
+            return []
 
-        # TODO: handle proxy output as well
-        assert output.data.simulators and isinstance(
-            output.data.simulators, RunOutputSimulatorsType0
-        )
-        simulators: RunOutputSimulatorsType0 = output.data.simulators
+        # the response groups lines per component, which loses the order they
+        # were produced in, so collect timestamps and restore it below
+        stamped: list[tuple[datetime.datetime, str, str]] = []
 
-        for simulator_id, simulator in simulators.additional_properties.items():
-            for _, output_lines in simulator.commands.additional_properties.items():
+        if isinstance(output.data.simulators, RunOutputSimulatorsType0):
+            for simulator in output.data.simulators.additional_properties.values():
+                for output_lines in simulator.commands.additional_properties.values():
+                    for output_line in output_lines:
+                        stamped.append(
+                            (output_line.produced_at, simulator.name, output_line.output)
+                        )
+
+        if isinstance(output.data.proxies, RunOutputProxiesType0):
+            for proxy in output.data.proxies.additional_properties.values():
+                for output_lines in proxy.commands.additional_properties.values():
+                    for output_line in output_lines:
+                        stamped.append((output_line.produced_at, proxy.name, output_line.output))
+
+        if isinstance(output.data.runtime, RunOutputRuntimeType0):
+            for output_lines in output.data.runtime.additional_properties.values():
                 for output_line in output_lines:
-                    assert output_line.id is not None
-                    lines.append((simulator.name, output_line.output))
+                    stamped.append((output_line.produced_at, "runtime", output_line.output))
 
-        assert output.data.proxies and isinstance(output.data.proxies, RunOutputProxiesType0)
-        proxies: RunOutputProxiesType0 = output.data.proxies
-
-        for proxy in proxies.additional_properties.values():
-            for output_lines in proxy.commands.additional_properties.values():
-                for output_line in output_lines:
-                    assert output_line.id is not None
-                    lines.append((proxy.name, output_line.output))
-
-        return lines
+        stamped.sort(key=lambda entry: entry[0])
+        return [(prefix, line) for _, prefix, line in stamped]
 
     async def generate_lines(self) -> typing.AsyncGenerator[tuple[str, str], None]:
         stop_after_next = not self._follow or not await still_running(self._run_id)
