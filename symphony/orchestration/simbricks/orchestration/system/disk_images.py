@@ -296,11 +296,14 @@ class PackerDiskImage(DynamicDiskImage):
         return instance
 
 
-class ConfigFile(utils_base.IdObj):
+class ConfigFile(utils_base.IdObj, utils_base.InputArtifactSource):
     def __init__(self, file_name: str):
         super().__init__()
         # Name of the file in the image
         self.file_name: str = file_name
+
+    def input_artifact_files(self) -> list[str]:
+        return []
 
     @abc.abstractmethod
     def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
@@ -360,4 +363,47 @@ class ConfigFileStr(ConfigFile):
     def fromJSON(cls, json_obj) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance.string = utils_base.get_json_attr_top(json_obj, "string")
+        return instance
+
+
+class ConfigFileArtifact(ConfigFile):
+    """Local filei, shipped to the runner if necessary as input artifact."""
+
+    def __init__(self, file_name: str, path: str):
+        super().__init__(file_name)
+        # Path of the local file, relative to where the script defining the system runs
+        self.path: str = pathlib.Path(path).resolve().as_posix()
+        # Name the file has inside the artifact, which is currently packed flat
+        self.artifact_file_name: str = pathlib.PurePath(self.path).name
+        self.open_mode: str = "rb"
+
+    def input_artifact_files(self) -> list[str]:
+        return [self.path]
+
+    def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
+        artifact_path = pathlib.Path(inst.env.input_artifacts_dir(), self.artifact_file_name)
+        if artifact_path.exists():
+            return open(artifact_path, self.open_mode)
+        # Local runs build no input artifact, the file is still where it was picked up
+        local_path = pathlib.Path(self.path)
+        if not local_path.exists():
+            raise RuntimeError(
+                f"config file '{self.file_name}' was neither shipped as an input artifact nor"
+                f" available locally at '{self.path}'"
+            )
+        return open(local_path, self.open_mode)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["path"] = self.path
+        json_obj["artifact_file_name"] = self.artifact_file_name
+        json_obj["open_mode"] = self.open_mode
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, json_obj) -> tpe.Self:
+        instance = super().fromJSON(json_obj)
+        instance.path = utils_base.get_json_attr_top(json_obj, "path")
+        instance.artifact_file_name = utils_base.get_json_attr_top(json_obj, "artifact_file_name")
+        instance.open_mode = utils_base.get_json_attr_top(json_obj, "open_mode")
         return instance

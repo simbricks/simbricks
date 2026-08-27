@@ -36,7 +36,7 @@ if tp.TYPE_CHECKING:
     from simbricks.orchestration.system import host as sys_host
 
 
-class Application(utils_base.IdObj):
+class Application(utils_base.IdObj, utils_base.InputArtifactSource):
     def __init__(self, h: sys_host.Host) -> None:
         super().__init__()
         self.host: sys_host.Host = h
@@ -50,6 +50,9 @@ class Application(utils_base.IdObj):
         json_obj["parameters"] = utils_base.dict_to_json(self.parameters)
         json_obj["wait"] = self.wait
         return json_obj
+
+    def input_artifact_files(self) -> list[str]:
+        return []
 
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
@@ -85,6 +88,12 @@ class BaseLinuxApplication(Application):
 
     def add_config_file(self, config_file: disk_images.ConfigFile):
         self._config_files.append(config_file)
+
+    def input_artifact_files(self) -> list[str]:
+        files = []
+        for config_file in self._config_files:
+            files += config_file.input_artifact_files()
+        return files
 
     def config_files(self, inst: inst_base.Instantiation) -> list[disk_images.ConfigFile]:
         """
