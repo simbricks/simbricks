@@ -29,6 +29,7 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     RunnerTag,
     RunState,
     RunStatus,
+    RuntimeOutput,
     SimulationSigusr1,
     SimulatorChangedState,
     SimulatorOutput,
@@ -409,6 +410,7 @@ class MainRunner:
         while True:
             frag_runner_event = await self.fragment_runner_events.get()
 
+            forward = []
             for event in frag_runner_event.events:
                 match event:
                     case (
@@ -416,17 +418,20 @@ class MainRunner:
                         | SimulatorStateChange()
                         | ProxyStateChange()
                         | ProxyOutput()
+                        | RuntimeOutput()
                     ):
                         pass
                     case FragmentStateChange():
                         run = self._run_map[event.run_id]
                         run.fragment_run_state[event.run_fragment_id] = event.run_state
                     case _:
-                        raise Exception(
-                            f"_handle_fragment_runner_events unkown event type: {event}"
-                        )
+                        # dropping one event beats killing the relay for every
+                        # run on this host
+                        LOGGER.error(f"_handle_fragment_runner_events unkown event type: {event}")
+                        continue
+                forward.append(event)
 
-            await self._rc.submit_events(frag_runner_event.events)
+            await self._rc.submit_events(forward)
 
     async def _upload_artifact(self, artifact: runner_artifacts.Artifact) -> None:
         try:
