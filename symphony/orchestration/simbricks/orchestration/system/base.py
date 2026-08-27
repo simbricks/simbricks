@@ -32,6 +32,7 @@ from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
+    from simbricks.orchestration.system.host import app
 
 
 class System(utils_base.IdObj):
@@ -44,6 +45,7 @@ class System(utils_base.IdObj):
         self._all_interfaces: dict[int, Interface] = {}
         self._all_channels: dict[int, Channel] = {}
         self._all_disk_images: dict[int, disk_images.DiskImage] = {}
+        self._all_applications: dict[int, app.Application] = {}
         self._parameters: dict[tp.Any, tp.Any] = {}
 
     def _add_component(self, c: Component) -> None:
@@ -87,6 +89,16 @@ class System(utils_base.IdObj):
             raise Exception(f"system does not store disk image with id {ident}")
 
         return self._all_disk_images[ident]
+
+    def _add_application(self, application: app.Application) -> None:
+        assert application.id() not in self._all_applications
+        self._all_applications[application.id()] = application
+
+    def get_app(self, ident: int) -> app.Application:
+        if ident not in self._all_applications:
+            raise Exception(f"system does not store application with id {ident}")
+
+        return self._all_applications[ident]
 
     @staticmethod
     def set_latencies(channels: list[Channel], amount: int, ratio: utils_base.Time) -> None:
@@ -152,6 +164,7 @@ class System(utils_base.IdObj):
         instance._all_interfaces = {}
         instance._all_channels = {}
         instance._all_disk_images = {}
+        instance._all_applications = {}
 
         disk_images_json = utils_base.get_json_attr_top(json_obj, "disk_images")
         for disk_image_json in disk_images_json:

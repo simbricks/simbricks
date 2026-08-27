@@ -42,6 +42,7 @@ class Application(utils_base.IdObj):
         self.host: sys_host.Host = h
         self.wait: bool = False
         self.parameters: dict[tp.Any, tp.Any] = {}
+        h.system._add_application(self)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -57,6 +58,7 @@ class Application(utils_base.IdObj):
             utils_base.get_json_attr_top(json_obj, "parameters")
         )
         instance.wait = bool(utils_base.get_json_attr_top(json_obj, "wait"))
+        system._add_application(instance)
         return instance
 
 
