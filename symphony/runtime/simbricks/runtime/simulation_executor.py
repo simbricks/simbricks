@@ -49,11 +49,10 @@ class ProxyReadyInfo:
 
 
 class SimulationExecutorCallbacks:
-    def __init__(self, instantiation: inst_base.Instantiation) -> None:
-        self._instantiation = instantiation
-        self._output: output.SimulationOutput = output.SimulationOutput(
-            self._instantiation.simulation
-        )
+    def __init__(self, simulation: sim_base.Simulation) -> None:
+        self._output: output.SimulationOutput = output.SimulationOutput(simulation)
+        self.simulation_executor: SimulationExecutor
+        """Set by the SimulationExecutor these callbacks are constructed with."""
 
     @property
     def simulation_output(self) -> output.SimulationOutput:
@@ -74,6 +73,14 @@ class SimulationExecutorCallbacks:
 
     async def simulation_prepare_cmd_stderr(self, cmd: str, lines: list[str]) -> None:
         self._output.generic_prepare_cmd_stderr(cmd, lines)
+
+    async def simulation_message(self, level: output.RuntimeMessageLevel, msg: str) -> None:
+        """Report a message produced by the runtime itself.
+
+        Called from cancellation handlers, so implementations must not reach a
+        suspension point.
+        """
+        self._output.add_runtime_message(level, msg)
 
     async def simulation_exited(self, state: output.SimulationExitState) -> None:
         self._output.set_end(state)
@@ -138,6 +145,8 @@ class SimulationExecutor:
         proxy_host_ip: str,
         profile_int=None,
     ) -> None:
+        instantiation.command_executor = cmd_exec.CommandExecutorFactory(callbacks)
+        callbacks.simulation_executor = self
         self._instantiation: inst_base.Instantiation = instantiation
         self._callbacks: SimulationExecutorCallbacks = callbacks
         self._verbose: bool = verbose
@@ -146,7 +155,6 @@ class SimulationExecutor:
         self._running_sims: dict[sim_base.Simulator, cmd_exec.CommandExecutor] = {}
         self._running_proxies: dict[inst_proxy.Proxy, cmd_exec.CommandExecutor] = {}
         self._wait_sims: dict[int, asyncio.Event] = {}
-        self._cmd_executor = cmd_exec.CommandExecutorFactory(callbacks)
         self._external_proxy_running: dict[int, ProxyReadyInfo] = {}
 
     async def mark_external_proxies_running(self, id: int, ip: str, port: int):
@@ -175,10 +183,11 @@ class SimulationExecutor:
                 f"could not resolve address '{self._proxy_host_ip}' for proxy {proxy.id}"
             )
 
-        cmd_exec = await self._cmd_executor.start_proxy(
+        executor = self._instantiation.command_executor
+        assert isinstance(executor, cmd_exec.CommandExecutorFactory)
+        self._running_proxies[proxy] = await executor.start_proxy(
             proxy, proxy.run_cmd(self._instantiation, ip)
         )
-        self._running_proxies[proxy] = cmd_exec
 
         # Wait till sockets exist
         wait_socks = proxy.sockets_wait(inst=self._instantiation)
@@ -208,10 +217,11 @@ class SimulationExecutor:
         """Start a simulator and wait for it to be ready."""
         try:
             name = sim.full_name()
-            cmd_exec = await self._cmd_executor.start_simulator(
+            executor = self._instantiation.command_executor
+            assert isinstance(executor, cmd_exec.CommandExecutorFactory)
+            self._running_sims[sim] = await executor.start_simulator(
                 sim, sim.run_cmd(self._instantiation)
             )
-            self._running_sims[sim] = cmd_exec
 
             # give simulator time to start if indicated
             delay = sim.start_delay()
@@ -221,21 +231,21 @@ class SimulationExecutor:
             # Wait till sockets exist
             wait_socks = sim.sockets_wait(inst=self._instantiation)
             if len(wait_socks) > 0:
-                if self._verbose:
-                    print(f"{self._instantiation.simulation.name}: waiting for sockets {name}")
+                await self._callbacks.simulation_message(
+                    output.RuntimeMessageLevel.DEBUG, f"waiting for sockets {name}"
+                )
                 for sock in wait_socks:
                     await sock.wait()
-                if self._verbose:
-                    print(
-                        f"{self._instantiation.simulation.name}: waited successfully for sockets {name}"
-                    )
+                await self._callbacks.simulation_message(
+                    output.RuntimeMessageLevel.DEBUG,
+                    f"waited successfully for sockets {name}",
+                )
             await self._callbacks.simulator_ready(sim)
 
         except asyncio.CancelledError:
             pass
 
     async def prepare(self) -> None:
-        self._instantiation._cmd_executor = self._cmd_executor
         await self._instantiation.prepare()
 
         for sim in self._instantiation.simulation.all_simulators():
@@ -243,16 +253,16 @@ class SimulationExecutor:
                 self._wait_sims[sim.id()] = asyncio.Event()
 
         if not self._wait_sims:
-            print(
-                f"{self._instantiation.simulation.name}: warning: no component has a wait flag"
-                " set, so the simulation terminates as soon as all simulators have started."
-                " Set wait_terminate on a simulator or wait on an application to wait for it."
+            await self._callbacks.simulation_message(
+                output.RuntimeMessageLevel.WARNING,
+                "warning: no component has a wait flag set, so the simulation terminates as"
+                " soon as all simulators have started. Set wait_terminate on a simulator or"
+                " wait on an application to wait for it.",
             )
 
     async def terminate_collect_sims(self) -> None:
         """Terminates all simulators and collects output."""
-        if self._verbose:
-            print(f"{self._instantiation.simulation.name}: cleaning up")
+        await self._callbacks.simulation_message(output.RuntimeMessageLevel.DEBUG, "cleaning up")
 
         # Interrupt, then terminate, then kill all processes. Do this in parallel so user does not
         # have to wait unnecessaryily long.
@@ -337,12 +347,15 @@ class SimulationExecutor:
                 await sc.wait()
             await self._callbacks.simulation_exited(output.SimulationExitState.SUCCESS)
         except asyncio.CancelledError:
-            if self._verbose:
-                print(f"{self._instantiation.simulation.name}: interrupted")
+            await self._callbacks.simulation_message(
+                output.RuntimeMessageLevel.DEBUG, "interrupted"
+            )
             await self._callbacks.simulation_exited(output.SimulationExitState.INTERRUPTED)
         except Exception:
             await self._callbacks.simulation_exited(output.SimulationExitState.FAILED)
-            traceback.print_exc()
+            await self._callbacks.simulation_message(
+                output.RuntimeMessageLevel.ERROR, traceback.format_exc()
+            )
 
         if profiler_task:
             try:
@@ -365,7 +378,10 @@ class SimulationExecutor:
                 await asyncio.shield(terminate_collect_task)
                 return self._callbacks.simulation_output
             except asyncio.CancelledError as e:
-                print(e)
+                await self._callbacks.simulation_message(
+                    output.RuntimeMessageLevel.DEBUG,
+                    f"cancelled while collecting simulator output: {e}",
+                )
 
     async def cleanup(self) -> None:
         await self._instantiation.cleanup()
