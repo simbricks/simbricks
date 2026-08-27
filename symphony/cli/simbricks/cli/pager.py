@@ -31,7 +31,7 @@ from rich.live import Live
 from rich.markup import escape
 from rich.text import Text
 
-from .utils import build_table
+from .utils import build_table, print_table_generic
 
 _NEXT_KEYS = frozenset(
     {
@@ -54,6 +54,12 @@ _QUIT_KEYS = frozenset({readchar.key.ESC, readchar.key.CTRL_D, "q", "Q"})
 _HINTS = "[dim]←/→ page · g first · r reload · q quit[/dim]"
 
 FetchPage = typing.Callable[[str | None], typing.Awaitable[tuple[list[typing.Any], str | None]]]
+
+PAGE_SIZE = 20
+"""Rows per page for the ``ls`` commands, unless overridden with ``--limit``."""
+
+PEEK_COUNT = 5
+"""Rows shown by the ``peek`` commands, unless overridden with ``--limit``."""
 
 
 def interactive_supported() -> bool:
@@ -183,3 +189,27 @@ class TablePager:
         # page the user was looking at into the real scrollback. Copying a run
         # id out of it is the whole point of the command.
         self._console.print(build_table(self._title, self._pages[self._index].rows, *self._columns))
+
+
+async def paged_ls(title: str, columns: tuple[str, ...], fetch_page: FetchPage) -> None:
+    """Print a cursor-paginated listing, paging through it where possible.
+
+    Fetches the first page and prints it when there is nothing to page to or
+    nowhere to page it, and otherwise hands over to the full-screen pager. A
+    ``fetch_page`` that passes no limit gets the whole list in one response and
+    so always takes the printing path, which is what ``--all`` relies on.
+    """
+    rows, next_cursor = await fetch_page(None)
+
+    if not rows or next_cursor is None or not interactive_supported():
+        # Nothing to page through, or nowhere to page it.
+        print_table_generic(title, rows, *columns)
+        return
+
+    await TablePager(
+        title=title,
+        columns=columns,
+        first_page=(rows, next_cursor),
+        fetch_page=fetch_page,
+        console=Console(),
+    ).run()
