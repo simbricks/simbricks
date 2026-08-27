@@ -56,6 +56,14 @@ class IdObj(abc.ABC):
         return instance
 
 
+class InputArtifactSource(abc.ABC):
+    """Object needing local files on the machine running the simulation."""
+
+    @abc.abstractmethod
+    def input_artifact_files(self) -> list[str]:
+        """Paths of the local files needed, relative to where the script defining them runs."""
+
+
 class Time(enum.IntEnum):
     # FIXME: this is wrong, see https://github.com/simbricks/simbricks/issues/178
     Picoseconds = 10 ** (-3)  # pyright: ignore[reportAssignmentType]

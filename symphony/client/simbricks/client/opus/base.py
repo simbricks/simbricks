@@ -168,6 +168,8 @@ async def submit_instantiation(
 ) -> str:
     simbricks_client = await simb_client()
 
+    instantiation.collect_builtin_input_artifacts()
+
     inst = await simbricks_client.create_instantiation(simulation_id, instantiation)
     assert isinstance(inst.id, str)
 

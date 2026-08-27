@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import itertools
 import pathlib
 import typing
 import uuid
@@ -159,6 +160,19 @@ class InstantiationEnvironment(utils_base.IdObj):
         return self.output_base("out.json")
 
 
+def _input_artifact_sources(
+    system: sys_base.System,
+) -> typing.Iterator[utils_base.InputArtifactSource]:
+    """Objects in @system that may need local files shipped to the runner."""
+    for obj in itertools.chain(
+        system._all_components.values(),
+        system._all_applications.values(),
+        system._all_disk_images.values(),
+    ):
+        if isinstance(obj, utils_base.InputArtifactSource):
+            yield obj
+
+
 class Instantiation(utils_base.IdObj):
     def __init__(
         self,
@@ -185,6 +199,28 @@ class Instantiation(utils_base.IdObj):
         self._proxy_pairs: list[inst_proxy.ProxyPair] = []
         self._inf_socktype_assignment: dict[sys_base.Interface, inst_socket.SockType] = {}
         self._parameters: dict[typing.Any, typing.Any] = {}
+
+    def _add_input_artifacts(self, paths: list[str]) -> None:
+        """Add @paths to the input artifact. Packing is flat, so names must be unique."""
+        for path in paths:
+            if path in self.input_artifact_paths:
+                continue
+            name = pathlib.PurePath(path).name
+            for present in self.input_artifact_paths:
+                if pathlib.PurePath(present).name == name:
+                    raise RuntimeError(
+                        f"input artifact files '{present}' and '{path}' have the same file name"
+                        " and would collide in the input artifact"
+                    )
+            self.input_artifact_paths.append(path)
+
+    def collect_builtin_input_artifacts(self) -> None:
+        """Add the local files our own config objects declare they need.
+
+        Paths the user added to input_artifact_paths are left alone.
+        """
+        for source in _input_artifact_sources(self.simulation.system):
+            self._add_input_artifacts(source.input_artifact_files())
 
     @property
     def env(self) -> InstantiationEnvironment:
