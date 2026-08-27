@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from ..models.run_status import RunStatus
     from ..models.runner_heartbeat import RunnerHeartbeat
     from ..models.runner_started import RunnerStarted
+    from ..models.runtime_output import RuntimeOutput
     from ..models.simulator_output import SimulatorOutput
     from ..models.simulator_state_change import SimulatorStateChange
 
@@ -28,7 +29,7 @@ class RunnersFromEventsCreateRequest:
 
     Attributes:
         data (list[FragmentStateChange | ProxyOutput | ProxyStateChange | RunnerHeartbeat | RunnerStarted | RunStatus |
-            SimulatorOutput | SimulatorStateChange] | Unset):
+            RuntimeOutput | SimulatorOutput | SimulatorStateChange] | Unset):
     """
 
     data: (
@@ -39,6 +40,7 @@ class RunnersFromEventsCreateRequest:
             | RunnerHeartbeat
             | RunnerStarted
             | RunStatus
+            | RuntimeOutput
             | SimulatorOutput
             | SimulatorStateChange
         ]
@@ -47,6 +49,7 @@ class RunnersFromEventsCreateRequest:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.fragment_state_change import FragmentStateChange
         from ..models.proxy_output import ProxyOutput
         from ..models.proxy_state_change import ProxyStateChange
         from ..models.run_status import RunStatus
@@ -74,6 +77,8 @@ class RunnersFromEventsCreateRequest:
                     data_item = data_item_data.to_dict()
                 elif isinstance(data_item_data, ProxyStateChange):
                     data_item = data_item_data.to_dict()
+                elif isinstance(data_item_data, FragmentStateChange):
+                    data_item = data_item_data.to_dict()
                 else:
                     data_item = data_item_data.to_dict()
 
@@ -95,6 +100,7 @@ class RunnersFromEventsCreateRequest:
         from ..models.run_status import RunStatus
         from ..models.runner_heartbeat import RunnerHeartbeat
         from ..models.runner_started import RunnerStarted
+        from ..models.runtime_output import RuntimeOutput
         from ..models.simulator_output import SimulatorOutput
         from ..models.simulator_state_change import SimulatorStateChange
 
@@ -108,6 +114,7 @@ class RunnersFromEventsCreateRequest:
                 | RunnerHeartbeat
                 | RunnerStarted
                 | RunStatus
+                | RuntimeOutput
                 | SimulatorOutput
                 | SimulatorStateChange
             ]
@@ -126,6 +133,7 @@ class RunnersFromEventsCreateRequest:
                     | RunnerHeartbeat
                     | RunnerStarted
                     | RunStatus
+                    | RuntimeOutput
                     | SimulatorOutput
                     | SimulatorStateChange
                 ):
@@ -185,11 +193,19 @@ class RunnersFromEventsCreateRequest:
                         return data_item_type_6
                     except (TypeError, ValueError, AttributeError, KeyError):
                         pass
+                    try:
+                        if not isinstance(data, dict):
+                            raise TypeError()
+                        data_item_type_7 = FragmentStateChange.from_dict(data)
+
+                        return data_item_type_7
+                    except (TypeError, ValueError, AttributeError, KeyError):
+                        pass
                     if not isinstance(data, dict):
                         raise TypeError()
-                    data_item_type_7 = FragmentStateChange.from_dict(data)
+                    data_item_type_8 = RuntimeOutput.from_dict(data)
 
-                    return data_item_type_7
+                    return data_item_type_8
 
                 data_item = _parse_data_item(data_item_data)
 

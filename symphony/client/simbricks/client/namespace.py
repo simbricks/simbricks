@@ -123,6 +123,7 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     RunsList200Response,
     RunState,
     RunStatus,
+    RuntimeOutput,
     SimulationSigusr1,
     SimulationsList200Response,
     SimulatorChangedState,
@@ -165,6 +166,7 @@ EventFromRunner_U = (
     | ProxyOutput
     | ProxyStateChange
     | FragmentStateChange
+    | RuntimeOutput
 )
 
 EventToRunner_U = (
