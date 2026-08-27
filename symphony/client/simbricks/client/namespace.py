@@ -229,12 +229,21 @@ class NSClient:
             return ns
 
     # recursively retrieve all namespaces beginning with the current including all children
-    async def get_all(self) -> NamespacesList200Response:
+    async def get_all(
+        self,
+        cursor_next: str | None = None,
+        cursor_prev: str | None = None,
+        limit: int | None = None,
+    ) -> NamespacesList200Response:
         async with base_client(self.base_url) as client:
-            namespaces = await namespaces_children_list.asyncio(self.namespace_path, client=client)
-            namespaces = validate_response_model(namespaces, NamespacesList200Response)
-            assert namespaces
-            return namespaces
+            namespaces = await namespaces_children_list.asyncio(
+                self.namespace_path,
+                client=client,
+                cursor_next=cursor_next,
+                cursor_prev=cursor_prev,
+                limit=limit,
+            )
+            return validate_response_model(namespaces, NamespacesList200Response)
 
     async def get_member(self, username: str) -> NsMember | None:
         async with base_client(self.base_url) as client:
@@ -306,12 +315,21 @@ class SimBricksClient:
             )
             validate_no_response_model(response)
 
-    async def get_systems(self) -> SystemsList200Response:
+    async def get_systems(
+        self,
+        cursor_next: str | None = None,
+        cursor_prev: str | None = None,
+        limit: int | None = None,
+    ) -> SystemsList200Response:
         async with base_client(self._ns_client.base_url) as client:
-            systems = await systems_list.asyncio(self._ns_client.namespace_path, client=client)
-            systems = validate_response_model(systems, SystemsList200Response)
-            assert systems
-            return systems
+            systems = await systems_list.asyncio(
+                self._ns_client.namespace_path,
+                client=client,
+                cursor_next=cursor_next,
+                cursor_prev=cursor_prev,
+                limit=limit,
+            )
+            return validate_response_model(systems, SystemsList200Response)
 
     async def get_system(self, sys_id: str) -> ApiSystem | None:
         async with base_client(self._ns_client.base_url) as client:
@@ -348,12 +366,21 @@ class SimBricksClient:
             sim = validate_response_model(sim, ApiSimulation)
             return sim
 
-    async def get_simulations(self) -> SimulationsList200Response:
+    async def get_simulations(
+        self,
+        cursor_next: str | None = None,
+        cursor_prev: str | None = None,
+        limit: int | None = None,
+    ) -> SimulationsList200Response:
         async with base_client(self._ns_client.base_url) as client:
-            sims = await simulations_list.asyncio(self._ns_client.namespace_path, client=client)
-            sims = validate_response_model(sims, SimulationsList200Response)
-            assert sims
-            return sims
+            sims = await simulations_list.asyncio(
+                self._ns_client.namespace_path,
+                client=client,
+                cursor_next=cursor_next,
+                cursor_prev=cursor_prev,
+                limit=limit,
+            )
+            return validate_response_model(sims, SimulationsList200Response)
 
     async def create_instantiation(self, sim_id: str, inst: OrchInstantiation) -> ApiInstantiation:
 
@@ -395,12 +422,21 @@ class SimBricksClient:
             )
             return validate_response_model(inst, ApiInstantiation)
 
-    async def get_instantiations(self) -> InstantitionsList200Response:
+    async def get_instantiations(
+        self,
+        cursor_next: str | None = None,
+        cursor_prev: str | None = None,
+        limit: int | None = None,
+    ) -> InstantitionsList200Response:
         async with base_client(self._ns_client.base_url) as client:
-            insts = await instantitions_list.asyncio(self._ns_client.namespace_path, client=client)
-            insts = validate_response_model(insts, InstantitionsList200Response)
-            assert insts
-            return insts
+            insts = await instantitions_list.asyncio(
+                self._ns_client.namespace_path,
+                client=client,
+                cursor_next=cursor_next,
+                cursor_prev=cursor_prev,
+                limit=limit,
+            )
+            return validate_response_model(insts, InstantitionsList200Response)
 
     async def create_run(self, inst_id: str) -> Run:
 
@@ -680,12 +716,21 @@ class ResourceGroupClient:
             rg = validate_response_model(rg, ResourceGroup)
             return rg
 
-    async def get_all_rg(self) -> ResourceGroupsList200Response:
+    async def get_all_rg(
+        self,
+        cursor_next: str | None = None,
+        cursor_prev: str | None = None,
+        limit: int | None = None,
+    ) -> ResourceGroupsList200Response:
         async with base_client(self._ns_client.base_url) as client:
-            rgs = await resource_groups_list.asyncio(self._ns_client.namespace_path, client=client)
-            rgs = validate_response_model(rgs, ResourceGroupsList200Response)
-            assert rgs
-            return rgs
+            rgs = await resource_groups_list.asyncio(
+                self._ns_client.namespace_path,
+                client=client,
+                cursor_next=cursor_next,
+                cursor_prev=cursor_prev,
+                limit=limit,
+            )
+            return validate_response_model(rgs, ResourceGroupsList200Response)
 
     async def delete_rg(self, rg_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
@@ -733,12 +778,21 @@ class RunnerClient:
             runner = validate_response_model(runner, Runner)
             return runner
 
-    async def list_runners(self) -> RunnersList200Response:
+    async def list_runners(
+        self,
+        cursor_next: str | None = None,
+        cursor_prev: str | None = None,
+        limit: int | None = None,
+    ) -> RunnersList200Response:
         async with base_client(self._ns_client.base_url) as client:
-            runners = await runners_list.asyncio(self._ns_client.namespace_path, client=client)
-            runners = validate_response_model(runners, RunnersList200Response)
-            assert runners
-            return runners
+            runners = await runners_list.asyncio(
+                self._ns_client.namespace_path,
+                client=client,
+                cursor_next=cursor_next,
+                cursor_prev=cursor_prev,
+                limit=limit,
+            )
+            return validate_response_model(runners, RunnersList200Response)
 
     async def submit_event(self, event: EventFromRunner_U) -> RunnersFromEventsList200Response:
         return await self.submit_events([event])

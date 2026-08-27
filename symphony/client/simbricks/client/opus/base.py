@@ -35,16 +35,35 @@ import rich.text
 from simbricks.orchestration import instantiation, simulation, system
 from simbricks.utils import artifatcs as utils_artifacts
 
-from ..namespace import SimBricksClient, simb_client
+from ..namespace import (
+    NSClient,
+    ResourceGroupClient,
+    RunnerClient,
+    SimBricksClient,
+    simb_client,
+)
 from ..openapi.client.python.sim_bricks_api_client.models import (
+    Instantiation as ApiInstantiation,
+)
+from ..openapi.client.python.sim_bricks_api_client.models import (
+    Namespace,
     PaginationLinks,
+    ResourceGroup,
     Run,
+    Runner,
     RunOutput,
     RunOutputProxiesType0,
     RunOutputRuntimeType0,
     RunOutputSimulatorsType0,
     RunState,
 )
+from ..openapi.client.python.sim_bricks_api_client.models import (
+    Simulation as ApiSimulation,
+)
+from ..openapi.client.python.sim_bricks_api_client.models import (
+    System as ApiSystem,
+)
+from ..openapi.client.python.sim_bricks_api_client.types import Unset
 
 
 async def still_running(run_id: str) -> bool:
@@ -53,28 +72,98 @@ async def still_running(run_id: str) -> bool:
     return run is not None and (run.state == RunState.PENDING or run.state == RunState.RUNNING)
 
 
+_RowT = typing.TypeVar("_RowT")
+
+
+def _unwrap_page(
+    data: list[_RowT] | None | Unset,
+    links: PaginationLinks | None | Unset,
+) -> tuple[list[_RowT], str | None]:
+    """Unwrap a list response into its rows and the cursor for the page after it.
+
+    The cursor is ``None`` when the server did not hand out a next one. Without
+    a ``limit`` the server does not paginate and the whole list comes back in
+    one response, so the cursor is ``None`` then too. This is the one place
+    unwrapping the ``Unset | None | T`` unions of the generated client, so
+    callers get plain values.
+    """
+    rows: list[_RowT] = data if isinstance(data, list) else []
+
+    next_cursor: str | None = None
+    if isinstance(links, PaginationLinks) and isinstance(links.next_, str):
+        next_cursor = links.next_
+
+    return rows, next_cursor
+
+
 async def get_runs_page(
     sbc: SimBricksClient,
     cursor_next: str | None = None,
     limit: int | None = None,
 ) -> tuple[list[Run], str | None]:
-    """Fetch a page of runs.
-
-    Returns the runs on the page and the cursor for the page after it, or
-    ``None`` when the server did not hand out a next cursor. Without a
-    ``limit`` the server does not paginate and the whole list comes back in one
-    response. This is the one place unwrapping the ``Unset | None | T`` unions
-    of the generated client, so callers get plain values.
-    """
+    """Fetch a page of runs. See :func:`_unwrap_page` for the cursor semantics."""
     response = await sbc.get_runs(cursor_next=cursor_next, limit=limit)
+    return _unwrap_page(response.data, response.links)
 
-    runs: list[Run] = response.data if isinstance(response.data, list) else []
 
-    next_cursor: str | None = None
-    if isinstance(response.links, PaginationLinks) and isinstance(response.links.next_, str):
-        next_cursor = response.links.next_
+async def get_systems_page(
+    sbc: SimBricksClient,
+    cursor_next: str | None = None,
+    limit: int | None = None,
+) -> tuple[list[ApiSystem], str | None]:
+    """Fetch a page of systems. See :func:`_unwrap_page` for the cursor semantics."""
+    response = await sbc.get_systems(cursor_next=cursor_next, limit=limit)
+    return _unwrap_page(response.data, response.links)
 
-    return runs, next_cursor
+
+async def get_simulations_page(
+    sbc: SimBricksClient,
+    cursor_next: str | None = None,
+    limit: int | None = None,
+) -> tuple[list[ApiSimulation], str | None]:
+    """Fetch a page of simulations. See :func:`_unwrap_page` for the cursor semantics."""
+    response = await sbc.get_simulations(cursor_next=cursor_next, limit=limit)
+    return _unwrap_page(response.data, response.links)
+
+
+async def get_instantiations_page(
+    sbc: SimBricksClient,
+    cursor_next: str | None = None,
+    limit: int | None = None,
+) -> tuple[list[ApiInstantiation], str | None]:
+    """Fetch a page of instantiations. See :func:`_unwrap_page` for the cursor semantics."""
+    response = await sbc.get_instantiations(cursor_next=cursor_next, limit=limit)
+    return _unwrap_page(response.data, response.links)
+
+
+async def get_runners_page(
+    rc: RunnerClient,
+    cursor_next: str | None = None,
+    limit: int | None = None,
+) -> tuple[list[Runner], str | None]:
+    """Fetch a page of runners. See :func:`_unwrap_page` for the cursor semantics."""
+    response = await rc.list_runners(cursor_next=cursor_next, limit=limit)
+    return _unwrap_page(response.data, response.links)
+
+
+async def get_resource_groups_page(
+    rgc: ResourceGroupClient,
+    cursor_next: str | None = None,
+    limit: int | None = None,
+) -> tuple[list[ResourceGroup], str | None]:
+    """Fetch a page of resource groups. See :func:`_unwrap_page` for the cursor semantics."""
+    response = await rgc.get_all_rg(cursor_next=cursor_next, limit=limit)
+    return _unwrap_page(response.data, response.links)
+
+
+async def get_namespaces_page(
+    nsc: NSClient,
+    cursor_next: str | None = None,
+    limit: int | None = None,
+) -> tuple[list[Namespace], str | None]:
+    """Fetch a page of child namespaces. See :func:`_unwrap_page` for the cursor semantics."""
+    response = await nsc.get_all(cursor_next=cursor_next, limit=limit)
+    return _unwrap_page(response.data, response.links)
 
 
 class ConsoleLineGenerator:
