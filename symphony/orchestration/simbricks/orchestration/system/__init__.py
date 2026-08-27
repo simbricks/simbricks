@@ -100,6 +100,7 @@ __all__ += [
 
 from simbricks.orchestration.system.disk_images import (
     ConfigFile,
+    ConfigFileArtifact,
     ConfigFileLocal,
     ConfigFileStr,
     DiskImage,
@@ -120,6 +121,7 @@ __all__ += [
     "LinuxConfigDiskImage",
     "PackerDiskImage",
     "ConfigFile",
+    "ConfigFileArtifact",
     "ConfigFileLocal",
     "ConfigFileStr",
 ]

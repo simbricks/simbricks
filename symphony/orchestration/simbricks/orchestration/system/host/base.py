@@ -122,7 +122,7 @@ class FullSystemHost(Host):
         return instance
 
 
-class BaseLinuxHost(FullSystemHost):
+class BaseLinuxHost(FullSystemHost, utils_base.InputArtifactSource):
     def __init__(self, s: base.System) -> None:
         super().__init__(s)
         self.applications: list[app.BaseLinuxApplication] = []
@@ -165,6 +165,12 @@ class BaseLinuxHost(FullSystemHost):
 
     def add_config_file(self, config_file: disk_images.ConfigFile):
         self._config_files.append(config_file)
+
+    def input_artifact_files(self) -> list[str]:
+        files = []
+        for config_file in self._config_files:
+            files += config_file.input_artifact_files()
+        return files
 
     def config_files(self, inst: instantiation.Instantiation) -> list[disk_images.ConfigFile]:
         """
