@@ -20,21 +20,61 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from typer import Typer
+from typer import Option, Typer
+from typing_extensions import Annotated
 
+from simbricks.client.opus import base as opus_base
+
+from ..pager import PAGE_SIZE, PEEK_COUNT, paged_ls
 from ..settings import ns_client
 from ..utils import async_cli, print_members_table, print_table_generic
 
 app = Typer(help="Managing SimBricks namespaces.")
 
+_NAMESPACE_COLUMNS = ("id", "name", "parent_id", "base_path")
+
 
 @app.command()
 @async_cli()
-async def ls():
-    """List available namespaces."""
+async def ls(
+    limit: Annotated[
+        int, Option("--limit", "-n", help="Number of namespaces per page.")
+    ] = PAGE_SIZE,
+    fetch_all: Annotated[
+        bool,
+        Option(
+            "--all",
+            "-a",
+            help="Retrieve every namespace at once instead of paging through them.",
+        ),
+    ] = False,
+):
+    """List available namespaces.
+
+    Pages interactively when there is more than one page and the output is a
+    terminal. Left and right change page, g jumps back to the first page, r
+    reloads the current one and q quits.
+    """
     nsc = await ns_client()
-    namespaces = await nsc.get_all()
-    print_table_generic("Namespaces", namespaces.data, "id", "name", "parent_id", "base_path")
+    page_limit = None if fetch_all else limit
+    await paged_ls(
+        "Namespaces",
+        _NAMESPACE_COLUMNS,
+        lambda cursor: opus_base.get_namespaces_page(nsc, cursor_next=cursor, limit=page_limit),
+    )
+
+
+@app.command()
+@async_cli()
+async def peek(
+    limit: Annotated[
+        int, Option("--limit", "-n", help="Number of namespaces to peek.")
+    ] = PEEK_COUNT,
+):
+    """Show the most recent namespaces, 5 by default."""
+    nsc = await ns_client()
+    namespaces, _ = await opus_base.get_namespaces_page(nsc, limit=limit)
+    print_table_generic("Latest Namespaces", namespaces, *_NAMESPACE_COLUMNS)
 
 
 @app.command()
@@ -43,7 +83,7 @@ async def show(name: str):
     """List namespace with given name."""
     nsc = await ns_client()
     namespace = await nsc.get_ns_by_name(name)
-    print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
+    print_table_generic("Namespace", [namespace], *_NAMESPACE_COLUMNS)
 
 
 @app.command()
@@ -52,7 +92,7 @@ async def cur():
     """List current namespace."""
     nsc = await ns_client()
     namespace = await nsc.get_cur()
-    print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
+    print_table_generic("Namespace", [namespace], *_NAMESPACE_COLUMNS)
 
 
 @app.command()
@@ -61,7 +101,7 @@ async def create(name: str):
     """Create a new namespace."""
     nsc = await ns_client()
     namespace = await nsc.create_child_ns(name)
-    print_table_generic("Namespace", [namespace], "id", "name", "parent_id", "base_path")
+    print_table_generic("Namespace", [namespace], *_NAMESPACE_COLUMNS)
 
 
 @app.command()

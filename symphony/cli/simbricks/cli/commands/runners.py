@@ -23,29 +23,62 @@
 from typer import Option, Typer
 from typing_extensions import Annotated
 
+from simbricks.client.opus import base as opus_base
+
+from ..pager import PAGE_SIZE, PEEK_COUNT, paged_ls
 from ..settings import runner_client
 from ..utils import async_cli, print_table_generic
 
 app = Typer(help="Managing SimBricks runners.")
 
+_RUNNER_COLUMNS = (
+    "id",
+    "label",
+    "tags",
+    "plugin_tags",
+    "namespace_id",
+    "resource_group_id",
+    "status",
+)
+
 
 @app.command()
 @async_cli()
-async def ls():
-    """List runners."""
+async def ls(
+    limit: Annotated[int, Option("--limit", "-n", help="Number of runners per page.")] = PAGE_SIZE,
+    fetch_all: Annotated[
+        bool,
+        Option(
+            "--all",
+            "-a",
+            help="Retrieve every runner at once instead of paging through them.",
+        ),
+    ] = False,
+):
+    """List runners.
+
+    Pages interactively when there is more than one page and the output is a
+    terminal. Left and right change page, g jumps back to the first page, r
+    reloads the current one and q quits.
+    """
     rc = await runner_client("undefined")
-    runners = await rc.list_runners()
-    print_table_generic(
+    page_limit = None if fetch_all else limit
+    await paged_ls(
         "Runners",
-        runners.data,
-        "id",
-        "label",
-        "tags",
-        "plugin_tags",
-        "namespace_id",
-        "resource_group_id",
-        "status",
+        _RUNNER_COLUMNS,
+        lambda cursor: opus_base.get_runners_page(rc, cursor_next=cursor, limit=page_limit),
     )
+
+
+@app.command()
+@async_cli()
+async def peek(
+    limit: Annotated[int, Option("--limit", "-n", help="Number of runners to peek.")] = PEEK_COUNT,
+):
+    """Show the most recent runners, 5 by default."""
+    rc = await runner_client("undefined")
+    runners, _ = await opus_base.get_runners_page(rc, limit=limit)
+    print_table_generic("Latest Runners", runners, *_RUNNER_COLUMNS)
 
 
 @app.command()
