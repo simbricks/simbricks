@@ -25,6 +25,7 @@ from __future__ import annotations
 import collections
 import enum
 import json
+import logging
 import pathlib
 import time
 import typing
@@ -38,6 +39,29 @@ class SimulationExitState(enum.Enum):
     SUCCESS = 0
     FAILED = 1
     INTERRUPTED = 2
+
+
+class RuntimeMessageLevel(enum.IntEnum):
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
+
+
+class RuntimeMessage:
+    """A message produced by the runtime itself rather than by a subprocess."""
+
+    def __init__(self, level: RuntimeMessageLevel, msg: str):
+        self.level = level
+        self.msg = msg
+        self.produced_at = time.time()
+
+    def toJSON(self) -> dict:
+        return {
+            "level": self.level.name,
+            "msg": self.msg,
+            "produced_at": self.produced_at,
+        }
 
 
 class ProcessOutput:
@@ -74,6 +98,7 @@ class SimulationOutput:
         self._success: bool = True
         self._interrupted: bool = False
         self._metadata = sim.metadata
+        self._runtime_messages: list[RuntimeMessage] = []
         self._generic_prepare_output: dict[str, ProcessOutput] = {}
         self._simulator_output: collections.defaultdict[sim_base.Simulator, list[ProcessOutput]] = (
             collections.defaultdict(list)
@@ -103,6 +128,10 @@ class SimulationOutput:
 
     def failed(self) -> bool:
         return not self._success
+
+    # messages produced by the runtime itself
+    def add_runtime_message(self, level: RuntimeMessageLevel, msg: str) -> None:
+        self._runtime_messages.append(RuntimeMessage(level, msg))
 
     # generic prepare command execution
     def add_generic_prepare_cmd(self, cmd: str) -> None:
@@ -149,6 +178,7 @@ class SimulationOutput:
         json_obj["_success"] = self._success
         json_obj["_interrupted"] = self._interrupted
         json_obj["_metadata"] = self._metadata
+        json_obj["_runtime_messages"] = [msg.toJSON() for msg in self._runtime_messages]
         json_obj_out_list = []
         for _, proc_out in self._generic_prepare_output.items():
             json_obj_out_list.append(proc_out.toJSON())
