@@ -10,6 +10,7 @@ from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.run_output_proxies_type_0 import RunOutputProxiesType0
+    from ..models.run_output_runtime_type_0 import RunOutputRuntimeType0
     from ..models.run_output_simulators_type_0 import RunOutputSimulatorsType0
 
 
@@ -24,15 +25,18 @@ class RunOutput:
         run_id (int):
         proxies (None | RunOutputProxiesType0 | Unset):
         simulators (None | RunOutputSimulatorsType0 | Unset):
+        runtime (None | RunOutputRuntimeType0 | Unset):
     """
 
     run_id: int
     proxies: None | RunOutputProxiesType0 | Unset = UNSET
     simulators: None | RunOutputSimulatorsType0 | Unset = UNSET
+    runtime: None | RunOutputRuntimeType0 | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.run_output_proxies_type_0 import RunOutputProxiesType0
+        from ..models.run_output_runtime_type_0 import RunOutputRuntimeType0
         from ..models.run_output_simulators_type_0 import RunOutputSimulatorsType0
 
         run_id = self.run_id
@@ -53,6 +57,14 @@ class RunOutput:
         else:
             simulators = self.simulators
 
+        runtime: dict[str, Any] | None | Unset
+        if isinstance(self.runtime, Unset):
+            runtime = UNSET
+        elif isinstance(self.runtime, RunOutputRuntimeType0):
+            runtime = self.runtime.to_dict()
+        else:
+            runtime = self.runtime
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -64,12 +76,15 @@ class RunOutput:
             field_dict["proxies"] = proxies
         if simulators is not UNSET:
             field_dict["simulators"] = simulators
+        if runtime is not UNSET:
+            field_dict["runtime"] = runtime
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.run_output_proxies_type_0 import RunOutputProxiesType0
+        from ..models.run_output_runtime_type_0 import RunOutputRuntimeType0
         from ..models.run_output_simulators_type_0 import RunOutputSimulatorsType0
 
         d = dict(src_dict)
@@ -109,10 +124,28 @@ class RunOutput:
 
         simulators = _parse_simulators(d.pop("simulators", UNSET))
 
+        def _parse_runtime(data: object) -> None | RunOutputRuntimeType0 | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                runtime_type_0 = RunOutputRuntimeType0.from_dict(data)
+
+                return runtime_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | RunOutputRuntimeType0 | Unset, data)
+
+        runtime = _parse_runtime(d.pop("runtime", UNSET))
+
         run_output = cls(
             run_id=run_id,
             proxies=proxies,
             simulators=simulators,
+            runtime=runtime,
         )
 
         run_output.additional_properties = d
