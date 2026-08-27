@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 import subprocess
 import typing as tp
@@ -43,7 +44,7 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
     async def start(
         self, config_params: dict[tp.Any, tp.Any], fragment_params: dict[tp.Any, tp.Any]
     ) -> None:
-        print("start simbricks docker fragment executor")
+        LOGGER.info("start simbricks docker fragment executor")
 
         default_params: dict[str, tp.Any] = {
             "listen_ip": "0.0.0.0",
@@ -122,7 +123,7 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
         await self.connected.wait()
 
     async def stop(self):
-        print("stop simbricks docker fragment executor")
+        LOGGER.info("stop simbricks docker fragment executor")
         if self.executor is None:
             return
 
@@ -134,7 +135,9 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
 
         self.executor.wait()
         self.executor = None
-        print("successfully stopped docker fragment executor")
+        LOGGER.info("successfully stopped docker fragment executor")
 
 
 runner_plugin = SimbricksDockerPlugin
+
+LOGGER: logging.Logger = logging.getLogger(__name__)

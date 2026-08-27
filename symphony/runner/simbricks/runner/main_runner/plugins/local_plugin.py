@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import subprocess
 import typing as tp
 
@@ -43,7 +44,7 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
     async def start(
         self, config_params: dict[tp.Any, tp.Any], fragment_params: dict[tp.Any, tp.Any]
     ) -> None:
-        print("start simbricks local runner")
+        LOGGER.info("start simbricks local runner")
         self.server = await asyncio.start_server(self.accept_connection, "127.0.0.1")
         port = self.server.sockets[0].getsockname()[1]
 
@@ -56,7 +57,7 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
         await self.connected.wait()
 
     async def stop(self):
-        print("stop simbricks local runner")
+        LOGGER.info("stop simbricks local runner")
         assert self.server is not None
         if self.executor is None:
             return
@@ -72,7 +73,9 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
                 pass
 
         await self.server.wait_closed()
-        print("successfully stopped local fragment executor")
+        LOGGER.info("successfully stopped local fragment executor")
 
 
 runner_plugin = SimbricksLocalPlugin
+
+LOGGER: logging.Logger = logging.getLogger(__name__)
