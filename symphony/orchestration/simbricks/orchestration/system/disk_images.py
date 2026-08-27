@@ -260,10 +260,10 @@ class PackerDiskImage(DynamicDiskImage):
             return
         self._prepared = True
 
-        # Construct the packer build command
+        # --var and its value have to be separate arguments
         command = ["packer", "build"]
         for key, val in self.vars.items():
-            command.append(f"--var {key}={val}")
+            command.extend(["--var", f"{key}={val}"])
         command.append(self.config_path)
 
         process = await asyncio.create_subprocess_exec(
@@ -271,13 +271,13 @@ class PackerDiskImage(DynamicDiskImage):
         )
 
         stdout, stderr = await process.communicate()
-        print(stdout.decode("utf-8", errors="replace"))
+        if stdout.strip():
+            await inst.command_executor.msg_info(stdout.decode("utf-8", errors="replace"))
 
-        # Check the return code to determine success
         if process.returncode == 0:
-            print("Packer image built successfully!")
+            await inst.command_executor.msg_info("packer image built successfully")
         else:
-            print(stderr.decode("utf-8", errors="replace"))
+            await inst.command_executor.msg_error(stderr.decode("utf-8", errors="replace"))
             raise RuntimeError("failed to build image with packer")
 
     def toJSON(self) -> dict:
