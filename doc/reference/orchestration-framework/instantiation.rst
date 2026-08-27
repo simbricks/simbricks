@@ -32,6 +32,14 @@ Base
    :undoc-members:
    :inherited-members:
 
+Command Executor
+------------------------------------------
+
+.. automodule:: simbricks.orchestration.instantiation.command_executor
+   :members:
+   :undoc-members:
+   :inherited-members:
+
 Fragment
 ------------------------------------------
 
