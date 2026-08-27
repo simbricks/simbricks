@@ -25,6 +25,7 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     RunComponentState,
     RunFragment,
     RunState,
+    RuntimeOutput,
     SimulationSigusr1,
     SimulatorChangedState,
     SimulatorOutput,
@@ -37,6 +38,7 @@ from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import artifacts as runner_artifacts
 from simbricks.runner import framing
+from simbricks.runtime import output as sim_output
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.utils import artifatcs as utils_art
 
@@ -44,37 +46,68 @@ if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import proxy as inst_proxy
 
 
+async def enqueue_runtime_output(
+    send_queue: asyncio.Queue[EventFromRunner_U],
+    run_id: str,
+    run_fragment_id: str,
+    msg: str,
+    is_stderr: bool,
+) -> None:
+    # "".splitlines() is [], but a deliberately blank message is still a line
+    for line in msg.splitlines() or [""]:
+        event = RuntimeOutput(
+            run_id=run_id,
+            run_fragment_id=run_fragment_id,
+            output=line,
+            is_stderr=is_stderr,
+            produced_at=datetime.datetime.now(),
+        )
+        await send_queue.put(event)
+
+
 class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
     def __init__(
         self,
-        instantiation: inst_base.Instantiation,
+        simulation: sim_base.Simulation,
         send_queue: asyncio.Queue[EventFromRunner_U],
         run_id: str,
+        run_fragment_id: str,
     ):
-        super().__init__(instantiation)
-        self._instantiation = instantiation
+        super().__init__(simulation)
         self._send_queue = send_queue
         self._run_id: str = run_id
+        self._run_fragment_id: str = run_fragment_id
 
     # ---------------------------------------
     # Callbacks related to whole simulation -
     # ---------------------------------------
 
+    async def _send_runtime_output(self, msg: str, is_stderr: bool) -> None:
+        await enqueue_runtime_output(
+            self._send_queue, self._run_id, self._run_fragment_id, msg, is_stderr
+        )
+
+    async def simulation_message(self, level: sim_output.RuntimeMessageLevel, msg: str) -> None:
+        await super().simulation_message(level, msg)
+        LOGGER.log(level, f"[runtime] {msg}")
+        await self._send_runtime_output(msg, level >= sim_output.RuntimeMessageLevel.WARNING)
+
     async def simulation_prepare_cmd_start(self, cmd: str) -> None:
+        await super().simulation_prepare_cmd_start(cmd)
         LOGGER.debug(f"+ [prepare] {cmd}")
-        # TODO Send executed prepare command to backend
+        await self._send_runtime_output(f"+ [prepare] {cmd}", False)
 
     async def simulation_prepare_cmd_stdout(self, cmd: str, lines: list[str]) -> None:
         await super().simulation_prepare_cmd_stdout(cmd, lines)
         for line in lines:
             LOGGER.debug(f"[prepare] {line}")
-        # TODO Send simulation prepare output to backend
+            await self._send_runtime_output(f"[prepare] {line}", False)
 
     async def simulation_prepare_cmd_stderr(self, cmd: str, lines: list[str]) -> None:
         await super().simulation_prepare_cmd_stderr(cmd, lines)
         for line in lines:
             LOGGER.debug(f"[prepare] {line}")
-        # TODO Send simulation prepare output to backend
+            await self._send_runtime_output(f"[prepare] {line}", True)
 
     # -----------------------------
     # Simulator-related callbacks -
@@ -324,6 +357,13 @@ class FragmentRunner(abc.ABC):
         )
         await self._send_event_queue.put(event)
 
+    async def _enqueue_runtime_output(
+        self, run_id: str, run_fragment_id: str, msg: str, is_stderr: bool = True
+    ) -> None:
+        await enqueue_runtime_output(
+            self._send_event_queue, run_id, run_fragment_id, msg, is_stderr
+        )
+
     async def _assemble_inst(self, start_event: StartRunReq) -> inst_base.Instantiation:
         LOGGER.debug(f"fetch and assemble instantiation related to run {start_event.run_id}")
 
@@ -409,13 +449,17 @@ class FragmentRunner(abc.ABC):
         LOGGER.debug(f"prepare run {start_event.run_id}")
 
         inst = await self._assemble_inst(start_event)
+
+        assert len(start_event.fragments) == 1
+        run_fragment_id = start_event.fragments[0].id
+        assert isinstance(run_fragment_id, str)
+
         callbacks = RunnerSimulationExecutorCallbacks(
-            inst, self._send_event_queue, start_event.run_id
+            inst.simulation, self._send_event_queue, start_event.run_id, run_fragment_id
         )
         runner = sim_exec.SimulationExecutor(inst, callbacks, self._verbose, self._proxy_host_ip)
         await runner.prepare()
 
-        assert len(start_event.fragments) == 1
         run = Run(start_event.run_id, inst, callbacks, runner, start_event.fragments[0])
         return run
 
@@ -465,6 +509,9 @@ class FragmentRunner(abc.ABC):
             if sim_task:
                 sim_task.cancel()
 
+            await self._enqueue_runtime_output(
+                run.run_id, run.run_fragment.id, "execution of this fragment was cancelled"
+            )
             await self._enqueue_fragment_state_change(
                 run.run_id, run.run_fragment.id, RunState.CANCELLED
             )
@@ -476,6 +523,9 @@ class FragmentRunner(abc.ABC):
             if sim_task:
                 sim_task.cancel()
 
+            await self._enqueue_runtime_output(
+                run.run_id, run.run_fragment.id, traceback.format_exc()
+            )
             await self._enqueue_fragment_state_change(
                 run.run_id, run.run_fragment.id, RunState.ERROR
             )
@@ -542,6 +592,9 @@ class FragmentRunner(abc.ABC):
             assert len(event.fragments) == 1
             frag_id = event.fragments[0].id
             assert isinstance(frag_id, str)
+            await self._enqueue_runtime_output(
+                event.run_id, frag_id, f"could not prepare run:\n{trace}"
+            )
             await self._enqueue_fragment_state_change(event.run_id, frag_id, RunState.ERROR)
         finally:
             # A no-op once the run is set up, since _assemble_inst takes every
