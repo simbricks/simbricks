@@ -103,10 +103,6 @@ class Runtime(metaclass=abc.ABCMeta):
         work_dir = pathlib.Path(run.instantiation.env.work_dir())
         output_base = pathlib.Path(run.instantiation.env.output_base())
 
-        # The output directory ends up inside the artifact, so drop what earlier
-        # runs reusing this work directory left behind before packing a new one.
-        utils_file.remove_matching(output_base, "output-artifact-*.zip")
-
         sink = utils_art.LocalFsArtifactSink(output_base)
         await sink.produce(
             utils_art.ArtifactInfo(
