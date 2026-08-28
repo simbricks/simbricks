@@ -5,7 +5,6 @@ from .body_instantiations_input_artifact_set import BodyInstantiationsInputArtif
 from .body_runs_fragments_output_artifact_set import BodyRunsFragmentsOutputArtifactSet
 from .console_output_line import ConsoleOutputLine
 from .fragment import Fragment
-from .fragment_output_artifact import FragmentOutputArtifact
 from .fragment_state_change import FragmentStateChange
 from .http_validation_error import HTTPValidationError
 from .inline_object import InlineObject
@@ -72,7 +71,6 @@ __all__ = (
     "BodyRunsFragmentsOutputArtifactSet",
     "ConsoleOutputLine",
     "Fragment",
-    "FragmentOutputArtifact",
     "FragmentStateChange",
     "HTTPValidationError",
     "InlineObject",

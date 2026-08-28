@@ -95,7 +95,6 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     BodyInstantiationsFragmentInputArtifactSet,
     BodyInstantiationsInputArtifactSet,
     BodyRunsFragmentsOutputArtifactSet,
-    FragmentOutputArtifact,
     FragmentStateChange,
     InstantitionsList200Response,
     KillRunReq,
@@ -166,7 +165,6 @@ EventFromRunner_U = (
     | ProxyOutput
     | ProxyStateChange
     | FragmentStateChange
-    | FragmentOutputArtifact
 )
 
 EventToRunner_U = (
@@ -535,7 +533,11 @@ class SimBricksClient:
         filepath = Path(path_to_file)
         assert filepath.exists() and filepath.is_file()
         with filepath.open("rb") as fd:
-            artifact_file = File(payload=fd, file_name=fd.name, mime_type="multipart/form-data")
+            # The backend records this as the artifact's name, so send the bare
+            # filename rather than fd.name, which is the whole path.
+            artifact_file = File(
+                payload=fd, file_name=filepath.name, mime_type="multipart/form-data"
+            )
             artifact = BodyRunsFragmentsOutputArtifactSet(file=artifact_file)
 
             async with base_client(self._ns_client.base_url) as client:
@@ -552,6 +554,8 @@ class SimBricksClient:
         self, run_id: str, run_frag_id: str, file_name: str, uploaded_data: typing.BinaryIO
     ) -> None:
 
+        # The backend records this as the artifact's name, so it is the only thing
+        # that decides what the artifact is called when it is downloaded again.
         file = File(payload=uploaded_data, file_name=file_name)
 
         async with base_client(self._ns_client.base_url) as client:

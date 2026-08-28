@@ -15,7 +15,6 @@ from simbricks.client.namespace import EventFromRunner_U, EventToRunner_U
 from simbricks.client.openapi.client.python.sim_bricks_api_client import types as api_types
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     Fragment,
-    FragmentOutputArtifact,
     FragmentStateChange,
     # events to runner
     KillRunReq,
@@ -417,10 +416,7 @@ class MainRunner:
                         | SimulatorStateChange()
                         | ProxyStateChange()
                         | ProxyOutput()
-                        | FragmentOutputArtifact()
                     ):
-                        # A FragmentOutputArtifact only announces the artifact;
-                        # _upload_artifact already sent its bytes.
                         pass
                     case FragmentStateChange():
                         run = self._run_map[event.run_id]
