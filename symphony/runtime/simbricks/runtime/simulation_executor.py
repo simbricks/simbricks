@@ -346,15 +346,11 @@ class SimulationExecutor:
                 await sc.wait()
             await self._callbacks.simulation_exited(output.SimulationExitState.SUCCESS)
         except asyncio.CancelledError:
-            await self._callbacks.simulation_message(
-                logging.DEBUG, "interrupted"
-            )
+            await self._callbacks.simulation_message(logging.DEBUG, "interrupted")
             await self._callbacks.simulation_exited(output.SimulationExitState.INTERRUPTED)
         except Exception:
             await self._callbacks.simulation_exited(output.SimulationExitState.FAILED)
-            await self._callbacks.simulation_message(
-                logging.ERROR, traceback.format_exc()
-            )
+            await self._callbacks.simulation_message(logging.ERROR, traceback.format_exc())
 
         if profiler_task:
             try:
