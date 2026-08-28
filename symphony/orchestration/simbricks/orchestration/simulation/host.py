@@ -40,6 +40,9 @@ class HostSim(sim_base.Simulator):
         self._disk_images: dict[
             sys_host.FullSystemHost, list[tuple[disk_images.DiskImage, str]]
         ] = {}
+        self._boot_artifacts: dict[
+            sys_host.FullSystemHost, dict[disk_images.BootArtifact, str]
+        ] = {}
 
     def toJSON(self) -> dict:
         return super().toJSON()
@@ -48,6 +51,7 @@ class HostSim(sim_base.Simulator):
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(simulation, json_obj)
         instance._disk_images = {}
+        instance._boot_artifacts = {}
         return instance
 
     def full_name(self) -> str:
@@ -80,6 +84,35 @@ class HostSim(sim_base.Simulator):
                 else:
                     host_disks.append((disk, disk.path(inst, disk.find_format(self))))
             self._disk_images[host] = host_disks
+
+    async def pull_boot_artifacts(
+        self,
+        inst: inst_base.Instantiation,
+        host: sys_host.FullSystemHost,
+        kinds: list[disk_images.BootArtifact],
+    ) -> None:
+        """Fetch @kinds from @host's first disk image and stash them for run_cmd.
+
+        Called from a simulator's prepare, naming every kind at once. run_cmd is
+        synchronous and cannot fetch, so it reads the stash via boot_artifact().
+        """
+        if not kinds:
+            return
+        host_disks = self._disk_images.get(host)
+        if not host_disks:
+            raise RuntimeError(f"{self.full_name()} has no disk image to take a kernel from")
+        # The first disk is the one the guest boots from, matching how run_cmd orders drives.
+        self._boot_artifacts[host] = await host_disks[0][0].boot_artifacts(inst, kinds)
+
+    def boot_artifact(self, host: sys_host.FullSystemHost, kind: disk_images.BootArtifact) -> str:
+        """Path of a boot artifact previously fetched by pull_boot_artifacts."""
+        artifacts = self._boot_artifacts.get(host)
+        if artifacts is None or kind not in artifacts:
+            raise RuntimeError(
+                f"boot artifact '{kind.value}' was not fetched for {host.name};"
+                " pull_boot_artifacts must request it during prepare"
+            )
+        return artifacts[kind]
 
     def supported_socket_types(self, interface: sys_base.Interface) -> set[inst_socket.SockType]:
         return {inst_socket.SockType.CONNECT}
