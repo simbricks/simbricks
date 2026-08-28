@@ -30,7 +30,6 @@ import pathlib
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.runtime import output
 from simbricks.utils import artifatcs as utils_art
-from simbricks.utils import file as utils_file
 
 
 class Run:
