@@ -63,9 +63,12 @@ RUN mkdir -p /global_input/images && chown -R simbricks:simbricks /global_input
 # is not packaged for conda. qemu-img is, and comes with simbricks-qemu-sim-bin
 # below. linux-image-generic supplies the kernel the direct backend builds its
 # appliance from, which the distro ships mode 0600 and this user has to read.
+# xorriso is for simbricks-imagebuild-packer: packer builds the cloud-init seed
+# CD with it. It is not packaged for conda either.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libguestfs-tools \
         linux-image-generic \
+        xorriso \
  && rm -rf /var/lib/apt/lists/* \
  && chmod 0644 /boot/vmlinuz-*
 ENV LIBGUESTFS_BACKEND=direct
@@ -84,9 +87,14 @@ RUN micromamba install -y simbricks-qemu-sim-bin \
                           simbricks-corundum-sim-rtl-bin \
                           simbricks-dist \
                           simbricks-imagebuild-guestfs \
+                          simbricks-imagebuild-packer \
                           packer=${PACKER_VERSION} \
   && micromamba clean --all -y \
   && rm -rf $MAMBA_ROOT_PREFIX/include
+
+# The builder plugin simbricks-imagebuild-packer's template asks for, so a
+# build on the runner does not have to fetch it.
+RUN packer plugins install github.com/hashicorp/qemu
 
 ENV GLOBAL_INPUT_DIR=/global_input
 
