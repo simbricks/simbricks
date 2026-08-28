@@ -41,24 +41,17 @@ class SimulationExitState(enum.Enum):
     INTERRUPTED = 2
 
 
-class RuntimeMessageLevel(enum.IntEnum):
-    DEBUG = logging.DEBUG
-    INFO = logging.INFO
-    WARNING = logging.WARNING
-    ERROR = logging.ERROR
-
-
 class RuntimeMessage:
     """A message produced by the runtime itself rather than by a subprocess."""
 
-    def __init__(self, level: RuntimeMessageLevel, msg: str):
+    def __init__(self, level: int, msg: str):
         self.level = level
         self.msg = msg
         self.produced_at = time.time()
 
     def toJSON(self) -> dict:
         return {
-            "level": self.level.name,
+            "level": logging.getLevelName(self.level),
             "msg": self.msg,
             "produced_at": self.produced_at,
         }
@@ -130,7 +123,7 @@ class SimulationOutput:
         return not self._success
 
     # messages produced by the runtime itself
-    def add_runtime_message(self, level: RuntimeMessageLevel, msg: str) -> None:
+    def add_runtime_message(self, level: int, msg: str) -> None:
         self._runtime_messages.append(RuntimeMessage(level, msg))
 
     # generic prepare command execution
