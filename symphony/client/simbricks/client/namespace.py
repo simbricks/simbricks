@@ -113,7 +113,6 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     RunnerHeartbeat,
     RunnerHeartbeatReq,
     RunnersFromEventsCreateRequest,
-    RunnersFromEventsList200Response,
     RunnersList200Response,
     RunnerStarted,
     RunnersToEventsList200Response,
@@ -794,24 +793,18 @@ class RunnerClient:
             )
             return validate_response_model(runners, RunnersList200Response)
 
-    async def submit_event(self, event: EventFromRunner_U) -> RunnersFromEventsList200Response:
-        return await self.submit_events([event])
+    async def submit_event(self, event: EventFromRunner_U) -> None:
+        await self.submit_events([event])
 
-    async def submit_events(
-        self, events: list[EventFromRunner_U]
-    ) -> RunnersFromEventsList200Response:
+    async def submit_events(self, events: list[EventFromRunner_U]) -> None:
 
         request_body = RunnersFromEventsCreateRequest(data=events)
 
         async with base_client(self._ns_client.base_url) as client:
-            submitted_events = await runners_from_events_create.asyncio(
+            response = await runners_from_events_create.asyncio(
                 self._ns_client.namespace_path, self.runner_id, client=client, body=request_body
             )
-            submitted_events = validate_response_model(
-                submitted_events, RunnersFromEventsList200Response
-            )
-            assert submitted_events
-            return submitted_events
+            validate_no_response_model(response)
 
     async def retrieve_events(
         self,
