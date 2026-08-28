@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote
 
 import httpx
@@ -9,7 +9,6 @@ from ...client import AuthenticatedClient, Client
 from ...models.http_validation_error import HTTPValidationError
 from ...models.inline_object import InlineObject
 from ...models.runners_from_events_create_request import RunnersFromEventsCreateRequest
-from ...models.runners_from_events_list_200_response import RunnersFromEventsList200Response
 from ...types import UNSET, Response, Unset
 
 
@@ -40,16 +39,10 @@ def _get_kwargs(
 
 def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> HTTPValidationError | InlineObject | RunnersFromEventsList200Response | None:
-    if response.status_code == 200:
-        response_200 = RunnersFromEventsList200Response.from_dict(response.json())
-
-        return response_200
-
-    if response.status_code == 201:
-        response_201 = RunnersFromEventsList200Response.from_dict(response.json())
-
-        return response_201
+) -> Any | HTTPValidationError | InlineObject | None:
+    if response.status_code == 204:
+        response_204 = cast(Any, None)
+        return response_204
 
     if response.status_code == 401:
         response_401 = InlineObject.from_dict(response.json())
@@ -79,7 +72,7 @@ def _parse_response(
 
 def _build_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]:
+) -> Response[Any | HTTPValidationError | InlineObject]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -94,7 +87,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
     body: RunnersFromEventsCreateRequest | Unset = UNSET,
-) -> Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]:
+) -> Response[Any | HTTPValidationError | InlineObject]:
     """Enqueue one or multiple new events from the runner to the backend.
 
      Enqueue one or multiple new events from the runner to the backend.
@@ -109,7 +102,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]
+        Response[Any | HTTPValidationError | InlineObject]
     """
 
     kwargs = _get_kwargs(
@@ -131,7 +124,7 @@ def sync(
     *,
     client: AuthenticatedClient,
     body: RunnersFromEventsCreateRequest | Unset = UNSET,
-) -> HTTPValidationError | InlineObject | RunnersFromEventsList200Response | None:
+) -> Any | HTTPValidationError | InlineObject | None:
     """Enqueue one or multiple new events from the runner to the backend.
 
      Enqueue one or multiple new events from the runner to the backend.
@@ -146,7 +139,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        HTTPValidationError | InlineObject | RunnersFromEventsList200Response
+        Any | HTTPValidationError | InlineObject
     """
 
     return sync_detailed(
@@ -163,7 +156,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
     body: RunnersFromEventsCreateRequest | Unset = UNSET,
-) -> Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]:
+) -> Response[Any | HTTPValidationError | InlineObject]:
     """Enqueue one or multiple new events from the runner to the backend.
 
      Enqueue one or multiple new events from the runner to the backend.
@@ -178,7 +171,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[HTTPValidationError | InlineObject | RunnersFromEventsList200Response]
+        Response[Any | HTTPValidationError | InlineObject]
     """
 
     kwargs = _get_kwargs(
@@ -198,7 +191,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
     body: RunnersFromEventsCreateRequest | Unset = UNSET,
-) -> HTTPValidationError | InlineObject | RunnersFromEventsList200Response | None:
+) -> Any | HTTPValidationError | InlineObject | None:
     """Enqueue one or multiple new events from the runner to the backend.
 
      Enqueue one or multiple new events from the runner to the backend.
@@ -213,7 +206,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        HTTPValidationError | InlineObject | RunnersFromEventsList200Response
+        Any | HTTPValidationError | InlineObject
     """
 
     return (
