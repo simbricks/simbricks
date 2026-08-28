@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import itertools
 import pathlib
 import typing
@@ -196,6 +197,8 @@ class Instantiation(utils_base.IdObj):
         # NOTE: temporary data structure
         self._sim_dependency: inst_dep_graph.SimulationDependencyGraph | None = None
         self._command_executor: rt_cmd_exec.CommandExecutorFactory | None = None
+        # NOTE: temporary data structure
+        self._prepare_locks: dict[str, asyncio.Lock] = {}
         self._proxy_pairs: list[inst_proxy.ProxyPair] = []
         self._inf_socktype_assignment: dict[sys_base.Interface, inst_socket.SockType] = {}
         self._parameters: dict[typing.Any, typing.Any] = {}
@@ -241,6 +244,13 @@ class Instantiation(utils_base.IdObj):
     @command_executor.setter
     def command_executor(self, new_val: rt_cmd_exec.CommandExecutorFactory) -> None:
         self._command_executor = new_val
+
+    def prepare_lock(self, path: str) -> asyncio.Lock:
+        """Lock guarding whoever writes @path while preparing, so that two simulators
+        sharing a file produce it once."""
+        if path not in self._prepare_locks:
+            self._prepare_locks[path] = asyncio.Lock()
+        return self._prepare_locks[path]
 
     @property
     def fragments(self) -> list[inst_fragment.Fragment]:
@@ -371,6 +381,7 @@ class Instantiation(utils_base.IdObj):
         instance._sim_dependency = None
         instance._socket_per_interface = {}
         instance._command_executor = None
+        instance._prepare_locks = {}
 
         instance._parameters = utils_base.json_to_dict(
             utils_base.get_json_attr_top(json_obj, "parameters")

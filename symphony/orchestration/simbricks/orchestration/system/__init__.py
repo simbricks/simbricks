@@ -112,8 +112,20 @@ from simbricks.orchestration.system.disk_images import (
     LinuxConfigDiskImage,
     PackerDiskImage,
 )
+from simbricks.orchestration.system.image_layers import (
+    AddFiles,
+    ImageLayer,
+    LayeredDiskImage,
+    RunCommand,
+    RunScript,
+)
 
 __all__ += [
+    "AddFiles",
+    "ImageLayer",
+    "LayeredDiskImage",
+    "RunCommand",
+    "RunScript",
     "BootArtifact",
     "DiskImage",
     "DummyDiskImage",
