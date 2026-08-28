@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+import logging
 import socket
 import traceback
 import typing
@@ -74,7 +75,7 @@ class SimulationExecutorCallbacks:
     async def simulation_prepare_cmd_stderr(self, cmd: str, lines: list[str]) -> None:
         self._output.generic_prepare_cmd_stderr(cmd, lines)
 
-    async def simulation_message(self, level: output.RuntimeMessageLevel, msg: str) -> None:
+    async def simulation_message(self, level: int, msg: str) -> None:
         """Report a message produced by the runtime itself.
 
         Called from cancellation handlers, so implementations must not reach a
@@ -184,7 +185,6 @@ class SimulationExecutor:
             )
 
         executor = self._instantiation.command_executor
-        assert isinstance(executor, cmd_exec.CommandExecutorFactory)
         self._running_proxies[proxy] = await executor.start_proxy(
             proxy, proxy.run_cmd(self._instantiation, ip)
         )
@@ -218,7 +218,6 @@ class SimulationExecutor:
         try:
             name = sim.full_name()
             executor = self._instantiation.command_executor
-            assert isinstance(executor, cmd_exec.CommandExecutorFactory)
             self._running_sims[sim] = await executor.start_simulator(
                 sim, sim.run_cmd(self._instantiation)
             )
@@ -232,12 +231,12 @@ class SimulationExecutor:
             wait_socks = sim.sockets_wait(inst=self._instantiation)
             if len(wait_socks) > 0:
                 await self._callbacks.simulation_message(
-                    output.RuntimeMessageLevel.DEBUG, f"waiting for sockets {name}"
+                    logging.DEBUG, f"waiting for sockets {name}"
                 )
                 for sock in wait_socks:
                     await sock.wait()
                 await self._callbacks.simulation_message(
-                    output.RuntimeMessageLevel.DEBUG,
+                    logging.DEBUG,
                     f"waited successfully for sockets {name}",
                 )
             await self._callbacks.simulator_ready(sim)
@@ -254,7 +253,7 @@ class SimulationExecutor:
 
         if not self._wait_sims:
             await self._callbacks.simulation_message(
-                output.RuntimeMessageLevel.WARNING,
+                logging.WARNING,
                 "warning: no component has a wait flag set, so the simulation terminates as"
                 " soon as all simulators have started. Set wait_terminate on a simulator or"
                 " wait on an application to wait for it.",
@@ -262,7 +261,7 @@ class SimulationExecutor:
 
     async def terminate_collect_sims(self) -> None:
         """Terminates all simulators and collects output."""
-        await self._callbacks.simulation_message(output.RuntimeMessageLevel.DEBUG, "cleaning up")
+        await self._callbacks.simulation_message(logging.DEBUG, "cleaning up")
 
         # Interrupt, then terminate, then kill all processes. Do this in parallel so user does not
         # have to wait unnecessaryily long.
@@ -348,13 +347,13 @@ class SimulationExecutor:
             await self._callbacks.simulation_exited(output.SimulationExitState.SUCCESS)
         except asyncio.CancelledError:
             await self._callbacks.simulation_message(
-                output.RuntimeMessageLevel.DEBUG, "interrupted"
+                logging.DEBUG, "interrupted"
             )
             await self._callbacks.simulation_exited(output.SimulationExitState.INTERRUPTED)
         except Exception:
             await self._callbacks.simulation_exited(output.SimulationExitState.FAILED)
             await self._callbacks.simulation_message(
-                output.RuntimeMessageLevel.ERROR, traceback.format_exc()
+                logging.ERROR, traceback.format_exc()
             )
 
         if profiler_task:
@@ -379,7 +378,7 @@ class SimulationExecutor:
                 return self._callbacks.simulation_output
             except asyncio.CancelledError as e:
                 await self._callbacks.simulation_message(
-                    output.RuntimeMessageLevel.DEBUG,
+                    logging.DEBUG,
                     f"cancelled while collecting simulator output: {e}",
                 )
 

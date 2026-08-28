@@ -23,14 +23,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import shlex
 import signal
 import typing
 from asyncio.subprocess import Process
 from collections import abc
-
-from simbricks.orchestration.instantiation import command_executor as inst_cmd_exec
-from simbricks.runtime import output
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import proxy as inst_proxy
@@ -51,9 +49,7 @@ class CommandExecutor:
         exited_callback: typing.Callable[[int], typing.Awaitable[None]],
         stdout_callback: typing.Callable[[list[str]], typing.Awaitable[None]],
         stderr_callback: typing.Callable[[list[str]], typing.Awaitable[None]],
-        message_callback: typing.Callable[
-            [output.RuntimeMessageLevel, str], typing.Awaitable[None]
-        ],
+        message_callback: typing.Callable[[int, str], typing.Awaitable[None]],
     ):
         self._stdout_buf = bytearray()
         self._stderr_buf = bytearray()
@@ -179,7 +175,7 @@ class CommandExecutor:
         # before Python 3.11, asyncio.wait_for() throws asyncio.TimeoutError -_-
         except (TimeoutError, asyncio.TimeoutError):
             await self._message_cb(
-                output.RuntimeMessageLevel.WARNING,
+                logging.WARNING,
                 f"[{self._label}] interrupt timed out, terminating pid {self._proc.pid}",
             )
             await self.terminate()
@@ -189,7 +185,7 @@ class CommandExecutor:
             return
         except (TimeoutError, asyncio.TimeoutError):
             await self._message_cb(
-                output.RuntimeMessageLevel.WARNING,
+                logging.WARNING,
                 f"[{self._label}] terminate timed out, killing pid {self._proc.pid}",
             )
             await self.kill()
@@ -201,21 +197,21 @@ class CommandExecutor:
             self._proc.send_signal(signal.SIGUSR1)
 
 
-class CommandExecutorFactory(inst_cmd_exec.CommandExecutorFactoryBase):
+class CommandExecutorFactory:
     def __init__(self, sim_exec_cbs: sim_exec.SimulationExecutorCallbacks):
         self._sim_exec_cbs = sim_exec_cbs
 
-    async def message(self, level: output.RuntimeMessageLevel, msg: str) -> None:
+    async def message(self, level: int, msg: str) -> None:
         await self._sim_exec_cbs.simulation_message(level, msg)
 
     async def msg_info(self, msg: str) -> None:
-        await self.message(output.RuntimeMessageLevel.INFO, msg)
+        await self.message(logging.INFO, msg)
 
     async def msg_warning(self, msg: str) -> None:
-        await self.message(output.RuntimeMessageLevel.WARNING, msg)
+        await self.message(logging.WARNING, msg)
 
     async def msg_error(self, msg: str) -> None:
-        await self.message(output.RuntimeMessageLevel.ERROR, msg)
+        await self.message(logging.ERROR, msg)
 
     async def exec_prepare_cmds(
         self, cmds: list[str], sim: sim_base.Simulator | None = None
@@ -256,7 +252,9 @@ class CommandExecutorFactory(inst_cmd_exec.CommandExecutorFactoryBase):
             async def exited_cb(exit_code: int) -> None:
                 await reported_exit(exit_code)
                 if exit_code != 0:
-                    raise RuntimeError(f"prepare command failed with exit code {exit_code}: {cmd}")
+                    err = f"prepare command failed with exit code {exit_code}: {cmd}"
+                    await self.msg_error(err)
+                    raise RuntimeError(err)
 
             executor = CommandExecutor(
                 cmd, label, started_cb, exited_cb, stdout_cb, stderr_cb, self.message

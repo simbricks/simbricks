@@ -29,7 +29,6 @@ import uuid
 import typing_extensions as tpe
 
 from simbricks.orchestration.helpers import exceptions
-from simbricks.orchestration.instantiation import command_executor as inst_cmd_exec
 from simbricks.orchestration.instantiation import dependency_graph as inst_dep_graph
 from simbricks.orchestration.instantiation import fragment as inst_fragment
 from simbricks.orchestration.instantiation import proxy as inst_proxy
@@ -46,6 +45,7 @@ if typing.TYPE_CHECKING:
 
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.orchestration.system import disk_images
+    from simbricks.runtime import command_executor as rt_cmd_exec
 
 
 class InstantiationEnvironment(utils_base.IdObj):
@@ -181,9 +181,7 @@ class Instantiation(utils_base.IdObj):
         self._socket_per_interface: dict[sys_base.Interface, inst_socket.Socket] = {}
         # NOTE: temporary data structure
         self._sim_dependency: inst_dep_graph.SimulationDependencyGraph | None = None
-        self.command_executor: inst_cmd_exec.CommandExecutorFactoryBase = (
-            inst_cmd_exec.DetachedCommandExecutorFactory()
-        )
+        self._command_executor: rt_cmd_exec.CommandExecutorFactory | None = None
         self._proxy_pairs: list[inst_proxy.ProxyPair] = []
         self._inf_socktype_assignment: dict[sys_base.Interface, inst_socket.SockType] = {}
         self._parameters: dict[typing.Any, typing.Any] = {}
@@ -197,6 +195,16 @@ class Instantiation(utils_base.IdObj):
     @env.setter
     def env(self, new_val: InstantiationEnvironment | None) -> None:
         self._env = new_val
+
+    @property
+    def command_executor(self) -> rt_cmd_exec.CommandExecutorFactory:
+        if self._command_executor is None:
+            raise RuntimeError(f"{type(self).__name__}._command_executor should be set")
+        return self._command_executor
+
+    @command_executor.setter
+    def command_executor(self, new_val: rt_cmd_exec.CommandExecutorFactory) -> None:
+        self._command_executor = new_val
 
     @property
     def fragments(self) -> list[inst_fragment.Fragment]:
@@ -326,7 +334,7 @@ class Instantiation(utils_base.IdObj):
         instance.env = None
         instance._sim_dependency = None
         instance._socket_per_interface = {}
-        instance.command_executor = inst_cmd_exec.DetachedCommandExecutorFactory()
+        instance._command_executor = None
 
         instance._parameters = utils_base.json_to_dict(
             utils_base.get_json_attr_top(json_obj, "parameters")

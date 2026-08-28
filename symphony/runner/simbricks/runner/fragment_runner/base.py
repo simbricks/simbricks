@@ -38,7 +38,6 @@ from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import artifacts as runner_artifacts
 from simbricks.runner import framing
-from simbricks.runtime import output as sim_output
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.utils import artifatcs as utils_art
 
@@ -87,10 +86,10 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             self._send_queue, self._run_id, self._run_fragment_id, msg, is_stderr
         )
 
-    async def simulation_message(self, level: sim_output.RuntimeMessageLevel, msg: str) -> None:
+    async def simulation_message(self, level: int, msg: str) -> None:
         await super().simulation_message(level, msg)
         LOGGER.log(level, f"[runtime] {msg}")
-        await self._send_runtime_output(msg, level >= sim_output.RuntimeMessageLevel.WARNING)
+        await self._send_runtime_output(msg, level >= logging.WARNING)
 
     async def simulation_prepare_cmd_start(self, cmd: str) -> None:
         await super().simulation_prepare_cmd_start(cmd)
@@ -357,13 +356,6 @@ class FragmentRunner(abc.ABC):
         )
         await self._send_event_queue.put(event)
 
-    async def _enqueue_runtime_output(
-        self, run_id: str, run_fragment_id: str, msg: str, is_stderr: bool = True
-    ) -> None:
-        await enqueue_runtime_output(
-            self._send_event_queue, run_id, run_fragment_id, msg, is_stderr
-        )
-
     async def _assemble_inst(self, start_event: StartRunReq) -> inst_base.Instantiation:
         LOGGER.debug(f"fetch and assemble instantiation related to run {start_event.run_id}")
 
@@ -509,8 +501,12 @@ class FragmentRunner(abc.ABC):
             if sim_task:
                 sim_task.cancel()
 
-            await self._enqueue_runtime_output(
-                run.run_id, run.run_fragment.id, "execution of this fragment was cancelled"
+            await enqueue_runtime_output(
+                self._send_event_queue,
+                run.run_id,
+                run.run_fragment.id,
+                "execution of this fragment was cancelled",
+                True,
             )
             await self._enqueue_fragment_state_change(
                 run.run_id, run.run_fragment.id, RunState.CANCELLED
@@ -523,8 +519,12 @@ class FragmentRunner(abc.ABC):
             if sim_task:
                 sim_task.cancel()
 
-            await self._enqueue_runtime_output(
-                run.run_id, run.run_fragment.id, traceback.format_exc()
+            await enqueue_runtime_output(
+                self._send_event_queue,
+                run.run_id,
+                run.run_fragment.id,
+                traceback.format_exc(),
+                True,
             )
             await self._enqueue_fragment_state_change(
                 run.run_id, run.run_fragment.id, RunState.ERROR
@@ -592,8 +592,12 @@ class FragmentRunner(abc.ABC):
             assert len(event.fragments) == 1
             frag_id = event.fragments[0].id
             assert isinstance(frag_id, str)
-            await self._enqueue_runtime_output(
-                event.run_id, frag_id, f"could not prepare run:\n{trace}"
+            await enqueue_runtime_output(
+                self._send_event_queue,
+                event.run_id,
+                frag_id,
+                f"could not prepare run:\n{trace}",
+                True,
             )
             await self._enqueue_fragment_state_change(event.run_id, frag_id, RunState.ERROR)
         finally:

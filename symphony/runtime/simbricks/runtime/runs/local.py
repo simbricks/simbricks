@@ -23,9 +23,9 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import typing
 
-from simbricks.runtime import output as sim_output
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.runtime.runs import base as run_base
 
@@ -60,9 +60,9 @@ class LocalSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             for line in lines:
                 print(f"[prepare] {line}")
 
-    async def simulation_message(self, level: sim_output.RuntimeMessageLevel, msg: str) -> None:
+    async def simulation_message(self, level: int, msg: str) -> None:
         await super().simulation_message(level, msg)
-        if level > sim_output.RuntimeMessageLevel.DEBUG or self._verbose:
+        if level > logging.DEBUG or self._verbose:
             print(f"[runtime] {msg}")
 
     # -----------------------------
