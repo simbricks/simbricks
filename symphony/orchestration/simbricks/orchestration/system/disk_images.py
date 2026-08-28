@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import enum
 import io
 import pathlib
 import tarfile
@@ -38,6 +39,19 @@ if tp.TYPE_CHECKING:
     from simbricks.orchestration.simulation import host as sim_host
     from simbricks.orchestration.system import base as sys_base
     from simbricks.orchestration.system.host import base as sys_host
+
+
+class BootArtifact(enum.Enum):
+    """A boot file inside a disk image that a simulator needs handed to it separately.
+
+    Simulators that boot a kernel themselves cannot read it out of the image, so the
+    image hands it over: QEMU takes the compressed kernel, gem5 the uncompressed ELF.
+    The value doubles as the file name.
+    """
+
+    VMLINUZ = "vmlinuz"
+    INITRD = "initrd"
+    VMLINUX = "vmlinux"
 
 
 class DiskImage(utils_base.IdObj):
@@ -58,6 +72,20 @@ class DiskImage(utils_base.IdObj):
     def assert_is_file(path: str) -> None:
         if not pathlib.Path(path).is_file():
             raise Exception(f"path={path} must be a file")
+
+    async def boot_artifacts(
+        self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
+    ) -> dict[BootArtifact, str]:
+        """Boot files from inside this image, as paths keyed by kind.
+
+        Simulators ask for every kind at once, so an image that has to extract them
+        only pays for that once.
+        """
+        if not kinds:
+            return {}
+        raise RuntimeError(
+            f"{self.__class__.__name__} cannot provide boot artifacts {[k.value for k in kinds]}"
+        )
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
@@ -124,9 +152,13 @@ class DummyDiskImage(DiskImage):
 
 # Disk image where user just provides a path
 class ExternalDiskImage(DiskImage):
-    def __init__(self, system: sys_base.System, path: str) -> None:
+    def __init__(self, system: sys_base.System, path: str, boot_dir: str | None = None) -> None:
         super().__init__(system)
         self._path = path
+        # Prebuilt boot artifacts, named after the BootArtifact values. Without it the
+        # image cannot serve boot_artifacts(): extracting them needs tooling core does
+        # not depend on.
+        self.boot_dir: str | None = boot_dir
         self.formats = ["raw", "qcow2"]
 
     def available_formats(self) -> list[str]:
@@ -137,9 +169,29 @@ class ExternalDiskImage(DiskImage):
         DiskImage.assert_is_file(path)
         return path
 
+    async def boot_artifacts(
+        self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
+    ) -> dict[BootArtifact, str]:
+        if not kinds:
+            return {}
+        if self.boot_dir is None:
+            raise RuntimeError(
+                f"cannot provide boot artifacts {[k.value for k in kinds]} for disk image"
+                f" '{self._path}': pass boot_dir= naming the directory holding them, or set"
+                " the simulator's kernel path explicitly"
+            )
+        boot_dir = pathlib.Path(inst.env.work_dir_or_abs(self.boot_dir))
+        artifacts = {}
+        for kind in kinds:
+            path = (boot_dir / kind.value).as_posix()
+            DiskImage.assert_is_file(path)
+            artifacts[kind] = path
+        return artifacts
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["path"] = self._path
+        json_obj["boot_dir"] = self.boot_dir
         json_obj["formats"] = self.formats
         return json_obj
 
@@ -147,6 +199,7 @@ class ExternalDiskImage(DiskImage):
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance._path = utils_base.get_json_attr_top(json_obj, "path")
+        instance.boot_dir = utils_base.get_json_attr_top_or_none(json_obj, "boot_dir")
         instance.formats = utils_base.get_json_attr_top(json_obj, "formats")
         return instance
 
@@ -171,6 +224,15 @@ class DistroDiskImage(DiskImage):
             raise RuntimeError("Unsupported disk format")
         DiskImage.assert_is_file(path)
         return path
+
+    async def boot_artifacts(
+        self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
+    ) -> dict[BootArtifact, str]:
+        # The image build extracts these next to the image itself, so this is a plain lookup.
+        return {
+            kind: inst.env.global_input_dir(f"images/{self.name}/boot/{kind.value}", True)
+            for kind in kinds
+        }
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()

@@ -99,6 +99,7 @@ __all__ += [
 ]
 
 from simbricks.orchestration.system.disk_images import (
+    BootArtifact,
     ConfigFile,
     ConfigFileArtifact,
     ConfigFileLocal,
@@ -113,6 +114,7 @@ from simbricks.orchestration.system.disk_images import (
 )
 
 __all__ += [
+    "BootArtifact",
     "DiskImage",
     "DummyDiskImage",
     "ExternalDiskImage",
