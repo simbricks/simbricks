@@ -9,7 +9,6 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.fragment_output_artifact import FragmentOutputArtifact
     from ..models.fragment_state_change import FragmentStateChange
     from ..models.pagination_links import PaginationLinks
     from ..models.proxy_output import ProxyOutput
@@ -29,15 +28,14 @@ class RunnersFromEventsList200Response:
     """RunnersFromEventsList200Response
 
     Attributes:
-        data (list[FragmentOutputArtifact | FragmentStateChange | ProxyOutput | ProxyStateChange | RunnerHeartbeat |
-            RunnerStarted | RunStatus | SimulatorOutput | SimulatorStateChange] | Unset):
+        data (list[FragmentStateChange | ProxyOutput | ProxyStateChange | RunnerHeartbeat | RunnerStarted | RunStatus |
+            SimulatorOutput | SimulatorStateChange] | Unset):
         links (None | PaginationLinks | Unset):
     """
 
     data: (
         list[
-            FragmentOutputArtifact
-            | FragmentStateChange
+            FragmentStateChange
             | ProxyOutput
             | ProxyStateChange
             | RunnerHeartbeat
@@ -52,7 +50,6 @@ class RunnersFromEventsList200Response:
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.fragment_state_change import FragmentStateChange
         from ..models.pagination_links import PaginationLinks
         from ..models.proxy_output import ProxyOutput
         from ..models.proxy_state_change import ProxyStateChange
@@ -81,8 +78,6 @@ class RunnersFromEventsList200Response:
                     data_item = data_item_data.to_dict()
                 elif isinstance(data_item_data, ProxyStateChange):
                     data_item = data_item_data.to_dict()
-                elif isinstance(data_item_data, FragmentStateChange):
-                    data_item = data_item_data.to_dict()
                 else:
                     data_item = data_item_data.to_dict()
 
@@ -108,7 +103,6 @@ class RunnersFromEventsList200Response:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.fragment_output_artifact import FragmentOutputArtifact
         from ..models.fragment_state_change import FragmentStateChange
         from ..models.pagination_links import PaginationLinks
         from ..models.proxy_output import ProxyOutput
@@ -123,8 +117,7 @@ class RunnersFromEventsList200Response:
         _data = d.pop("data", UNSET)
         data: (
             list[
-                FragmentOutputArtifact
-                | FragmentStateChange
+                FragmentStateChange
                 | ProxyOutput
                 | ProxyStateChange
                 | RunnerHeartbeat
@@ -142,8 +135,7 @@ class RunnersFromEventsList200Response:
                 def _parse_data_item(
                     data: object,
                 ) -> (
-                    FragmentOutputArtifact
-                    | FragmentStateChange
+                    FragmentStateChange
                     | ProxyOutput
                     | ProxyStateChange
                     | RunnerHeartbeat
@@ -208,19 +200,11 @@ class RunnersFromEventsList200Response:
                         return data_item_type_6
                     except (TypeError, ValueError, AttributeError, KeyError):
                         pass
-                    try:
-                        if not isinstance(data, dict):
-                            raise TypeError()
-                        data_item_type_7 = FragmentStateChange.from_dict(data)
-
-                        return data_item_type_7
-                    except (TypeError, ValueError, AttributeError, KeyError):
-                        pass
                     if not isinstance(data, dict):
                         raise TypeError()
-                    data_item_type_8 = FragmentOutputArtifact.from_dict(data)
+                    data_item_type_7 = FragmentStateChange.from_dict(data)
 
-                    return data_item_type_8
+                    return data_item_type_7
 
                 data_item = _parse_data_item(data_item_data)
 

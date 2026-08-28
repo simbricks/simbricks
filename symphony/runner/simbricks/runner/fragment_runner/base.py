@@ -16,7 +16,6 @@ from simbricks.client.namespace import (
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
     Fragment,
-    FragmentOutputArtifact,
     FragmentStateChange,
     KillRunReq,
     # events to runner
@@ -451,15 +450,6 @@ class FragmentRunner(abc.ABC):
                     # inside the very tree it is packing.
                     staging_dir=self._workdir,
                     check_relative=self._output_artifact_relative,
-                )
-                # The bytes travelled over the connection and the main runner
-                # uploads them, so this only announces that the artifact exists.
-                await self._send_event_queue.put(
-                    FragmentOutputArtifact(
-                        artifact_name=run.inst.assigned_fragment.output_artifact_name,
-                        run_fragment_id=run.run_fragment.id,
-                        run_id=run.run_id,
-                    )
                 )
 
             status = RunState.ERROR if res.failed() else RunState.COMPLETED
