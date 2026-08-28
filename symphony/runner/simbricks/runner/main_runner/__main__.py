@@ -449,14 +449,11 @@ class MainRunner:
                 if isinstance(frame, framing.ArtifactFrame):
                     artifact = fragment_runner.artifact_receiver.handle_frame(frame)
                     if artifact is not None:
-                        # Uploaded before reading on, so the executor's event
-                        # announcing this artifact cannot reach the backend
-                        # before the artifact itself does.
                         await self._upload_artifact(artifact)
                     continue
 
                 assert isinstance(frame, framing.EventFrame)
-                events = fragment_runner.fragment_runner.decode_events(frame)
+                events = tp.cast(list[EventFromRunner_U], frame.unpack())
                 await self.fragment_runner_events.put(FragmentRunnerEvent(fragment_runner, events))
         except Exception:
             LOGGER.error(

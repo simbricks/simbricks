@@ -1,7 +1,7 @@
 import abc
 import typing as tp
 
-from simbricks.client.namespace import EventFromRunner_U, EventToRunner_U
+from simbricks.client.namespace import EventToRunner_U
 from simbricks.runner import artifacts, framing
 
 
@@ -41,11 +41,6 @@ class FragmentRunnerPlugin(abc.ABC):
 
     async def read_frame(self) -> framing.Frame:
         return await self._channel.receive()
-
-    def decode_events(self, frame: framing.EventFrame) -> list[EventFromRunner_U]:
-        # This connection only ever receives events produced by the fragment
-        # runner; EventFrame.unpack' return type is broader.
-        return tp.cast(list[EventFromRunner_U], frame.unpack())
 
 
 def get_first_match(key: tp.Any, *params: dict[tp.Any, tp.Any]) -> tp.Any | None:
