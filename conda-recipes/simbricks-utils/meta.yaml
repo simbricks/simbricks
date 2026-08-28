@@ -42,6 +42,7 @@ requirements:
   run:
     - python >=3.10
     - typing_extensions >=4.14.1
+    - pydantic 2.13.4
 
 test:
   imports:
