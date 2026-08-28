@@ -134,19 +134,44 @@ class DiskImage(utils_base.IdObj):
 
 
 class DummyDiskImage(DiskImage):
-    def __init__(self, system: sys_base.System) -> None:
-        super().__init__(system)
+    """Stand-in for a disk image whose class could not be imported.
+
+    Usually the package providing it is not installed here, so it keeps what it
+    stood in for and says so when something needs the image.
+    """
+
+    # Class attributes, not set in __init__: instances only ever come from
+    # fromJSON, which builds them with __new__ and never runs __init__.
+    orig_type: str | None = None
+    orig_module: str | None = None
+
+    def _unavailable(self, what: str) -> RuntimeError:
+        if self.orig_module is None:
+            return RuntimeError(f"cannot call abstract method '{what}' of DummyDiskImage")
+        return RuntimeError(
+            f"disk image '{self.orig_type}' is unavailable here: could not import"
+            f" '{self.orig_module}'. Install the package providing it on this runner."
+        )
 
     def available_formats(self) -> list[str]:
-        raise RuntimeError("cannot call abstract method 'available_formats' of DummyDiskImage")
+        raise self._unavailable("available_formats")
 
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
-        raise RuntimeError("cannot call abstract method 'path' of DummyDiskImage")
+        raise self._unavailable("path")
+
+    async def boot_artifacts(
+        self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
+    ) -> dict[BootArtifact, str]:
+        if not kinds:
+            return {}
+        raise self._unavailable("boot_artifacts")
 
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance._is_dummy = True
+        instance.orig_type = utils_base.get_json_attr_top_or_none(json_obj, "type")
+        instance.orig_module = utils_base.get_json_attr_top_or_none(json_obj, "module")
         return instance
 
 
