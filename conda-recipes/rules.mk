@@ -4,10 +4,10 @@ OUTPUT_FLAG := $(if $(OUTPUT_FOLDER),--output-folder $(OUTPUT_FOLDER))
 BASE_BUILD_CMD := conda build -m conda-recipes/conda_build_config.yaml $(OUTPUT_FLAG)
 
 .PHONY: conda-packages lib dist cli-py client-py local-py orchestration-py \
-	runner-py runtime-py telemetry-py utils-py
+	runner-py runtime-py telemetry-py utils-py imagebuild-guestfs-py
 
 conda-packages: lib dist cli-py client-py local-py orchestration-py runner-py \
-	runtime-py telemetry-py utils-py
+	runtime-py telemetry-py utils-py imagebuild-guestfs-py
 
 lib:
 	$(BASE_BUILD_CMD) conda-recipes/simbricks-lib
@@ -32,6 +32,9 @@ runner-py: orchestration-py runtime-py client-py telemetry-py
 
 runtime-py: orchestration-py utils-py
 	$(BASE_BUILD_CMD) conda-recipes/simbricks-runtime
+
+imagebuild-guestfs-py: orchestration-py utils-py
+	$(BASE_BUILD_CMD) conda-recipes/simbricks-imagebuild-guestfs
 
 telemetry-py: client-py
 	$(BASE_BUILD_CMD) conda-recipes/simbricks-telemetry
