@@ -273,13 +273,46 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         root = inst.env.image_cache_dir()
         return image_cache.ImageCache(root) if root is not None else None
 
-    async def _build_into(self, inst: inst_base.Instantiation, format: str, out: str) -> None:
+    async def _build_from_base(self, inst: inst_base.Instantiation, format: str, out: str) -> None:
         # The base is not attached to a host, so nothing else prepares it.
         base_format = self._base_format(format)
         await self.base._prepare_format(inst, base_format)
-        await self.build(inst, format, self.base.path(inst, base_format), self.layers, out)
+        await self._run_build(inst, format, self.base.path(inst, base_format), self.layers, out)
+
+    async def _run_build(
+        self,
+        inst: inst_base.Instantiation,
+        format: str,
+        source: str,
+        layers: list[ImageLayer],
+        out: str,
+    ) -> None:
+        await self.build(inst, format, source, layers, out)
         if not pathlib.Path(out).is_file():
             raise RuntimeError(f"image build produced no output at '{out}'")
+
+    async def _build_cached(
+        self,
+        inst: inst_base.Instantiation,
+        format: str,
+        out: str,
+        cache: image_cache.ImageCache,
+        hashes: list[str],
+    ) -> None:
+        """Build starting from the longest run of layers already in the cache.
+
+        Appending a layer to an image an earlier run built therefore costs only
+        the new layer. Nothing stores the intermediate images: a prefix is there
+        because some run wanted exactly it, and writing one image per layer
+        would cost gigabytes to save work nobody asked for.
+        """
+        for done in range(len(self.layers) - 1, -1, -1):
+            start = cache.image(hashes[done], format)
+            if start is None or not pathlib.Path(start).is_file():
+                continue
+            await self._run_build(inst, format, start, self.layers[done:], out)
+            return
+        await self._build_from_base(inst, format, out)
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         out = self.path(inst, format)
@@ -288,18 +321,18 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
                 return
             cache = self._cache(inst)
             if cache is None:
-                await self._build_into(inst, format, out)
+                await self._build_from_base(inst, format, out)
                 return
 
-            digest = self.content_hash(inst)
+            hashes = self.prefix_hashes(inst)
             # Held across the build, so a second run wanting the same image
             # waits for this one rather than building it again.
-            async with cache.locked(digest):
-                cached = cache.image(digest, format)
+            async with cache.locked(hashes[-1]):
+                cached = cache.image(hashes[-1], format)
                 if cached is not None and cache.take_out(cached, out):
                     return
-                await self._build_into(inst, format, out)
-                cache.store_image(digest, format, out)
+                await self._build_cached(inst, format, out, cache, hashes)
+                cache.store_image(hashes[-1], format, out)
 
     async def boot_artifacts(
         self, inst: inst_base.Instantiation, kinds: list[disk_images.BootArtifact]
