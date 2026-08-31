@@ -34,8 +34,8 @@ from simbricks.utils import base as utils_base
 class TimeInterval:
     """An immutable time interval, stored as an integer number of picoseconds.
 
-    Instances are created through the per-unit factory methods (``Time.ns(500)``)
-    or by parsing a unit suffixed string (``Time.parse("500ns")``). Bare numbers
+    Instances are created through the per-unit factory methods (``TimeInterval.ns(500)``)
+    or by parsing a unit suffixed string (``TimeInterval.parse("500ns")``). Bare numbers
     are deliberately not accepted anywhere, they leave the unit implicit.
     """
 
