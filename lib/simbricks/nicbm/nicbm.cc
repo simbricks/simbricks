@@ -604,13 +604,13 @@ int Runner::ParseArgs(int argc, char *argv[]) {
   netParams_.sync_mode = GetSyncMode(netAdapterParams_->sync);
 
   if (pcieAdapterParams_->sync_interval_set)
-    pcieParams_.sync_interval = pcieAdapterParams_->sync_interval * 1000ULL;
+    pcieParams_.sync_interval = pcieAdapterParams_->sync_interval;
   if (netAdapterParams_->sync_interval_set)
-    netParams_.sync_interval = netAdapterParams_->sync_interval * 1000ULL;
+    netParams_.sync_interval = netAdapterParams_->sync_interval;
   if (pcieAdapterParams_->link_latency_set)
-    pcieParams_.link_latency = pcieAdapterParams_->link_latency * 1000ULL;
+    pcieParams_.link_latency = pcieAdapterParams_->link_latency;
   if (netAdapterParams_->link_latency_set)
-    netParams_.link_latency = netAdapterParams_->link_latency * 1000ULL;
+    netParams_.link_latency = netAdapterParams_->link_latency;
 
   return 0;
 }
