@@ -59,6 +59,9 @@ static bool ParseUInteger(const char *str, uint64_t *val) {
 // SYNC = sync=<true|false>
 // ARGS = :latency=XX | :sync_interval=XX
 //
+// By convention all time intervals (latency, sync_interval) are given as plain
+// decimal picosecond values without a unit suffix.
+//
 // Returns NULL when a failure occured
 struct SimbricksAdapterParams *SimbricksParametersParse(const char *url) {
   struct SimbricksAdapterParams *params = malloc(sizeof(struct SimbricksAdapterParams));

@@ -36,8 +36,10 @@ struct SimbricksAdapterParams {
   char *shm_path;
   bool sync;
   bool link_latency_set;
+  /** Link latency/propagation delay [picoseconds] */
   uint64_t link_latency;
   bool sync_interval_set;
+  /** Maximum gap between sync messages [picoseconds] */
   uint64_t sync_interval;
 };
 
