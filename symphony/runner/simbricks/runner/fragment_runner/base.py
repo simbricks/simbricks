@@ -295,6 +295,7 @@ class FragmentRunner(abc.ABC):
         base_url: str,
         workdir: pathlib.Path,
         global_input_dir: pathlib.Path | None,
+        image_cache_dir: pathlib.Path | None,
         namespace: str,
         ident: int,
         polling_delay_sec: float,
@@ -307,6 +308,7 @@ class FragmentRunner(abc.ABC):
         self._base_url: str = base_url
         self._workdir: pathlib.Path = workdir.resolve()
         self._global_input_dir: pathlib.Path | None = global_input_dir
+        self._image_cache_dir: pathlib.Path | None = image_cache_dir
         self._polling_delay_sec: float = polling_delay_sec
         self._sending_delay_sec: float = sending_delay_sec
         self._namespace: str = namespace
@@ -389,7 +391,9 @@ class FragmentRunner(abc.ABC):
             assert isinstance(frag, Fragment) and isinstance(frag.id, str)
             fragment_map[frag.id] = frag
 
-        env = inst_base.InstantiationEnvironment(run_workdir, self._global_input_dir)
+        env = inst_base.InstantiationEnvironment(
+            run_workdir, self._global_input_dir, self._image_cache_dir
+        )
         inst.env = env
 
         assert len(start_event.fragments) == 1

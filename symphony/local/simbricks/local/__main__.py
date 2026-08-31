@@ -111,6 +111,12 @@ def parse_args() -> argparse.Namespace:
         help="Global input directory",
     )
     g_env.add_argument(
+        "--image-cache-dir",
+        metavar="DIR",
+        type=pathlib.Path,
+        help="Keep built disk images here and reuse them in later runs",
+    )
+    g_env.add_argument(
         "--workdir",
         metavar="DIR",
         type=pathlib.Path,
@@ -166,7 +172,9 @@ def add_exp(
     workdir = utils_file.join_paths(
         args.workdir, f"{instantiation.simulation.name}/{instantiation.id()}"
     )
-    env = inst_base.InstantiationEnvironment(pathlib.Path(workdir).resolve(), args.global_input_dir)
+    env = inst_base.InstantiationEnvironment(
+        pathlib.Path(workdir).resolve(), args.global_input_dir, args.image_cache_dir
+    )
     instantiation.env = env
     assert len(instantiation.fragments) == 1
     instantiation.assigned_fragment = instantiation.fragments[0]

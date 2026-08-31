@@ -36,6 +36,7 @@ class LocalRunner(runner_base.FragmentRunner):
         base_url: str,
         workdir: pathlib.Path,
         global_input_dir: pathlib.Path | None,
+        image_cache_dir: pathlib.Path | None,
         namespace: str,
         ident: int,
         polling_delay_sec: float,
@@ -51,6 +52,7 @@ class LocalRunner(runner_base.FragmentRunner):
             base_url,
             workdir,
             global_input_dir,
+            image_cache_dir,
             namespace,
             ident,
             polling_delay_sec,
@@ -81,10 +83,15 @@ async def amain():
     if global_input_dir is not None:
         global_input_dir = pathlib.Path(global_input_dir)
 
+    image_cache_dir = settings.runner_settings().image_cache_dir
+    if image_cache_dir is not None:
+        image_cache_dir = pathlib.Path(image_cache_dir)
+
     runner = LocalRunner(
         base_url=settings.runner_settings().base_url,
         workdir=pathlib.Path("./runner-work").resolve(),
         global_input_dir=global_input_dir,
+        image_cache_dir=image_cache_dir,
         namespace=settings.runner_settings().namespace,
         ident=settings.runner_settings().runner_id,
         polling_delay_sec=settings.runner_settings().polling_delay_sec,
