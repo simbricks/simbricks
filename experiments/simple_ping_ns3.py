@@ -62,21 +62,21 @@ switch = system.EthSwitch(sys)
 switch_nic0 = system.EthInterface(switch)
 switch.add_if(switch_nic0)
 switch_nic0_chan = system.EthChannel(nic0._eth_if, switch_nic0)
-switch_nic0_chan.latency = 2 * 10**6  # 2ms
+switch_nic0_chan.latency = "2ms"
 switch_nic1 = system.EthInterface(switch)
 switch.add_if(switch_nic1)
 switch_nic1_chan = system.EthChannel(nic1._eth_if, switch_nic1)
-switch_nic1_chan.latency = 2 * 10**6  # 2ms
+switch_nic1_chan.latency = "2ms"
 
 # # connect switch to ns-3 hosts
 # switch_host2 = system.EthInterface(switch)
 # switch.add_if(switch_host2)
 # switch_host2_chan = system.EthChannel(host2_eth_if, switch_host2)
-# switch_host2_chan.latency = 2 * 10**6 # 2ms
+# switch_host2_chan.latency = "2ms"
 # switch_host3 = system.EthInterface(switch)
 # switch.add_if(switch_host3)
 # switch_host3_chan = system.EthChannel(host3_eth_if, switch_host3)
-# switch_host3_chan.latency = 2 * 10**6 # 2ms
+# switch_host3_chan.latency = "2ms"
 
 # configure the software to run on the host
 sleep_app = system.Sleep(host0, infinite=True)

@@ -28,7 +28,7 @@ if N_RACKS * N_DETAILED_HOSTS_PER_RACK % 2 != 0 or N_RACKS * N_NS3_HOSTS_PER_RAC
     print("Number of detailed hosts and ns-3 hosts must each be even")
     exit(1)
 
-LINK_LATENCY = 100000  # in nanoseconds
+LINK_LATENCY = "100us"
 LINK_BANDWIDTH_SPINE = "10Gbps"
 LINK_BANDWIDTH_TOR = "1Gbps"
 
@@ -63,7 +63,7 @@ for i_tor in range(N_RACKS):
     tor_switch = system.EthSwitch(sys)
     tor_switch.name = f"TOR Switch-{i_tor}"
     channel = sys_helpers.connect_eth_devices(spine_switch, tor_switch)
-    channel.set_latency(LINK_LATENCY)
+    channel.latency = LINK_LATENCY
     channel.parameters["data_rate"] = LINK_BANDWIDTH_SPINE
     tor_switches.append((tor_switch, channel))
 
@@ -77,7 +77,7 @@ for i_tor_switch in range(N_RACKS):
         host = Host(sys_host)
 
         channel = sys_helpers.connect_eth_devices(tor_switches[i_tor_switch][0], sys_host)
-        channel.set_latency(LINK_LATENCY)
+        channel.latency = LINK_LATENCY
         channel.parameters["data_rate"] = LINK_BANDWIDTH_TOR
         host.channel = channel
 
@@ -108,7 +108,7 @@ for i_tor_switch in range(N_RACKS):
         host.nic = nic
 
         channel = tor_switches[i_tor_switch][0].connect_eth_peer_if(nic._eth_if)
-        channel.set_latency(LINK_LATENCY)
+        channel.latency = LINK_LATENCY
         channel.parameters["data_rate"] = LINK_BANDWIDTH_TOR
         host.channel = channel
 
