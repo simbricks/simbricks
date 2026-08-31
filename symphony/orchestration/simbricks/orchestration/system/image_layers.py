@@ -310,6 +310,7 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
             start = cache.image(hashes[done], format)
             if start is None or not pathlib.Path(start).is_file():
                 continue
+            cache.used(hashes[done])
             await self._run_build(inst, format, start, self.layers[done:], out)
             return
         await self._build_from_base(inst, format, out)
@@ -330,9 +331,16 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
             async with cache.locked(hashes[-1]):
                 cached = cache.image(hashes[-1], format)
                 if cached is not None and cache.take_out(cached, out):
+                    cache.used(hashes[-1])
                     return
                 await self._build_cached(inst, format, out, cache, hashes)
                 cache.store_image(hashes[-1], format, out)
+                cache.used(hashes[-1])
+            limit = inst.env.image_cache_size()
+            if limit is not None:
+                # After a store, the only moment the cache grows. What was just
+                # built is the most recently used, so it is never the casualty.
+                cache.evict(limit)
 
     async def boot_artifacts(
         self, inst: inst_base.Instantiation, kinds: list[disk_images.BootArtifact]
@@ -350,25 +358,40 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
 
         async with inst.prepare_lock(out_dir.as_posix()):
             wanted = [k for k in kinds if not (out_dir / k.value).is_file()]
-            if wanted and cache is not None:
+            if cache is None:
+                if wanted:
+                    await self._produce_boot_artifacts(inst, wanted, out_dir)
+                self._check_boot_artifacts(kinds, out_dir)
+                return {k: (out_dir / k.value).as_posix() for k in kinds}
+
+            # Under the entry's lock: a sweep in another run may be evicting,
+            # and it leaves alone whatever is held.
+            async with cache.locked(digest):
                 for kind in list(wanted):
                     cached = cache.boot_artifact(digest, kind.value)
                     if cached is not None and cache.take_out(
                         cached, (out_dir / kind.value).as_posix()
                     ):
                         wanted.remove(kind)
-            if wanted:
-                await self._produce_boot_artifacts(inst, wanted, out_dir)
-            for kind in kinds:
-                path = out_dir / kind.value
-                if not path.is_file():
-                    raise RuntimeError(f"'{kind.value}' was not produced for this image")
-                # Also for the ones the build itself collected, which is how a
-                # backend that only gets them while building survives a hit.
-                if cache is not None and cache.boot_artifact(digest, kind.value) is None:
-                    cache.store_boot_artifact(digest, kind.value, path.as_posix())
+                if wanted:
+                    await self._produce_boot_artifacts(inst, wanted, out_dir)
+                self._check_boot_artifacts(kinds, out_dir)
+                for kind in kinds:
+                    # Also for the ones the build itself collected, which is how
+                    # a backend that only gets them while building survives a hit.
+                    if cache.boot_artifact(digest, kind.value) is None:
+                        cache.store_boot_artifact(
+                            digest, kind.value, (out_dir / kind.value).as_posix()
+                        )
+                cache.used(digest)
 
         return {k: (out_dir / k.value).as_posix() for k in kinds}
+
+    @staticmethod
+    def _check_boot_artifacts(kinds: list[disk_images.BootArtifact], out_dir: pathlib.Path) -> None:
+        for kind in kinds:
+            if not (out_dir / kind.value).is_file():
+                raise RuntimeError(f"'{kind.value}' was not produced for this image")
 
     async def _produce_boot_artifacts(
         self,
