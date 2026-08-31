@@ -64,15 +64,6 @@ class InputArtifactSource(abc.ABC):
         """Paths of the local files needed, relative to where the script defining them runs."""
 
 
-class Time(enum.IntEnum):
-    # FIXME: this is wrong, see https://github.com/simbricks/simbricks/issues/178
-    Picoseconds = 10 ** (-3)  # pyright: ignore[reportAssignmentType]
-    Nanoseconds = 1
-    Microseconds = 10 ** (3)
-    Milliseconds = 10 ** (6)
-    Seconds = 10 ** (9)
-
-
 def filter_None_dict(to_filter: dict) -> dict:
     res = {k: v for k, v in to_filter.items() if v is not None}
     return res
