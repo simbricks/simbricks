@@ -37,6 +37,8 @@ import pathlib
 import shutil
 import typing as tp
 
+_USED = ".used"
+
 
 class ImageCache:
     """Images kept across runs, under a directory the runner owns."""
@@ -46,6 +48,77 @@ class ImageCache:
 
     def _entry(self, digest: str) -> pathlib.Path:
         return self._root / digest
+
+    def used(self, digest: str) -> None:
+        """Record that a run wanted this entry, for eviction to go by.
+
+        A file we touch ourselves rather than the atime of the image: plenty of
+        servers mount with noatime or relatime, where atime would quietly mean
+        "when it was written" and eviction would throw away what is used most.
+        """
+        entry = self._entry(digest)
+        if not entry.is_dir():
+            return
+        marker = entry / _USED
+        marker.touch()
+        os.utime(marker, None)
+
+    def _last_used(self, entry: pathlib.Path) -> float:
+        marker = entry / _USED
+        try:
+            return marker.stat().st_mtime
+        except OSError:
+            return entry.stat().st_mtime
+
+    def _entry_size(self, entry: pathlib.Path) -> int:
+        total = 0
+        for path in entry.rglob("*"):
+            if path.is_file():
+                total += path.stat().st_size
+        return total
+
+    def evict(self, limit: int) -> list[str]:
+        """Delete least recently used entries until the cache fits in @limit bytes.
+
+        Returns what it deleted. Skips whatever another run holds, and skips
+        everything if a sweep is already in progress: this runs after a store,
+        so the next one will finish what this one leaves.
+        """
+        if not self._root.is_dir():
+            return []
+        sweep = open(self._root / ".sweep.lock", "w")
+        try:
+            try:
+                fcntl.flock(sweep.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                return []
+
+            entries = [e for e in self._root.iterdir() if e.is_dir()]
+            sized = [(self._last_used(e), self._entry_size(e), e) for e in entries]
+            total = sum(size for _, size, _ in sized)
+            evicted = []
+            for _, size, entry in sorted(sized):
+                if total <= limit:
+                    break
+                # A run building into this entry, or linking a file out of it,
+                # holds this. Leave it: there will be another sweep.
+                held = open(self._root / f"{entry.name}.lock", "w")
+                try:
+                    try:
+                        fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except OSError:
+                        continue
+                    shutil.rmtree(entry, ignore_errors=True)
+                finally:
+                    held.close()
+                # The lock file itself stays: unlinking one another process is
+                # waiting on would leave the two of them holding different
+                # inodes, each convinced it has the entry.
+                total -= size
+                evicted.append(entry.name)
+            return evicted
+        finally:
+            sweep.close()
 
     def image(self, digest: str, format: str) -> str | None:
         path = self._entry(digest) / f"image.{format}"
