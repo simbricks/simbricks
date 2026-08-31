@@ -25,6 +25,7 @@ import typing
 from simbricks.orchestration import system
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.utils import base as utils_base
+from simbricks.utils import time as utils_time
 
 
 def add_specs(simulator: sim_base.Simulator, *specifications) -> None:
@@ -35,18 +36,14 @@ def add_specs(simulator: sim_base.Simulator, *specifications) -> None:
 
 
 def enable_sync_simulation(
-    simulation: sim_base.Simulation, amount: int | None = None, ratio: utils_base.Time | None = None
+    simulation: sim_base.Simulation, sync_period: utils_time.TimeInterval | str | None = None
 ) -> None:
     utils_base.has_expected_type(obj=simulation, expected_type=sim_base.Simulation)
-    set_period: bool = amount is not None and ratio is not None
-    if set_period:
-        assert isinstance(amount, int)
-        assert isinstance(ratio, utils_base.Time)
 
     for chan in simulation.get_all_channels():
         chan._synchronized = True
-        if amount is not None and ratio is not None:
-            chan.set_sync_period(amount=amount, ratio=ratio)
+        if sync_period is not None:
+            chan.sync_period = sync_period
 
 
 def disalbe_sync_simulation(simulation: sim_base.Simulation) -> None:

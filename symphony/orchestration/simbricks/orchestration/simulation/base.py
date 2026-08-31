@@ -33,6 +33,7 @@ import simbricks.orchestration.instantiation.socket as inst_socket
 import simbricks.orchestration.simulation.channel as sim_chan
 import simbricks.orchestration.system as sys_conf
 import simbricks.utils.base as utils_base
+import simbricks.utils.time as utils_time
 
 T = tp.TypeVar("T")
 
@@ -165,18 +166,20 @@ class Simulator(utils_base.IdObj):
     @staticmethod
     def get_unique_latency_period_sync(
         channels: list[sim_chan.Channel],
-    ) -> tuple[int, int, bool]:
+    ) -> tuple[utils_time.TimeInterval, utils_time.TimeInterval, bool]:
         latency = None
         sync_period = None
         run_sync = False
         for channel in channels:
             sync_period = (
-                min(sync_period, channel.sync_period) if sync_period else channel.sync_period
+                min(sync_period, channel.sync_period)
+                if sync_period is not None
+                else channel.sync_period
             )
             run_sync = run_sync or channel._synchronized
             latency = (
                 max(latency, channel.sys_channel.latency)
-                if latency
+                if latency is not None
                 else channel.sys_channel.latency
             )
         if latency is None or sync_period is None:
@@ -189,33 +192,43 @@ class Simulator(utils_base.IdObj):
         socket: inst_socket.Socket,
         channel: sim_chan.Channel | None = None,
         sync: bool | None = None,
-        latency: int | None = None,
-        sync_period: int | None = None,
+        latency: utils_time.TimeInterval | None = None,
+        sync_period: utils_time.TimeInterval | None = None,
     ) -> str:
-        if not channel and (sync is None or latency is None or sync_period is None):
+        """Build the parameters url handed to a simulator's SimBricks adapter.
+
+        By convention the time intervals in these urls are always given as plain
+        picosecond values without a unit suffix.
+        """
+        if channel is None and (sync is None or latency is None or sync_period is None):
             raise ValueError(
                 "Cannot generate parameters url if channel and at least one of sync, "
                 "latency, sync_period are None"
             )
-        if channel:
-            if not sync:
+        if channel is not None:
+            if sync is None:
                 sync = channel._synchronized
-            if not latency:
+            if latency is None:
                 latency = channel.sys_channel.latency
-            if not sync_period:
+            if sync_period is None:
                 sync_period = channel.sync_period
 
+        # MM: assertion to make pyright happy; IMHO it is not needed, since the code above makes
+        # sure that sync, latency, and sync_period are not None here.
+        assert latency is not None and sync_period is not None
         sync_str = "true" if sync else "false"
+        latency_ps = latency.picoseconds
+        sync_period_ps = sync_period.picoseconds
 
         if socket._type == inst_socket.SockType.CONNECT:
             return (
-                f"connect:{socket._path}:sync={sync_str}:latency={latency}"
-                f":sync_interval={sync_period}"
+                f"connect:{socket._path}:sync={sync_str}:latency={latency_ps}"
+                f":sync_interval={sync_period_ps}"
             )
         else:
             return (
                 f"listen:{socket._path}:{inst.env.get_simulator_shm_pool_path(self)}:sync={sync_str}"
-                f":latency={latency}:sync_interval={sync_period}"
+                f":latency={latency_ps}:sync_interval={sync_period_ps}"
             )
 
     def get_interface_url(
@@ -565,12 +578,12 @@ class Simulation(utils_base.IdObj):
         return all_channels
 
     def enable_synchronization(
-        self, amount: int | None = None, ratio: utils_base.Time | None = None
+        self, sync_period: utils_time.TimeInterval | str | None = None
     ) -> None:
         for chan in self.get_all_channels():
             chan._synchronized = True
-            if amount and ratio:
-                chan.set_sync_period(amount=amount, ratio=ratio)
+            if sync_period is not None:
+                chan.sync_period = sync_period
 
     def resreq_mem(self) -> int:
         """Memory required to run all simulators in this experiment."""

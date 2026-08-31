@@ -27,25 +27,35 @@ import typing_extensions as tpe
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as system_base
 from simbricks.utils import base as utils_base
+from simbricks.utils import time as utils_time
 
 
 class Channel(utils_base.IdObj):
     def __init__(self, chan: system_base.Channel):
         super().__init__()
         self._synchronized: bool = False
-        self.sync_period: int = 500  # nanoseconds
-        """
-        The synchronization period in nanoseconds. For SimBricks to function
-        properly in sync mode, the sync period must not be larger than a channels
-        latency.
-        """
-        assert self.sync_period <= chan.latency
+        self._sync_period = utils_time.TimeInterval.ns(500)
+        assert self._sync_period <= chan.latency
         self.sys_channel: system_base.Channel = chan
+
+    @property
+    def sync_period(self) -> utils_time.TimeInterval:
+        """
+        The synchronization period. For SimBricks to function properly in sync
+        mode, the sync period must not be larger than a channels latency.
+        """
+        return self._sync_period
+
+    @sync_period.setter
+    def sync_period(self, sync_period: utils_time.TimeInterval | str) -> None:
+        new_sync_period = utils_time.TimeInterval.from_value(sync_period)
+        assert new_sync_period <= self.sys_channel.latency
+        self._sync_period = new_sync_period
 
     def toJSON(self):
         json_obj = super().toJSON()
         json_obj["synchronized"] = self._synchronized
-        json_obj["sync_period"] = self.sync_period
+        json_obj["sync_period"] = self._sync_period.toJSON()
         json_obj["sys_channel"] = self.sys_channel.id()
         return json_obj
 
@@ -53,14 +63,9 @@ class Channel(utils_base.IdObj):
     def fromJSON(cls, simulation: sim_base.Simulation, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
         instance._synchronized = bool(utils_base.get_json_attr_top(json_obj, "synchronized"))
-        instance.sync_period = int(utils_base.get_json_attr_top(json_obj, "sync_period"))
+        instance._sync_period = utils_time.TimeInterval.fromJSON(
+            utils_base.get_json_attr_top(json_obj, "sync_period")
+        )
         chan_id = int(utils_base.get_json_attr_top(json_obj, "sys_channel"))
         instance.sys_channel = simulation.system.get_chan(chan_id)
         return instance
-
-    def set_sync_period(
-        self, amount: int, ratio: utils_base.Time = utils_base.Time.Nanoseconds
-    ) -> None:
-        utils_base.has_expected_type(obj=ratio, expected_type=utils_base.Time)
-        self.sync_period = amount * ratio
-        assert self.sync_period <= self.sys_channel.latency

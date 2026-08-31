@@ -29,6 +29,7 @@ import typing_extensions as tpe
 
 from simbricks.orchestration.system import disk_images
 from simbricks.utils import base as utils_base
+from simbricks.utils import time as utils_time
 
 if tp.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
@@ -101,12 +102,12 @@ class System(utils_base.IdObj):
         return self._all_applications[ident]
 
     @staticmethod
-    def set_latencies(channels: list[Channel], amount: int, ratio: utils_base.Time) -> None:
+    def set_latencies(channels: list[Channel], latency: utils_time.TimeInterval | str) -> None:
         for chan in channels:
-            chan.set_latency(amount, ratio)
+            chan.latency = latency
 
     def latencies(
-        self, amount: int, ratio: utils_base.Time, channel_type: tp.Any | None = None
+        self, latency: utils_time.TimeInterval | str, channel_type: tp.Any | None = None
     ) -> None:
         relevant_channels = list(self._all_channels.values())
         if channel_type:
@@ -116,7 +117,7 @@ class System(utils_base.IdObj):
                     self._all_channels.values(),
                 )
             )
-        System.set_latencies(relevant_channels, amount, ratio)
+        System.set_latencies(relevant_channels, latency)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -385,7 +386,7 @@ class DummyInterface(Interface):
 class Channel(utils_base.IdObj):
     def __init__(self, a: Interface, b: Interface) -> None:
         super().__init__()
-        self.latency = 500  # nanoseconds
+        self._latency = utils_time.TimeInterval.ns(500)
         self.a: Interface = a
         self.a.connect(self)
         self.b: Interface = b
@@ -411,15 +412,18 @@ class Channel(utils_base.IdObj):
         assert opposing != interface
         return opposing
 
-    def set_latency(
-        self, amount: int, ratio: utils_base.Time = utils_base.Time.Nanoseconds
-    ) -> None:
-        utils_base.has_expected_type(obj=ratio, expected_type=utils_base.Time)
-        self.latency = amount * ratio
+    @property
+    def latency(self) -> utils_time.TimeInterval:
+        """Link latency/propagation delay of this channel."""
+        return self._latency
+
+    @latency.setter
+    def latency(self, latency: utils_time.TimeInterval | str) -> None:
+        self._latency = utils_time.TimeInterval.from_value(latency)
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
-        json_obj["latency"] = self.latency
+        json_obj["latency"] = self._latency.toJSON()
         json_obj["interface_a"] = self.a.id()
         json_obj["interface_b"] = self.b.id()
         json_obj["parameters"] = utils_base.dict_to_json(self.parameters)
@@ -428,7 +432,9 @@ class Channel(utils_base.IdObj):
     @classmethod
     def fromJSON(cls, system: System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(json_obj)
-        instance.latency = int(utils_base.get_json_attr_top(json_obj, "latency"))
+        instance._latency = utils_time.TimeInterval.fromJSON(
+            utils_base.get_json_attr_top(json_obj, "latency")
+        )
         instance.parameters = utils_base.json_to_dict(
             utils_base.get_json_attr_top(json_obj, "parameters")
         )
