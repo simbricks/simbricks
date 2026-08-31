@@ -42,6 +42,7 @@ class RunnerSettings(BaseSettings):
     runner_id: int = 1
 
     global_input_dir: str | None = None
+    image_cache_dir: str | None = None
 
     """
     This controls whether output artifacts are enforced to be relative to the work directory of
