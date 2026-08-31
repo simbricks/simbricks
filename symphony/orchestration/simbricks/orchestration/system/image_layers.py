@@ -34,6 +34,7 @@ from __future__ import annotations
 import abc
 import os
 import pathlib
+import re
 import typing as tp
 
 import typing_extensions as tpe
@@ -144,6 +145,17 @@ class RunScript(ImageLayer):
         return instance
 
 
+_SIZE_UNITS = {"": 1, "K": 1 << 10, "M": 1 << 20, "G": 1 << 30, "T": 1 << 40}
+
+
+def parse_size(size: str) -> int:
+    """Bytes for a size written the way qemu and packer take it, e.g. "32G"."""
+    match = re.fullmatch(r"\s*(\d+)\s*([KMGT]?)B?\s*", size, re.IGNORECASE)
+    if not match:
+        raise ValueError(f"'{size}' is not a size like '512M' or '32G'")
+    return int(match.group(1)) * _SIZE_UNITS[match.group(2).upper()]
+
+
 class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSource):
     """A base image plus layers, built when the simulation is prepared.
 
@@ -156,6 +168,11 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         super().__init__(system)
         self.base = base
         self.layers: list[ImageLayer] = []
+        self.disk_size: str | None = None
+        """Grow the image to this size, e.g. "32G", before the layers run. None
+        keeps the base's size, and a size below it is left alone rather than
+        shrinking the image. Not a layer: the build materializes one image, so
+        this can only happen as it is created."""
 
     def add_layer(self, layer: ImageLayer) -> ImageLayer:
         self.layers.append(layer)
@@ -234,6 +251,7 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["base"] = self.base.id()
+        json_obj["disk_size"] = self.disk_size
         json_obj["layers"] = [layer.toJSON() for layer in self.layers]
         return json_obj
 
@@ -243,6 +261,7 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         # The base has to exist before an image layering on it can be built, so
         # it has the lower id and System.fromJSON already deserialized it.
         instance.base = system._get_disk_image(utils_base.get_json_attr_top(json_obj, "base"))
+        instance.disk_size = utils_base.get_json_attr_top_or_none(json_obj, "disk_size")
         instance.layers = [
             utils_base.get_cls_by_json(layer).fromJSON(layer)
             for layer in utils_base.get_json_attr_top(json_obj, "layers")
