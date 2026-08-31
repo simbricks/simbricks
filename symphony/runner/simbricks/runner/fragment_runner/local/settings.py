@@ -43,6 +43,9 @@ class RunnerSettings(BaseSettings):
 
     global_input_dir: str | None = None
     image_cache_dir: str | None = None
+    """Size the image cache may reach before least recently used images are
+    dropped, e.g. "200G". Unset lets it grow without bound."""
+    image_cache_size: str | None = None
 
     """
     This controls whether output artifacts are enforced to be relative to the work directory of

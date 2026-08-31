@@ -26,6 +26,7 @@ import logging
 import pathlib
 import sys
 
+from simbricks.orchestration.system import image_layers
 from simbricks.runner.fragment_runner import base as runner_base
 from simbricks.runner.fragment_runner.local import settings
 
@@ -37,6 +38,7 @@ class LocalRunner(runner_base.FragmentRunner):
         workdir: pathlib.Path,
         global_input_dir: pathlib.Path | None,
         image_cache_dir: pathlib.Path | None,
+        image_cache_size: int | None,
         namespace: str,
         ident: int,
         polling_delay_sec: float,
@@ -53,6 +55,7 @@ class LocalRunner(runner_base.FragmentRunner):
             workdir,
             global_input_dir,
             image_cache_dir,
+            image_cache_size,
             namespace,
             ident,
             polling_delay_sec,
@@ -87,11 +90,16 @@ async def amain():
     if image_cache_dir is not None:
         image_cache_dir = pathlib.Path(image_cache_dir)
 
+    image_cache_size = settings.runner_settings().image_cache_size
+    if image_cache_size is not None:
+        image_cache_size = image_layers.parse_size(image_cache_size)
+
     runner = LocalRunner(
         base_url=settings.runner_settings().base_url,
         workdir=pathlib.Path("./runner-work").resolve(),
         global_input_dir=global_input_dir,
         image_cache_dir=image_cache_dir,
+        image_cache_size=image_cache_size,
         namespace=settings.runner_settings().namespace,
         ident=settings.runner_settings().runner_id,
         polling_delay_sec=settings.runner_settings().polling_delay_sec,

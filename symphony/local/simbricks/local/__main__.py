@@ -35,6 +35,7 @@ import sys
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
+from simbricks.orchestration.system import image_layers
 from simbricks.runtime import output as sim_out
 from simbricks.runtime.runs import base as runs_base
 from simbricks.runtime.runs import local as rt_local
@@ -117,6 +118,12 @@ def parse_args() -> argparse.Namespace:
         help="Keep built disk images here and reuse them in later runs",
     )
     g_env.add_argument(
+        "--image-cache-size",
+        metavar="SIZE",
+        type=str,
+        help="Keep the image cache under this size, e.g. 200G, evicting least recently used",
+    )
+    g_env.add_argument(
         "--workdir",
         metavar="DIR",
         type=pathlib.Path,
@@ -172,8 +179,9 @@ def add_exp(
     workdir = utils_file.join_paths(
         args.workdir, f"{instantiation.simulation.name}/{instantiation.id()}"
     )
+    cache_size = image_layers.parse_size(args.image_cache_size) if args.image_cache_size else None
     env = inst_base.InstantiationEnvironment(
-        pathlib.Path(workdir).resolve(), args.global_input_dir, args.image_cache_dir
+        pathlib.Path(workdir).resolve(), args.global_input_dir, args.image_cache_dir, cache_size
     )
     instantiation.env = env
     assert len(instantiation.fragments) == 1
