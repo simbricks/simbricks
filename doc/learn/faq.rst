@@ -55,8 +55,7 @@ channel into the active environment, or run inside the ``simbricks/simbricks-exe
 
 ``DistroDiskImage`` resolves images inside the global input directory. Pass
 ``--global-input-dir <dir>`` to ``simbricks-run``, where ``<dir>`` contains
-``images/<name>/<name>`` as produced by the :image-builder:`\ ` tool (see
-:ref:`sec-disk-images`).
+``images/<name>/<name>`` in the layout described in :ref:`sec-disk-images-global-input`.
 
 **QEMU is very slow / warns that KVM is not available.**
 
@@ -67,8 +66,10 @@ just slower.
 
 **gem5 complains about the disk image or kernel.**
 
-gem5 only supports **raw** disk images (build them with ``CONVERT_RAW=true`` in image-builder) and
-boots the ELF ``vmlinux`` from ``images/<name>/boot/vmlinux``. Also note that gem5 needs to run
+gem5 only supports **raw** disk images, and boots the ELF ``vmlinux``. A layered image is built
+in whichever format the simulator needs; for a prebuilt image, make sure the raw variant and the
+boot artifacts are in place (``images/<name>/<name>.raw`` and ``images/<name>/boot/vmlinux``, see
+:ref:`sec-disk-images-global-input`). Also note that gem5 needs to run
 with ``kernel.perf_event_paranoid`` set to 1 or lower on the host (``sudo sysctl -w
 kernel.perf_event_paranoid=1``); in Docker this typically requires ``--privileged``.
 

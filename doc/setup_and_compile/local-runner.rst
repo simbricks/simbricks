@@ -98,4 +98,4 @@ The configuration file declares which fragment executors the Runner offers. Each
 Hardware/OS requirements are the same as for the executor image (see :ref:`sec-docker-images`):
 ``/dev/kvm`` for QEMU, ``kernel.perf_event_paranoid <= 1`` for gem5, and disk images available
 under the global input directory (pre-installed in the executor image; for bare-metal setups,
-build them with :image-builder:`\ ` and set ``GLOBAL_INPUT_DIR`` — see :ref:`sec-image-builder`).
+provide them yourself and set ``GLOBAL_INPUT_DIR`` — see :ref:`sec-disk-images-global-input`).

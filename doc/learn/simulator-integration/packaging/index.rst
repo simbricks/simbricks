@@ -151,10 +151,11 @@ Some integrations also need software *inside* the simulated machine — e.g. the
 kernel driver, or gem5's ``m5`` guest tool. These are **not** conda packages: they must be baked
 into the disk image the virtual prototype boots. The convention is that the component repository
 provides Makefile targets for building/installing them in-guest (e.g. ``make driver-install``),
-and a small install script for the :image-builder:`\ ` tool references those targets (see
-:ref:`sec-image-builder` and, as examples, ``examples/corundum/install-mqnic.sh`` and
-``examples/gem5/install-m5.sh`` in the image-builder repository). The pre-built ``base`` image
-already contains the mqnic driver and the m5 tool.
+and that a virtual prototype can install them into the image it boots — either as a layer on a
+layered image (see :ref:`sec-disk-images-building`) or baked into a base image built with
+:image-builder:`\ `, whose ``examples/corundum/install-mqnic.sh`` and ``examples/gem5/install-m5.sh``
+show the shape of such a script. The pre-built ``base`` image already contains the mqnic driver
+and the m5 tool.
 
 Making a simulator available on Runners
 ---------------------------------------

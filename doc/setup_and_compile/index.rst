@@ -29,8 +29,8 @@ Advanced Setup & Building
 The :ref:`chap-quickstart` gets you going with the SimBricks Cloud, where our hosted Runners
 execute your virtual prototypes. This chapter covers everything beyond that: installing SimBricks
 packages from the conda channel, using and building the SimBricks Docker images, running your own
-Runners and executing virtual prototypes on your own machines, building disk images, and building
-the SimBricks core from source for development.
+Runners and executing virtual prototypes on your own machines, and building the SimBricks core
+from source for development.
 
 .. toctree::
    :maxdepth: 2
@@ -38,7 +38,6 @@ the SimBricks core from source for development.
    conda-packages
    pre-built-docker
    local-runner
-   image-builder
    build-docker
    bare-metal
    deb-package

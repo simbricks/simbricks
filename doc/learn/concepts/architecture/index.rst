@@ -138,9 +138,10 @@ clear responsibility:
   fork of the simulator), the SimBricks adapter, the Python integration into the orchestration
   framework, and conda recipes. See :ref:`sec-simulator-integration-packaging` for the pattern.
 
-* **Image builder** (:image-builder:`\ `): a small, simulator-independent tool to build the Linux
-  disk images and boot artifacts (kernel, initrd, ELF ``vmlinux``) that full-system host
-  simulators boot. See :ref:`sec-image-builder`.
+* **Image builder** (:image-builder:`\ `): a small, simulator-independent packer harness that
+  builds *base* Linux images and their boot artifacts (kernel, initrd, ELF ``vmlinux``), including
+  the ``base`` image shipped with SimBricks. Virtual prototypes build on top of such images from
+  the script itself, which is where most image work happens — see :ref:`sec-disk-images`.
 
 * **Examples** (:simbricks-examples:`\ `): ready-to-run example virtual prototypes used throughout
   this documentation.
