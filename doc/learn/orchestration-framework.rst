@@ -64,9 +64,12 @@ The System Configuration makes use of three key concepts:
 - **Channels:** Channels connect interfaces and act as communication paths. These Channels are later upon execution transformed into shared memory queues that link simulator instances.
 
 Channels are also where communication latencies are configured: each channel has a configurable
-link latency (e.g. ``channel.set_latency(500, utils_base.Time.Nanoseconds)``), which applies to the
-message flow between the two connected components. Some components have interfaces of different
-link types — for example, a NIC has a PCIe interface to connect to a host and an Ethernet interface
+link latency (e.g. ``channel.latency = TimeInterval.ns(500)`` or simply ``channel.latency = "500ns"``), which applies to the
+message flow between the two connected components. Time intervals are always specified with an
+explicit unit, either as a ``simbricks.utils.time.TimeInterval`` instance created through one of its factory methods
+(``TimeInterval.ps``, ``TimeInterval.ns``, ``TimeInterval.us``, ``TimeInterval.ms``, ``TimeInterval.s``) or as a unit suffixed string such
+as ``"500ns"`` or ``"1.5us"``. Some components have interfaces of
+different link types — for example, a NIC has a PCIe interface to connect to a host and an Ethernet interface
 to connect to the network — and the latencies can be configured individually per channel.
 
 Hosts additionally reference :ref:`disk images <sec-disk-images>` that define the software they
@@ -92,7 +95,7 @@ The ``simbricks.orchestration.simulation`` module provides the generic base clas
 **Synchronization.** SimBricks' default behavior is to execute virtual prototypes unsynchronized,
 which is sufficient for functional testing and fastest. For meaningful end-to-end performance
 measurements, synchronization must be enabled, e.g. through
-``sim.enable_synchronization(amount=500, ratio=utils_base.Time.Nanoseconds)`` on the ``Simulation``
+``sim.enable_synchronization("500ns")`` on the ``Simulation``
 object, which synchronizes all channels with the given synchronization period. Generally, for
 accurate simulations, you want to configure the synchronization period to the same value as the
 link latency: with a lower value you do not gain accuracy but send more synchronization messages

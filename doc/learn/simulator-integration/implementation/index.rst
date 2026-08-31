@@ -149,6 +149,15 @@ Initialization
 
 * In :numref:`code-adapter-initialize` you can see the initialization code from our Corundum Verilator Adapter.
 
+.. note::
+
+  All time intervals in ``SimbricksBaseIfParams`` (``link_latency``, ``sync_interval``) are given in
+  **picoseconds**. The same holds for the time intervals in the SimBricks parameters url that the
+  orchestration framework passes to a simulator (``:latency=XX:sync_interval=XX``), which are plain
+  decimal picosecond values without a unit suffix. Adapters using
+  ``SimbricksParametersParse``/``SimbricksParametersEstablish`` must therefore not rescale the parsed
+  values.
+
 .. _code-adapter-initialize:
 
 .. code-block:: C++
@@ -368,11 +377,11 @@ Polling and Synchronization
       main_time = strtoull(argv[5], NULL, 0);
     if (argc >= 7)
       netParams.sync_interval = pcieParams.sync_interval =
-          strtoull(argv[6], NULL, 0) * 1000ULL;
+          strtoull(argv[6], NULL, 0);
     if (argc >= 8)
-      pcieParams.link_latency = strtoull(argv[7], NULL, 0) * 1000ULL;
+      pcieParams.link_latency = strtoull(argv[7], NULL, 0);
     if (argc >= 9)
-      netParams.link_latency = strtoull(argv[8], NULL, 0) * 1000ULL;
+      netParams.link_latency = strtoull(argv[8], NULL, 0);
     if (argc >= 10)
       clock_period = 1000000ULL / strtoull(argv[9], NULL, 0);
 
