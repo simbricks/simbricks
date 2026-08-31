@@ -25,6 +25,7 @@ from __future__ import annotations
 import abc
 import asyncio
 import enum
+import hashlib
 import io
 import os
 import pathlib
@@ -60,6 +61,23 @@ class BootArtifact(enum.Enum):
     VMLINUX = "vmlinux"
 
 
+def hash_strings(parts: tp.Iterable[str]) -> str:
+    """Hash of a list of strings, with the list structure part of what is hashed."""
+    digest = hashlib.sha256()
+    for part in parts:
+        digest.update(str(len(part)).encode())
+        digest.update(b":")
+        digest.update(part.encode())
+    return digest.hexdigest()
+
+
+def hash_file(handle: tp.IO) -> str:
+    digest = hashlib.sha256()
+    while chunk := handle.read(1 << 20):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
 class DiskImage(utils_base.IdObj):
     def __init__(self, system: sys_base.System) -> None:
         super().__init__()
@@ -73,6 +91,24 @@ class DiskImage(utils_base.IdObj):
     @abc.abstractmethod
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         raise Exception("must be overwritten")
+
+    def content_hash(self, inst: inst_base.Instantiation) -> str:
+        """Identity of what this image holds, for reusing a build across runs.
+
+        Two images with the same hash are interchangeable. Raising is the right
+        answer for an image that is built fresh for every run.
+        """
+        raise RuntimeError(f"{self.__class__.__name__} has no content hash, so it cannot be cached")
+
+    @staticmethod
+    def file_identity(path: str) -> str:
+        """Cheap stand-in for hashing a whole disk image, which is far too big.
+
+        Catches the file being replaced or rewritten, which is what matters for
+        an image someone drops into place.
+        """
+        stat = pathlib.Path(path).stat()
+        return f"{path}:{stat.st_size}:{stat.st_mtime_ns}"
 
     @staticmethod
     def assert_is_file(path: str) -> None:
@@ -200,6 +236,9 @@ class ExternalDiskImage(DiskImage):
         DiskImage.assert_is_file(path)
         return path
 
+    def content_hash(self, inst: inst_base.Instantiation) -> str:
+        return hash_strings(["external", DiskImage.file_identity(self.path(inst, ""))])
+
     async def boot_artifacts(
         self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
     ) -> dict[BootArtifact, str]:
@@ -255,6 +294,17 @@ class DistroDiskImage(DiskImage):
             raise RuntimeError("Unsupported disk format")
         DiskImage.assert_is_file(path)
         return path
+
+    def content_hash(self, inst: inst_base.Instantiation) -> str:
+        # Every format is built from the same content, so any one of them
+        # identifies it; the one that is there is as good as another.
+        for format in self.available_formats():
+            try:
+                path = self.path(inst, format)
+            except Exception:
+                continue
+            return hash_strings(["distro", self.name, DiskImage.file_identity(path)])
+        raise RuntimeError(f"disk image '{self.name}' is not in the global input directory")
 
     async def boot_artifacts(
         self, inst: inst_base.Instantiation, kinds: list[BootArtifact]

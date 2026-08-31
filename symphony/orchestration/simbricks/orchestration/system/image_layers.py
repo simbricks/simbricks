@@ -60,6 +60,14 @@ class ImageLayer(utils_base.IdObj, utils_base.InputArtifactSource):
             files += file.input_artifact_files()
         return files
 
+    @abc.abstractmethod
+    def hash_parts(self, inst: inst_base.Instantiation) -> list[str]:
+        """What this layer contributes to the image's content hash.
+
+        Everything that changes what the layer does to the image, and nothing
+        that does not -- an id or a scratch path would make every run unique.
+        """
+
     @classmethod
     def fromJSON(cls, json_obj: dict) -> tpe.Self:
         return super().fromJSON(json_obj)
@@ -86,6 +94,13 @@ class AddFiles(ImageLayer):
     def config_files(self) -> list[disk_images.ConfigFile]:
         return list(self.files)
 
+    def hash_parts(self, inst: inst_base.Instantiation) -> list[str]:
+        parts = ["add-files", self.dest_dir, str(self.mode)]
+        for file in self.files:
+            with file.IOHandle(inst) as handle:
+                parts += [file.file_name, disk_images.hash_file(handle)]
+        return parts
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["files"] = [f.toJSON() for f in self.files]
@@ -111,6 +126,9 @@ class RunCommand(ImageLayer):
         super().__init__()
         self.cmd = cmd
 
+    def hash_parts(self, inst: inst_base.Instantiation) -> list[str]:
+        return ["run-command", self.cmd]
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["cmd"] = self.cmd
@@ -132,6 +150,10 @@ class RunScript(ImageLayer):
 
     def config_files(self) -> list[disk_images.ConfigFile]:
         return [self.file]
+
+    def hash_parts(self, inst: inst_base.Instantiation) -> list[str]:
+        with self.file.IOHandle(inst) as handle:
+            return ["run-script", disk_images.hash_file(handle)]
 
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
@@ -219,6 +241,28 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         for layer in self.layers:
             files += layer.input_artifact_files()
         return files
+
+    def prefix_hashes(self, inst: inst_base.Instantiation) -> list[str]:
+        """Content hash after each layer, so a build can start from the longest
+        prefix that was cached. The first entry is the base with no layers.
+
+        The builder class is in the seed: the same layers on the same base give
+        different images depending on which backend ran them.
+        """
+        cls = type(self)
+        seed = [
+            "layered",
+            self.base.content_hash(inst),
+            f"{cls.__module__}.{cls.__qualname__}",
+            str(self.disk_size),
+        ]
+        hashes = [disk_images.hash_strings(seed)]
+        for layer in self.layers:
+            hashes.append(disk_images.hash_strings([hashes[-1]] + layer.hash_parts(inst)))
+        return hashes
+
+    def content_hash(self, inst: inst_base.Instantiation) -> str:
+        return self.prefix_hashes(inst)[-1]
 
     def _base_format(self, format: str) -> str:
         """Format to ask the base image for. Prefer the one we are producing."""
