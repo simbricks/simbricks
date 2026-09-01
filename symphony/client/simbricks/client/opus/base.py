@@ -56,6 +56,7 @@ from ..openapi.client.python.sim_bricks_api_client.models import (
     RunOutputRuntimeType0,
     RunOutputSimulatorsType0,
     RunState,
+    User,
 )
 from ..openapi.client.python.sim_bricks_api_client.models import (
     Simulation as ApiSimulation,
@@ -64,6 +65,19 @@ from ..openapi.client.python.sim_bricks_api_client.models import (
     System as ApiSystem,
 )
 from ..openapi.client.python.sim_bricks_api_client.types import Unset
+
+
+def user_display_name(user: User | None | Unset) -> str:
+    """Readable name for the user the backend attached to an API object.
+
+    Empty when the backend sent none, which is the case for objects created
+    before user references existed.
+    """
+    if not isinstance(user, User):
+        return ""
+
+    full_name = " ".join(part for part in (user.first_name, user.last_name) if part)
+    return full_name or user.username
 
 
 async def still_running(run_id: str) -> bool:
