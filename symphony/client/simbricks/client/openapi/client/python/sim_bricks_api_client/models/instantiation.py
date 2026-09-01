@@ -10,6 +10,7 @@ from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.fragment import Fragment
+    from ..models.user import User
 
 
 T = TypeVar("T", bound="Instantiation")
@@ -26,6 +27,7 @@ class Instantiation:
         simulation_id (None | str | Unset): API Object id
         fragments (list[Fragment] | None | Unset):
         sb_json (None | str | Unset):
+        created_by (None | Unset | User):
     """
 
     id: None | str | Unset = UNSET
@@ -34,9 +36,12 @@ class Instantiation:
     simulation_id: None | str | Unset = UNSET
     fragments: list[Fragment] | None | Unset = UNSET
     sb_json: None | str | Unset = UNSET
+    created_by: None | Unset | User = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.user import User
+
         id: None | str | Unset
         if isinstance(self.id, Unset):
             id = UNSET
@@ -79,6 +84,14 @@ class Instantiation:
         else:
             sb_json = self.sb_json
 
+        created_by: dict[str, Any] | None | Unset
+        if isinstance(self.created_by, Unset):
+            created_by = UNSET
+        elif isinstance(self.created_by, User):
+            created_by = self.created_by.to_dict()
+        else:
+            created_by = self.created_by
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({})
@@ -94,12 +107,15 @@ class Instantiation:
             field_dict["fragments"] = fragments
         if sb_json is not UNSET:
             field_dict["sb_json"] = sb_json
+        if created_by is not UNSET:
+            field_dict["created_by"] = created_by
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         from ..models.fragment import Fragment
+        from ..models.user import User
 
         d = dict(src_dict)
 
@@ -170,6 +186,23 @@ class Instantiation:
 
         sb_json = _parse_sb_json(d.pop("sb_json", UNSET))
 
+        def _parse_created_by(data: object) -> None | Unset | User:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, dict):
+                    raise TypeError()
+                created_by_type_0 = User.from_dict(data)
+
+                return created_by_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(None | Unset | User, data)
+
+        created_by = _parse_created_by(d.pop("created_by", UNSET))
+
         instantiation = cls(
             id=id,
             name=name,
@@ -177,6 +210,7 @@ class Instantiation:
             simulation_id=simulation_id,
             fragments=fragments,
             sb_json=sb_json,
+            created_by=created_by,
         )
 
         instantiation.additional_properties = d

@@ -6,6 +6,7 @@ from typing import Any, Literal, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+from dateutil.parser import isoparse
 
 from ..types import UNSET, Unset
 
@@ -78,7 +79,7 @@ class KillRunReq:
         if isinstance(_produced_at, Unset):
             produced_at = UNSET
         else:
-            produced_at = datetime.datetime.fromisoformat(_produced_at)
+            produced_at = isoparse(_produced_at)
 
         discriminator = cast(Literal["KillRunReq"] | Unset, d.pop("discriminator", UNSET))
         if discriminator != "KillRunReq" and not isinstance(discriminator, Unset):

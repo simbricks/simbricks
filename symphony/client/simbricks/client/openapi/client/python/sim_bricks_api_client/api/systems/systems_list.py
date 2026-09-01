@@ -20,6 +20,7 @@ def _get_kwargs(
     limit: int | None | Unset = UNSET,
     wait: int | None | Unset = UNSET,
     deleted: bool | None | Unset = UNSET,
+    created_by: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
@@ -58,6 +59,13 @@ def _get_kwargs(
     else:
         json_deleted = deleted
     params["deleted"] = json_deleted
+
+    json_created_by: None | str | Unset
+    if isinstance(created_by, Unset):
+        json_created_by = UNSET
+    else:
+        json_created_by = created_by
+    params["createdBy"] = json_created_by
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -126,6 +134,7 @@ def sync_detailed(
     limit: int | None | Unset = UNSET,
     wait: int | None | Unset = UNSET,
     deleted: bool | None | Unset = UNSET,
+    created_by: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | InlineObject | SystemsList200Response]:
     """Retrieve namespace&#39;s systems
 
@@ -136,6 +145,7 @@ def sync_detailed(
         limit (int | None | Unset): Rough number of items to return
         wait (int | None | Unset): Max seconds to wait for a non-empty response.
         deleted (bool | None | Unset):
+        created_by (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -152,6 +162,7 @@ def sync_detailed(
         limit=limit,
         wait=wait,
         deleted=deleted,
+        created_by=created_by,
     )
 
     response = client.get_httpx_client().request(
@@ -170,6 +181,7 @@ def sync(
     limit: int | None | Unset = UNSET,
     wait: int | None | Unset = UNSET,
     deleted: bool | None | Unset = UNSET,
+    created_by: None | str | Unset = UNSET,
 ) -> HTTPValidationError | InlineObject | SystemsList200Response | None:
     """Retrieve namespace&#39;s systems
 
@@ -180,6 +192,7 @@ def sync(
         limit (int | None | Unset): Rough number of items to return
         wait (int | None | Unset): Max seconds to wait for a non-empty response.
         deleted (bool | None | Unset):
+        created_by (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -197,6 +210,7 @@ def sync(
         limit=limit,
         wait=wait,
         deleted=deleted,
+        created_by=created_by,
     ).parsed
 
 
@@ -209,6 +223,7 @@ async def asyncio_detailed(
     limit: int | None | Unset = UNSET,
     wait: int | None | Unset = UNSET,
     deleted: bool | None | Unset = UNSET,
+    created_by: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | InlineObject | SystemsList200Response]:
     """Retrieve namespace&#39;s systems
 
@@ -219,6 +234,7 @@ async def asyncio_detailed(
         limit (int | None | Unset): Rough number of items to return
         wait (int | None | Unset): Max seconds to wait for a non-empty response.
         deleted (bool | None | Unset):
+        created_by (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -235,6 +251,7 @@ async def asyncio_detailed(
         limit=limit,
         wait=wait,
         deleted=deleted,
+        created_by=created_by,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -251,6 +268,7 @@ async def asyncio(
     limit: int | None | Unset = UNSET,
     wait: int | None | Unset = UNSET,
     deleted: bool | None | Unset = UNSET,
+    created_by: None | str | Unset = UNSET,
 ) -> HTTPValidationError | InlineObject | SystemsList200Response | None:
     """Retrieve namespace&#39;s systems
 
@@ -261,6 +279,7 @@ async def asyncio(
         limit (int | None | Unset): Rough number of items to return
         wait (int | None | Unset): Max seconds to wait for a non-empty response.
         deleted (bool | None | Unset):
+        created_by (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -279,5 +298,6 @@ async def asyncio(
             limit=limit,
             wait=wait,
             deleted=deleted,
+            created_by=created_by,
         )
     ).parsed

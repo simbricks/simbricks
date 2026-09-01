@@ -6,6 +6,7 @@ from typing import Any, Literal, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+from dateutil.parser import isoparse
 
 from ..models.run_component_state import RunComponentState
 from ..types import UNSET, Unset
@@ -124,7 +125,7 @@ class ProxyStateChange:
         if isinstance(_produced_at, Unset):
             produced_at = UNSET
         else:
-            produced_at = datetime.datetime.fromisoformat(_produced_at)
+            produced_at = isoparse(_produced_at)
 
         discriminator = cast(Literal["ProxyStateChange"] | Unset, d.pop("discriminator", UNSET))
         if discriminator != "ProxyStateChange" and not isinstance(discriminator, Unset):

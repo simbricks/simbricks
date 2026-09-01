@@ -32,8 +32,6 @@ def _get_kwargs(
 
     _kwargs["files"] = body.to_multipart()
 
-    headers["Content-Type"] = "multipart/form-data; boundary=+++"
-
     _kwargs["headers"] = headers
     return _kwargs
 
