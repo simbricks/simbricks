@@ -31,7 +31,7 @@ from rich.live import Live
 from rich.markup import escape
 from rich.text import Text
 
-from .utils import build_table, print_table_generic
+from .utils import Column, build_table, print_table_generic
 
 _NEXT_KEYS = frozenset(
     {
@@ -88,7 +88,7 @@ class TablePager:
     def __init__(
         self,
         title: str,
-        columns: tuple[str, ...],
+        columns: tuple[Column, ...],
         first_page: tuple[list[typing.Any], str | None],
         fetch_page: FetchPage,
         console: Console | None = None,
@@ -191,7 +191,7 @@ class TablePager:
         self._console.print(build_table(self._title, self._pages[self._index].rows, *self._columns))
 
 
-async def paged_ls(title: str, columns: tuple[str, ...], fetch_page: FetchPage) -> None:
+async def paged_ls(title: str, columns: tuple[Column, ...], fetch_page: FetchPage) -> None:
     """Print a cursor-paginated listing, paging through it where possible.
 
     Fetches the first page and prints it when there is nothing to page to or

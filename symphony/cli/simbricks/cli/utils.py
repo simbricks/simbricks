@@ -22,6 +22,7 @@
 
 import asyncio
 import functools
+import typing
 
 from rich.console import Console
 from rich.table import Table
@@ -53,32 +54,42 @@ def async_cli():
     return decorator_async_cli
 
 
-def build_table(title: str | None, to_print, *args) -> Table:
+Column = str | tuple[str, typing.Callable[[typing.Any], str]]
+"""A table column: an attribute name, or a (header, cell renderer) pair."""
+
+
+def _attribute_cell(key: str, val) -> str:
+    if hasattr(val, key):
+        return str(getattr(val, key))
+    # elif hasattr(val, "__getitem__"):
+    #     return str(val[key])
+    raise Exception(f"could not find attribute {key}")
+
+
+def _resolve_column(column: Column) -> tuple[str, typing.Callable[[typing.Any], str]]:
+    if isinstance(column, str):
+        return column, functools.partial(_attribute_cell, column)
+    return column
+
+
+def build_table(title: str | None, to_print, *args: Column) -> Table:
     table = Table(title=title)
 
-    for key in args:
-        table.add_column(key)
+    columns = [_resolve_column(column) for column in args]
+
+    for header, _ in columns:
+        table.add_column(header)
 
     for val in to_print:
         if val is None:
             continue
 
-        row = []
-
-        for key in args:
-            if hasattr(val, key):
-                row.append(str(getattr(val, key)))
-            # elif hasattr(val, "__getitem__"):
-            #     row.append(str(val[key]))
-            else:
-                raise Exception(f"could not find attribute {key}")
-
-        table.add_row(*row)
+        table.add_row(*(cell(val) for _, cell in columns))
 
     return table
 
 
-def print_table_generic(title: str, to_print, *args):
+def print_table_generic(title: str, to_print, *args: Column):
     console = Console()
     console.print(build_table(title, to_print, *args))
 
