@@ -29,6 +29,7 @@ from rich.table import Table
 from typer import Exit
 
 from simbricks.client.namespace import NsMember, NsRole
+from simbricks.client.opus import base as opus_base
 
 
 def async_cli():
@@ -56,6 +57,13 @@ def async_cli():
 
 Column = str | tuple[str, typing.Callable[[typing.Any], str]]
 """A table column: an attribute name, or a (header, cell renderer) pair."""
+
+
+CREATED_BY_COLUMN: Column = (
+    "created_by",
+    lambda val: opus_base.user_display_name(getattr(val, "created_by", None)),
+)
+"""Column showing who created an API object, for the objects carrying a user."""
 
 
 def _attribute_cell(key: str, val) -> str:

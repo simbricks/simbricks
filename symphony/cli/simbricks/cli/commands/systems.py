@@ -27,11 +27,11 @@ from simbricks.client.opus import base as opus_base
 
 from ..pager import PAGE_SIZE, PEEK_COUNT, paged_ls
 from ..settings import simb_client
-from ..utils import async_cli, print_table_generic
+from ..utils import CREATED_BY_COLUMN, async_cli, print_table_generic
 
 app = Typer(help="Managing SimBricks Systems.")
 
-_SYSTEM_COLUMNS = ("id",)
+_SYSTEM_COLUMNS = ("id", CREATED_BY_COLUMN)
 
 
 @app.command()

@@ -27,11 +27,11 @@ from simbricks.client.opus import base as opus_base
 
 from ..pager import PAGE_SIZE, PEEK_COUNT, paged_ls
 from ..settings import simb_client
-from ..utils import async_cli, print_table_generic
+from ..utils import CREATED_BY_COLUMN, async_cli, print_table_generic
 
 app = Typer(help="Managing SimBricks Instantiations.")
 
-_INSTANTIATION_COLUMNS = ("id", "simulation_id", "fragments")
+_INSTANTIATION_COLUMNS = ("id", "simulation_id", "fragments", CREATED_BY_COLUMN)
 
 
 @app.command()

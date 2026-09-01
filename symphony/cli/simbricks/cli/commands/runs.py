@@ -33,7 +33,7 @@ from simbricks.client.opus import base as opus_base
 
 from ..pager import PAGE_SIZE, PEEK_COUNT, paged_ls
 from ..settings import simb_client
-from ..utils import async_cli, print_table_generic
+from ..utils import CREATED_BY_COLUMN, async_cli, print_table_generic
 
 if typing.TYPE_CHECKING:
     from simbricks.orchestration.instantiation import base as inst_base
@@ -41,7 +41,7 @@ if typing.TYPE_CHECKING:
 
 app = Typer(help="Managing SimBricks runs.")
 
-_RUN_COLUMNS = ("id", "instantiation_id", "state")
+_RUN_COLUMNS = ("id", "instantiation_id", "state", CREATED_BY_COLUMN)
 
 
 @app.command()
@@ -89,7 +89,7 @@ async def show(run_id: str):
     """Show individual run."""
     sbc = await simb_client()
     run = await sbc.get_run(run_id)
-    print_table_generic("Run", [run], "id", "instantiation_id", "state")
+    print_table_generic("Run", [run], *_RUN_COLUMNS)
 
 
 @app.command()
@@ -197,7 +197,7 @@ async def submit(
         run_id = await opus_base.create_run(instantiation=sb_inst)
         run = await sbc.get_run(run_id)
         assert run and run_id == run.id
-        print_table_generic("Run", [run], "id", "instantiation_id", "state")
+        print_table_generic("Run", [run], *_RUN_COLUMNS)
 
     if follow and len(instantiations) > 1:
         print("Won't follow execution as more than one run was submitted.")
@@ -221,7 +221,7 @@ async def create(
     """Create a virtual prototype run based on an already submitted configuration."""
     sbc = await simb_client()
     run = await sbc.create_run(inst_id)
-    print_table_generic("Run", [run], "id", "instantiation_id", "state")
+    print_table_generic("Run", [run], *_RUN_COLUMNS)
 
     if follow and isinstance(run.id, str):
         await opus_base.follow_run(run_id=run.id)
