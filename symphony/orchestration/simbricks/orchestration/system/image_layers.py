@@ -39,7 +39,7 @@ import typing as tp
 
 import typing_extensions as tpe
 
-from simbricks.orchestration.system import disk_images
+from simbricks.orchestration.system import disk_images, image_cache
 from simbricks.utils import base as utils_base
 
 if tp.TYPE_CHECKING:
@@ -269,17 +269,85 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         available = self.base.available_formats()
         return format if format in available else available[0]
 
+    def _cache(self, inst: inst_base.Instantiation) -> image_cache.ImageCache | None:
+        root = inst.env.image_cache_dir()
+        return image_cache.ImageCache(root) if root is not None else None
+
+    async def _build_into(self, inst: inst_base.Instantiation, format: str, out: str) -> None:
+        # The base is not attached to a host, so nothing else prepares it.
+        base_format = self._base_format(format)
+        await self.base._prepare_format(inst, base_format)
+        await self.build(inst, format, self.base.path(inst, base_format), self.layers, out)
+        if not pathlib.Path(out).is_file():
+            raise RuntimeError(f"image build produced no output at '{out}'")
+
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         out = self.path(inst, format)
         async with inst.prepare_lock(out):
             if pathlib.Path(out).is_file():
                 return
-            # The base is not attached to a host, so nothing else prepares it.
-            base_format = self._base_format(format)
-            await self.base._prepare_format(inst, base_format)
-            await self.build(inst, format, self.base.path(inst, base_format), self.layers, out)
-            if not pathlib.Path(out).is_file():
-                raise RuntimeError(f"image build produced no output at '{out}'")
+            cache = self._cache(inst)
+            if cache is None:
+                await self._build_into(inst, format, out)
+                return
+
+            digest = self.content_hash(inst)
+            # Held across the build, so a second run wanting the same image
+            # waits for this one rather than building it again.
+            async with cache.locked(digest):
+                cached = cache.image(digest, format)
+                if cached is not None and cache.take_out(cached, out):
+                    return
+                await self._build_into(inst, format, out)
+                cache.store_image(digest, format, out)
+
+    async def boot_artifacts(
+        self, inst: inst_base.Instantiation, kinds: list[disk_images.BootArtifact]
+    ) -> dict[disk_images.BootArtifact, str]:
+        """Boot files for this image, from the cache when a previous run put them
+        there. That is what makes them survive a cache hit, where no build runs
+        and a backend that collects them while building never gets the chance.
+        """
+        if not kinds:
+            return {}
+        out_dir = pathlib.Path(inst.env.img_dir(f"boot.{self.id()}"))
+        out_dir.mkdir(parents=True, exist_ok=True)
+        cache = self._cache(inst)
+        digest = self.content_hash(inst) if cache is not None else ""
+
+        async with inst.prepare_lock(out_dir.as_posix()):
+            wanted = [k for k in kinds if not (out_dir / k.value).is_file()]
+            if wanted and cache is not None:
+                for kind in list(wanted):
+                    cached = cache.boot_artifact(digest, kind.value)
+                    if cached is not None and cache.take_out(
+                        cached, (out_dir / kind.value).as_posix()
+                    ):
+                        wanted.remove(kind)
+            if wanted:
+                await self._produce_boot_artifacts(inst, wanted, out_dir)
+            for kind in kinds:
+                path = out_dir / kind.value
+                if not path.is_file():
+                    raise RuntimeError(f"'{kind.value}' was not produced for this image")
+                # Also for the ones the build itself collected, which is how a
+                # backend that only gets them while building survives a hit.
+                if cache is not None and cache.boot_artifact(digest, kind.value) is None:
+                    cache.store_boot_artifact(digest, kind.value, path.as_posix())
+
+        return {k: (out_dir / k.value).as_posix() for k in kinds}
+
+    async def _produce_boot_artifacts(
+        self,
+        inst: inst_base.Instantiation,
+        kinds: list[disk_images.BootArtifact],
+        out_dir: pathlib.Path,
+    ) -> None:
+        """Put @kinds into @out_dir, named by kind. Called only for the ones
+        neither this run nor the cache already has."""
+        raise RuntimeError(
+            f"{self.__class__.__name__} cannot provide boot artifacts {[k.value for k in kinds]}"
+        )
 
     @abc.abstractmethod
     async def build(

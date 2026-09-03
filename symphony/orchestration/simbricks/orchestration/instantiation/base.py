@@ -55,9 +55,12 @@ class InstantiationEnvironment(utils_base.IdObj):
         self,
         workdir: pathlib.Path,
         global_input_dir: pathlib.Path | None,
+        image_cache_dir: pathlib.Path | None = None,
     ):
         super().__init__()
         self._work_dir: pathlib.Path = workdir.resolve()
+        # Outside the work directory on purpose: what it holds outlives the run.
+        self._image_cache_dir: pathlib.Path | None = image_cache_dir
 
         self._global_input_dir: pathlib.Path | None = None
         self._global_input_dir_src: pathlib.Path | None = global_input_dir
@@ -73,6 +76,12 @@ class InstantiationEnvironment(utils_base.IdObj):
     # --------------------------------------------------
     # Read-only accessor functions for path properties -
     # --------------------------------------------------
+
+    def image_cache_dir(self) -> str | None:
+        """Where built images are kept for later runs. None disables that."""
+        if self._image_cache_dir is None:
+            return None
+        return self._image_cache_dir.as_posix()
 
     def work_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
