@@ -67,6 +67,12 @@ variable "serial_log" {
   description = "File to write the guest's serial console to. The only view into a boot that never reaches SSH."
 }
 
+variable "use_backing_file" {
+  type        = bool
+  default     = false
+  description = "Write only what this build changes, reading the rest from source_image."
+}
+
 variable "seed_files" {
   type        = list(string)
   description = "cloud-init NoCloud seed (user-data, meta-data, network-config), attached as a CD."
@@ -136,6 +142,7 @@ source "qemu" "image" {
   iso_url          = var.source_image
   iso_checksum     = var.source_checksum
   disk_image       = true
+  use_backing_file = var.use_backing_file
   disk_size        = var.disk_size
   format           = "qcow2"
   accelerator      = var.accelerator

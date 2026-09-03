@@ -239,6 +239,7 @@ class PackerImage(image_layers.LayeredDiskImage):
         base_path: str,
         layers: list[image_layers.ImageLayer],
         out_path: str,
+        overlay: bool = False,
     ) -> None:
         scratch = self._scratch_dir(inst)
         # Packer refuses to write into a directory that already exists, and a
@@ -264,6 +265,8 @@ class PackerImage(image_layers.LayeredDiskImage):
         variables = {
             "source_image": base_path,
             "source_checksum": "none",
+            # Keep only what this build changes, read against the image it starts from.
+            "use_backing_file": "true" if overlay else "false",
             "seed_files": json.dumps(seed_files),
             "name": f"{self.id()}.qcow2",
             "output": out_dir.as_posix(),
