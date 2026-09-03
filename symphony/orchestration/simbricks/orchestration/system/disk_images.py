@@ -26,6 +26,7 @@ import abc
 import asyncio
 import enum
 import io
+import os
 import pathlib
 import tarfile
 import typing as tp
@@ -39,6 +40,11 @@ if tp.TYPE_CHECKING:
     from simbricks.orchestration.simulation import host as sim_host
     from simbricks.orchestration.system import base as sys_base
     from simbricks.orchestration.system.host import base as sys_host
+
+
+# Local filesystem paths are taken as str or as anything path-like, e.g. a
+# pathlib.Path, and always stored as str.
+StrPath: tpe.TypeAlias = str | os.PathLike[str]
 
 
 class BootArtifact(enum.Enum):
@@ -177,9 +183,9 @@ class DummyDiskImage(DiskImage):
 
 # Disk image where user just provides a path
 class ExternalDiskImage(DiskImage):
-    def __init__(self, system: sys_base.System, path: str, boot_dir: str | None = None) -> None:
+    def __init__(self, system: sys_base.System, path: StrPath, boot_dir: str | None = None) -> None:
         super().__init__(system)
-        self._path = path
+        self._path = os.fspath(path)
         # Prebuilt boot artifacts, named after the BootArtifact values. Without it the
         # image cannot serve boot_artifacts(): extracting them needs tooling core does
         # not depend on.
@@ -333,9 +339,9 @@ class LinuxConfigDiskImage(DynamicDiskImage):
 # Could of course also have a version that generates the packer config from
 # python
 class PackerDiskImage(DynamicDiskImage):
-    def __init__(self, system: sys_base.System, packer_config_path: str) -> None:
+    def __init__(self, system: sys_base.System, packer_config_path: StrPath) -> None:
         super().__init__(system)
-        self.config_path = packer_config_path
+        self.config_path = os.fspath(packer_config_path)
         self.vars: dict[str, str] = {}
         self._prepared: bool = False
 
@@ -409,10 +415,10 @@ class ConfigFile(utils_base.IdObj, utils_base.InputArtifactSource):
 
 
 class ConfigFileLocal(ConfigFile):
-    def __init__(self, file_name: str, path: str):
+    def __init__(self, file_name: str, path: StrPath):
         super().__init__(file_name)
         # Path of the local file to be added to the image
-        self.path: str = path
+        self.path: str = os.fspath(path)
         self.open_mode: str = "rb"
 
     def IOHandle(self, inst: inst_base.Instantiation) -> tp.IO:
@@ -456,7 +462,7 @@ class ConfigFileStr(ConfigFile):
 class ConfigFileArtifact(ConfigFile):
     """Local filei, shipped to the runner if necessary as input artifact."""
 
-    def __init__(self, file_name: str, path: str):
+    def __init__(self, file_name: str, path: StrPath):
         super().__init__(file_name)
         # Path of the local file, relative to where the script defining the system runs
         self.path: str = pathlib.Path(path).resolve().as_posix()
