@@ -35,7 +35,7 @@ import sys
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
-from simbricks.orchestration.system import image_layers
+from simbricks.orchestration.system import image_cache, image_layers
 from simbricks.runtime import output as sim_out
 from simbricks.runtime.runs import base as runs_base
 from simbricks.runtime.runs import local as rt_local
@@ -124,6 +124,17 @@ def parse_args() -> argparse.Namespace:
         help="Keep the image cache under this size, e.g. 200G, evicting least recently used",
     )
     g_env.add_argument(
+        "--image-cache-compression",
+        metavar="ALGO",
+        type=str,
+        choices=image_cache.COMPRESSIONS,
+        help=(
+            "How to compress images kept in the cache (default: "
+            f"{image_cache.COMPRESSION_DEFAULT}). 'none' trades cache space for"
+            " a little less work reading an image back"
+        ),
+    )
+    g_env.add_argument(
         "--workdir",
         metavar="DIR",
         type=pathlib.Path,
@@ -181,7 +192,11 @@ def add_exp(
     )
     cache_size = image_layers.parse_size(args.image_cache_size) if args.image_cache_size else None
     env = inst_base.InstantiationEnvironment(
-        pathlib.Path(workdir).resolve(), args.global_input_dir, args.image_cache_dir, cache_size
+        pathlib.Path(workdir).resolve(),
+        args.global_input_dir,
+        args.image_cache_dir,
+        cache_size,
+        args.image_cache_compression,
     )
     instantiation.env = env
     assert len(instantiation.fragments) == 1

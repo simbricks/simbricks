@@ -57,12 +57,14 @@ class InstantiationEnvironment(utils_base.IdObj):
         global_input_dir: pathlib.Path | None,
         image_cache_dir: pathlib.Path | None = None,
         image_cache_size: int | None = None,
+        image_cache_compression: str | None = None,
     ):
         super().__init__()
         self._work_dir: pathlib.Path = workdir.resolve()
         # Outside the work directory on purpose: what it holds outlives the run.
         self._image_cache_dir: pathlib.Path | None = image_cache_dir
         self._image_cache_size: int | None = image_cache_size
+        self._image_cache_compression: str | None = image_cache_compression
 
         self._global_input_dir: pathlib.Path | None = None
         self._global_input_dir_src: pathlib.Path | None = global_input_dir
@@ -88,6 +90,11 @@ class InstantiationEnvironment(utils_base.IdObj):
     def image_cache_size(self) -> int | None:
         """Bytes the image cache may take up. None lets it grow without bound."""
         return self._image_cache_size
+
+    def image_cache_compression(self) -> str | None:
+        """How images are compressed on their way into the cache. None asks for
+        the default; see image_cache.compression for the names."""
+        return self._image_cache_compression
 
     def work_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
