@@ -35,6 +35,8 @@ import abc
 import os
 import pathlib
 import re
+import shlex
+import shutil
 import typing as tp
 
 import typing_extensions as tpe
@@ -195,6 +197,9 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         keeps the base's size, and a size below it is left alone rather than
         shrinking the image. Not a layer: the build materializes one image, so
         this can only happen as it is created."""
+        self.qemu_img_exec = "qemu-img"
+        """What the image, and the chain it may be a delta on, are manipulated
+        with -- here and in the backends, which all build qcow2."""
 
     def add_layer(self, layer: ImageLayer) -> ImageLayer:
         self.layers.append(layer)
@@ -416,10 +421,80 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
     ) -> None:
         """Produce @out_path in @format from @base_path by applying @layers."""
 
+    def _require_qemu_img(self) -> str:
+        """Check qemu-img is there, so a missing one is reported here and by name.
+
+        Not a dependency of the package: qemu is not packaged for conda, so
+        this being installed says nothing about it being available.
+        """
+        if shutil.which(self.qemu_img_exec) is None:
+            raise RuntimeError(
+                f"'{self.qemu_img_exec}' not found: building a layered image needs"
+                " qemu-utils installed on the runner"
+            )
+        return self.qemu_img_exec
+
+    async def convert_image(
+        self, inst: inst_base.Instantiation, source: str, out: str, format: str
+    ) -> None:
+        """Write @source, and anything it is a delta on, to @out as one @format image."""
+        partial = f"{out}.partial"
+        await inst.command_executor.exec_prepare_cmds(
+            [shlex.join([self._require_qemu_img(), "convert", "-O", format, source, partial])]
+        )
+        pathlib.Path(partial).rename(out)
+
+    async def overlay_image(self, inst: inst_base.Instantiation, backing: str, out: str) -> None:
+        """Put an empty image at @out that reads everything from @backing."""
+        await inst.command_executor.exec_prepare_cmds(
+            [
+                shlex.join(
+                    [
+                        self._require_qemu_img(),
+                        "create",
+                        "-q",
+                        "-f",
+                        image_cache.FORMAT,
+                        "-F",
+                        image_cache.FORMAT,
+                        "-b",
+                        backing,
+                        out,
+                    ]
+                )
+            ]
+        )
+
+    async def rebase_image(self, inst: inst_base.Instantiation, image: str, backing: str) -> None:
+        """Record @backing as where @image reads what it does not hold itself.
+        Changes nothing about the contents of either."""
+        # -u rewrites where the image says its backing is and touches no data,
+        # which is what we want: the data is already right, the path is not.
+        await inst.command_executor.exec_prepare_cmds(
+            [
+                shlex.join(
+                    [
+                        self._require_qemu_img(),
+                        "rebase",
+                        "-q",
+                        "-u",
+                        "-f",
+                        image_cache.FORMAT,
+                        "-F",
+                        image_cache.FORMAT,
+                        "-b",
+                        backing,
+                        image,
+                    ]
+                )
+            ]
+        )
+
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["base"] = self.base.id()
         json_obj["disk_size"] = self.disk_size
+        json_obj["qemu_img_exec"] = self.qemu_img_exec
         json_obj["layers"] = [layer.toJSON() for layer in self.layers]
         return json_obj
 
@@ -430,6 +505,7 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         # it has the lower id and System.fromJSON already deserialized it.
         instance.base = system._get_disk_image(utils_base.get_json_attr_top(json_obj, "base"))
         instance.disk_size = utils_base.get_json_attr_top_or_none(json_obj, "disk_size")
+        instance.qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
         instance.layers = [
             utils_base.get_cls_by_json(layer).fromJSON(layer)
             for layer in utils_base.get_json_attr_top(json_obj, "layers")

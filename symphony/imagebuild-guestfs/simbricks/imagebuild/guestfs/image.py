@@ -98,7 +98,6 @@ class GuestfsImage(image_layers.LayeredDiskImage):
     def __init__(self, system: sys_base.System, base: disk_images.DiskImage) -> None:
         super().__init__(system, base)
         self.virt_customize_exec = "virt-customize"
-        self.qemu_img_exec = "qemu-img"
         self.virt_ls_exec = "virt-ls"
         self.guestfish_exec = "guestfish"
         self.grow_filesystem = True
@@ -121,7 +120,6 @@ class GuestfsImage(image_layers.LayeredDiskImage):
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["virt_customize_exec"] = self.virt_customize_exec
-        json_obj["qemu_img_exec"] = self.qemu_img_exec
         json_obj["virt_ls_exec"] = self.virt_ls_exec
         json_obj["guestfish_exec"] = self.guestfish_exec
         json_obj["grow_filesystem"] = self.grow_filesystem
@@ -135,7 +133,6 @@ class GuestfsImage(image_layers.LayeredDiskImage):
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.virt_customize_exec = utils_base.get_json_attr_top(json_obj, "virt_customize_exec")
-        instance.qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
         instance.virt_ls_exec = utils_base.get_json_attr_top(json_obj, "virt_ls_exec")
         instance.guestfish_exec = utils_base.get_json_attr_top(json_obj, "guestfish_exec")
         instance.grow_filesystem = utils_base.get_json_attr_top(json_obj, "grow_filesystem")

@@ -68,7 +68,6 @@ class PackerImage(image_layers.LayeredDiskImage):
     def __init__(self, system: sys_base.System, base: disk_images.DiskImage) -> None:
         super().__init__(system, base)
         self.packer_exec = "packer"
-        self.qemu_img_exec = "qemu-img"
         self.qemu_binary = "qemu-system-x86_64"
         self.accelerator: str | None = None
         """Passed to packer. None picks kvm where the runner has it, else tcg."""
@@ -89,7 +88,6 @@ class PackerImage(image_layers.LayeredDiskImage):
     def toJSON(self) -> dict:
         json_obj = super().toJSON()
         json_obj["packer_exec"] = self.packer_exec
-        json_obj["qemu_img_exec"] = self.qemu_img_exec
         json_obj["qemu_binary"] = self.qemu_binary
         json_obj["accelerator"] = self.accelerator
         json_obj["mem_size"] = self.mem_size
@@ -104,7 +102,6 @@ class PackerImage(image_layers.LayeredDiskImage):
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
         instance = super().fromJSON(system, json_obj)
         instance.packer_exec = utils_base.get_json_attr_top(json_obj, "packer_exec")
-        instance.qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
         instance.qemu_binary = utils_base.get_json_attr_top(json_obj, "qemu_binary")
         instance.accelerator = utils_base.get_json_attr_top_or_none(json_obj, "accelerator")
         instance.mem_size = utils_base.get_json_attr_top(json_obj, "mem_size")
