@@ -60,6 +60,15 @@ def _env() -> list[str]:
     return ["env", "LIBGUESTFS_BACKEND=direct"]
 
 
+def _version_key(value: str) -> list[tuple[int, object]]:
+    """Sort key comparing digit runs numerically, so -100 beats -99."""
+    return [
+        (0, int(part)) if part.isdigit() else (1, part)
+        for part in re.split(r"(\d+)", value)
+        if part
+    ]
+
+
 def _require(exe: str) -> str:
     """Check a tool is present, so a missing one is reported here and by name.
 
@@ -79,6 +88,9 @@ _SECTOR_BYTES = 512
 # What a GPT backup header needs at the end of the disk.
 _GPT_TAIL_SECTORS = 34
 
+# Where in the guest the debug kernel's uncompressed ELF lives.
+_VMLINUX_DIR = "/usr/lib/debug/boot"
+
 
 class GuestfsImage(image_layers.LayeredDiskImage):
     """A layered image built offline with virt-customize."""
@@ -87,12 +99,14 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         super().__init__(system, base)
         self.virt_customize_exec = "virt-customize"
         self.qemu_img_exec = "qemu-img"
+        self.virt_ls_exec = "virt-ls"
         self.guestfish_exec = "guestfish"
         self.grow_filesystem = True
         """Whether disk_size grows the filesystem too, not just the disk and its
         partition. False for a filesystem this cannot grow: do it in a layer
         instead, where the guest's own tools are available."""
         self.virt_filesystems_exec = "virt-filesystems"
+        self.virt_copy_out_exec = "virt-copy-out"
         self.cpus: int | None = None
         """vCPUs for the appliance. libguestfs gives it one, which is ample for
         installing packages and hopeless for a layer that compiles something.
@@ -108,11 +122,13 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         json_obj = super().toJSON()
         json_obj["virt_customize_exec"] = self.virt_customize_exec
         json_obj["qemu_img_exec"] = self.qemu_img_exec
+        json_obj["virt_ls_exec"] = self.virt_ls_exec
         json_obj["guestfish_exec"] = self.guestfish_exec
         json_obj["grow_filesystem"] = self.grow_filesystem
         json_obj["virt_filesystems_exec"] = self.virt_filesystems_exec
         json_obj["cpus"] = self.cpus
         json_obj["mem_size"] = self.mem_size
+        json_obj["virt_copy_out_exec"] = self.virt_copy_out_exec
         return json_obj
 
     @classmethod
@@ -120,14 +136,18 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         instance = super().fromJSON(system, json_obj)
         instance.virt_customize_exec = utils_base.get_json_attr_top(json_obj, "virt_customize_exec")
         instance.qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
+        instance.virt_ls_exec = utils_base.get_json_attr_top(json_obj, "virt_ls_exec")
         instance.guestfish_exec = utils_base.get_json_attr_top(json_obj, "guestfish_exec")
         instance.grow_filesystem = utils_base.get_json_attr_top(json_obj, "grow_filesystem")
         instance.virt_filesystems_exec = utils_base.get_json_attr_top(
             json_obj, "virt_filesystems_exec"
         )
+        instance.virt_copy_out_exec = utils_base.get_json_attr_top(json_obj, "virt_copy_out_exec")
         instance.cpus = utils_base.get_json_attr_top_or_none(json_obj, "cpus")
         instance.mem_size = utils_base.get_json_attr_top_or_none(json_obj, "mem_size")
         return instance
+
+    # ---- building ----------------------------------------------------------
 
     def _scratch_dir(self, inst: inst_base.Instantiation) -> pathlib.Path:
         path = pathlib.Path(inst.env.img_dir(f"build.{self.id()}"))
@@ -320,3 +340,68 @@ class GuestfsImage(image_layers.LayeredDiskImage):
             )
         await inst.command_executor.exec_prepare_cmds(cmds)
         pathlib.Path(partial).rename(out_path)
+
+    # ---- boot artifacts ----------------------------------------------------
+
+    def _built_image(self, inst: inst_base.Instantiation) -> str:
+        for format in self.available_formats():
+            path = self.path(inst, format)
+            if pathlib.Path(path).is_file():
+                return path
+        raise RuntimeError(f"{type(self).__name__}-{self.id()}: image has not been built yet")
+
+    async def _kernel_version(self, image: str) -> str:
+        """Newest kernel installed in the image, read from /boot."""
+        proc = await asyncio.create_subprocess_exec(
+            *(_env() + [_require(self.virt_ls_exec), "-a", image, "/boot"]),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"could not list /boot in '{image}': {stderr.decode(errors='replace')}"
+            )
+        versions = sorted(
+            (
+                line[len("vmlinuz-") :]
+                for line in stdout.decode(errors="replace").splitlines()
+                if line.startswith("vmlinuz-")
+            ),
+            key=_version_key,
+        )
+        if not versions:
+            raise RuntimeError(f"no /boot/vmlinuz-* in '{image}'")
+        return versions[-1]
+
+    async def _produce_boot_artifacts(
+        self,
+        inst: inst_base.Instantiation,
+        kinds: list[disk_images.BootArtifact],
+        out_dir: pathlib.Path,
+    ) -> None:
+        image = self._built_image(inst)
+        version = await self._kernel_version(image)
+        # What each kind is called inside the guest.
+        guest_names = {
+            disk_images.BootArtifact.VMLINUZ: f"/boot/vmlinuz-{version}",
+            disk_images.BootArtifact.INITRD: f"/boot/initrd.img-{version}",
+            disk_images.BootArtifact.VMLINUX: f"{_VMLINUX_DIR}/vmlinux-{version}",
+        }
+        # One copy-out for all: the appliance boot is the cost, not the number
+        # of files.
+        cmd = _env() + [_require(self.virt_copy_out_exec), "-a", image]
+        cmd += [guest_names[k] for k in kinds]
+        cmd += [out_dir.as_posix()]
+        await inst.command_executor.exec_prepare_cmds([shlex.join(cmd)])
+        for kind in kinds:
+            src = out_dir / pathlib.PurePosixPath(guest_names[kind]).name
+            if not src.is_file():
+                msg = f"'{guest_names[kind]}' is not in this image."
+                if kind is disk_images.BootArtifact.VMLINUX:
+                    msg += (
+                        " An uncompressed vmlinux comes from the kernel's debug"
+                        " package; add a layer that installs it."
+                    )
+                raise RuntimeError(msg)
+            src.rename(out_dir / kind.value)
