@@ -317,16 +317,42 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         base_path: str,
         layers: list[image_layers.ImageLayer],
         out_path: str,
+        overlay: bool = False,
     ) -> None:
         scratch = self._scratch_dir(inst)
         # Under a temporary name, so a crashed build leaves nothing the next
         # run would mistake for a finished image.
         partial = f"{out_path}.partial"
-        cmds = [
-            shlex.join([_require(self.qemu_img_exec), "convert", "-O", format, base_path, partial])
-        ]
+        pathlib.Path(partial).unlink(missing_ok=True)
+        if overlay:
+            # Only what the layers write lands here; the rest is read from
+            # base_path, which this keeps pointing at.
+            cmds = [
+                shlex.join(
+                    [
+                        _require(self.qemu_img_exec),
+                        "create",
+                        "-q",
+                        "-f",
+                        format,
+                        "-F",
+                        "qcow2",
+                        "-b",
+                        base_path,
+                        partial,
+                    ]
+                )
+            ]
+        else:
+            cmds = [
+                shlex.join(
+                    [_require(self.qemu_img_exec), "convert", "-O", format, base_path, partial]
+                )
+            ]
         wanted = image_layers.parse_size(self.disk_size) if self.disk_size else 0
-        if wanted > await self._virtual_size(base_path):
+        # An overlay inherits the size of the image it is a delta on, which was
+        # grown when that one was built.
+        if not overlay and wanted > await self._virtual_size(base_path):
             cmds += await self._grow_cmds(base_path, partial, wanted)
         args = self._layer_args(inst, layers, scratch)
         if args:
