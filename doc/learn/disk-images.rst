@@ -201,9 +201,10 @@ under that hash and reused:
   simbricks-run --image-cache-dir /var/cache/simbricks-images \
                 --image-cache-size 200G ...
 
-On a Runner, the same is configured with ``image_cache_dir`` and ``image_cache_size`` in the
-fragment executor settings. With no cache directory, every run builds its images from scratch, as
-before.
+On a Runner the same is configured with the ``IMAGE_CACHE_DIR`` and ``IMAGE_CACHE_SIZE``
+environment variables — see :ref:`sec-local-runner-settings`, which also covers what a Runner
+executing fragments in containers needs beyond that. With no cache directory, every run builds
+its images from scratch, as before.
 
 What the cache gives you:
 
@@ -225,7 +226,7 @@ What the cache gives you:
 - **Entries are compressed**, with zstd, which typically cuts an entry to a third of its size for
   a read cost in the low percent — so a cache of a given size holds more images and evicts less
   often. It is paid once, when the entry is written. ``--image-cache-compression`` (or
-  ``image_cache_compression`` on a Runner) takes ``none`` to turn it off, or ``zlib`` for a QEMU
+  ``IMAGE_CACHE_COMPRESSION`` on a Runner) takes ``none`` to turn it off, or ``zlib`` for a QEMU
   too old to read zstd.
 
 Anything that is per-run — ``LinuxConfigDiskImage``, above all — is never cached and says so if
