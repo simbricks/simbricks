@@ -317,15 +317,40 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
             await self._run_build(
                 inst, image_cache.FORMAT, parent, self.layers[done:], built, overlay=True
             )
+            kept = await self._compressed(inst, built, parent, scratch)
             # Record where the parent sits relative to this entry, not where it
             # happens to be now: that is what lets the chain be hard linked
             # somewhere else and still resolve.
-            await self.rebase_image(inst, built, f"../{hashes[done]}/{image_cache.IMAGE}")
-            cache.store_image(hashes[-1], built, parent=hashes[done])
+            await self.rebase_image(inst, kept, f"../{hashes[done]}/{image_cache.IMAGE}")
+            cache.store_image(hashes[-1], kept, parent=hashes[done])
             return
 
         await self._build_from_base(inst, image_cache.FORMAT, built)
-        cache.store_image(hashes[-1], built)
+        kept = await self._compressed(inst, built, None, scratch)
+        cache.store_image(hashes[-1], kept)
+
+    async def _compressed(
+        self,
+        inst: inst_base.Instantiation,
+        built: str,
+        parent: str | None,
+        scratch: pathlib.Path,
+    ) -> str:
+        """The file to keep as the entry: a compressed copy, unless the runner
+        turned that off, in which case the built one as it stands.
+
+        @parent has to be passed on: a plain convert reads through the chain and
+        writes out a whole image, which is the opposite of what an entry is for.
+        """
+        algorithm = image_cache.compression(inst.env.image_cache_compression())
+        if algorithm == image_cache.NO_COMPRESSION:
+            return built
+        out = (scratch / "compressed.qcow2").as_posix()
+        pathlib.Path(out).unlink(missing_ok=True)
+        await self.compress_image(inst, built, out, parent, algorithm)
+        if not pathlib.Path(out).is_file():
+            raise RuntimeError(f"compressing the image produced no output at '{out}'")
+        return out
 
     async def _take_out(
         self,
@@ -521,6 +546,34 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
                 )
             ]
         )
+
+    async def compress_image(
+        self,
+        inst: inst_base.Instantiation,
+        source: str,
+        out: str,
+        backing: str | None,
+        algorithm: str,
+    ) -> None:
+        """Write @source to @out compressed with @algorithm, holding the same
+        data. With @backing, @out stays a delta on it rather than growing into
+        a whole image."""
+        cmd = [
+            self._require_qemu_img(),
+            "convert",
+            "-q",
+            "-O",
+            image_cache.FORMAT,
+            "-c",
+            "-o",
+            f"compression_type={algorithm}",
+        ]
+        if backing is not None:
+            # Without -B convert reads through the chain and writes the whole
+            # image out, turning a megabyte delta into a gigabyte entry.
+            cmd += ["-B", backing, "-F", image_cache.FORMAT]
+        cmd += [source, out]
+        await inst.command_executor.exec_prepare_cmds([shlex.join(cmd)])
 
     async def rebase_image(self, inst: inst_base.Instantiation, image: str, backing: str) -> None:
         """Record @backing as where @image reads what it does not hold itself.

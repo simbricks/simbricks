@@ -51,6 +51,28 @@ IMAGE = f"image.{FORMAT}"
 # Reproducible from that chain, so eviction drops these before anything else.
 FLAT = "image.%s"
 
+# How an entry's image is compressed: paid once, when the entry is written, and
+# read back by every run that hits it, which is why it is on by default.
+NO_COMPRESSION = "none"
+COMPRESSIONS = (NO_COMPRESSION, "zstd", "zlib")
+COMPRESSION_DEFAULT = "zstd"
+
+
+def compression(name: str | None) -> str:
+    """The compression to write entries with. None asks for the default.
+
+    zlib is offered because it is what every qemu can read, but it is not the
+    default: it compresses no better than zstd while costing several times as
+    much to write and to read back.
+    """
+    if name is None:
+        return COMPRESSION_DEFAULT
+    if name not in COMPRESSIONS:
+        raise RuntimeError(
+            f"'{name}' is not an image compression, pick one of {', '.join(COMPRESSIONS)}"
+        )
+    return name
+
 
 def for_instantiation(inst: inst_base.Instantiation) -> "ImageCache | None":
     """The cache this run should use, or None when it was not given one."""
