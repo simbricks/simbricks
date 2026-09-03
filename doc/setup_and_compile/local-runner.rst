@@ -99,3 +99,56 @@ Hardware/OS requirements are the same as for the executor image (see :ref:`sec-d
 ``/dev/kvm`` for QEMU, ``kernel.perf_event_paranoid <= 1`` for gem5, and disk images available
 under the global input directory (pre-installed in the executor image; for bare-metal setups,
 provide them yourself and set ``GLOBAL_INPUT_DIR`` — see :ref:`sec-disk-images-global-input`).
+
+.. _sec-local-runner-settings:
+
+Runner settings and the image cache
+===================================
+
+Beyond the fragment executor list, the Runner and its fragment executors are configured through
+environment variables, or a ``runner.env`` file next to the Runner:
+
+.. list-table::
+  :header-rows: 1
+  :widths: 32 68
+
+  * - Variable
+    - Meaning
+  * - ``GLOBAL_INPUT_DIR``
+    - Where prebuilt disk images and their boot artifacts are found
+      (:ref:`sec-disk-images-global-input`).
+  * - ``IMAGE_CACHE_DIR``
+    - Where images built for a run are kept for later runs. Unset means no cache: every run
+      builds its images again.
+  * - ``IMAGE_CACHE_SIZE``
+    - How large that may grow, e.g. ``200G``. Unset lets it grow without bound.
+  * - ``IMAGE_CACHE_COMPRESSION``
+    - ``zstd`` (the default), ``zlib`` for a QEMU too old to read zstd, or ``none``. An unknown
+      name is rejected when the executor starts.
+
+:ref:`sec-disk-images-caching` describes what the cache does for a run. Its directory is kept
+across runs, outside their working directories, and is content-addressed and rebuilt on demand,
+so it can be deleted while the Runner is idle.
+
+With the **local plugin** the fragment executor inherits the Runner's environment. The **docker
+plugin** starts a container per fragment, with ``--rm``, so the cache directory is mounted into it
+and named inside it through ``docker_opts``:
+
+.. code-block:: yaml
+
+  fragment_executors:
+    - base_executor:
+        plugin: simbricks.runner.main_runner.plugins.docker_plugin
+        docker_opts:
+          - "-v"
+          - "/var/cache/simbricks-images:/image-cache"
+          - "-e"
+          - "IMAGE_CACHE_DIR=/image-cache"
+          - "-e"
+          - "IMAGE_CACHE_SIZE=200G"
+
+Several Runners can share one cache directory, including over a network filesystem. Entries are
+locked while they are built, so two Runners wanting the same image wait for one build rather than
+running two, and an entry that another machine evicts between being looked up and being read is
+treated as a miss instead of failing the run. Eviction leaves alone whatever a run is currently
+holding.
