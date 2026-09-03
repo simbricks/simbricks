@@ -1,6 +1,7 @@
 # Packer template for layered SimBricks images, vendored from image-builder's
-# image.pkr.hcl. It boots @source_image and runs @scripts in the guest.
-# Everything it runs is composed by
+# image.pkr.hcl. It boots @source_image, runs @scripts in the guest, and
+# downloads the boot artifacts over SSH before the VM shuts down, so the runner
+# needs no libguestfs. Everything it runs is composed by
 # simbricks.imagebuild.packer; keep the two in sync when image-builder changes.
 
 packer {
@@ -48,10 +49,16 @@ variable "input" {
   description = "Optional local tarball, unpacked to /tmp/input before the scripts run."
 }
 
+variable "boot_artifacts" {
+  type        = string
+  default     = ""
+  description = "Local path for a tar of the guest's boot files. Empty skips the download."
+}
+
 variable "cleanup_script" {
   type        = string
   default     = ""
-  description = "Script run last, after the layers. Empty skips it."
+  description = "Script run last, after the boot files are downloaded. Empty skips it."
 }
 
 variable "serial_log" {
@@ -121,6 +128,8 @@ variable "https_proxy" {
 locals {
   # Run each script as root, forwarding any proxy.
   execute_command = "chmod +x {{.Path}}; sudo -E env {{.Vars}} http_proxy=${var.http_proxy} https_proxy=${var.https_proxy} {{.Path}}"
+  # Staged outside /tmp, which the cleanup script wipes.
+  boot_tar        = "/var/tmp/simbricks-boot.tar"
 }
 
 source "qemu" "image" {
@@ -192,7 +201,46 @@ build {
     }
   }
 
-  # 3. sanitize + shrink, last.
+  # 3. boot artifacts, pulled over the SSH connection while the guest is up.
+  #    One tar, so a missing vmlinux (no debug kernel installed) is not a
+  #    missing download source, and so the whole set costs one round trip.
+  dynamic "provisioner" {
+    for_each = var.boot_artifacts == "" ? [] : [var.boot_artifacts]
+    labels   = ["shell"]
+    content {
+      execute_command = local.execute_command
+      inline = [
+        "set -eu",
+        "kver=$(ls -1 /boot/vmlinuz-* | sed 's|.*/vmlinuz-||' | sort -V | tail -1)",
+        "rm -rf /var/tmp/simbricks-boot && mkdir -p /var/tmp/simbricks-boot",
+        "cp /boot/vmlinuz-$kver /var/tmp/simbricks-boot/vmlinuz",
+        "cp /boot/initrd.img-$kver /var/tmp/simbricks-boot/initrd",
+        "if [ -f /usr/lib/debug/boot/vmlinux-$kver ]; then cp /usr/lib/debug/boot/vmlinux-$kver /var/tmp/simbricks-boot/vmlinux; fi",
+        "chmod 0644 /var/tmp/simbricks-boot/*",
+        "tar -cf ${local.boot_tar} -C /var/tmp/simbricks-boot .",
+        "chmod 0644 ${local.boot_tar}",
+      ]
+    }
+  }
+  dynamic "provisioner" {
+    for_each = var.boot_artifacts == "" ? [] : [var.boot_artifacts]
+    labels   = ["file"]
+    content {
+      source      = local.boot_tar
+      destination = provisioner.value
+      direction   = "download"
+    }
+  }
+  dynamic "provisioner" {
+    for_each = var.boot_artifacts == "" ? [] : [var.boot_artifacts]
+    labels   = ["shell"]
+    content {
+      execute_command = local.execute_command
+      inline          = ["rm -rf ${local.boot_tar} /var/tmp/simbricks-boot"]
+    }
+  }
+
+  # 4. sanitize + shrink, last.
   dynamic "provisioner" {
     for_each = var.cleanup_script == "" ? [] : [var.cleanup_script]
     labels   = ["shell"]
