@@ -274,10 +274,6 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         available = self.base.available_formats()
         return format if format in available else available[0]
 
-    def _cache(self, inst: inst_base.Instantiation) -> image_cache.ImageCache | None:
-        root = inst.env.image_cache_dir()
-        return image_cache.ImageCache(root) if root is not None else None
-
     async def _build_from_base(self, inst: inst_base.Instantiation, format: str, out: str) -> None:
         # The base is not attached to a host, so nothing else prepares it.
         base_format = self._base_format(format)
@@ -291,60 +287,116 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         source: str,
         layers: list[ImageLayer],
         out: str,
+        overlay: bool = False,
     ) -> None:
-        await self.build(inst, format, source, layers, out)
+        await self.build(inst, format, source, layers, out, overlay)
         if not pathlib.Path(out).is_file():
             raise RuntimeError(f"image build produced no output at '{out}'")
 
-    async def _build_cached(
+    async def _store_build(
         self,
         inst: inst_base.Instantiation,
-        format: str,
-        out: str,
         cache: image_cache.ImageCache,
         hashes: list[str],
+        scratch: pathlib.Path,
     ) -> None:
-        """Build starting from the longest run of layers already in the cache.
+        """Build what the cache does not have yet and keep it, as a delta on the
+        longest run of layers already there.
 
-        Appending a layer to an image an earlier run built therefore costs only
-        the new layer. Nothing stores the intermediate images: a prefix is there
-        because some run wanted exactly it, and writing one image per layer
-        would cost gigabytes to save work nobody asked for.
+        A delta rather than a whole image because that is the difference between
+        a cache entry costing megabytes and costing gigabytes -- appending a
+        layer to a cached image stores only what that layer wrote.
         """
+        built = (scratch / "delta.qcow2").as_posix()
+        pathlib.Path(built).unlink(missing_ok=True)
+
         for done in range(len(self.layers) - 1, -1, -1):
-            start = cache.image(hashes[done], format)
-            if start is None or not pathlib.Path(start).is_file():
+            parent = cache.image(hashes[done])
+            if parent is None or not pathlib.Path(parent).is_file():
                 continue
-            cache.used(hashes[done])
-            await self._run_build(inst, format, start, self.layers[done:], out)
+            await self._run_build(
+                inst, image_cache.FORMAT, parent, self.layers[done:], built, overlay=True
+            )
+            # Record where the parent sits relative to this entry, not where it
+            # happens to be now: that is what lets the chain be hard linked
+            # somewhere else and still resolve.
+            await self.rebase_image(inst, built, f"../{hashes[done]}/{image_cache.IMAGE}")
+            cache.store_image(hashes[-1], built, parent=hashes[done])
             return
-        await self._build_from_base(inst, format, out)
+
+        await self._build_from_base(inst, image_cache.FORMAT, built)
+        cache.store_image(hashes[-1], built)
+
+    async def _take_out(
+        self,
+        inst: inst_base.Instantiation,
+        cache: image_cache.ImageCache,
+        digest: str,
+        out: str,
+        format: str,
+    ) -> None:
+        """Give this run the image, without copying what it does not have to.
+
+        For qcow2 the chain is hard linked into the run and the simulator gets a
+        fresh overlay on top of it, so a cache hit copies nothing and the run
+        survives the entries being evicted behind it. A simulator that cannot
+        read a chain gets it flattened -- once, kept in the entry for the next
+        run to link.
+        """
+        chain_dir = inst.env.img_dir(f"chain.{self.id()}")
+        if format == image_cache.FORMAT:
+            leaf = cache.materialize_chain(digest, chain_dir)
+            if leaf is None:
+                raise RuntimeError(f"image cache entry '{digest}' is incomplete")
+            await self.overlay_image(inst, leaf, out)
+            return
+
+        flat = cache.flat(digest, format)
+        if flat is not None and cache.take_out(flat, out):
+            return
+        leaf = cache.materialize_chain(digest, chain_dir)
+        if leaf is None:
+            raise RuntimeError(f"image cache entry '{digest}' is incomplete")
+        await self.convert_image(inst, leaf, out, format)
+        cache.store_flat(digest, format, out)
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         out = self.path(inst, format)
         async with inst.prepare_lock(out):
             if pathlib.Path(out).is_file():
                 return
-            cache = self._cache(inst)
+            cache = image_cache.for_instantiation(inst)
             if cache is None:
                 await self._build_from_base(inst, format, out)
                 return
 
             hashes = self.prefix_hashes(inst)
+            scratch = pathlib.Path(inst.env.img_dir(f"build.{self.id()}"))
+            scratch.mkdir(parents=True, exist_ok=True)
+
             # Held across the build, so a second run wanting the same image
             # waits for this one rather than building it again.
             async with cache.locked(hashes[-1]):
-                cached = cache.image(hashes[-1], format)
-                if cached is not None and cache.take_out(cached, out):
+                cached = cache.image(hashes[-1])
+                if cached is None:
+                    await self._store_build(inst, cache, hashes, scratch)
+                    cached = cache.image(hashes[-1])
+                if cached is None:
+                    raise RuntimeError("the image was built but is not in the cache")
+                try:
+                    await self._take_out(inst, cache, hashes[-1], out, format)
+                except Exception:
+                    # Promised an image the cache then could not give us:
+                    # another machine sharing it may have evicted the entry
+                    # since. Building it here is better than failing the run.
+                    pathlib.Path(out).unlink(missing_ok=True)
+                    await self._build_from_base(inst, format, out)
+                else:
                     cache.used(hashes[-1])
-                    return
-                await self._build_cached(inst, format, out, cache, hashes)
-                cache.store_image(hashes[-1], format, out)
-                cache.used(hashes[-1])
+
             limit = inst.env.image_cache_size()
             if limit is not None:
-                # After a store, the only moment the cache grows. What was just
-                # built is the most recently used, so it is never the casualty.
+                # After a store, the only moment the cache grows.
                 cache.evict(limit)
 
     async def boot_artifacts(
@@ -358,7 +410,7 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
             return {}
         out_dir = pathlib.Path(inst.env.img_dir(f"boot.{self.id()}"))
         out_dir.mkdir(parents=True, exist_ok=True)
-        cache = self._cache(inst)
+        cache = image_cache.for_instantiation(inst)
         digest = self.content_hash(inst) if cache is not None else ""
 
         async with inst.prepare_lock(out_dir.as_posix()):
@@ -418,8 +470,13 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
         base_path: str,
         layers: list[ImageLayer],
         out_path: str,
+        overlay: bool = False,
     ) -> None:
-        """Produce @out_path in @format from @base_path by applying @layers."""
+        """Produce @out_path in @format from @base_path by applying @layers.
+
+        With @overlay, @out_path holds only what the layers changed and reads
+        the rest from @base_path, which it must therefore keep referring to.
+        """
 
     def _require_qemu_img(self) -> str:
         """Check qemu-img is there, so a missing one is reported here and by name.

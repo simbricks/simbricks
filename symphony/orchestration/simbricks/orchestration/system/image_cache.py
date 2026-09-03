@@ -37,7 +37,25 @@ import pathlib
 import shutil
 import typing as tp
 
+if tp.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import base as inst_base
+
+
 _USED = ".used"
+_PARENT = "parent"
+# Entries hold qcow2 whatever a run wants, because that is the format that can
+# be a delta on another image.
+FORMAT = "qcow2"
+IMAGE = f"image.{FORMAT}"
+# A flattened copy some simulator needed, kept beside the chain it came from.
+# Reproducible from that chain, so eviction drops these before anything else.
+FLAT = "image.%s"
+
+
+def for_instantiation(inst: inst_base.Instantiation) -> "ImageCache | None":
+    """The cache this run should use, or None when it was not given one."""
+    root = inst.env.image_cache_dir()
+    return ImageCache(root) if root is not None else None
 
 
 class ImageCache:
@@ -97,9 +115,26 @@ class ImageCache:
             sized = [(self._last_used(e), self._entry_size(e), e) for e in entries]
             total = sum(size for _, size, _ in sized)
             evicted = []
+
+            # Flattened copies first: they are the largest thing here and the
+            # only thing that can be made again from what stays behind.
+            for _, _, entry in sorted(sized):
+                if total <= limit:
+                    break
+                for flat in entry.glob("image.*"):
+                    if flat.name == IMAGE:
+                        continue
+                    size = flat.stat().st_size
+                    flat.unlink(missing_ok=True)
+                    total -= size
+            # Leaves first: an entry another one is a delta on has to stay, and
+            # becomes evictable in a later sweep once its last dependent is gone.
+            keep = self._parents_in_use()
             for _, size, entry in sorted(sized):
                 if total <= limit:
                     break
+                if entry.name in keep:
+                    continue
                 # A run building into this entry, or linking a file out of it,
                 # holds this. Leave it: there will be another sweep.
                 held = open(self._root / f"{entry.name}.lock", "w")
@@ -120,9 +155,95 @@ class ImageCache:
         finally:
             sweep.close()
 
-    def image(self, digest: str, format: str) -> str | None:
-        path = self._entry(digest) / f"image.{format}"
+    def image(self, digest: str) -> str | None:
+        """The entry's image, if it and everything it is a delta on are there.
+
+        A delta is worthless without its chain, so a broken one is reported as
+        no image at all and the caller builds it again.
+        """
+        seen = set()
+        at: str | None = digest
+        while at is not None:
+            if at in seen:
+                raise RuntimeError(f"image cache entry '{at}' is its own ancestor")
+            seen.add(at)
+            if not (self._entry(at) / IMAGE).is_file():
+                return None
+            at = self.parent(at)
+        return (self._entry(digest) / IMAGE).as_posix()
+
+    def chain(self, digest: str) -> list[str] | None:
+        """The entry and everything it is a delta on, nearest first."""
+        members = []
+        at: str | None = digest
+        while at is not None:
+            if at in members:
+                raise RuntimeError(f"image cache entry '{at}' is its own ancestor")
+            if not (self._entry(at) / IMAGE).is_file():
+                return None
+            members.append(at)
+            at = self.parent(at)
+        return members
+
+    def materialize_chain(self, digest: str, dest: str) -> str | None:
+        """Hard link the whole chain into @dest, keeping the shape the backing
+        references expect. Returns the path of the image itself.
+
+        Links rather than copies: the run gets the data without duplicating it,
+        and keeps it even if these entries are evicted a moment later. The
+        references between the links are relative, so they resolve here.
+        """
+        members = self.chain(digest)
+        if members is None:
+            return None
+        root = pathlib.Path(dest)
+        for member in members:
+            target = root / member / IMAGE
+            if target.is_file():
+                continue
+            source = self.image_file(member)
+            if not source.is_file():
+                return None
+            self._place(source.as_posix(), target)
+        return (root / digest / IMAGE).as_posix()
+
+    def image_file(self, digest: str) -> pathlib.Path:
+        return self._entry(digest) / IMAGE
+
+    def flat(self, digest: str, format: str) -> str | None:
+        """A flattened copy of the chain in @format, if one was made before."""
+        path = self._entry(digest) / (FLAT % format)
         return path.as_posix() if path.is_file() else None
+
+    def store_flat(self, digest: str, format: str, path: str) -> None:
+        self._place(path, self._entry(digest) / (FLAT % format))
+
+    def parent(self, digest: str) -> str | None:
+        """The entry this one is a delta on, if it is one."""
+        path = self._entry(digest) / _PARENT
+        if not path.is_file():
+            return None
+        return path.read_text().strip() or None
+
+    def _parents_in_use(self) -> set[str]:
+        """Entries that other entries are deltas on, which must outlive them."""
+        parents = set()
+        for entry in self._root.iterdir():
+            if not entry.is_dir():
+                continue
+            parent = self.parent(entry.name)
+            if parent is not None:
+                parents.add(parent)
+        return parents
+
+    def file(self, digest: str, name: str) -> str | None:
+        """A file kept in an entry that is not a delta on anything, e.g. a
+        downloaded base image, which is used as it is rather than built on."""
+        path = self._entry(digest) / name
+        return path.as_posix() if path.is_file() else None
+
+    def store_file(self, digest: str, name: str, path: str) -> None:
+        self._place(path, self._entry(digest) / name)
 
     def boot_artifact(self, digest: str, name: str) -> str | None:
         path = self._entry(digest) / "boot" / name
@@ -162,8 +283,14 @@ class ImageCache:
             shutil.copy2(source, staged)
         os.replace(staged, target)
 
-    def store_image(self, digest: str, format: str, path: str) -> None:
-        self._place(path, self._entry(digest) / f"image.{format}")
+    def store_image(self, digest: str, path: str, parent: str | None = None) -> None:
+        """Keep @path as the image for @digest, a delta on @parent if given."""
+        entry = self._entry(digest)
+        self._place(path, entry / IMAGE)
+        if parent is not None:
+            # After the image: an entry naming a parent it has no image for
+            # would look like a broken chain rather than an unfinished store.
+            (entry / _PARENT).write_text(f"{parent}\n")
 
     def store_boot_artifact(self, digest: str, name: str, path: str) -> None:
         self._place(path, self._entry(digest) / "boot" / name)
