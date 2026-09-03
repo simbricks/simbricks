@@ -1,0 +1,9 @@
+# Seeded alongside user-data: DHCP on whichever NIC this build's VM has, by
+# name rather than by MAC. cloud-init writes the guest's netplan from this, and
+# a MAC-pinned config from an earlier build would not match here.
+version: 2
+ethernets:
+  simbricks-build:
+    match:
+      name: "en*"
+    dhcp4: true
