@@ -93,6 +93,13 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         partition. False for a filesystem this cannot grow: do it in a layer
         instead, where the guest's own tools are available."""
         self.virt_filesystems_exec = "virt-filesystems"
+        self.cpus: int | None = None
+        """vCPUs for the appliance. libguestfs gives it one, which is ample for
+        installing packages and hopeless for a layer that compiles something.
+        None leaves the default (or whatever LIBGUESTFS_SMP says)."""
+        self.mem_size: str | None = None
+        """Appliance RAM, e.g. "4G". Likewise: the default is sized for file
+        shuffling, not for a compiler running on every vCPU."""
 
     def available_formats(self) -> list[str]:
         return ["raw", "qcow2"]
@@ -104,6 +111,8 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         json_obj["guestfish_exec"] = self.guestfish_exec
         json_obj["grow_filesystem"] = self.grow_filesystem
         json_obj["virt_filesystems_exec"] = self.virt_filesystems_exec
+        json_obj["cpus"] = self.cpus
+        json_obj["mem_size"] = self.mem_size
         return json_obj
 
     @classmethod
@@ -116,6 +125,8 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         instance.virt_filesystems_exec = utils_base.get_json_attr_top(
             json_obj, "virt_filesystems_exec"
         )
+        instance.cpus = utils_base.get_json_attr_top_or_none(json_obj, "cpus")
+        instance.mem_size = utils_base.get_json_attr_top_or_none(json_obj, "mem_size")
         return instance
 
     def _scratch_dir(self, inst: inst_base.Instantiation) -> pathlib.Path:
@@ -140,6 +151,21 @@ class GuestfsImage(image_layers.LayeredDiskImage):
             while chunk := src.read(1 << 20):
                 dst.write(chunk)
         return path
+
+    def _appliance_args(self) -> list[str]:
+        """What the appliance gets to work with, for the layers that need more
+        than the default. Only on the run that applies them: the boot-artifact
+        and filesystem probes copy files around and are not short of anything.
+        """
+        args: list[str] = []
+        if self.cpus is not None:
+            # The flag libguestfs spells --smp.
+            args += ["--smp", str(self.cpus)]
+        if self.mem_size is not None:
+            # virt-customize counts in megabytes.
+            megabytes = -(-image_layers.parse_size(self.mem_size) // (1 << 20))
+            args += ["--memsize", str(megabytes)]
+        return args
 
     def _layer_args(
         self,
@@ -285,7 +311,12 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         args = self._layer_args(inst, layers, scratch)
         if args:
             cmds.append(
-                shlex.join(_env() + [_require(self.virt_customize_exec), "-a", partial] + args)
+                shlex.join(
+                    _env()
+                    + [_require(self.virt_customize_exec), "-a", partial]
+                    + self._appliance_args()
+                    + args
+                )
             )
         await inst.command_executor.exec_prepare_cmds(cmds)
         pathlib.Path(partial).rename(out_path)
