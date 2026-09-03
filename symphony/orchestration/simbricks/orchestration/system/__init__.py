@@ -109,6 +109,8 @@ from simbricks.orchestration.system.disk_images import (
     DummyDiskImage,
     DynamicDiskImage,
     ExternalDiskImage,
+    ExternalDiskImageArtifact,
+    HttpDiskImage,
     LinuxConfigDiskImage,
     PackerDiskImage,
 )
@@ -130,6 +132,8 @@ __all__ += [
     "DiskImage",
     "DummyDiskImage",
     "ExternalDiskImage",
+    "ExternalDiskImageArtifact",
+    "HttpDiskImage",
     "DistroDiskImage",
     "DynamicDiskImage",
     "LinuxConfigDiskImage",
