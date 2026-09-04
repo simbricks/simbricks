@@ -82,10 +82,6 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
 
         docker_pull = plugin.get_first_match("docker_pull", config_params, default_params)
         assert isinstance(docker_pull, bool)
-        if docker_pull:
-            pull = subprocess.run(["docker", "pull", docker_image])
-            if pull.returncode != 0:
-                raise RuntimeError(f"docker pull of image {docker_image} failed")
 
         convert_images = plugin.get_first_match("convert_images", config_params, default_params)
         assert isinstance(convert_images, bool)
@@ -99,6 +95,12 @@ class SimbricksDockerPlugin(plugin.FragmentRunnerPlugin):
                     raise RuntimeError("invalid entry in docker_opts list (not a string)")
         else:
             docker_opts = []
+
+        if docker_pull:
+            pull = await asyncio.create_subprocess_exec("docker", "pull", docker_image)
+            retcode = await pull.wait()
+            if retcode != 0:
+                raise RuntimeError(f"docker pull of image {docker_image} failed")
 
         port = self.server.sockets[0].getsockname()[1]
         self.executor = subprocess.Popen(
