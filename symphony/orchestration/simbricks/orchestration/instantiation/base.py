@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import itertools
 import pathlib
+import re
 import typing
 import uuid
 
@@ -133,6 +134,62 @@ class InstantiationEnvironment(utils_base.IdObj):
         if relative_path is None:
             return self._input_artifacts_dir.as_posix()
         return utils_file.join_paths(self._input_artifacts_dir, relative_path, must_exist)
+
+    # ------------------------------------------------------
+    # Placeholders naming the path accessors defined above -
+    # ------------------------------------------------------
+
+    PATH_PLACEHOLDER_NAMES: tuple[str, ...] = (
+        "work_dir",
+        "output_base",
+        "tmp_simulation_files",
+        "img_dir",
+        "cp_dir",
+        "shm_base",
+        "proxy_dir",
+        "input_artifacts_dir",
+        "global_input_dir",
+    )
+    """The accessors above that a ``@{SIMBRICKS_PATH:<name>}@`` placeholder may name."""
+
+    _PATH_PLACEHOLDER_RE = re.compile(r"@\{SIMBRICKS_PATH:(?P<name>\w+)\}@")
+    """Matches a well-formed path placeholder."""
+
+    @staticmethod
+    def path_placeholder(name: str) -> str:
+        """Placeholder that is replaced with the path @name refers to.
+
+        Only the directory itself can be named, append anything below it in the
+        same string, e.g. ``f"{path_placeholder('output_base')}/my.log"``.
+        """
+        if name not in InstantiationEnvironment.PATH_PLACEHOLDER_NAMES:
+            raise exceptions.InstantiationConfigurationError(
+                f"'{name}' is not a path that can be named by a placeholder, "
+                f"expected one of: {', '.join(InstantiationEnvironment.PATH_PLACEHOLDER_NAMES)}"
+            )
+        return f"@{{SIMBRICKS_PATH:{name}}}@"
+
+    def resolve_path_placeholder(self, name: str) -> str:
+        """The path @name refers to."""
+        if name not in InstantiationEnvironment.PATH_PLACEHOLDER_NAMES:
+            raise exceptions.InstantiationConfigurationError(
+                f"placeholder names unknown path '{name}', expected one of: "
+                f"{', '.join(InstantiationEnvironment.PATH_PLACEHOLDER_NAMES)}"
+            )
+        accessor = getattr(self, name)
+        try:
+            return accessor()
+        except RuntimeError as error:
+            # global_input_dir is the only accessor that may not be available.
+            raise exceptions.InstantiationConfigurationError(
+                f"cannot resolve placeholder for path '{name}': {error}"
+            ) from error
+
+    def resolve_path_placeholders(self, text: str) -> str:
+        """Replace every path placeholder in @text with the path it refers to."""
+        return self._PATH_PLACEHOLDER_RE.sub(
+            lambda match: self.resolve_path_placeholder(match.group("name")), text
+        )
 
     # ----------------------------------------
     # Other functions on instantiation paths -
