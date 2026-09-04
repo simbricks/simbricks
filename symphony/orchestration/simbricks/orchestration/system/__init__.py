@@ -25,6 +25,7 @@ from simbricks.orchestration.system.base import (
     Component,
     DummyComponent,
     DummyInterface,
+    GenericComponent,
     Interface,
     System,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "System",
     "Component",
     "DummyComponent",
+    "GenericComponent",
     "Interface",
     "DummyInterface",
     "Channel",
