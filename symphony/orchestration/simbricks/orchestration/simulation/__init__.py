@@ -22,6 +22,7 @@
 
 from simbricks.orchestration.simulation.base import (
     DummySimulator,
+    GenericSimulator,
     Simulation,
     Simulator,
 )
@@ -29,6 +30,7 @@ from simbricks.orchestration.simulation.base import (
 __all__ = [
     "Simulator",
     "DummySimulator",
+    "GenericSimulator",
     "Simulation",
 ]
 

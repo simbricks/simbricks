@@ -24,10 +24,13 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import re
+import shlex
 import typing as tp
 
 import typing_extensions as tpe
 
+import simbricks.orchestration.helpers.exceptions as exc
 import simbricks.orchestration.instantiation.base as inst_base
 import simbricks.orchestration.instantiation.socket as inst_socket
 import simbricks.orchestration.simulation.channel as sim_chan
@@ -391,6 +394,128 @@ class DummySimulator(Simulator):
         instance = super().fromJSON(simulation, json_obj)
         instance._is_dummy = True
         return instance
+
+
+class GenericSimulator(Simulator):
+    """Runs an arbitrary simulator binary whose full argv is given by the user.
+
+    The binary and args can contain placeholders. There are two kinds of placeholder:
+
+    * ``@{SIMBRICKS_URL:<interface-id>}@`` becomes the SimBricks parameters url
+      of that interface's connection. Build it with `interface_url_placeholder`.
+    * ``@{SIMBRICKS_PATH:<name>}@`` becomes one of the run's directories, see
+      `simbricks.orchestration.instantiation.base.InstantiationEnvironment.path_placeholder`.
+
+    A placeholder may sit inside a larger argument, e.g. ``--pci=@{...}@``. Any
+    other text is passed through untouched.
+
+    Note: To run a binary shipped in an input artifact, name it relative to the directory it
+    is unpacked into, e.g. ``executable="@{SIMBRICKS_PATH:input_artifacts_dir}@/my-sim"``.
+    """
+
+    _URL_PLACEHOLDER_RE = re.compile(r"@\{SIMBRICKS_URL:(?P<inf_id>\d+)\}@")
+    """Matches a well-formed SimBricks parameters url placeholder."""
+
+    def __init__(
+        self,
+        simulation: sim_base.Simulation,
+        executable: str,
+        name: str = "",
+        args: list[str] | None = None,
+    ) -> None:
+        super().__init__(simulation=simulation, executable=executable, name=name)
+        self.args: list[str] = list(args) if args is not None else []
+        """Arguments to invoke `executable` with, possibly containing placeholders."""
+        self.supported_sock_types: set[inst_socket.SockType] = {
+            inst_socket.SockType.LISTEN,
+            inst_socket.SockType.CONNECT,
+        }
+
+    @staticmethod
+    def interface_url_placeholder(interface: sys_conf.Interface) -> str:
+        """Placeholder that `run_cmd` replaces with @interface's parameters url."""
+        return f"@{{SIMBRICKS_URL:{interface.id()}}}@"
+
+    def supported_socket_types(self, interface: sys_conf.Interface) -> set[inst_socket.SockType]:
+        return self.supported_sock_types
+
+    def full_name(self) -> str:
+        return "generic." + self.name
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["args"] = utils_base.list_tuple_to_json(self.args)
+        # sorted to keep the serialized form deterministic
+        json_obj["supported_sock_types"] = sorted(ty.value for ty in self.supported_sock_types)
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, simulation: Simulation, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(simulation, json_obj)
+        instance.args = utils_base.json_array_to_list(
+            utils_base.get_json_attr_top(json_obj, "args")
+        )
+        instance.supported_sock_types = {
+            inst_socket.SockType(value)
+            for value in utils_base.get_json_attr_top(json_obj, "supported_sock_types")
+        }
+        return instance
+
+    def _resolve_interface_url(self, inst: inst_base.Instantiation, inf_id: int, arg: str) -> str:
+        """The parameters url for the interface with id @inf_id, for placeholders in @arg."""
+        prefix = f"simulator '{self.full_name()}' argument {arg!r}: "
+
+        try:
+            interface = self._simulation.system.get_inf(inf_id)
+        except Exception as error:
+            raise exc.SimulationConfigurationError(
+                f"{prefix}references unknown interface id {inf_id}"
+            ) from error
+
+        if interface._component is None or interface.component not in self._components:
+            raise exc.SimulationConfigurationError(
+                f"{prefix}interface {inf_id} belongs to a component that is not "
+                f"simulated by this simulator"
+            )
+
+        if not interface.is_connected():
+            raise exc.SimulationConfigurationError(
+                f"{prefix}interface {inf_id} is not connected to a channel"
+            )
+
+        # No socket means both ends of the channel are simulated by this very
+        # simulator, so there is no SimBricks connection to point the binary at.
+        if inst.get_socket(interface=interface) is None:
+            raise exc.SimulationConfigurationError(
+                f"{prefix}interface {inf_id} has no SimBricks socket because the "
+                f"component on the other end is simulated by the same simulator"
+            )
+
+        return self.get_interface_url(inst, interface)
+
+    def _substitute_arg(self, inst: inst_base.Instantiation, arg: str) -> str:
+        substituted = self._URL_PLACEHOLDER_RE.sub(
+            lambda match: self._resolve_interface_url(inst, int(match.group("inf_id")), arg),
+            arg,
+        )
+        substituted = inst.env.resolve_path_placeholders(substituted)
+        return substituted
+
+    def run_cmd(self, inst: inst_base.Instantiation) -> str:
+        if not self._executable:
+            raise exc.SimulationConfigurationError(
+                f"simulator '{self.full_name()}': no executable given"
+            )
+
+        parts = [self._substitute_arg(inst, self._executable)]
+        parts.extend(self._substitute_arg(inst, arg) for arg in self.args)
+        # Substituting before joining keeps a url containing whitespace a single argument.
+        cmd = shlex.join(parts)
+
+        if self.extra_args:
+            cmd += " " + self.extra_args
+
+        return cmd
 
 
 class Simulation(utils_base.IdObj):
