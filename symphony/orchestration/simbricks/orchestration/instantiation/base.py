@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import itertools
 import pathlib
 import typing
@@ -54,9 +55,16 @@ class InstantiationEnvironment(utils_base.IdObj):
         self,
         workdir: pathlib.Path,
         global_input_dir: pathlib.Path | None,
+        image_cache_dir: pathlib.Path | None = None,
+        image_cache_size: int | None = None,
+        image_cache_compression: str | None = None,
     ):
         super().__init__()
         self._work_dir: pathlib.Path = workdir.resolve()
+        # Outside the work directory on purpose: what it holds outlives the run.
+        self._image_cache_dir: pathlib.Path | None = image_cache_dir
+        self._image_cache_size: int | None = image_cache_size
+        self._image_cache_compression: str | None = image_cache_compression
 
         self._global_input_dir: pathlib.Path | None = None
         self._global_input_dir_src: pathlib.Path | None = global_input_dir
@@ -72,6 +80,21 @@ class InstantiationEnvironment(utils_base.IdObj):
     # --------------------------------------------------
     # Read-only accessor functions for path properties -
     # --------------------------------------------------
+
+    def image_cache_dir(self) -> str | None:
+        """Where built images are kept for later runs. None disables that."""
+        if self._image_cache_dir is None:
+            return None
+        return self._image_cache_dir.as_posix()
+
+    def image_cache_size(self) -> int | None:
+        """Bytes the image cache may take up. None lets it grow without bound."""
+        return self._image_cache_size
+
+    def image_cache_compression(self) -> str | None:
+        """How images are compressed on their way into the cache. None asks for
+        the default; see image_cache.compression for the names."""
+        return self._image_cache_compression
 
     def work_dir(self, relative_path: str | None = None, must_exist: bool = False) -> str:
         if relative_path is None:
@@ -196,6 +219,8 @@ class Instantiation(utils_base.IdObj):
         # NOTE: temporary data structure
         self._sim_dependency: inst_dep_graph.SimulationDependencyGraph | None = None
         self._command_executor: rt_cmd_exec.CommandExecutorFactory | None = None
+        # NOTE: temporary data structure
+        self._prepare_locks: dict[str, asyncio.Lock] = {}
         self._proxy_pairs: list[inst_proxy.ProxyPair] = []
         self._inf_socktype_assignment: dict[sys_base.Interface, inst_socket.SockType] = {}
         self._parameters: dict[typing.Any, typing.Any] = {}
@@ -241,6 +266,13 @@ class Instantiation(utils_base.IdObj):
     @command_executor.setter
     def command_executor(self, new_val: rt_cmd_exec.CommandExecutorFactory) -> None:
         self._command_executor = new_val
+
+    def prepare_lock(self, path: str) -> asyncio.Lock:
+        """Lock guarding whoever writes @path while preparing, so that two simulators
+        sharing a file produce it once."""
+        if path not in self._prepare_locks:
+            self._prepare_locks[path] = asyncio.Lock()
+        return self._prepare_locks[path]
 
     @property
     def fragments(self) -> list[inst_fragment.Fragment]:
@@ -371,6 +403,7 @@ class Instantiation(utils_base.IdObj):
         instance._sim_dependency = None
         instance._socket_per_interface = {}
         instance._command_executor = None
+        instance._prepare_locks = {}
 
         instance._parameters = utils_base.json_to_dict(
             utils_base.get_json_attr_top(json_obj, "parameters")

@@ -109,15 +109,31 @@ from simbricks.orchestration.system.disk_images import (
     DummyDiskImage,
     DynamicDiskImage,
     ExternalDiskImage,
+    ExternalDiskImageArtifact,
+    HttpDiskImage,
     LinuxConfigDiskImage,
     PackerDiskImage,
 )
+from simbricks.orchestration.system.image_layers import (
+    AddFiles,
+    ImageLayer,
+    LayeredDiskImage,
+    RunCommand,
+    RunScript,
+)
 
 __all__ += [
+    "AddFiles",
+    "ImageLayer",
+    "LayeredDiskImage",
+    "RunCommand",
+    "RunScript",
     "BootArtifact",
     "DiskImage",
     "DummyDiskImage",
     "ExternalDiskImage",
+    "ExternalDiskImageArtifact",
+    "HttpDiskImage",
     "DistroDiskImage",
     "DynamicDiskImage",
     "LinuxConfigDiskImage",

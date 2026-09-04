@@ -263,7 +263,7 @@ This command will cause SimBricks to run your virtual prototype locally.
 Local execution requires the simulators used by your virtual prototype and their dependencies to
 be available locally: install the respective ``simbricks-*-bin`` conda packages from the SimBricks
 conda channel (see :ref:`sec-conda-packages`), and provide a global input directory containing the
-disk images your script references (see :ref:`sec-disk-images` and :ref:`sec-image-builder`).
+disk images your script references (see :ref:`sec-disk-images`).
 Alternatively, you can run inside the pre-built ``simbricks/simbricks-executor`` Docker container,
 which has both already set up (see :ref:`sec-docker-images`).
 

@@ -91,10 +91,11 @@ This is the usual way to start a SimBricks script.
     syst = system.System()
 
 - Next, we create a disk image object for our hosts.
-  The ``DistroDiskImage`` refers to one of the Linux images distributed alongside SimBricks
-  (built with the :image-builder:`\ ` tool) by name. The image named ``base`` contains the required
-  drivers for the devices we simulate here. Note that the disk image is created once on the
-  ``System`` and can then be added to multiple hosts.
+  The ``DistroDiskImage`` refers to one of the Linux images distributed alongside SimBricks by
+  name. The image named ``base`` contains the required drivers for the devices we simulate here.
+  Note that the disk image is created once on the ``System`` and can then be added to multiple
+  hosts. You are not limited to these images: a script can also point at an image of your own, or
+  build one on top of a base image as part of the run — see :ref:`sec-disk-images`.
 
   .. code-block:: python
 

@@ -1,0 +1,20 @@
+#cloud-config
+# Minimal first-boot config: a known user so packer can SSH in, and a serial
+# console (every simulator drives the guest over ttyS0). Everything else is
+# done by the provisioner scripts, not by cloud-init.
+ssh_pwauth: True
+users:
+  - name: ubuntu
+    plain_text_passwd: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+
+bootcmd:
+  # An image an earlier build sanitized has no SSH host keys, and its packaging
+  # leaves generating them to cloud-init (see the sshd-keygen drop-in). Without
+  # them 'sshd -t' fails and ssh.service never starts, so packer waits forever.
+  # --no-block: this runs from cloud-init's own systemd job, and waiting there
+  # for another unit's job to finish deadlocks the boot.
+  - [ sh, -c, "ssh-keygen -A; systemctl restart ssh --no-block || true" ]
+  - [ sh, -c, "sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT=\"console=ttyS0,115200 console=tty0\"|' /etc/default/grub.d/*.cfg /etc/default/grub 2>/dev/null || true; update-grub || true" ]

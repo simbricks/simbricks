@@ -42,6 +42,13 @@ class RunnerSettings(BaseSettings):
     runner_id: int = 1
 
     global_input_dir: str | None = None
+    image_cache_dir: str | None = None
+    """Size the image cache may reach before least recently used images are
+    dropped, e.g. "200G". Unset lets it grow without bound."""
+    image_cache_size: str | None = None
+    """How images are compressed on their way into the cache: "zstd" (the
+    default), "zlib" for a qemu too old to read zstd, or "none"."""
+    image_cache_compression: str | None = None
 
     """
     This controls whether output artifacts are enforced to be relative to the work directory of
