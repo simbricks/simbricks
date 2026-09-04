@@ -295,6 +295,30 @@ class DummyComponent(Component):
         return instance
 
 
+class GenericComponent(Component):
+    """A component without any simulator-specific semantics.
+
+    Meant to be paired with
+    :class:`simbricks.orchestration.simulation.base.GenericSimulator` to model a
+    simulator that SimBricks has no dedicated Python class for. Interfaces are
+    not created for you, add them explicitly::
+
+        comp = GenericComponent(system, name="my-dev")
+        eth_if = EthInterface(comp)
+        comp.add_if(eth_if)
+
+    or let one of the helpers in
+    :mod:`simbricks.orchestration.helpers.system` do it.
+
+    This class carries no state beyond what :class:`Component` already
+    serializes, hence it needs no ``toJSON``/``fromJSON`` of its own.
+    """
+
+    def __init__(self, s: System, name: str | None = None) -> None:
+        super().__init__(s)
+        self.name = name
+
+
 class Interface(utils_base.IdObj):
     """
     Specifies a single Interface of a Component.
