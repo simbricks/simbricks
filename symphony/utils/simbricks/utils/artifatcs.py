@@ -112,7 +112,11 @@ def create_artifact(
 
 def unpack_artifact(file: str | tp.IO[bytes], dest_path: str) -> None:
     with zipfile.ZipFile(file, "r") as zip_file:
-        zip_file.extractall(dest_path)
+        for member in zip_file.infolist():
+            extracted = zip_file.extract(member, dest_path)
+            mode = member.external_attr >> 16
+            if mode:
+                os.chmod(extracted, mode & 0o777)
 
 
 class ArtifactKind(str, enum.Enum):
