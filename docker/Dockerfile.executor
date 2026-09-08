@@ -94,7 +94,7 @@ RUN micromamba install -y simbricks-qemu-sim-bin \
 
 # The builder plugin simbricks-imagebuild-packer's template asks for, so a
 # build on the runner does not have to fetch it.
-RUN packer plugins install github.com/hashicorp/qemu
+RUN micromamba run -- packer plugins install github.com/hashicorp/qemu
 
 ENV GLOBAL_INPUT_DIR=/global_input
 
