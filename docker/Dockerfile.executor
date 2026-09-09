@@ -99,5 +99,6 @@ RUN micromamba run -- packer plugins install github.com/hashicorp/qemu
 ENV GLOBAL_INPUT_DIR=/global_input
 
 COPY --chown=simbricks --from=image /image_builder/output/base/ /global_input/images/base/
+COPY runner_config_local.yaml /runner_config.yaml
 
 ENTRYPOINT ["/run_local_executor.sh"]

@@ -1,0 +1,8 @@
+fragment_executors:
+  - base_executor:
+      plugin: simbricks.runner.main_runner.plugins.docker_plugin
+      settings:
+        docker_image: simbricks/simbricks-executor:stable
+        docker_image_allow:
+          - "simbricks/simbricks-executor:stable"
+        docker_pull: true

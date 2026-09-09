@@ -6,7 +6,7 @@ RUN micromamba install -y simbricks-runner \
   && micromamba clean --all -y
 
 COPY run_runner.sh /run_runner.sh
-COPY runner_config.yaml /runner_config.yaml
+COPY runner_config_docker.yaml /runner_config.yaml
 COPY run_local_executor.sh /run_local_executor.sh
 
 ENTRYPOINT ["/run_runner.sh"]
