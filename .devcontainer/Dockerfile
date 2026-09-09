@@ -45,8 +45,8 @@ ARG USERNAME=ubuntu
 RUN chown -R $USERNAME:$USERNAME /opt/conda
 
 # The account ships with no password set, so its sudo-group membership is unusable.
-# Give it one (same as the username) for occasional `sudo apt update` and the like.
-RUN echo "$USERNAME:$USERNAME" | chpasswd
+RUN echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
+ && chmod 0440 /etc/sudoers.d/$USERNAME
 
 USER $USERNAME
 ENV SB_CONDA_CHANNEL=$CONDA_CHANNEL
