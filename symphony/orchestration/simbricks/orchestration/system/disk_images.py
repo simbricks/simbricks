@@ -320,61 +320,6 @@ class ExternalDiskImageArtifact(ExternalDiskImage, utils_base.InputArtifactSourc
         return instance
 
 
-# Disk images shipped with simbricks
-class DistroDiskImage(DiskImage):
-    def __init__(self, system: sys_base.System, name: str) -> None:
-        super().__init__(system)
-        self.name = name
-        self.formats = ["raw", "qcow2"]
-
-    def available_formats(self) -> list[str]:
-        return self.formats
-
-    def path(self, inst: inst_base.Instantiation, format: str) -> str:
-        path = inst.env.global_input_dir(f"images/{self.name}/{self.name}", True)
-        if format == "raw":
-            path += ".raw"
-        elif format == "qcow2":
-            pass
-        else:
-            raise RuntimeError("Unsupported disk format")
-        DiskImage.assert_is_file(path)
-        return path
-
-    def content_hash(self, inst: inst_base.Instantiation) -> str:
-        # Every format is built from the same content, so any one of them
-        # identifies it; the one that is there is as good as another.
-        for format in self.available_formats():
-            try:
-                path = self.path(inst, format)
-            except Exception:
-                continue
-            return hash_strings(["distro", self.name, DiskImage.file_identity(path)])
-        raise RuntimeError(f"disk image '{self.name}' is not in the global input directory")
-
-    async def boot_artifacts(
-        self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
-    ) -> dict[BootArtifact, str]:
-        # The image build extracts these next to the image itself, so this is a plain lookup.
-        return {
-            kind: inst.env.global_input_dir(f"images/{self.name}/boot/{kind.value}", True)
-            for kind in kinds
-        }
-
-    def toJSON(self) -> dict:
-        json_obj = super().toJSON()
-        json_obj["name"] = self.name
-        json_obj["formats"] = self.formats
-        return json_obj
-
-    @classmethod
-    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
-        instance = super().fromJSON(system, json_obj)
-        instance.name = utils_base.get_json_attr_top(json_obj, "name")
-        instance.formats = utils_base.get_json_attr_top(json_obj, "formats")
-        return instance
-
-
 # Abstract base class for dynamically generated images
 class DynamicDiskImage(DiskImage):
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
@@ -562,6 +507,81 @@ class HttpDiskImage(DynamicDiskImage):
         instance.format = utils_base.get_json_attr_top(json_obj, "format")
         instance.boot_dir = utils_base.get_json_attr_top_or_none(json_obj, "boot_dir")
         instance.qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
+        return instance
+
+
+class DistroDiskImage(HttpDiskImage):
+    """An image from the SimBricks image registry, which the runner downloads.
+
+    Images are published as packages under ``<BASE_URL>/<name>/<version>``, holding
+    the image itself as ``<name>`` and its sha256 next to it as ``<name>.sha256``.
+    """
+
+    BASE_URL = "https://images.simbricks.io"
+
+    def __init__(
+        self,
+        system: sys_base.System,
+        image_name: str,
+        image_version: str,
+        format: str = "qcow2",
+        boot_dir: str | None = None,
+        qemu_img_exec: str = "qemu-img",
+    ) -> None:
+        super().__init__(
+            system,
+            url=f"{self.package_url(image_name, image_version)}/{image_name}",
+            # Not known until the package is fetched: see _resolve_checksum.
+            checksum=None,
+            format=format,
+            boot_dir=boot_dir,
+            qemu_img_exec=qemu_img_exec,
+        )
+        self.image_name = image_name
+        self.image_version = image_version
+
+    @classmethod
+    def package_url(cls, image_name: str, image_version: str) -> str:
+        return f"{cls.BASE_URL}/{image_name}/{image_version}"
+
+    def _checksum_url(self) -> str:
+        return f"{self.package_url(self.image_name, self.image_version)}/{self.image_name}.sha256"
+
+    def _resolve_checksum(self) -> None:
+        """Fetch the package's sha256, once. Runs in the download's thread."""
+        if self.checksum is not None:
+            return
+        url = self._checksum_url()
+        with urllib.request.urlopen(url) as response:
+            # Whatever sha256sum wrote: "<hex>  <file name>", or just the hex.
+            content = response.read(1 << 12).decode(errors="replace")
+        parts = content.split()
+        digest = parts[0].lower() if parts else ""
+        if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+            raise RuntimeError(f"'{url}' does not hold a sha256 digest, but '{content.strip()}'")
+        self.checksum = f"sha256:{digest}"
+
+    def _fetch(self, out: str) -> None:
+        self._resolve_checksum()
+        super()._fetch(out)
+
+    def content_hash(self, inst: inst_base.Instantiation) -> str:
+        # The coordinates, not the checksum the base class would use: that one is
+        # only known once the image has been downloaded, which is the very thing
+        # this hash is meant to save.
+        return hash_strings(["distro", self.image_name, self.image_version])
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["image_name"] = self.image_name
+        json_obj["image_version"] = self.image_version
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.image_name = utils_base.get_json_attr_top(json_obj, "image_name")
+        instance.image_version = utils_base.get_json_attr_top(json_obj, "image_version")
         return instance
 
 
