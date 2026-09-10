@@ -25,7 +25,7 @@ instantiations: list[inst.Instantiation] = []
 sys = system.System()
 
 # create disk images
-distro_disk_image = system.DistroDiskImage(sys, "base")
+distro_disk_image = system.Ubuntu2204CustomKernelDiskImage(sys)
 
 # create a host instance and a NIC instance then install the NIC on the host
 host0 = i40e_sys.I40ELinuxHost(sys)

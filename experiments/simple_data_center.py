@@ -89,7 +89,7 @@ for i_tor_switch in range(N_RACKS):
     ns3_hosts.append(rack_hosts)
 
 # Create disk images for hosts running Linux
-distro_disk_image = system.DistroDiskImage(sys, "base")
+distro_disk_image = system.Ubuntu2204CustomKernelDiskImage(sys)
 
 # Create detailed hosts and connect them to TOR
 detailed_hosts: list[list[Host]] = []
