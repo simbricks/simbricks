@@ -517,7 +517,7 @@ class DistroDiskImage(HttpDiskImage):
     the image itself as ``<name>`` and its sha256 next to it as ``<name>.sha256``.
     """
 
-    BASE_URL = "https://images.simbricks.io"
+    BASE_URL = "https://disk-images.simbricks.io"
 
     def __init__(
         self,
