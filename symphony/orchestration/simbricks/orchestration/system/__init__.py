@@ -115,6 +115,10 @@ from simbricks.orchestration.system.disk_images import (
     HttpDiskImage,
     LinuxConfigDiskImage,
     PackerDiskImage,
+    Ubuntu2204BaseDiskImage,
+    Ubuntu2204CustomKernelDiskImage,
+    Ubuntu2404BaseDiskImage,
+    Ubuntu2404CustomKernelDiskImage,
 )
 from simbricks.orchestration.system.image_layers import (
     AddFiles,
@@ -144,6 +148,10 @@ __all__ += [
     "ConfigFileArtifact",
     "ConfigFileLocal",
     "ConfigFileStr",
+    "Ubuntu2204BaseDiskImage",
+    "Ubuntu2204CustomKernelDiskImage",
+    "Ubuntu2404BaseDiskImage",
+    "Ubuntu2404CustomKernelDiskImage",
 ]
 
 from simbricks.orchestration.system.host import (
