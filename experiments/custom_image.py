@@ -17,7 +17,7 @@ from simbricks.orchestration.helpers import simulation as sim_helpers
 
 sys = system.System()
 
-base_image = system.DistroDiskImage(sys, "base")
+base_image = system.Ubuntu2204CustomKernelDiskImage(sys)
 
 # Layers run in order, offline in one virt-customize invocation: no VM is booted.
 image = GuestfsImage(sys, base_image)
