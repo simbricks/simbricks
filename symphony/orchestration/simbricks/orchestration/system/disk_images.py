@@ -589,14 +589,14 @@ class Ubuntu2204BaseDiskImage(DistroDiskImage):
     def __init__(
         self, system: sys_base.System, boot_dir: str | None = None, qemu_img_exec: str = "qemu-img"
     ) -> None:
-        super().__init__(system, "ubuntu-22.04-base", "1.0.0", "qcow2", boot_dir, qemu_img_exec)
+        super().__init__(system, "ubuntu-22.04-base", "1.0.1", "qcow2", boot_dir, qemu_img_exec)
 
 
 class Ubuntu2404BaseDiskImage(DistroDiskImage):
     def __init__(
         self, system: sys_base.System, boot_dir: str | None = None, qemu_img_exec: str = "qemu-img"
     ) -> None:
-        super().__init__(system, "ubuntu-24.04-base", "1.0.0", "qcow2", boot_dir, qemu_img_exec)
+        super().__init__(system, "ubuntu-24.04-base", "1.0.1", "qcow2", boot_dir, qemu_img_exec)
 
 
 class Ubuntu2204CustomKernelDiskImage(DistroDiskImage):
@@ -604,7 +604,7 @@ class Ubuntu2204CustomKernelDiskImage(DistroDiskImage):
         self, system: sys_base.System, boot_dir: str | None = None, qemu_img_exec: str = "qemu-img"
     ) -> None:
         super().__init__(
-            system, "ubuntu-22.04-custom-kernel", "1.0.0", "qcow2", boot_dir, qemu_img_exec
+            system, "ubuntu-22.04-custom-kernel", "1.0.1", "qcow2", boot_dir, qemu_img_exec
         )
 
 
@@ -613,7 +613,7 @@ class Ubuntu2404CustomKernelDiskImage(DistroDiskImage):
         self, system: sys_base.System, boot_dir: str | None = None, qemu_img_exec: str = "qemu-img"
     ) -> None:
         super().__init__(
-            system, "ubuntu-24.04-custom-kernel", "1.0.0", "qcow2", boot_dir, qemu_img_exec
+            system, "ubuntu-24.04-custom-kernel", "1.0.1", "qcow2", boot_dir, qemu_img_exec
         )
 
 
