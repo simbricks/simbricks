@@ -36,11 +36,13 @@ there are exactly **three** images, building on each other:
   :ref:`Main Runner <sec-runner>` that connects to the SimBricks Backend
   (entrypoint ``run_runner.sh``, see :ref:`sec-local-runner`).
 - ``simbricks/simbricks-executor`` — runner image plus the standard simulator packages
-  (QEMU, gem5, ns-3, FEMU, i40e, e1000, and the basic net/mem simulators) **and** a pre-built
-  ``base`` disk image at ``/global_input/images/base/`` (built with :image-builder:`\ `, including
-  the gem5-compatible kernel, the ``m5`` tool, and the Corundum ``mqnic`` driver). This is the
-  image that actually executes simulations, either spawned by a Runner's Docker plugin or used
-  directly.
+  (QEMU, gem5, ns-3, FEMU, i40e, e1000, and the basic net/mem simulators) and the tooling to build
+  disk images (libguestfs, packer, ``qemu-img``). This is the image that actually executes
+  simulations, either spawned by a Runner's Docker plugin or used directly. It ships no disk
+  image of its own: the images SimBricks publishes are downloaded when a run first uses one (see
+  :ref:`sec-disk-images-distro`), so the container needs network access to
+  ``https://disk-images.simbricks.io``, and an image cache
+  (:ref:`sec-disk-images-caching`) is worth mounting so that download is paid once.
 
 For a quick interactive environment with all standard simulators available, you can enter the
 executor image directly:
@@ -67,11 +69,13 @@ directly on the host):
   # inside the container:
   sudo sysctl -w kernel.perf_event_paranoid=1
 
-**Raw images for gem5.** The shipped ``base`` image is in qcow2 format. gem5 requires raw images;
-the executor's default entrypoint converts the image on startup, but when entering the container
-manually you can convert it yourself:
+**Raw images for gem5.** The images SimBricks publishes are qcow2, and gem5 requires raw. Build a
+layered image on top of one in your script (:ref:`sec-disk-images-building`) — the build produces
+raw and extracts the boot artifacts gem5 needs. For an image of your own placed under
+``GLOBAL_INPUT_DIR``, the executor's default entrypoint converts each ``images/<name>/<name>`` to
+``.raw`` on startup; when entering the container manually you can do it yourself:
 
 .. code-block:: bash
 
   qemu-img convert -f qcow2 -O raw -S 4k \
-      /global_input/images/base/base /global_input/images/base/base.raw
+      /global_input/images/my-image/my-image /global_input/images/my-image/my-image.raw

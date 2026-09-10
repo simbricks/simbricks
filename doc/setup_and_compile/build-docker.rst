@@ -44,9 +44,9 @@ and ``DOCKER_TAG`` for naming, and ``CONDA_CHANNEL`` to build against the ``late
 ``stable`` SimBricks conda channel.
 
 .. note::
-  Building the executor image takes a while (typically well over 30 minutes): it clones the
-  :image-builder:`\ ` repository, builds the gem5-compatible kernel, and builds the complete
-  ``base`` disk image inside the Docker build (using TCG, since KVM is not available there).
+  The executor image installs the simulator packages and the image build tooling, and builds no
+  disk image: the images SimBricks publishes are downloaded on first use
+  (:ref:`sec-disk-images-distro`).
 
 For custom executor environments it is usually easier to *extend* the pre-built images than to
 rebuild them, e.g.:

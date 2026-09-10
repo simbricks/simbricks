@@ -131,9 +131,9 @@ Through the CLI you can:
 
   .. code-block:: console
 
-    [host.QemuSim-25] Formatting '/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/2_hdcopy.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/global_input/images/base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+    [host.QemuSim-25] Formatting '/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/2_hdcopy.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/1.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
     [host.QemuSim-25] prepare command exited with code 0
-    [host.QemuSim-26] Formatting '/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/10_hdcopy.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/global_input/images/base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+    [host.QemuSim-26] Formatting '/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/10_hdcopy.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960 backing_file=/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/1.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
     [host.QemuSim-26] prepare command exited with code 0
     [net.SwitchNet-29] Switch connecting to: /wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-5.21.20
     [net.SwitchNet-29] Switch connecting to: /wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-13.23.22
@@ -256,16 +256,17 @@ Having it installed, users can simply execute their virtual prototypes by runnin
 
 .. code-block:: bash
 
-  simbricks-run --verbose --global-input-dir <dir with disk images> <path to your virtual prototype python script>
+  simbricks-run --verbose <path to your virtual prototype python script>
 
 This command will cause SimBricks to run your virtual prototype locally.
 
 Local execution requires the simulators used by your virtual prototype and their dependencies to
 be available locally: install the respective ``simbricks-*-bin`` conda packages from the SimBricks
-conda channel (see :ref:`sec-conda-packages`), and provide a global input directory containing the
-disk images your script references (see :ref:`sec-disk-images`).
+conda channel (see :ref:`sec-conda-packages`). The images SimBricks publishes are downloaded on
+first use, so nothing has to be prepared for them; if your script references images of your own,
+add ``--global-input-dir <dir>`` so their paths resolve (see :ref:`sec-disk-images`).
 Alternatively, you can run inside the pre-built ``simbricks/simbricks-executor`` Docker container,
-which has both already set up (see :ref:`sec-docker-images`).
+which has the simulators already set up (see :ref:`sec-docker-images`).
 
 .. hint::
   You can simply install the SimBricks package for local execution by running ``pip install simbricks-local``, or install it from the SimBricks conda channel together with the simulators.

@@ -53,9 +53,12 @@ channel into the active environment, or run inside the ``simbricks/simbricks-exe
 
 **Local execution fails with** ``RuntimeError: Global input directory is not set`` **or cannot find a disk image.**
 
-``DistroDiskImage`` resolves images inside the global input directory. Pass
-``--global-input-dir <dir>`` to ``simbricks-run``, where ``<dir>`` contains
-``images/<name>/<name>`` in the layout described in :ref:`sec-disk-images-global-input`.
+Something in the script names a path that only exists on the Runner — an ``ExternalDiskImage``, a
+``boot_dir=``, or a ``@{SIMBRICKS_PATH:global_input_dir}@`` placeholder. Pass
+``--global-input-dir <dir>`` to ``simbricks-run`` so those paths resolve, in the layout described
+in :ref:`sec-disk-images-global-input`. The images SimBricks publishes need none of this: they
+are downloaded (:ref:`sec-disk-images-distro`), so check network access to
+``https://disk-images.simbricks.io`` instead.
 
 **QEMU is very slow / warns that KVM is not available.**
 
@@ -67,9 +70,12 @@ just slower.
 **gem5 complains about the disk image or kernel.**
 
 gem5 only supports **raw** disk images, and boots the ELF ``vmlinux``. A layered image is built
-in whichever format the simulator needs; for a prebuilt image, make sure the raw variant and the
-boot artifacts are in place (``images/<name>/<name>.raw`` and ``images/<name>/boot/vmlinux``, see
-:ref:`sec-disk-images-global-input`). Also note that gem5 needs to run
+in whichever format the simulator needs and extracts the boot artifacts, so building one on top
+of a distro image is the way to run gem5 on it — a downloaded image is qcow2 only and has no boot
+artifacts (:ref:`sec-disk-images-distro`). For a prebuilt image of your own, make sure the raw
+variant and the boot artifacts are in place (``images/<name>/<name>.raw`` and
+``images/<name>/boot/vmlinux``, see :ref:`sec-disk-images-global-input`), and point ``boot_dir=``
+at them. Also note that gem5 needs to run
 with ``kernel.perf_event_paranoid`` set to 1 or lower on the host (``sudo sysctl -w
 kernel.perf_event_paranoid=1``); in Docker this typically requires ``--privileged``.
 

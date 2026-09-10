@@ -91,22 +91,23 @@ This is the usual way to start a SimBricks script.
     syst = system.System()
 
 - Next, we create a disk image object for our hosts.
-  The ``DistroDiskImage`` refers to one of the Linux images distributed alongside SimBricks by
-  name. The image named ``base`` contains the required drivers for the devices we simulate here.
+  ``Ubuntu2204CustomKernelDiskImage`` is one of the Linux images SimBricks publishes; the Runner
+  downloads it the first time it is used and keeps it for later runs. It carries the
+  SimBricks-built kernel and the drivers for the devices we simulate here.
   Note that the disk image is created once on the ``System`` and can then be added to multiple
   hosts. You are not limited to these images: a script can also point at an image of your own, or
   build one on top of a base image as part of the run — see :ref:`sec-disk-images`.
 
   .. code-block:: python
 
-    distro_disk_image = system.DistroDiskImage(syst, "base")
+    distro_disk_image = system.Ubuntu2204CustomKernelDiskImage(syst)
 
 - Now we add a host specification for our client to the system.
   In this case we create a Linux host that is supposed to have the driver for the Intel i40e NIC
   available, so we use the ``I40ELinuxHost`` component from the i40e component package.
   (Implicitly the Linux Host Component is added to our previously created System object through its constructor.)
 
-  Then we add two disk images: the ``base`` distro image we just created, and a
+  Then we add two disk images: the distro image we just created, and a
   ``LinuxConfigDiskImage``, which will later on store the actual commands that we want to execute
   during the simulation on this host. Note that the ``LinuxConfigDiskImage`` takes the ``System``
   as its first and the host it belongs to as its second argument.
