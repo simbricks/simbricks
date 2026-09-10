@@ -116,7 +116,7 @@ The Docker Plugin
 The Docker plugin allows for containerized execution. Instead of relying on
 local host dependencies, the Main Runner starts the Fragment Runner inside a
 Docker container (by default the pre-built ``simbricks/simbricks-executor``
-image, which contains the standard simulators and the ``base`` disk image; see
+image, which contains the standard simulators and the image build tooling; see
 :ref:`sec-docker-images`). The image to use is configurable per fragment
 executor, and administrators can restrict the allowed images through
 allow/deny lists in the Runner configuration.

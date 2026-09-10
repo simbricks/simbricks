@@ -96,9 +96,10 @@ The configuration file declares which fragment executors the Runner offers. Each
   host needs KVM access for fast QEMU runs.
 
 Hardware/OS requirements are the same as for the executor image (see :ref:`sec-docker-images`):
-``/dev/kvm`` for QEMU, ``kernel.perf_event_paranoid <= 1`` for gem5, and disk images available
-under the global input directory (pre-installed in the executor image; for bare-metal setups,
-provide them yourself and set ``GLOBAL_INPUT_DIR`` — see :ref:`sec-disk-images-global-input`).
+``/dev/kvm`` for QEMU, ``kernel.perf_event_paranoid <= 1`` for gem5, and network access to
+``https://disk-images.simbricks.io`` for the images SimBricks publishes
+(:ref:`sec-disk-images-distro`). Images of your own go under the global input directory, which
+you provide and point ``GLOBAL_INPUT_DIR`` at — see :ref:`sec-disk-images-global-input`.
 
 .. _sec-local-runner-settings:
 
@@ -116,7 +117,8 @@ environment variables, or a ``runner.env`` file next to the Runner:
     - Meaning
   * - ``GLOBAL_INPUT_DIR``
     - Where prebuilt disk images and their boot artifacts are found
-      (:ref:`sec-disk-images-global-input`).
+      (:ref:`sec-disk-images-global-input`). Not needed for the images SimBricks publishes, which
+      are downloaded.
   * - ``IMAGE_CACHE_DIR``
     - Where images built for a run are kept for later runs. Unset means no cache: every run
       builds its images again.

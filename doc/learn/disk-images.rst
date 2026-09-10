@@ -32,16 +32,19 @@ artifacts (kernel, initrd). This chapter explains how disk images are referenced
 prototype scripts, how SimBricks can build them for you, where the files come from, and how
 per-run inputs and outputs flow through a simulation.
 
-There are two ways to get an image, and they mix freely:
+There are three ways to get an image, and they mix freely:
 
+- **Use one SimBricks publishes.** The distro images are ready to boot and carry the drivers for
+  the simulated devices. Name one in the script and the Runner downloads it — see
+  :ref:`sec-disk-images-distro`.
 - **Bring one you built.** Any tooling that produces a qcow2 or raw image works — packer, a
   distribution's cloud image, ``virt-install``, your own scripts, whatever your group already
   uses. SimBricks never needs to know how it was made.
-- **Describe it in the virtual prototype script.** Start from an image of the first kind and list
+- **Describe it in the virtual prototype script.** Start from an image of either kind and list
   the changes you want on top of it. SimBricks builds the result on the Runner when the run is
   prepared, and reuses it for later runs.
 
-The second is not a replacement for the first: it exists because the common case — an existing
+The last is not a replacement for the others: it exists because the common case — an existing
 base image plus a package to install and a few files to copy in — should not require a separate
 build pipeline, a second repository, or a manual copy step onto a shared Runner.
 
@@ -58,7 +61,7 @@ hosts with ``host.add_disk()``:
   from simbricks.orchestration import system
 
   syst = system.System()
-  disk = system.DistroDiskImage(syst, "base")
+  disk = system.Ubuntu2204CustomKernelDiskImage(syst)
 
   host0 = ...
   host0.add_disk(disk)
@@ -66,11 +69,10 @@ hosts with ``host.add_disk()``:
 
 The image types that reference an existing image are:
 
-- ``DistroDiskImage(system, name)``: an image distributed alongside SimBricks, **by name**. It is
-  looked up in the *global input directory* of the execution environment under
-  ``images/<name>/<name>`` (qcow2) or ``images/<name>/<name>.raw`` (raw) — see
-  :ref:`sec-disk-images-global-input`. The ``base`` image is pre-installed in the SimBricks
-  executor environments.
+- ``DistroDiskImage(system, image_name, image_version, format="qcow2", boot_dir=None)``: an image
+  distributed by SimBricks, downloaded by the Runner from the image registry — see
+  :ref:`sec-disk-images-distro`. In scripts you normally use one of the named subclasses above,
+  which pin a name and a version.
 - ``ExternalDiskImage(system, path, boot_dir=None)``: an image at an explicit path **on the
   machine that executes the run**.
 - ``ExternalDiskImageArtifact(system, path, boot_dir=None)``: an image on the machine you *submit*
@@ -98,6 +100,65 @@ copy-on-write overlay per host, so hosts can share one backing image) and raw, w
 raw images. The orchestration framework automatically selects a format both the image and the
 simulator support, and copies the image per host where necessary.
 
+.. _sec-disk-images-distro:
+
+The images SimBricks publishes
+==============================
+
+SimBricks publishes ready-to-boot Ubuntu images, built with :image-builder:`\ `. Each is a class
+that takes nothing but the ``System``, because the image name and version are pinned by the class:
+
+.. list-table::
+  :header-rows: 1
+  :widths: 38 26 36
+
+  * - Class
+    - Package
+    - What it is
+  * - ``Ubuntu2204BaseDiskImage``
+    - ``ubuntu-22.04-base``
+    - The stock Ubuntu 22.04 cloud image plus the SimBricks guest init.
+  * - ``Ubuntu2404BaseDiskImage``
+    - ``ubuntu-24.04-base``
+    - The same, on Ubuntu 24.04.
+  * - ``Ubuntu2204CustomKernelDiskImage``
+    - ``ubuntu-22.04-custom-kernel``
+    - The 22.04 base plus the SimBricks-built kernel: gem5-compatible, with the ``m5`` tool and
+      the Corundum ``mqnic`` driver. This is what the old ``base`` image was, and what the
+      examples use.
+  * - ``Ubuntu2404CustomKernelDiskImage``
+    - ``ubuntu-24.04-custom-kernel``
+    - The same, on Ubuntu 24.04.
+
+.. code-block:: python
+
+  disk = system.Ubuntu2204CustomKernelDiskImage(syst)
+
+Each is a thin ``DistroDiskImage``, which is an ``HttpDiskImage`` pointed at the SimBricks image
+registry. Images are published as packages under ``https://disk-images.simbricks.io``:
+
+.. code-block:: text
+
+  <base_url>/<name>/<version>/<name>          # the image, qcow2
+  <base_url>/<name>/<version>/<name>.sha256   # its sha256
+
+The Runner constructs both URLs from the name and version, fetches the checksum, and verifies the
+image against it while downloading. Everything else follows from ``HttpDiskImage``: the download
+is cached under the name and version, so it is paid once per Runner however many runs use it (see
+:ref:`sec-disk-images-caching`), and a Runner needs network access to the registry the first time
+an image is used, but not afterwards.
+
+Use ``DistroDiskImage(syst, name, version)`` directly to pin a version other than the one a class
+carries, or to use an image that has no class yet.
+
+.. note::
+  A distro image is qcow2, and that is the only format it offers, so it cannot be handed to gem5
+  directly. Build a layered image on it (:ref:`sec-disk-images-building`) — the build produces
+  raw as well, and the result is cached. The same applies to boot artifacts: a package holds the
+  image and its checksum and nothing else, so a simulator that needs a kernel handed to it gets
+  it from a layered image, from ``boot_dir=``, or from its own ``kernel_path`` — see
+  :ref:`sec-disk-images-boot-artifacts`.
+
 .. _sec-disk-images-building:
 
 Building an image from the script
@@ -113,7 +174,7 @@ prepared:
   from simbricks.orchestration import system
 
   syst = system.System()
-  base = system.DistroDiskImage(syst, "base")
+  base = system.Ubuntu2204CustomKernelDiskImage(syst)
 
   image = GuestfsImage(syst, base)
   image.run("apt-get update && apt-get install -y --no-install-recommends iperf3")
@@ -232,6 +293,8 @@ What the cache gives you:
 Anything that is per-run — ``LinuxConfigDiskImage``, above all — is never cached and says so if
 asked for a hash.
 
+.. _sec-disk-images-boot-artifacts:
+
 Boot artifacts
 ==============
 
@@ -239,9 +302,11 @@ Simulators that boot a kernel directly cannot read it out of the image, so they 
 initrd, or uncompressed ``vmlinux`` handed to them separately. They ask the image for what they
 need, and where those files come from depends on the image type:
 
-- ``DistroDiskImage``: alongside the image in the global input directory, under ``boot/``.
-- ``ExternalDiskImage``, ``ExternalDiskImageArtifact``, ``HttpDiskImage``: from the directory
-  given as ``boot_dir=``, if you have prebuilt ones.
+- ``ExternalDiskImage``, ``ExternalDiskImageArtifact``, ``HttpDiskImage``, ``DistroDiskImage``:
+  from the directory given as ``boot_dir=``, if you have prebuilt ones. It is a path on the
+  Runner, so it can point into the global input directory
+  (:ref:`sec-disk-images-global-input`), e.g.
+  ``boot_dir="global_input/images/my-image/boot"``.
 - Layered images: extracted from the image that was just built — offline with libguestfs, or
   downloaded from the guest over SSH by the packer builder while the machine is still up. They are
   cached with the image, so a cache hit does not have to boot anything.
@@ -253,24 +318,29 @@ Building images outside SimBricks
 =================================
 
 Images built elsewhere are first-class, and one is always involved: every layered image starts
-from a base that something else produced. Use whatever fits — a distribution cloud image via
-``HttpDiskImage`` is often enough to start from.
+from a base that something else produced. Use whatever fits — a distro image
+(:ref:`sec-disk-images-distro`) or a distribution cloud image via ``HttpDiskImage`` is often
+enough to start from.
 
-The ``base`` image shipped with SimBricks is built by :image-builder:`\ `, a small,
-simulator-independent packer harness that turns a stock cloud image into an image plus its boot
-artifacts. It is the right tool when you are producing a *base* image for others to build on: a
-custom kernel, a driver stack, anything large enough that you want it built once and distributed
-rather than rebuilt per experiment. Its output directory maps 1:1 onto the global input layout
-below.
+The images SimBricks publishes are built by :image-builder:`\ `, a small, simulator-independent
+packer harness that turns a stock cloud image into an image plus its boot artifacts. It is the
+right tool when you are producing a *base* image for others to build on: a custom kernel, a
+driver stack, anything large enough that you want it built once and distributed rather than
+rebuilt per experiment. Its output directory maps 1:1 onto the global input layout below, so an
+image it builds can be dropped onto a Runner and referenced with ``ExternalDiskImage``.
 
 .. _sec-disk-images-global-input:
 
 The global input directory
 ==========================
 
-Executions resolve ``DistroDiskImage`` references inside a **global input directory**: a directory
-of (typically large, reusable) input files that exists once per execution environment rather than
-per run. The expected layout for disk images is:
+A **global input directory** is a directory of (typically large, reusable) input files that exists
+once per execution environment rather than per run. Nothing is required to be in it — the images
+SimBricks publishes are downloaded (:ref:`sec-disk-images-distro`) and built images are cached
+(:ref:`sec-disk-images-caching`) — but it is where an image of your own belongs when it is too
+big to ship with a run and you would rather place it on the Runner once. Referencing it is a
+matter of pointing ``ExternalDiskImage`` and ``boot_dir=`` at paths inside it; the layout that
+:image-builder:`\ ` produces is:
 
 .. code-block:: text
 
@@ -282,15 +352,15 @@ per run. The expected layout for disk images is:
 
 How the global input directory is located depends on how you execute:
 
-- **SimBricks Cloud / executor image:** the ``simbricks/simbricks-executor`` Docker image ships
-  with a pre-built ``base`` image at ``/global_input/images/base/`` and sets the
-  ``GLOBAL_INPUT_DIR=/global_input`` environment variable.
+- **SimBricks Cloud / executor image:** the ``simbricks/simbricks-executor`` Docker image sets
+  ``GLOBAL_INPUT_DIR=/global_input``; mount your own files there.
 - **Local execution with** ``simbricks-run``: pass ``--global-input-dir <DIR>`` on the command
   line (see :ref:`sec-execution`).
 
 At preparation time, the global input directory is symlinked into the run's working directory as
-``global_input``, and simulators resolve boot artifacts through that link (e.g. QEMU passes
-``global_input/images/base/boot/vmlinuz`` as its kernel).
+``global_input``, and paths are resolved through that link — which is why a path relative to the
+run's working directory, such as ``global_input/images/my-image/boot``, is the usual way to name
+something in it.
 
 .. _sec-disk-images-guest-payload:
 

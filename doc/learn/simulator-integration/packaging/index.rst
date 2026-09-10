@@ -154,8 +154,8 @@ provides Makefile targets for building/installing them in-guest (e.g. ``make dri
 and that a virtual prototype can install them into the image it boots — either as a layer on a
 layered image (see :ref:`sec-disk-images-building`) or baked into a base image built with
 :image-builder:`\ `, whose ``examples/corundum/install-mqnic.sh`` and ``examples/gem5/install-m5.sh``
-show the shape of such a script. The pre-built ``base`` image already contains the mqnic driver
-and the m5 tool.
+show the shape of such a script. The ``*-custom-kernel`` images SimBricks publishes already
+contain the mqnic driver and the m5 tool (see :ref:`sec-disk-images-distro`).
 
 Making a simulator available on Runners
 ---------------------------------------

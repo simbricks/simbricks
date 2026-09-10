@@ -49,10 +49,10 @@ Runner will differ):
     │ 10 │ 10               │ RunState.PENDING │
     └────┴──────────────────┴──────────────────┘
     [host.QemuSim-25] Formatting '/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/2_hdcopy.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960
-    backing_file=/global_input/images/base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+    backing_file=/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/1.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
     [host.QemuSim-25] prepare command exited with code 0
     [host.QemuSim-26] Formatting '/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/10_hdcopy.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=42949672960
-    backing_file=/global_input/images/base/base backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+    backing_file=/wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/imgs/1.qcow2 backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
     [host.QemuSim-26] prepare command exited with code 0
     [net.SwitchNet-29] Switch connecting to: /wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-5.21.20
     [net.SwitchNet-29] Switch connecting to: /wrk/run-10-767b3eb9-f93f-495a-80ee-d9754981d7aa/tmp/shm/eth-13.23.22
