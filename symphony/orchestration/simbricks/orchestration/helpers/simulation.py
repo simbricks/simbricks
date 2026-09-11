@@ -62,7 +62,7 @@ def simple_simulation(
 ):
     """Create simple simulation from system. Uses a map from component type to
     simulator type and then creates one simulator per component."""
-    simulation = sim_base.Simulation(name=f"simulation-{system.name}", system=system)
+    simulation = sim_base.Simulation(name="def-sim-name", system=system)
 
     for comp in system._all_components.values():
         if comp in simulation._sys_sim_map:

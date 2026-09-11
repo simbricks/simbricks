@@ -23,7 +23,6 @@
 from __future__ import annotations
 
 import typing as tp
-import uuid
 
 import typing_extensions as tpe
 
@@ -39,7 +38,7 @@ if tp.TYPE_CHECKING:
 class System(utils_base.IdObj):
     """Defines System configuration of the whole simulation"""
 
-    def __init__(self, name: str = str(uuid.uuid4())) -> None:
+    def __init__(self, name: str = "def-sys-name") -> None:
         super().__init__()
         self.name: str = name
         self._all_components: dict[int, Component] = {}
