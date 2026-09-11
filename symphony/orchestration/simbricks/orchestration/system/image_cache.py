@@ -57,6 +57,16 @@ NO_COMPRESSION = "none"
 COMPRESSIONS = (NO_COMPRESSION, "zstd", "zlib")
 COMPRESSION_DEFAULT = "zstd"
 
+# Directory name under the directory the run work directories are created in.
+DEFAULT_DIR_NAME = ".image-cache"
+# Default cache size limit
+DEFAULT_SIZE = 50 * (1 << 30)
+
+
+def default_dir(workdir_base: pathlib.Path) -> pathlib.Path:
+    """The cache directory that goes with a work directory base."""
+    return workdir_base.resolve() / DEFAULT_DIR_NAME
+
 
 def compression(name: str | None) -> str:
     """The compression to write entries with. None asks for the default.
