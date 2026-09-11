@@ -104,15 +104,20 @@ class HostSim(sim_base.Simulator):
         # The first disk is the one the guest boots from, matching how run_cmd orders drives.
         self._boot_artifacts[host] = await host_disks[0][0].boot_artifacts(inst, kinds)
 
+    def check_boot_artifact(
+        self, host: sys_host.FullSystemHost, kind: disk_images.BootArtifact
+    ) -> bool:
+        artifacts = self._boot_artifacts.get(host)
+        return artifacts is not None and kind in artifacts
+
     def boot_artifact(self, host: sys_host.FullSystemHost, kind: disk_images.BootArtifact) -> str:
         """Path of a boot artifact previously fetched by pull_boot_artifacts."""
-        artifacts = self._boot_artifacts.get(host)
-        if artifacts is None or kind not in artifacts:
+        if not self.check_boot_artifact(host, kind):
             raise RuntimeError(
                 f"boot artifact '{kind.value}' was not fetched for {host.name};"
                 " pull_boot_artifacts must request it during prepare"
             )
-        return artifacts[kind]
+        return self._boot_artifacts[host][kind]
 
     def supported_socket_types(self, interface: sys_base.Interface) -> set[inst_socket.SockType]:
         return {inst_socket.SockType.CONNECT}
