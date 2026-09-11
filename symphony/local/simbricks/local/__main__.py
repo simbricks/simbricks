@@ -29,6 +29,7 @@ import importlib
 import importlib.util
 import os
 import pathlib
+import shutil
 import signal
 import sys
 
@@ -79,7 +80,10 @@ def parse_args() -> argparse.Namespace:
         action="store_const",
         const=True,
         default=False,
-        help="Run experiments even if output already exists (overwrites output)",
+        help=(
+            "Reuse the run directories of an earlier invocation, discarding their contents"
+            " (default: run in a new directory with a -1, -2, ... suffix)"
+        ),
     )
     parser.add_argument(
         "--verbose",
@@ -193,6 +197,50 @@ def copy_instantiation(to_copy: inst_base.Instantiation) -> inst_base.Instantiat
     return inst_copy
 
 
+class RunDirs:
+    """Gives every run its own directory below the work directory base."""
+
+    def __init__(self, base: pathlib.Path, force: bool) -> None:
+        self._base = base
+        self._force = force
+        self._given_out: list[pathlib.Path] = []
+
+    def claim(self, name: str) -> pathlib.Path:
+        """`<base>/<name>`, or `<base>/<name>-N` with the smallest N that is still free.
+
+        A directory left behind by an earlier invocation is not free, unless force is set: then
+        it is deleted and used again.
+        """
+        wanted = pathlib.Path(utils_file.join_paths(self._base, name))
+
+        path = wanted
+        n = 1
+        while not self._free(path):
+            path = wanted.with_name(f"{wanted.name}-{n}")
+            n += 1
+
+        if self._force and path.exists():
+            print(f"--force: removing {path}")
+            shutil.rmtree(path)
+        elif path != wanted:
+            print(f"{wanted} already in use, running in {path}")
+
+        path.mkdir(parents=True)
+        self._given_out.append(path)
+        return path
+
+    def _free(self, path: pathlib.Path) -> bool:
+        if path in self._given_out:
+            return False
+        return self._force or not path.exists()
+
+    def remove_unused(self) -> None:
+        """Remove the directories of runs that never started, e.g. after an interrupt."""
+        for path in self._given_out:
+            if not any(path.iterdir()):
+                path.rmdir()
+
+
 def image_cache_config(args: argparse.Namespace) -> tuple[pathlib.Path | None, int | None]:
     """Where images are kept between runs, and how large that may grow."""
     if args.no_image_cache:
@@ -213,17 +261,18 @@ def add_exp(
     prereq: runs_base.Run | None,
     rt: runs_base.Runtime,
     args: argparse.Namespace,
+    workdir: pathlib.Path,
 ) -> runs_base.Run:
-    workdir = utils_file.join_paths(
-        args.workdir, f"{instantiation.simulation.name}/{instantiation.id()}"
-    )
     cache_dir, cache_size = image_cache_config(args)
+    # A run depending on another run restores the checkpoint that run took.
+    checkpoint_dir = pathlib.Path(prereq.instantiation.env.cp_dir()) if prereq else None
     env = inst_base.InstantiationEnvironment(
-        pathlib.Path(workdir).resolve(),
+        workdir,
         args.global_input_dir,
         cache_dir,
         cache_size,
         args.image_cache_compression,
+        checkpoint_dir=checkpoint_dir,
     )
     instantiation.env = env
     assert len(instantiation.fragments) == 1
@@ -233,6 +282,54 @@ def add_exp(
     run = runs_base.Run(instantiation=instantiation, prereq=prereq, simulation_output=output)
     rt.add_run(run)
     return run
+
+
+def add_runs(
+    instantiations: list[inst_base.Instantiation],
+    rt: runs_base.Runtime,
+    run_dirs: RunDirs,
+    args: argparse.Namespace,
+) -> None:
+    for inst in instantiations:
+        # apply filter if any specified
+        if (args.filter) and (len(args.filter) > 0):
+            match = False
+            for f in args.filter:
+                match = fnmatch.fnmatch(inst.simulation.name, f)
+                if match:
+                    break
+
+            if not match:
+                continue
+
+        inst.finalize_validate()
+
+        name = f"{inst.simulation.name}/{inst.id()}"
+        workdir = run_dirs.claim(name)
+
+        # if this is an experiment with a checkpoint we might have to create
+        # it
+        prereq = None
+        if inst.create_checkpoint and inst.simulation.any_supports_checkpointing():
+            checkpointing_inst = copy_instantiation(inst)
+            checkpointing_inst.restore_checkpoint = False
+            checkpointing_inst.create_checkpoint = True
+            inst.create_checkpoint = False
+            inst.restore_checkpoint = True
+
+            # shares the first repetition's directory
+            prereq = add_exp(
+                instantiation=checkpointing_inst, rt=rt, prereq=None, args=args, workdir=workdir
+            )
+
+        for index in range(args.firstrun, args.firstrun + args.runs):
+            if index > args.firstrun:
+                workdir = run_dirs.claim(name)
+            inst_copy = copy_instantiation(inst)
+            inst_copy.preserve_tmp_folder = False
+            if index == args.firstrun + args.runs - 1:
+                inst_copy._preserve_checkpoints = False
+            add_exp(instantiation=inst_copy, rt=rt, prereq=prereq, args=args, workdir=workdir)
 
 
 def main():
@@ -269,47 +366,17 @@ def main():
             print(inst.simulation.name)
         sys.exit(0)
 
-    for inst in instantiations:
-        # if args.auto_dist and not isinstance(sim, sim_base.DistributedExperiment):
-        #     sim = runs_base.auto_dist(sim, executors, args.proxy_type)
+    run_dirs = RunDirs(args.workdir, args.force)
+    try:
+        add_runs(instantiations, rt, run_dirs, args)
 
-        # apply filter if any specified
-        if (args.filter) and (len(args.filter) > 0):
-            match = False
-            for f in args.filter:
-                match = fnmatch.fnmatch(inst.simulation.name, f)
-                if match:
-                    break
+        # register interrupt handler
+        signal.signal(signal.SIGINT, lambda *_: rt.interrupt())
 
-            if not match:
-                continue
-
-        inst.finalize_validate()
-
-        # if this is an experiment with a checkpoint we might have to create
-        # it
-        prereq = None
-        if inst.create_checkpoint and inst.simulation.any_supports_checkpointing():
-            checkpointing_inst = copy_instantiation(inst)
-            checkpointing_inst.restore_checkpoint = False
-            checkpointing_inst.create_checkpoint = True
-            inst.create_checkpoint = False
-            inst.restore_checkpoint = True
-
-            prereq = add_exp(instantiation=checkpointing_inst, rt=rt, prereq=None, args=args)
-
-        for index in range(args.firstrun, args.firstrun + args.runs):
-            inst_copy = copy_instantiation(inst)
-            inst_copy.preserve_tmp_folder = False
-            if index == args.firstrun + args.runs - 1:
-                inst_copy._preserve_checkpoints = False
-            add_exp(instantiation=inst_copy, rt=rt, prereq=prereq, args=args)
-
-    # register interrupt handler
-    signal.signal(signal.SIGINT, lambda *_: rt.interrupt())
-
-    # invoke runtime to run experiments
-    asyncio.run(rt.start())
+        # invoke runtime to run experiments
+        asyncio.run(rt.start())
+    finally:
+        run_dirs.remove_unused()
 
 
 if __name__ == "__main__":
