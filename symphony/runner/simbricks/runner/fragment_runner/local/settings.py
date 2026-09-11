@@ -42,10 +42,15 @@ class RunnerSettings(BaseSettings):
     runner_id: int = 1
 
     global_input_dir: str | None = None
+    image_cache_enabled: bool = True
+    """Whether images are kept in the cache between runs at all."""
     image_cache_dir: str | None = None
-    """Size the image cache may reach before least recently used images are
-    dropped, e.g. "200G". Unset lets it grow without bound."""
+    """Where images are kept between runs. Unset puts the cache beside the run
+    work directories, in "<workdir>/.image-cache"."""
     image_cache_size: str | None = None
+    """Size the image cache may reach before least recently used images are
+    dropped, e.g. "200G". Unset lets a cache directory given here grow without
+    bound, and bounds the default one."""
     """How images are compressed on their way into the cache: "zstd" (the
     default), "zlib" for a qemu too old to read zstd, or "none"."""
     image_cache_compression: str | None = None

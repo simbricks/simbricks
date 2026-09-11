@@ -88,13 +88,23 @@ async def amain():
     if global_input_dir is not None:
         global_input_dir = pathlib.Path(global_input_dir)
 
-    image_cache_dir = settings.runner_settings().image_cache_dir
-    if image_cache_dir is not None:
-        image_cache_dir = pathlib.Path(image_cache_dir)
+    workdir = pathlib.Path("./runner-work").resolve()
 
+    image_cache_dir = settings.runner_settings().image_cache_dir
     image_cache_size = settings.runner_settings().image_cache_size
+    default_cache_size = None
+    if not settings.runner_settings().image_cache_enabled:
+        image_cache_dir = None
+    elif image_cache_dir is not None:
+        image_cache_dir = pathlib.Path(image_cache_dir).resolve()
+    else:
+        image_cache_dir = image_cache.default_dir(workdir)
+        default_cache_size = image_cache.DEFAULT_SIZE
+
     if image_cache_size is not None:
         image_cache_size = image_layers.parse_size(image_cache_size)
+    else:
+        image_cache_size = default_cache_size
 
     image_cache_compression = settings.runner_settings().image_cache_compression
     # Fail here rather than deep inside a build, on a name that is a typo.
@@ -102,7 +112,7 @@ async def amain():
 
     runner = LocalRunner(
         base_url=settings.runner_settings().base_url,
-        workdir=pathlib.Path("./runner-work").resolve(),
+        workdir=workdir,
         global_input_dir=global_input_dir,
         image_cache_dir=image_cache_dir,
         image_cache_size=image_cache_size,
