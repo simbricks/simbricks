@@ -59,6 +59,7 @@ class InstantiationEnvironment(utils_base.IdObj):
         image_cache_dir: pathlib.Path | None = None,
         image_cache_size: int | None = None,
         image_cache_compression: str | None = None,
+        checkpoint_dir: pathlib.Path | None = None,
     ):
         super().__init__()
         self._work_dir: pathlib.Path = workdir.resolve()
@@ -73,7 +74,11 @@ class InstantiationEnvironment(utils_base.IdObj):
         self._output_base: pathlib.Path = self._work_dir / "output"
         self._tmp_dir: pathlib.Path = self._work_dir / "tmp"
         self._img_dir: pathlib.Path = self._tmp_dir / "imgs"
-        self._cp_dir: pathlib.Path = self._tmp_dir / "checkpoints"
+        # A run that depends on another run restores that run's checkpoint, so this may point
+        # into the other run's work directory.
+        self._cp_dir: pathlib.Path = (
+            self._tmp_dir / "checkpoints" if checkpoint_dir is None else checkpoint_dir.resolve()
+        )
         self._shm_base: pathlib.Path = self._tmp_dir / "shm"
         self._proxy_dir: pathlib.Path = self._tmp_dir / "proxies"
         self._input_artifacts_dir: pathlib.Path = self._work_dir / "input_artifacts"
@@ -593,6 +598,9 @@ class Instantiation(utils_base.IdObj):
             if not (gi_src.exists() and gi_src.is_dir()):
                 raise RuntimeError("Global input directory does not exist or is not a directory")
             self.env._global_input_dir = self.env._work_dir / "global_input"
+            # Left behind when an earlier run used this work directory.
+            if self.env._global_input_dir.is_symlink():
+                self.env._global_input_dir.unlink()
             self.env._global_input_dir.symlink_to(gi_src)
 
         await self.simulation.prepare(inst=self)
