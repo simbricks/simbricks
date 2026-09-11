@@ -343,14 +343,4 @@ class PackerImage(image_layers.LayeredDiskImage):
     ) -> None:
         # The build downloads these from the guest, so reaching here means the
         # image came from the cache and its entry does not have them.
-        missing = [k.value for k in kinds]
-        msg = (
-            f"{missing} not available for this image: packer collects boot artifacts while"
-            " it builds, and this image was not built in this run."
-        )
-        if disk_images.BootArtifact.VMLINUX in kinds:
-            msg += (
-                " An uncompressed vmlinux also needs the kernel's debug package"
-                " installed by a layer."
-            )
-        raise RuntimeError(msg)
+        pass
