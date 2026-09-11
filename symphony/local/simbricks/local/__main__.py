@@ -115,13 +115,25 @@ def parse_args() -> argparse.Namespace:
         "--image-cache-dir",
         metavar="DIR",
         type=pathlib.Path,
-        help="Keep built disk images here and reuse them in later runs",
+        help=(
+            "Keep built disk images here and reuse them in later runs"
+            f" (default: <workdir>/{image_cache.DEFAULT_DIR_NAME})"
+        ),
+    )
+    g_env.add_argument(
+        "--no-image-cache",
+        action="store_true",
+        help="Do not keep built disk images at all, building and downloading them for every run",
     )
     g_env.add_argument(
         "--image-cache-size",
         metavar="SIZE",
         type=str,
-        help="Keep the image cache under this size, e.g. 200G, evicting least recently used",
+        help=(
+            "Keep the image cache under this size, e.g. 200G, evicting least recently used"
+            f" (default: {image_cache.DEFAULT_SIZE // (1 << 30)}G for the default cache"
+            " directory, unbounded for one given with --image-cache-dir)"
+        ),
     )
     g_env.add_argument(
         "--image-cache-compression",
@@ -181,6 +193,21 @@ def copy_instantiation(to_copy: inst_base.Instantiation) -> inst_base.Instantiat
     return inst_copy
 
 
+def image_cache_config(args: argparse.Namespace) -> tuple[pathlib.Path | None, int | None]:
+    """Where images are kept between runs, and how large that may grow."""
+    if args.no_image_cache:
+        return None, None
+    if args.image_cache_dir is not None:
+        cache_dir = args.image_cache_dir.resolve()
+        default_size = None
+    else:
+        cache_dir = image_cache.default_dir(args.workdir)
+        default_size = image_cache.DEFAULT_SIZE
+    if args.image_cache_size is None:
+        return cache_dir, default_size
+    return cache_dir, image_layers.parse_size(args.image_cache_size)
+
+
 def add_exp(
     instantiation: inst_base.Instantiation,
     prereq: runs_base.Run | None,
@@ -190,11 +217,11 @@ def add_exp(
     workdir = utils_file.join_paths(
         args.workdir, f"{instantiation.simulation.name}/{instantiation.id()}"
     )
-    cache_size = image_layers.parse_size(args.image_cache_size) if args.image_cache_size else None
+    cache_dir, cache_size = image_cache_config(args)
     env = inst_base.InstantiationEnvironment(
         pathlib.Path(workdir).resolve(),
         args.global_input_dir,
-        args.image_cache_dir,
+        cache_dir,
         cache_size,
         args.image_cache_compression,
     )
