@@ -82,7 +82,7 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help=(
             "Reuse the run directories of an earlier invocation, discarding their contents"
-            " (default: run in a new directory with a -1, -2, ... suffix)"
+            " (default: continue numbering after them)"
         ),
     )
     parser.add_argument(
@@ -198,7 +198,7 @@ def copy_instantiation(to_copy: inst_base.Instantiation) -> inst_base.Instantiat
 
 
 class RunDirs:
-    """Gives every run its own directory below the work directory base."""
+    """Gives every run its own numbered directory below the work directory base."""
 
     def __init__(self, base: pathlib.Path, force: bool) -> None:
         self._base = base
@@ -206,24 +206,21 @@ class RunDirs:
         self._given_out: list[pathlib.Path] = []
 
     def claim(self, name: str) -> pathlib.Path:
-        """`<base>/<name>`, or `<base>/<name>-N` with the smallest N that is still free.
+        """`<base>/<name>/N` with the smallest N that is still free.
 
         A directory left behind by an earlier invocation is not free, unless force is set: then
         it is deleted and used again.
         """
-        wanted = pathlib.Path(utils_file.join_paths(self._base, name))
+        parent = pathlib.Path(utils_file.join_paths(self._base, name))
 
-        path = wanted
-        n = 1
-        while not self._free(path):
-            path = wanted.with_name(f"{wanted.name}-{n}")
+        n = 0
+        while not self._free(parent / str(n)):
             n += 1
+        path = parent / str(n)
 
         if self._force and path.exists():
             print(f"--force: removing {path}")
             shutil.rmtree(path)
-        elif path != wanted:
-            print(f"{wanted} already in use, running in {path}")
 
         path.mkdir(parents=True)
         self._given_out.append(path)
@@ -304,7 +301,7 @@ def add_runs(
 
         inst.finalize_validate()
 
-        name = f"{inst.simulation.name}/{inst.id()}"
+        name = inst.simulation.name
         workdir = run_dirs.claim(name)
 
         # if this is an experiment with a checkpoint we might have to create

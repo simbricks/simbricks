@@ -242,7 +242,7 @@ You can check that it is installed by invoking ``simbricks-run --help``. In that
     --runs N              Number of repetition of each experiment
     --firstrun N          ID for first run
     --force               Reuse the run directories of an earlier invocation, discarding their contents (default:
-                          run in a new directory with a -1, -2, ... suffix)
+                          continue numbering after them)
     --verbose             Verbose output, for example, print component simulators' output
     --pcap                Dump pcap file (if supported by component simulator)
     --profile-int S       Enable periodic sigusr1 to each simulator every S seconds.
@@ -288,10 +288,8 @@ which has the simulators already set up (see :ref:`sec-docker-images`).
 All output is collected in a JSON file (``<workdir>/.../output/out.json``), which allows easy post-processing afterwards.
 Output files generated through local execution will be placed in a local folder (``./out/`` by default, configurable via ``--workdir``) that users can investigate to extract data from the execution.
 
-Each run gets its own directory ``<workdir>/<simulation name>/<instantiation id>`` (an unnamed
+Each run gets its own directory ``<workdir>/<simulation name>/<N>``, numbered from 0 (an unnamed
 simulation is called ``def-sim-name``, so give your ``Simulation`` a name to get a recognizable
-directory). If that directory already exists, because an earlier invocation left it behind or
-because ``--runs`` asks for repetitions, the run goes to ``<instantiation id>-1``, ``-2``, ... instead,
-leaving earlier output untouched. With ``--force`` the existing directories are wiped and reused.
-Repetitions of an experiment that boots from a checkpoint all restore the checkpoint taken in the
-first repetition's directory.
+directory). Numbers taken by earlier invocations are skipped, leaving their output untouched;
+with ``--force`` those directories are wiped and reused instead. Repetitions of an experiment that
+boots from a checkpoint all restore the checkpoint taken in the first repetition's directory.
