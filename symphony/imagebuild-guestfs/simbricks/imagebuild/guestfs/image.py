@@ -420,11 +420,5 @@ class GuestfsImage(image_layers.LayeredDiskImage):
         for kind in kinds:
             src = out_dir / pathlib.PurePosixPath(guest_names[kind]).name
             if not src.is_file():
-                msg = f"'{guest_names[kind]}' is not in this image."
-                if kind is disk_images.BootArtifact.VMLINUX:
-                    msg += (
-                        " An uncompressed vmlinux comes from the kernel's debug"
-                        " package; add a layer that installs it."
-                    )
-                raise RuntimeError(msg)
+                continue
             src.rename(out_dir / kind.value)

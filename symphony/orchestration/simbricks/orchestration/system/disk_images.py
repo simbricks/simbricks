@@ -122,16 +122,13 @@ class DiskImage(utils_base.IdObj):
     async def boot_artifacts(
         self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
     ) -> dict[BootArtifact, str]:
-        """Boot files from inside this image, as paths keyed by kind.
+        """Boot files from inside this image, as paths keyed by kind. Only successfully retrieved
+        boot artifacts are returned. Simulators later check if boot artifact is actually available.
 
         Simulators ask for every kind at once, so an image that has to extract them
         only pays for that once.
         """
-        if not kinds:
-            return {}
-        raise RuntimeError(
-            f"{self.__class__.__name__} cannot provide boot artifacts {[k.value for k in kinds]}"
-        )
+        return {}
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
@@ -208,8 +205,6 @@ class DummyDiskImage(DiskImage):
     async def boot_artifacts(
         self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
     ) -> dict[BootArtifact, str]:
-        if not kinds:
-            return {}
         raise self._unavailable("boot_artifacts")
 
     @classmethod
@@ -246,20 +241,14 @@ class ExternalDiskImage(DiskImage):
     async def boot_artifacts(
         self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
     ) -> dict[BootArtifact, str]:
-        if not kinds:
+        if not kinds or self.boot_dir is None:
             return {}
-        if self.boot_dir is None:
-            raise RuntimeError(
-                f"cannot provide boot artifacts {[k.value for k in kinds]} for disk image"
-                f" '{self._path}': pass boot_dir= naming the directory holding them, or set"
-                " the simulator's kernel path explicitly"
-            )
         boot_dir = pathlib.Path(inst.env.work_dir_or_abs(self.boot_dir))
         artifacts = {}
         for kind in kinds:
-            path = (boot_dir / kind.value).as_posix()
-            DiskImage.assert_is_file(path)
-            artifacts[kind] = path
+            path = boot_dir / kind.value
+            if path.is_file():
+                artifacts[kind] = path.as_posix()
         return artifacts
 
     def toJSON(self) -> dict:
@@ -374,20 +363,14 @@ class HttpDiskImage(DynamicDiskImage):
     async def boot_artifacts(
         self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
     ) -> dict[BootArtifact, str]:
-        if not kinds:
+        if not kinds or self.boot_dir is None:
             return {}
-        if self.boot_dir is None:
-            raise RuntimeError(
-                f"cannot provide boot artifacts {[k.value for k in kinds]} for '{self.url}':"
-                " pass boot_dir= naming a directory on the runner holding them, build a"
-                " layered image on this one, or set the simulator's kernel path explicitly"
-            )
         boot_dir = pathlib.Path(inst.env.work_dir_or_abs(self.boot_dir))
         artifacts = {}
         for kind in kinds:
-            path = (boot_dir / kind.value).as_posix()
-            DiskImage.assert_is_file(path)
-            artifacts[kind] = path
+            path = boot_dir / kind.value
+            if path.is_file():
+                artifacts[kind] = path.as_posix()
         return artifacts
 
     def _fetch(self, out: str) -> None:

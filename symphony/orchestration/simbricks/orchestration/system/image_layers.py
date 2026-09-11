@@ -443,8 +443,11 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
             if cache is None:
                 if wanted:
                     await self._produce_boot_artifacts(inst, wanted, out_dir)
-                self._check_boot_artifacts(kinds, out_dir)
-                return {k: (out_dir / k.value).as_posix() for k in kinds}
+                return {
+                    k: (out_dir / k.value).as_posix()
+                    for k in kinds
+                    if (out_dir / k.value).is_file()
+                }
 
             # Under the entry's lock: a sweep in another run may be evicting,
             # and it leaves alone whatever is held.
@@ -457,23 +460,18 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
                         wanted.remove(kind)
                 if wanted:
                     await self._produce_boot_artifacts(inst, wanted, out_dir)
-                self._check_boot_artifacts(kinds, out_dir)
                 for kind in kinds:
                     # Also for the ones the build itself collected, which is how
                     # a backend that only gets them while building survives a hit.
-                    if cache.boot_artifact(digest, kind.value) is None:
+                    if (out_dir / kind.value).is_file() and cache.boot_artifact(
+                        digest, kind.value
+                    ) is None:
                         cache.store_boot_artifact(
                             digest, kind.value, (out_dir / kind.value).as_posix()
                         )
                 cache.used(digest)
 
-        return {k: (out_dir / k.value).as_posix() for k in kinds}
-
-    @staticmethod
-    def _check_boot_artifacts(kinds: list[disk_images.BootArtifact], out_dir: pathlib.Path) -> None:
-        for kind in kinds:
-            if not (out_dir / kind.value).is_file():
-                raise RuntimeError(f"'{kind.value}' was not produced for this image")
+        return {k: (out_dir / k.value).as_posix() for k in kinds if (out_dir / k.value).is_file()}
 
     async def _produce_boot_artifacts(
         self,
@@ -483,9 +481,7 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
     ) -> None:
         """Put @kinds into @out_dir, named by kind. Called only for the ones
         neither this run nor the cache already has."""
-        raise RuntimeError(
-            f"{self.__class__.__name__} cannot provide boot artifacts {[k.value for k in kinds]}"
-        )
+        pass
 
     @abc.abstractmethod
     async def build(
