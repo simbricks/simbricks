@@ -254,18 +254,24 @@ Reusing builds across runs
 
 Every image has a **content hash**: what the built image would contain, decided without building
 it — the base's identity, the builder class, the disk size, and what each layer does, including
-the contents of the files it copies in. Give a Runner a cache directory and builds are stored
-under that hash and reused:
+the contents of the files it copies in. Builds and downloads are stored under that hash and
+reused, and this happens **by default**: the cache goes in ``.image-cache`` next to the run
+working directories — ``out/.image-cache`` for ``simbricks-run`` as it stands, ``<workdir>`` being
+what ``--workdir`` says — and is kept under 50G, dropping least recently used entries beyond that.
+
+Point it somewhere else, size it, or turn it off:
 
 .. code-block:: shell
 
   simbricks-run --image-cache-dir /var/cache/simbricks-images \
                 --image-cache-size 200G ...
+  simbricks-run --no-image-cache ...
 
-On a Runner the same is configured with the ``IMAGE_CACHE_DIR`` and ``IMAGE_CACHE_SIZE``
-environment variables — see :ref:`sec-local-runner-settings`, which also covers what a Runner
-executing fragments in containers needs beyond that. With no cache directory, every run builds
-its images from scratch, as before.
+A directory given explicitly is unbounded unless ``--image-cache-size`` says otherwise — the 50G
+cap belongs to the default location, which nobody chose. On a Runner the same is configured with
+the ``IMAGE_CACHE_DIR``, ``IMAGE_CACHE_SIZE`` and ``IMAGE_CACHE_ENABLED`` environment variables —
+see :ref:`sec-local-runner-settings`, which also covers what a Runner executing fragments in
+containers needs beyond that.
 
 What the cache gives you:
 
@@ -281,9 +287,9 @@ What the cache gives you:
   that reads qcow2 gets the chain hard linked into the run with a fresh overlay on top, so a hit
   copies nothing; one that needs a single flat image — gem5, and raw generally — gets it
   flattened once, kept beside the chain for later runs to reuse.
-- **Bounded growth.** With ``--image-cache-size``, least recently used entries are dropped once
-  the cache exceeds it. A run that has already taken an image out is unaffected by that image
-  being evicted.
+- **Bounded growth.** Least recently used entries are dropped once the cache exceeds
+  ``--image-cache-size`` (50G by default, unbounded for a directory you name yourself). A run that
+  has already taken an image out is unaffected by that image being evicted.
 - **Entries are compressed**, with zstd, which typically cuts an entry to a third of its size for
   a read cost in the low percent — so a cache of a given size holds more images and evicts less
   often. It is paid once, when the entry is written. ``--image-cache-compression`` (or
@@ -405,8 +411,9 @@ framework's ``InstantiationEnvironment``:
       output.<simulator>-<id>/   # per-simulator output directories
       out.json                   # collected output of the whole simulation
 
-The image cache, when configured, deliberately lives **outside** the working directory: what it
-holds outlives the run.
+The image cache lives **outside** a run's working directory: what it holds outlives the run. By
+default it sits beside them, as ``.image-cache`` under the work directory base
+(:ref:`sec-disk-images-caching`).
 
 After a run completes, the collected simulator output is available as JSON (``output/out.json``).
 When running through the SimBricks Cloud, this output is what the Backend stores and what the CLI

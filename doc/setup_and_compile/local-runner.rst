@@ -120,10 +120,13 @@ environment variables, or a ``runner.env`` file next to the Runner:
       (:ref:`sec-disk-images-global-input`). Not needed for the images SimBricks publishes, which
       are downloaded.
   * - ``IMAGE_CACHE_DIR``
-    - Where images built for a run are kept for later runs. Unset means no cache: every run
-      builds its images again.
+    - Where images built or downloaded for a run are kept for later runs. Unset puts the cache
+      beside the run work directories, in ``./runner-work/.image-cache``.
+  * - ``IMAGE_CACHE_ENABLED``
+    - ``false`` turns caching off entirely: every run builds and downloads its images again.
   * - ``IMAGE_CACHE_SIZE``
-    - How large that may grow, e.g. ``200G``. Unset lets it grow without bound.
+    - How large that may grow, e.g. ``200G``. Defaults to ``50G`` for the default directory;
+      a directory named through ``IMAGE_CACHE_DIR`` grows without bound unless this is set.
   * - ``IMAGE_CACHE_COMPRESSION``
     - ``zstd`` (the default), ``zlib`` for a QEMU too old to read zstd, or ``none``. An unknown
       name is rejected when the executor starts.
@@ -132,9 +135,10 @@ environment variables, or a ``runner.env`` file next to the Runner:
 across runs, outside their working directories, and is content-addressed and rebuilt on demand,
 so it can be deleted while the Runner is idle.
 
-With the **local plugin** the fragment executor inherits the Runner's environment. The **docker
-plugin** starts a container per fragment, with ``--rm``, so the cache directory is mounted into it
-and named inside it through ``docker_opts``:
+With the **local plugin** the fragment executor inherits the Runner's environment, so the default
+cache directory persists between runs. The **docker plugin** starts a container per fragment, with
+``--rm``, so the default cache inside it is discarded with the container: to keep one, mount a
+directory from the host and name it through ``docker_opts``:
 
 .. code-block:: yaml
 

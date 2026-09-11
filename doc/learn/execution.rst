@@ -225,7 +225,11 @@ You can check that it is installed by invoking ``simbricks-run --help``. In that
 
 .. code-block::
 
-  usage: simbricks-run [-h] [--list] [--filter PATTERN [PATTERN ...]] [--runs N] [--firstrun N] [--force] [--verbose] [--pcap] [--profile-int S] [--global-input-dir DIR] [--workdir DIR] [--parallel] [--cores N] [--mem N] EXP [EXP ...]
+  usage: simbricks-run [-h] [--list] [--filter PATTERN [PATTERN ...]] [--runs N] [--firstrun N] [--force] [--verbose]
+                       [--pcap] [--profile-int S] [--global-input-dir DIR] [--image-cache-dir DIR] [--no-image-cache]
+                       [--image-cache-size SIZE] [--image-cache-compression ALGO] [--workdir DIR] [--parallel]
+                       [--cores N] [--mem N]
+                       EXP [EXP ...]
 
   positional arguments:
     EXP                   Python modules to load the experiments from
@@ -245,6 +249,15 @@ You can check that it is installed by invoking ``simbricks-run --help``. In that
   Environment:
     --global-input-dir DIR
                           Global input directory
+    --image-cache-dir DIR
+                          Keep built disk images here and reuse them in later runs (default: <workdir>/.image-cache)
+    --no-image-cache      Do not keep built disk images at all, building and downloading them for every run
+    --image-cache-size SIZE
+                          Keep the image cache under this size, e.g. 200G, evicting least recently used (default: 50G
+                          for the default cache directory, unbounded for one given with --image-cache-dir)
+    --image-cache-compression ALGO
+                          How to compress images kept in the cache (default: zstd). 'none' trades cache space for a
+                          little less work reading an image back
     --workdir DIR         Work directory base
 
   Parallel Runtime:
