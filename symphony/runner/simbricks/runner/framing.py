@@ -23,9 +23,10 @@
 """
 Frames carried over the connection between a main runner and an executor.
 
-The connection multiplexes bundles of events and the raw bytes of artifacts.
-Both travel as length-prefixed frames, so a large artifact is split into many
-frames instead of one enormous message and events keep flowing meanwhile.
+The connection multiplexes bundles of events, the raw bytes of artifacts and the
+messages of run streams. All travel as length-prefixed frames, so a large
+artifact is split into many frames instead of one enormous message and events
+keep flowing meanwhile.
 """
 
 from __future__ import annotations
@@ -49,6 +50,7 @@ class FrameType(enum.IntEnum):
 
     EVENTS = 1
     ARTIFACT = 2
+    STREAM = 3
 
 
 async def _read_exactly(read: Callable[[int], Awaitable[bytes]], length: int) -> bytes:
@@ -142,7 +144,30 @@ class ArtifactFrame(Frame):
         return self.body[start : start + length], self.body[start + length :]
 
 
-_FRAME_TYPES: dict[int, type[Frame]] = {frame.TYPE: frame for frame in (EventFrame, ArtifactFrame)}
+class StreamFrame(Frame):
+    """
+    One message of one run stream, see :mod:`simbricks.runner.streams`.
+
+    The body is the stream's 16-byte id followed by the message as
+    :mod:`simbricks.client.streams.protocol` encodes it.
+    """
+
+    TYPE = FrameType.STREAM
+
+    STREAM_ID_LENGTH = 16
+
+    @classmethod
+    def pack(cls, stream_id: bytes, message: bytes) -> StreamFrame:
+        assert len(stream_id) == cls.STREAM_ID_LENGTH
+        return cls(stream_id + message)
+
+    def unpack(self) -> tuple[bytes, bytes]:
+        return self.body[: self.STREAM_ID_LENGTH], self.body[self.STREAM_ID_LENGTH :]
+
+
+_FRAME_TYPES: dict[int, type[Frame]] = {
+    frame.TYPE: frame for frame in (EventFrame, ArtifactFrame, StreamFrame)
+}
 
 
 class FrameChannel:
