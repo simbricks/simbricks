@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from ..models.simulation_sigusr_1 import SimulationSigusr1
     from ..models.simulator_changed_state import SimulatorChangedState
     from ..models.start_run_req import StartRunReq
+    from ..models.stream_created import StreamCreated
 
 
 T = TypeVar("T", bound="RunnersToEventsList200Response")
@@ -39,6 +40,7 @@ class RunnersToEventsList200Response:
             | SimulationSigusr1
             | SimulatorChangedState
             | StartRunReq
+            | StreamCreated
         ]
         | None
         | Unset
@@ -53,6 +55,7 @@ class RunnersToEventsList200Response:
         from ..models.simulation_sigusr_1 import SimulationSigusr1
         from ..models.simulator_changed_state import SimulatorChangedState
         from ..models.start_run_req import StartRunReq
+        from ..models.stream_created import StreamCreated
 
         data: list[dict[str, Any]] | None | Unset
         if isinstance(self.data, Unset):
@@ -106,6 +109,7 @@ class RunnersToEventsList200Response:
         from ..models.simulation_sigusr_1 import SimulationSigusr1
         from ..models.simulator_changed_state import SimulatorChangedState
         from ..models.start_run_req import StartRunReq
+        from ..models.stream_created import StreamCreated
 
         d = dict(src_dict)
 
@@ -119,6 +123,7 @@ class RunnersToEventsList200Response:
                 | SimulationSigusr1
                 | SimulatorChangedState
                 | StartRunReq
+                | StreamCreated
             ]
             | None
             | Unset
@@ -143,6 +148,7 @@ class RunnersToEventsList200Response:
                         | SimulationSigusr1
                         | SimulatorChangedState
                         | StartRunReq
+                        | StreamCreated
                     ):
                         try:
                             if not isinstance(data, dict):
@@ -184,11 +190,19 @@ class RunnersToEventsList200Response:
                             return data_type_0_item_type_4
                         except (TypeError, ValueError, AttributeError, KeyError):
                             pass
+                        try:
+                            if not isinstance(data, dict):
+                                raise TypeError()
+                            data_type_0_item_type_5 = ProxyChangedState.from_dict(data)
+
+                            return data_type_0_item_type_5
+                        except (TypeError, ValueError, AttributeError, KeyError):
+                            pass
                         if not isinstance(data, dict):
                             raise TypeError()
-                        data_type_0_item_type_5 = ProxyChangedState.from_dict(data)
+                        data_type_0_item_type_6 = StreamCreated.from_dict(data)
 
-                        return data_type_0_item_type_5
+                        return data_type_0_item_type_6
 
                     data_type_0_item = _parse_data_type_0_item(data_type_0_item_data)
 
@@ -205,6 +219,7 @@ class RunnersToEventsList200Response:
                     | SimulationSigusr1
                     | SimulatorChangedState
                     | StartRunReq
+                    | StreamCreated
                 ]
                 | None
                 | Unset,

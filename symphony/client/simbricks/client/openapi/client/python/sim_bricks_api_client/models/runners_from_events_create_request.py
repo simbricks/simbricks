@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from ..models.runtime_output import RuntimeOutput
     from ..models.simulator_output import SimulatorOutput
     from ..models.simulator_state_change import SimulatorStateChange
+    from ..models.stream_created import StreamCreated
 
 
 T = TypeVar("T", bound="RunnersFromEventsCreateRequest")
@@ -29,7 +30,7 @@ class RunnersFromEventsCreateRequest:
 
     Attributes:
         data (list[FragmentStateChange | ProxyOutput | ProxyStateChange | RunnerHeartbeat | RunnerStarted | RunStatus |
-            RuntimeOutput | SimulatorOutput | SimulatorStateChange] | Unset):
+            RuntimeOutput | SimulatorOutput | SimulatorStateChange | StreamCreated] | Unset):
     """
 
     data: (
@@ -43,6 +44,7 @@ class RunnersFromEventsCreateRequest:
             | RuntimeOutput
             | SimulatorOutput
             | SimulatorStateChange
+            | StreamCreated
         ]
         | Unset
     ) = UNSET
@@ -57,6 +59,7 @@ class RunnersFromEventsCreateRequest:
         from ..models.runner_started import RunnerStarted
         from ..models.simulator_output import SimulatorOutput
         from ..models.simulator_state_change import SimulatorStateChange
+        from ..models.stream_created import StreamCreated
 
         data: list[dict[str, Any]] | Unset = UNSET
         if not isinstance(self.data, Unset):
@@ -103,6 +106,7 @@ class RunnersFromEventsCreateRequest:
         from ..models.runtime_output import RuntimeOutput
         from ..models.simulator_output import SimulatorOutput
         from ..models.simulator_state_change import SimulatorStateChange
+        from ..models.stream_created import StreamCreated
 
         d = dict(src_dict)
         _data = d.pop("data", UNSET)
@@ -117,6 +121,7 @@ class RunnersFromEventsCreateRequest:
                 | RuntimeOutput
                 | SimulatorOutput
                 | SimulatorStateChange
+                | StreamCreated
             ]
             | Unset
         ) = UNSET
@@ -136,6 +141,7 @@ class RunnersFromEventsCreateRequest:
                     | RuntimeOutput
                     | SimulatorOutput
                     | SimulatorStateChange
+                    | StreamCreated
                 ):
                     try:
                         if not isinstance(data, dict):
@@ -201,11 +207,19 @@ class RunnersFromEventsCreateRequest:
                         return data_item_type_7
                     except (TypeError, ValueError, AttributeError, KeyError):
                         pass
+                    try:
+                        if not isinstance(data, dict):
+                            raise TypeError()
+                        data_item_type_8 = RuntimeOutput.from_dict(data)
+
+                        return data_item_type_8
+                    except (TypeError, ValueError, AttributeError, KeyError):
+                        pass
                     if not isinstance(data, dict):
                         raise TypeError()
-                    data_item_type_8 = RuntimeOutput.from_dict(data)
+                    data_item_type_9 = StreamCreated.from_dict(data)
 
-                    return data_item_type_8
+                    return data_item_type_9
 
                 data_item = _parse_data_item(data_item_data)
 
