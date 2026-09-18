@@ -60,6 +60,7 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runners im
     runners_from_events_create,
     runners_get,
     runners_list,
+    runners_streams_create,
     runners_to_events_delete,
     runners_to_events_list,
 )
@@ -75,6 +76,7 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runs impor
     runs_list,
     runs_set,
     runs_sigusr1,
+    runs_streams_create,
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.api.simulations import (
     simulations_create,
@@ -129,6 +131,12 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     SimulatorOutput,
     SimulatorStateChange,
     StartRunReq,
+    Stream,
+    StreamCreate,
+    StreamCreateParams,
+    StreamCreated,
+    RunnerStreamCreate,
+    RunnerStreamCreateParams,
     SystemsList200Response,
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
@@ -166,6 +174,7 @@ EventFromRunner_U = (
     | ProxyStateChange
     | FragmentStateChange
     | RuntimeOutput
+    | StreamCreated
 )
 
 EventToRunner_U = (
@@ -175,6 +184,7 @@ EventToRunner_U = (
     | SimulationSigusr1
     | SimulatorChangedState
     | ProxyChangedState
+    | StreamCreated
 )
 
 
@@ -503,6 +513,25 @@ class SimBricksClient:
     async def sigusr1_run(self, run_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
             await runs_sigusr1.asyncio(self._ns_client.namespace_path, run_id, client=client)
+
+    async def create_stream(
+        self, run_id: str, run_fragment_id: str, target: str, params: dict | None = None
+    ) -> Stream:
+        """
+        Open a stream to one fragment of a run. The returned stream's ``url`` carries
+        the client-side websocket ticket; the runner gets its own in a StreamCreated
+        event.
+        """
+        body = StreamCreate(
+            run_fragment_id=run_fragment_id,
+            target=target,
+            params=StreamCreateParams.from_dict(params or {}),
+        )
+        async with base_client(self._ns_client.base_url) as client:
+            stream = await runs_streams_create.asyncio(
+                self._ns_client.namespace_path, run_id, client=client, body=body
+            )
+            return validate_response_model(stream, Stream)
 
     async def set_inst_input_artifact(self, inst_id: str, path_to_file: str) -> None:
 
@@ -840,6 +869,26 @@ class RunnerClient:
                 client=client,
             )
             validate_no_response_model(response)
+
+    async def create_stream(
+        self, run_id: str, run_fragment_id: str, target: str, params: dict | None = None
+    ) -> Stream:
+        """
+        Open a stream from one of this runner's fragments towards the clients of its
+        run. The returned stream's ``url`` carries the runner-side websocket ticket;
+        clients get theirs in a StreamCreated event from this runner.
+        """
+        body = RunnerStreamCreate(
+            run_id=run_id,
+            run_fragment_id=run_fragment_id,
+            target=target,
+            params=RunnerStreamCreateParams.from_dict(params or {}),
+        )
+        async with base_client(self._ns_client.base_url) as client:
+            stream = await runners_streams_create.asyncio(
+                self._ns_client.namespace_path, self.runner_id, client=client, body=body
+            )
+            return validate_response_model(stream, Stream)
 
 
 async def resolve_default_ns(base_url: str) -> str:
