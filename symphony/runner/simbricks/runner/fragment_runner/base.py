@@ -470,6 +470,7 @@ class FragmentRunner(abc.ABC):
         await runner.prepare()
 
         run = Run(start_event.run_id, inst, callbacks, runner, start_event.fragments[0])
+        self._streams.register_run(run.run_id, pathlib.Path(inst.env.work_dir()))
         return run
 
     async def _start_run(self, run: Run) -> None:

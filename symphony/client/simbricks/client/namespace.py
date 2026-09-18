@@ -58,6 +58,7 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.api.runners im
     runners_create,
     runners_delete,
     runners_from_events_create,
+    runners_from_events_list,
     runners_get,
     runners_list,
     runners_streams_create,
@@ -115,9 +116,12 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     RunnerHeartbeat,
     RunnerHeartbeatReq,
     RunnersFromEventsCreateRequest,
+    RunnersFromEventsList200Response,
     RunnersList200Response,
     RunnerStarted,
     RunnersToEventsList200Response,
+    RunnerStreamCreate,
+    RunnerStreamCreateParams,
     RunnerTag,
     RunsConsoleList200Response,
     RunsFragmentsList200Response,
@@ -133,10 +137,8 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     StartRunReq,
     Stream,
     StreamCreate,
-    StreamCreateParams,
     StreamCreated,
-    RunnerStreamCreate,
-    RunnerStreamCreateParams,
+    StreamCreateParams,
     SystemsList200Response,
 )
 from simbricks.client.openapi.client.python.sim_bricks_api_client.models import (
@@ -513,6 +515,17 @@ class SimBricksClient:
     async def sigusr1_run(self, run_id: str) -> None:
         async with base_client(self._ns_client.base_url) as client:
             await runs_sigusr1.asyncio(self._ns_client.namespace_path, run_id, client=client)
+
+    async def get_runner_events(
+        self, runner_id: str, after: datetime | None = None
+    ) -> list[EventFromRunner_U]:
+        """Events a runner sent to the backend, e.g. StreamCreated for streams it opened."""
+        async with base_client(self._ns_client.base_url) as client:
+            events = await runners_from_events_list.asyncio(
+                self._ns_client.namespace_path, runner_id, client=client, after=after
+            )
+            events = validate_response_model(events, RunnersFromEventsList200Response)
+            return list(events.data) if isinstance(events.data, list) else []
 
     async def create_stream(
         self, run_id: str, run_fragment_id: str, target: str, params: dict | None = None

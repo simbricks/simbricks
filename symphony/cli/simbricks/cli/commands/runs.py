@@ -20,16 +20,20 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import asyncio
+import sys
 import typing
 from pathlib import Path
 
 import rich
 import rich.console
-from typer import Argument, Option, Typer
+from typer import Argument, BadParameter, Option, Typer
 from typing_extensions import Annotated
 
 import simbricks.utils.load_mod as load_mod
 from simbricks.client.opus import base as opus_base
+from simbricks.client.streams import forward as stream_forward
+from simbricks.client.streams.session import RunStreams
 
 from ..pager import PAGE_SIZE, PEEK_COUNT, paged_ls
 from ..settings import simb_client
@@ -225,3 +229,109 @@ async def create(
 
     if follow and isinstance(run.id, str):
         await opus_base.follow_run(run_id=run.id)
+
+
+async def _fragment_id(streams: RunStreams, frag: str | None) -> str:
+    if frag is not None:
+        return frag
+    ids = await streams.fragment_ids()
+    if len(ids) != 1:
+        raise BadParameter(f"run has {len(ids)} fragments, pick one with --frag: {ids}")
+    return ids[0]
+
+
+def _parse_forward(spec: str) -> tuple[str, int, str]:
+    """``[bind:]port:target``, e.g. ``7000:tcp:connect:127.0.0.1:7000``."""
+    parts = spec.split(":", 2)
+    if len(parts) == 3 and parts[0].isdigit():
+        bind, port, target = "127.0.0.1", int(parts[0]), f"{parts[1]}:{parts[2]}"
+        # the target still holds mode and the rest: "tcp:connect:127.0.0.1:7000"
+        return bind, port, target
+    parts = spec.split(":", 3)
+    if len(parts) == 4 and parts[1].isdigit():
+        return parts[0], int(parts[1]), f"{parts[2]}:{parts[3]}"
+    raise BadParameter(f"expected [bind:]port:target, got {spec!r}")
+
+
+@app.command()
+@async_cli()
+async def forward(
+    run_id: str,
+    local: Annotated[
+        list[str],
+        Option(
+            "-L",
+            help="Forward a local port into the executor: [bind:]port:<target>, e.g. "
+            "7000:tcp:connect:127.0.0.1:7000 for a gem5 gdb stub.",
+        ),
+    ] = [],
+    remote: Annotated[
+        list[str],
+        Option(
+            "-R",
+            help="Serve a listener inside the executor from a local port: "
+            "[host:]port:<listen target>, e.g. 5555:tcp:listen:127.0.0.1:5555.",
+        ),
+    ] = [],
+    frag: Annotated[
+        str | None, Option("--frag", help="Run fragment to reach (needed if there are several).")
+    ] = None,
+):
+    """Forward ports between this machine and a running simulation's executor."""
+    if not local and not remote:
+        raise BadParameter("nothing to forward, give -L and/or -R")
+    sbc = await simb_client()
+    streams = RunStreams(sbc, run_id)
+    fragment_id = await _fragment_id(streams, frag)
+    console = rich.console.Console()
+
+    servers = []
+    watchers = []
+    try:
+        for spec in local:
+            bind, port, target = _parse_forward(spec)
+            servers.append(
+                await stream_forward.forward_tcp(streams, fragment_id, bind, port, target)
+            )
+            console.print(f"[green]-L[/green] {bind}:{port} -> {target}")
+        for spec in remote:
+            bind, port, target = _parse_forward(spec)
+            await stream_forward.reverse_tcp(streams, fragment_id, target, bind, port)
+            accept, on_stream = stream_forward.serve_reverse_connections(target, bind, port)
+            watchers.append(asyncio.create_task(streams.watch(on_stream, accept)))
+            console.print(f"[green]-R[/green] {target} -> {bind}:{port}")
+        console.print("forwarding, press Ctrl+C to stop")
+        await asyncio.Event().wait()
+    finally:
+        for watcher in watchers:
+            watcher.cancel()
+        for server in servers:
+            server.close()
+        await streams.close()
+
+
+@app.command()
+@async_cli()
+async def tail(
+    run_id: str,
+    path: Annotated[str, Argument(help="File path relative to the run's work directory.")],
+    follow: Annotated[
+        bool, Option("--follow", "-f", help="Keep reading as the file grows.")
+    ] = False,
+    frag: Annotated[
+        str | None, Option("--frag", help="Run fragment to reach (needed if there are several).")
+    ] = None,
+):
+    """Print a file from a running simulation's work directory, e.g. a simulator's debug log."""
+    sbc = await simb_client()
+    streams = RunStreams(sbc, run_id)
+    fragment_id = await _fragment_id(streams, frag)
+
+    async def to_stdout(data: bytes) -> None:
+        sys.stdout.buffer.write(data)
+        sys.stdout.buffer.flush()
+
+    try:
+        await stream_forward.read_file(streams, fragment_id, path, to_stdout, follow=follow)
+    finally:
+        await streams.close()

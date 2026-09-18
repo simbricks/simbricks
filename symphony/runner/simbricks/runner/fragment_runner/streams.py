@@ -24,13 +24,16 @@
 """
 What run streams connect to inside a fragment executor.
 
-A stream's ``target`` names a socket the executor connects to or listens on;
-the executor bridges that socket to the stream. ``connect`` targets exist for
-simulators that listen (a guest's forwarded ssh port, a gdb stub); ``listen``
-targets for simulators that can only connect out (a serial console pointed at a
-unix socket). A listening target carries its first connection on the stream
-that created it and opens a new, executor-initiated stream for every further
-connection, so a client can keep serving them like ``ssh -R`` does.
+A stream's ``target`` names a socket the executor connects to or listens on,
+or a file in the run's work directory; the executor bridges that to the stream.
+``connect`` targets exist for simulators that listen (a guest's forwarded ssh
+port, a gdb stub); ``listen`` targets for simulators that can only connect out
+(a serial console pointed at a unix socket). A listening target carries its
+first connection on the stream that created it and opens a new,
+executor-initiated stream for every further connection, so a client can keep
+serving them like ``ssh -R`` does. ``file:read`` streams a file out, following
+it as it grows if asked, which is how a simulator's verbose debug log reaches a
+client without ever being persisted.
 """
 
 from __future__ import annotations
@@ -38,9 +41,11 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import logging
+import pathlib
 import typing
 import uuid
 
+from simbricks.client.streams.bridge import bridge
 from simbricks.client.streams.protocol import Open
 from simbricks.client.streams.stream import Stream, StreamClosed
 from simbricks.runner import streams as runner_streams
@@ -51,14 +56,17 @@ LOGGER = logging.getLogger(__name__)
 #: on the connection it was opened for.
 ACCEPT_TIMEOUT_SEC = 30.0
 
-#: Bytes read from a socket per stream write; matches the protocol's chunk size.
+#: Bytes read from a file per stream write; matches the protocol's chunk size.
 READ_SIZE = 64 * 1024
+
+#: How often a followed file is checked for growth.
+FOLLOW_POLL_SEC = 0.2
 
 
 @dataclasses.dataclass(frozen=True)
 class Target:
-    scheme: typing.Literal["tcp", "unix"]
-    mode: typing.Literal["connect", "listen"]
+    scheme: typing.Literal["tcp", "unix", "file"]
+    mode: typing.Literal["connect", "listen", "read"]
     host: str
     port: int
     path: str
@@ -67,13 +75,13 @@ class Target:
     def parse(cls, target: str) -> Target:
         """
         ``tcp:connect:<host>:<port>``, ``tcp:listen:<addr>:<port>``,
-        ``unix:connect:<path>`` or ``unix:listen:<path>``.
+        ``unix:connect:<path>``, ``unix:listen:<path>`` or ``file:read:<path>``.
         """
         scheme, _, rest = target.partition(":")
         mode, _, rest = rest.partition(":")
-        if mode not in ("connect", "listen"):
-            raise ValueError(f"unknown mode in target {target!r}, expected connect or listen")
         match scheme:
+            case "tcp" | "unix" if mode not in ("connect", "listen"):
+                raise ValueError(f"unknown mode in target {target!r}, expected connect or listen")
             case "tcp":
                 host, _, port = rest.rpartition(":")
                 if not host or not port.isdigit():
@@ -83,44 +91,56 @@ class Target:
                 if not rest:
                     raise ValueError(f"unix target {target!r} needs a path")
                 return cls("unix", mode, "", 0, rest)
+            case "file":
+                if mode != "read":
+                    raise ValueError(f"unknown mode in target {target!r}, expected read")
+                if not rest:
+                    raise ValueError(f"file target {target!r} needs a path")
+                return cls("file", "read", "", 0, rest)
             case _:
                 raise ValueError(f"unknown scheme in target {target!r}")
 
 
-async def bridge(
-    stream: Stream, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
-) -> None:
+def resolve_in(workdir: pathlib.Path, path: str) -> pathlib.Path:
+    """A path relative to the run's work directory, refusing to leave it."""
+    resolved = (workdir / path).resolve()
+    if not resolved.is_relative_to(workdir.resolve()):
+        raise ValueError(f"{path!r} is outside the run's work directory")
+    return resolved
+
+
+async def serve_file(stream: Stream, path: pathlib.Path, follow: bool) -> None:
     """
-    Pump a socket and a stream into each other until both are done.
-
-    Either side's EOF is passed on as a half-close; the stream is closed once
-    both directions ended, or right away when either side breaks.
+    Stream a file out; with ``follow``, wait for it to appear and keep sending
+    what gets appended until the stream is closed.
     """
+    while not path.exists():
+        if not follow:
+            await stream.reject(f"{path} does not exist")
+            return
+        await asyncio.sleep(FOLLOW_POLL_SEC)
+    await stream.accept({"path": str(path)})
+    await stream.hello()
 
-    async def socket_to_stream() -> None:
-        while data := await reader.read(READ_SIZE):
-            await stream.write(data)
-        await stream.write_eof()
-
-    async def stream_to_socket() -> None:
-        while data := await stream.read():
-            writer.write(data)
-            await writer.drain()
-        if writer.can_write_eof():
-            writer.write_eof()
-
-    tasks = [asyncio.create_task(socket_to_stream()), asyncio.create_task(stream_to_socket())]
+    closed = asyncio.create_task(stream.closed.wait())
     try:
-        await asyncio.gather(*tasks)
-        await stream.close("eof")
+        with path.open("rb") as file:
+            while not stream.closed.is_set():
+                data = file.read(READ_SIZE)
+                if data:
+                    await stream.write(data)
+                    continue
+                if not follow:
+                    await stream.write_eof()
+                    await stream.close("eof")
+                    return
+                await asyncio.wait({closed}, timeout=FOLLOW_POLL_SEC)
     except StreamClosed:
         pass
-    except Exception as error:
-        await stream.close(f"socket error: {error}")
+    except OSError as error:
+        await stream.close(f"file error: {error}")
     finally:
-        for task in tasks:
-            task.cancel()
-        writer.close()
+        closed.cancel()
 
 
 class Listener:
@@ -196,6 +216,10 @@ class StreamManager:
     def attach(self, channel: runner_streams.StreamChannel) -> None:
         self.channel = channel
 
+    def register_run(self, run_id: str, workdir: pathlib.Path) -> None:
+        """File targets of this run resolve inside ``workdir``."""
+        self._runs.setdefault(run_id, _RunStreams()).workdir = workdir
+
     def stream_id_of(self, listener: Listener) -> str:
         return self._listeners[id(listener)].hex()
 
@@ -238,6 +262,14 @@ class StreamManager:
             return
 
         try:
+            if target.scheme == "file":
+                if run.workdir is None:
+                    await stream.reject("run has no work directory here")
+                    return
+                path = resolve_in(run.workdir, target.path)
+                await serve_file(stream, path, bool(open_msg.params.get("follow", False)))
+                return
+
             if target.mode == "connect":
                 if target.scheme == "tcp":
                     reader, writer = await asyncio.open_connection(target.host, target.port)
@@ -252,7 +284,7 @@ class StreamManager:
 
             listener = Listener(self, target, open_msg, stream)
             info = await listener.start()
-        except OSError as error:
+        except (OSError, ValueError) as error:
             await stream.reject(str(error))
             return
 
@@ -273,6 +305,7 @@ class _RunStreams:
     def __init__(self) -> None:
         self.tasks: set[asyncio.Task] = set()
         self.listeners: set[Listener] = set()
+        self.workdir: pathlib.Path | None = None
 
     def track(self, coroutine: typing.Coroutine) -> None:
         task = asyncio.create_task(coroutine)
