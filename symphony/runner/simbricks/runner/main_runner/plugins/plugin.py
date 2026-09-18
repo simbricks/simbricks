@@ -33,6 +33,11 @@ class FragmentRunnerPlugin(abc.ABC):
     async def write(self, data: bytes) -> None:
         pass
 
+    @property
+    def channel(self) -> framing.FrameChannel:
+        """The frame connection to the executor, for multiplexing streams onto it."""
+        return self._channel
+
     async def send_events(self, events: list[EventToRunner_U]) -> None:
         await self._channel.send(framing.EventFrame.pack(events))
 

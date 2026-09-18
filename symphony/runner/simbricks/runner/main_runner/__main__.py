@@ -35,14 +35,18 @@ from simbricks.client.openapi.client.python.sim_bricks_api_client.models import 
     SimulatorOutput,
     SimulatorStateChange,
     StartRunReq,
+    StreamCreated,
 )
+from simbricks.client.streams.protocol import Open
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import artifacts as runner_artifacts
 from simbricks.runner import framing
+from simbricks.runner import streams as runner_streams
 from simbricks.runner.main_runner import settings
 from simbricks.runner.main_runner.plugins import plugin, plugin_loader
+from simbricks.runner.main_runner.stream_bridge import StreamBridge
 from simbricks.telemetry.base import setup_telemetry
 
 
@@ -76,11 +80,19 @@ class FragmentRunner:
         name: str,
         fragment_runner: plugin.FragmentRunnerPlugin,
         spool_dir: pathlib.Path,
+        on_stream_open: runner_streams.OpenHandler,
     ):
         self.name = name
         self.fragment_runner = fragment_runner
         self.read_task: asyncio.Task | None = None
         self.artifact_receiver = runner_artifacts.ArtifactReceiver(spool_dir)
+        self.streams = runner_streams.StreamChannel(fragment_runner.channel, on_stream_open)
+        self.bridges: dict[bytes, StreamBridge] = {}
+
+    def track_bridge(self, bridge: StreamBridge) -> None:
+        self.bridges[bridge.stream_id] = bridge
+        assert bridge.task is not None
+        bridge.task.add_done_callback(lambda _: self.bridges.pop(bridge.stream_id, None))
 
     async def stop(self):
         # TODO: remove
@@ -90,6 +102,8 @@ class FragmentRunner:
                 await self.read_task
             except asyncio.CancelledError:
                 pass
+        for bridge in list(self.bridges.values()):
+            await bridge.stop("executor stopped")
         self.artifact_receiver.close()
         await self.fragment_runner.stop()
 
@@ -148,6 +162,50 @@ class MainRunner:
                     pass
             raise
 
+    async def _open_client_stream(self, event: StreamCreated) -> None:
+        """A client opened a stream to one of our fragments: attach and hand it to the executor."""
+        run = self._run_map.get(event.run_id)
+        fragment_runner = run.fragment_runner_map.get(event.run_fragment_id) if run else None
+        if fragment_runner is None:
+            LOGGER.warning(
+                f"ignoring stream {event.stream_id} for unknown run {event.run_id}"
+                f" / fragment {event.run_fragment_id}"
+            )
+            return
+
+        stream_id = bytes.fromhex(event.stream_id)
+        params = event.params.to_dict() if not isinstance(event.params, api_types.Unset) else {}
+        bridge = StreamBridge(stream_id, event.url, fragment_runner.streams)
+        await fragment_runner.streams.open(
+            stream_id, event.target, event.run_id, event.run_fragment_id, params, bridge.on_message
+        )
+        bridge.start()
+        fragment_runner.track_bridge(bridge)
+        LOGGER.debug(f"opened client stream {event.stream_id} to {event.target}")
+
+    async def _on_executor_stream_open(
+        self, stream_id: bytes, open_msg: Open
+    ) -> tp.Callable[[bytes], tp.Awaitable[None]] | None:
+        """An executor opened a stream (a simulator connected to a listener): register it."""
+        run = self._run_map.get(open_msg.run_id)
+        fragment_runner = run.fragment_runner_map.get(open_msg.run_fragment_id) if run else None
+        if fragment_runner is None:
+            LOGGER.warning(f"executor opened a stream for unknown run {open_msg.run_id}")
+            return None
+        try:
+            stream = await self._rc.create_stream(
+                open_msg.run_id, open_msg.run_fragment_id, open_msg.target, open_msg.params
+            )
+        except Exception:
+            LOGGER.error(f"could not register executor stream: {traceback.format_exc()}")
+            return None
+        assert isinstance(stream.url, str)
+        bridge = StreamBridge(stream_id, stream.url, fragment_runner.streams)
+        bridge.start()
+        fragment_runner.track_bridge(bridge)
+        LOGGER.debug(f"registered executor stream {stream.id} for {open_msg.target}")
+        return bridge.on_message
+
     async def _stop_fragment_runners(self, fragment_runner_map: dict[str, FragmentRunner]):
         stop = []
         for runner in fragment_runner_map.values():
@@ -164,7 +222,10 @@ class MainRunner:
         runner = config.plugin()
         await runner.start(config.settings, parameters)
         fragment_runner = FragmentRunner(
-            name, runner, pathlib.Path(settings.runner_settings().artifact_spool_dir)
+            name,
+            runner,
+            pathlib.Path(settings.runner_settings().artifact_spool_dir),
+            self._on_executor_stream_open,
         )
         fragment_runner.read_task = asyncio.create_task(
             self._read_fragment_runner_events(fragment_runner)
@@ -381,6 +442,9 @@ class MainRunner:
                             run_error = RunStatus(run_id=event.run_id, run_state=RunState.ERROR)
                             await self._rc.submit_event(run_error)
 
+                    case StreamCreated():
+                        await self._open_client_stream(event)
+
                     case (
                         KillRunReq()
                         | SimulationSigusr1()
@@ -450,6 +514,10 @@ class MainRunner:
         try:
             while True:
                 frame = await fragment_runner.fragment_runner.read_frame()
+
+                if isinstance(frame, framing.StreamFrame):
+                    await fragment_runner.streams.handle_frame(frame)
+                    continue
 
                 if isinstance(frame, framing.ArtifactFrame):
                     artifact = fragment_runner.artifact_receiver.handle_frame(frame)

@@ -189,11 +189,11 @@ class Stream:
         match op:
             case Op.DATA:
                 seq, data = protocol.decode_sequenced(payload)
-                if self._accept_seq(seq):
+                if await self._accept_seq(seq):
                     await self._inbound.put(data)
             case Op.EOF:
                 seq, _ = protocol.decode_sequenced(payload)
-                if self._accept_seq(seq):
+                if await self._accept_seq(seq):
                     await self._inbound.put(_EOF)
             case Op.HELLO:
                 hello = Hello.model_validate_json(payload)
@@ -219,12 +219,16 @@ class Stream:
             case _:
                 await self.close(f"unexpected op {op.name} between ends")
 
-    def _accept_seq(self, seq: int) -> bool:
-        """Keep the stream exactly-once: drop the duplicate a reconnect may cause, refuse gaps."""
+    async def _accept_seq(self, seq: int) -> bool:
+        """
+        Keep the stream exactly-once: drop the duplicate a reconnect may cause and,
+        since a frame lost on the way cannot be recovered, end the stream on a gap.
+        """
         if seq < self._recv_seq:
             return False
         if seq > self._recv_seq:
-            raise RuntimeError(f"stream sequence gap: expected {self._recv_seq}, got {seq}")
+            await self.close(f"sequence gap: expected {self._recv_seq}, got {seq}")
+            return False
         self._recv_seq += 1
         return True
 

@@ -38,6 +38,8 @@ from simbricks.orchestration.simulation import base as sim_base
 from simbricks.orchestration.system import base as sys_base
 from simbricks.runner import artifacts as runner_artifacts
 from simbricks.runner import framing
+from simbricks.runner import streams as runner_streams
+from simbricks.runner.fragment_runner import streams as fr_streams
 from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.utils import artifatcs as utils_art
 
@@ -326,6 +328,9 @@ class FragmentRunner(abc.ABC):
 
         self._channel = framing.FrameChannel(self.read, self.write)
         self._artifact_sink = runner_artifacts.RelayArtifactSink(self._channel)
+        self._streams = fr_streams.StreamManager()
+        self._stream_channel = runner_streams.StreamChannel(self._channel, self._streams.on_open)
+        self._streams.attach(self._stream_channel)
         self._artifact_receiver = runner_artifacts.ArtifactReceiver(self._workdir / "tmp")
         #: Input artifacts that arrived, waiting for the run they belong to.
         self._input_artifacts: dict[
@@ -544,6 +549,9 @@ class FragmentRunner(abc.ABC):
 
             LOGGER.error(f"error while executing run {run.run_id}: {traceback.format_exc()}")
 
+        finally:
+            await self._streams.close_run(run.run_id)
+
     async def _cancel_all_tasks(self) -> None:
         for _, run in self._run_map.items():
             if run.exec_task is None or run.exec_task.done():
@@ -646,6 +654,10 @@ class FragmentRunner(abc.ABC):
     async def _handle_events(self) -> None:
         while True:
             frame = await self._channel.receive()
+
+            if isinstance(frame, framing.StreamFrame):
+                await self._stream_channel.handle_frame(frame)
+                continue
 
             if isinstance(frame, framing.ArtifactFrame):
                 artifact = self._artifact_receiver.handle_frame(frame)
