@@ -44,6 +44,7 @@ from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.utils import artifatcs as utils_art
 
 if typing.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import process as inst_process
     from simbricks.orchestration.instantiation import proxy as inst_proxy
 
 
@@ -272,6 +273,38 @@ class RunnerSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
             LOGGER.debug(f"[{proxy.name}] {line}")
         await self._send_out_proxy_events(proxy.id(), lines, True)
 
+    # ---------------------------
+    # Process-related callbacks -
+    # ---------------------------
+    # Fragment processes are not components the backend knows about; their output goes to the
+    # fragment's runtime console, prefixed with the process name.
+
+    async def process_started(self, process: inst_process.FragmentProcess, cmd: str) -> None:
+        await super().process_started(process, cmd)
+        LOGGER.debug(f"+ [{process.name}] {cmd}")
+        await self._send_runtime_output(f"+ [{process.name}] {cmd}", False)
+
+    async def process_ready(self, process: inst_process.FragmentProcess) -> None:
+        await super().process_ready(process)
+        LOGGER.debug(f"[{process.name}] is ready")
+
+    async def process_exited(self, process: inst_process.FragmentProcess, exit_code: int) -> None:
+        await super().process_exited(process, exit_code)
+        LOGGER.debug(f"- [{process.name}] exited with code {exit_code}")
+        await self._send_runtime_output(f"- [{process.name}] exited with code {exit_code}", False)
+
+    async def process_stdout(self, process: inst_process.FragmentProcess, lines: list[str]) -> None:
+        await super().process_stdout(process, lines)
+        for line in lines:
+            LOGGER.debug(f"[{process.name}] {line}")
+            await self._send_runtime_output(f"[{process.name}] {line}", False)
+
+    async def process_stderr(self, process: inst_process.FragmentProcess, lines: list[str]) -> None:
+        await super().process_stderr(process, lines)
+        for line in lines:
+            LOGGER.debug(f"[{process.name}] {line}")
+            await self._send_runtime_output(f"[{process.name}] {line}", True)
+
 
 class Run:
     def __init__(
@@ -490,7 +523,7 @@ class FragmentRunner(abc.ABC):
             output_path = run.inst.env.get_simulation_output_path()
             res.dump(outpath=output_path)  # TODO: FIXME
 
-            if run.inst.assigned_fragment.output_artifact_paths:
+            if run.inst.assigned_fragment.all_output_artifact_paths():
                 await self._artifact_sink.produce(
                     utils_art.ArtifactInfo(
                         kind=utils_art.ArtifactKind.OUTPUT,
@@ -498,7 +531,7 @@ class FragmentRunner(abc.ABC):
                         run_id=run.run_id,
                         run_fragment_id=run.run_fragment.id,
                     ),
-                    paths_to_include=run.inst.assigned_fragment.output_artifact_paths,
+                    paths_to_include=run.inst.assigned_fragment.all_output_artifact_paths(),
                     base_path=pathlib.Path(run.inst.env.work_dir()),
                     # Outside the work directory, otherwise the artifact ends up
                     # inside the very tree it is packing.
