@@ -30,6 +30,7 @@ from simbricks.runtime import simulation_executor as sim_exec
 from simbricks.runtime.runs import base as run_base
 
 if typing.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import process as inst_process
     from simbricks.orchestration.instantiation import proxy as inst_proxy
     from simbricks.orchestration.simulation import base as sim_base
 
@@ -140,6 +141,32 @@ class LocalSimulationExecutorCallbacks(sim_exec.SimulationExecutorCallbacks):
         if self._verbose:
             for line in lines:
                 print(f"[{proxy.name}] {line}")
+
+    # ---------------------------
+    # Process-related callbacks -
+    # ---------------------------
+
+    async def process_started(self, process: inst_process.FragmentProcess, cmd: str) -> None:
+        await super().process_started(process, cmd)
+        if self._verbose:
+            print(f"+ [{process.name}] {cmd}")
+
+    async def process_exited(self, process: inst_process.FragmentProcess, exit_code: int) -> None:
+        await super().process_exited(process, exit_code)
+        if self._verbose:
+            print(f"- [{process.name}] exited with code {exit_code}")
+
+    async def process_stdout(self, process: inst_process.FragmentProcess, lines: list[str]) -> None:
+        await super().process_stdout(process, lines)
+        if self._verbose:
+            for line in lines:
+                print(f"[{process.name}] {line}")
+
+    async def process_stderr(self, process: inst_process.FragmentProcess, lines: list[str]) -> None:
+        await super().process_stderr(process, lines)
+        if self._verbose:
+            for line in lines:
+                print(f"[{process.name}] {line}")
 
 
 class LocalSimpleRuntime(run_base.Runtime):

@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import itertools
 import logging
 import socket
@@ -31,6 +32,7 @@ import typing
 
 from simbricks.orchestration.instantiation import base as inst_base
 from simbricks.orchestration.instantiation import dependency_graph as dep_graph
+from simbricks.orchestration.instantiation import process as inst_process
 from simbricks.orchestration.instantiation import socket as inst_socket
 from simbricks.orchestration.simulation import base as sim_base
 from simbricks.runtime import command_executor as cmd_exec
@@ -136,6 +138,25 @@ class SimulationExecutorCallbacks:
     async def proxy_stderr(self, proxy: inst_proxy.Proxy, lines: list[str]) -> None:
         self._output.append_proxy_stderr(proxy, lines)
 
+    # ---------------------------
+    # Process-related callbacks -
+    # ---------------------------
+
+    async def process_started(self, process: inst_process.FragmentProcess, cmd: str) -> None:
+        self._output.set_process_cmd(process, cmd)
+
+    async def process_ready(self, process: inst_process.FragmentProcess) -> None:
+        pass
+
+    async def process_exited(self, process: inst_process.FragmentProcess, exit_code: int) -> None:
+        pass
+
+    async def process_stdout(self, process: inst_process.FragmentProcess, lines: list[str]) -> None:
+        self._output.append_process_stdout(process, lines)
+
+    async def process_stderr(self, process: inst_process.FragmentProcess, lines: list[str]) -> None:
+        self._output.append_process_stderr(process, lines)
+
 
 class SimulationExecutor:
     def __init__(
@@ -155,7 +176,15 @@ class SimulationExecutor:
         self._profile_int: int | None = profile_int
         self._running_sims: dict[sim_base.Simulator, cmd_exec.CommandExecutor] = {}
         self._running_proxies: dict[inst_proxy.Proxy, cmd_exec.CommandExecutor] = {}
-        self._wait_sims: dict[int, asyncio.Event] = {}
+        self._running_processes: dict[inst_process.FragmentProcess, cmd_exec.CommandExecutor] = {}
+        self._wait_components: dict[int, asyncio.Event] = {}
+        """Simulators and processes with `wait_terminate`, by id. The simulation ends once all of
+        their events are set."""
+        self._abort: asyncio.Event = asyncio.Event()
+        """Set when a component failed in a way that must end the simulation."""
+        self._abort_reason: str = ""
+        self._stopping: bool = False
+        """True while the simulation is being torn down, when process exits are expected."""
         self._external_proxy_running: dict[int, ProxyReadyInfo] = {}
 
     async def mark_external_proxies_running(self, id: int, ip: str, port: int):
@@ -171,8 +200,30 @@ class SimulationExecutor:
         proxy_info.event.set()
 
     async def mark_simulator_terminated(self, id: int):
-        if id in self._wait_sims:
-            self._wait_sims[id].set()
+        if id in self._wait_components:
+            self._wait_components[id].set()
+
+    async def _process_exited(self, process: inst_process.FragmentProcess, exit_code: int) -> None:
+        if process.id() in self._wait_components:
+            self._wait_components[process.id()].set()
+        if exit_code != 0 and process.fail_run_on_error and not self._stopping:
+            self._abort_reason = f"process {process.name} exited with code {exit_code}"
+            await self._callbacks.simulation_message(logging.ERROR, self._abort_reason)
+            self._abort.set()
+
+    async def _start_process(self, process: inst_process.FragmentProcess) -> None:
+        """Start a fragment process and wait for it to be ready."""
+        try:
+            executor = self._instantiation.command_executor
+            self._running_processes[process] = await executor.start_process(
+                process,
+                process.run_cmd(self._instantiation),
+                exited=functools.partial(self._process_exited, process),
+            )
+            await process.wait_ready(self._instantiation)
+            await self._callbacks.process_ready(process)
+        except asyncio.CancelledError:
+            pass
 
     async def _start_proxy(self, proxy: inst_proxy.Proxy) -> None:
         """Start a proxy and wait for it to be ready."""
@@ -254,9 +305,12 @@ class SimulationExecutor:
             if sim.wait_terminate or (
                 self._instantiation.create_checkpoint and sim.supports_checkpointing()
             ):
-                self._wait_sims[sim.id()] = asyncio.Event()
+                self._wait_components[sim.id()] = asyncio.Event()
+        for process in self._instantiation.assigned_fragment.all_processes():
+            if process.wait_terminate:
+                self._wait_components[process.id()] = asyncio.Event()
 
-        if not self._wait_sims:
+        if not self._wait_components:
             await self._callbacks.simulation_message(
                 logging.WARNING,
                 "warning: no component has a wait flag set, so the simulation terminates as"
@@ -265,18 +319,42 @@ class SimulationExecutor:
             )
 
     async def terminate_collect_sims(self) -> None:
-        """Terminates all simulators and collects output."""
+        """Terminates all simulators, proxies and processes and collects output."""
         await self._callbacks.simulation_message(logging.DEBUG, "cleaning up")
+        self._stopping = True
+
+        with_sims = [
+            exec
+            for process, exec in self._running_processes.items()
+            if process.stop == inst_process.StopPolicy.WITH_SIMULATORS
+        ]
+        after_sims = [
+            (process, exec)
+            for process, exec in self._running_processes.items()
+            if process.stop == inst_process.StopPolicy.AFTER_SIMULATORS
+        ]
 
         # Interrupt, then terminate, then kill all processes. Do this in parallel so user does not
         # have to wait unnecessaryily long.
+        first_wave = list(
+            itertools.chain(self._running_sims.values(), self._running_proxies.values(), with_sims)
+        )
         scs = []
-        for exec in itertools.chain(self._running_sims.values(), self._running_proxies.values()):
+        for exec in first_wave:
             scs.append(asyncio.create_task(exec.int_term_kill()))
         await asyncio.gather(*scs)
 
         # wait for all processes to terminate
-        for exec in itertools.chain(self._running_sims.values(), self._running_proxies.values()):
+        for exec in first_wave:
+            await exec.wait()
+
+        # Processes that outlive the simulators, e.g. to finish reading what they produced, are
+        # only interrupted now and get their grace period before being terminated.
+        scs = []
+        for process, exec in after_sims:
+            scs.append(asyncio.create_task(exec.int_term_kill(delay=process.stop_grace_sec)))
+        await asyncio.gather(*scs)
+        for _, exec in after_sims:
             await exec.wait()
 
     async def sigusr1(self) -> None:
@@ -330,6 +408,11 @@ class SimulationExecutor:
                                 asyncio.create_task(self._wait_for_external_proxy(comp.get_proxy()))
                             )
                             topo_comps.append(comp)
+                        case dep_graph.SimulationDependencyNodeType.PROCESS:
+                            starting.append(
+                                asyncio.create_task(self._start_process(comp.get_process()))
+                            )
+                            topo_comps.append(comp)
                         case _:
                             raise RuntimeError("Unhandled topology component type")
 
@@ -346,9 +429,8 @@ class SimulationExecutor:
             if self._profile_int:
                 profiler_task = asyncio.create_task(self._profiler())
 
-            # wait until all simulators indicated to be awaited exit
-            for sc in self._wait_sims.values():
-                await sc.wait()
+            # wait until all components indicated to be awaited exit, or a component failed
+            await self._wait_for_end()
             await self._callbacks.simulation_exited(output.SimulationExitState.SUCCESS)
         except asyncio.CancelledError:
             await self._callbacks.simulation_message(logging.DEBUG, "interrupted")
@@ -382,6 +464,23 @@ class SimulationExecutor:
                     logging.DEBUG,
                     f"cancelled while collecting simulator output: {e}",
                 )
+
+    async def _wait_for_end(self) -> None:
+
+        async def all_waited() -> None:
+            for event in self._wait_components.values():
+                await event.wait()
+
+        waited = asyncio.create_task(all_waited())
+        aborted = asyncio.create_task(self._abort.wait())
+        try:
+            await asyncio.wait({waited, aborted}, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for task in (waited, aborted):
+                if not task.done():
+                    task.cancel()
+        if self._abort.is_set():
+            raise RuntimeError(self._abort_reason)
 
     async def cleanup(self) -> None:
         await self._instantiation.cleanup()

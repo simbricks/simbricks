@@ -96,7 +96,7 @@ class Runtime(metaclass=abc.ABCMeta):
     async def _store_output_artifact(self, run: Run) -> None:
         """Pack the run's output artifact into its output directory."""
         fragment = run.instantiation.assigned_fragment
-        if not fragment.output_artifact_paths:
+        if not fragment.all_output_artifact_paths():
             return
 
         work_dir = pathlib.Path(run.instantiation.env.work_dir())
@@ -111,7 +111,7 @@ class Runtime(metaclass=abc.ABCMeta):
                 # No backend here to hand out ids, so the fragment identifies itself.
                 run_fragment_id=str(fragment.id()),
             ),
-            paths_to_include=fragment.output_artifact_paths,
+            paths_to_include=fragment.all_output_artifact_paths(),
             base_path=work_dir,
             staging_dir=work_dir.parent,
         )

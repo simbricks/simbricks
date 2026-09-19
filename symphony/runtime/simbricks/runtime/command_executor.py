@@ -32,6 +32,7 @@ from asyncio.subprocess import Process
 from collections import abc
 
 if typing.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import process as inst_process
     from simbricks.orchestration.instantiation import proxy as inst_proxy
     from simbricks.orchestration.simulation import base as sim_base
     from simbricks.runtime import simulation_executor as sim_exec
@@ -313,6 +314,42 @@ class CommandExecutorFactory:
 
         executor = CommandExecutor(
             cmd, proxy.name, started_cb, exited_cb, stdout_cb, stderr_cb, self.message
+        )
+        await executor.start()
+        return executor
+
+    async def start_process(
+        self,
+        process: inst_process.FragmentProcess,
+        cmd: str,
+        exited: typing.Callable[[int], typing.Awaitable[None]] | None = None,
+    ) -> CommandExecutor:
+        """Start a fragment process. @exited, if given, runs after the callbacks' `process_exited`
+        and lets the simulation executor react to the exit."""
+
+        async def started_cb() -> None:
+            await self._sim_exec_cbs.process_started(process, cmd)
+
+        async def exited_cb(exit_code: int) -> None:
+            await self._sim_exec_cbs.process_exited(process, exit_code)
+            if exited is not None:
+                await exited(exit_code)
+
+        async def stdout_cb(lines: list[str]) -> None:
+            await self._sim_exec_cbs.process_stdout(process, lines)
+
+        async def stderr_cb(lines: list[str]) -> None:
+            await self._sim_exec_cbs.process_stderr(process, lines)
+
+        executor = CommandExecutor(
+            cmd,
+            process.name,
+            started_cb,
+            exited_cb,
+            stdout_cb,
+            stderr_cb,
+            self.message,
+            process_group=True,
         )
         await executor.start()
         return executor

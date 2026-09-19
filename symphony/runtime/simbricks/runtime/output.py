@@ -31,6 +31,7 @@ import time
 import typing
 
 if typing.TYPE_CHECKING:
+    from simbricks.orchestration.instantiation import process as inst_process
     from simbricks.orchestration.instantiation import proxy as inst_proxy
     from simbricks.orchestration.simulation import base as sim_base
 
@@ -99,6 +100,9 @@ class SimulationOutput:
         self._proxy_output: collections.defaultdict[inst_proxy.Proxy, list[ProcessOutput]] = (
             collections.defaultdict(list)
         )
+        self._process_output: collections.defaultdict[
+            inst_process.FragmentProcess, list[ProcessOutput]
+        ] = collections.defaultdict(list)
 
     def is_ended(self) -> bool:
         return self._end_time is not None or self._interrupted
@@ -163,6 +167,21 @@ class SimulationOutput:
         assert proxy in self._proxy_output
         self._proxy_output[proxy][-1].append_stderr(lines)
 
+    def set_process_cmd(self, process: inst_process.FragmentProcess, cmd: str) -> None:
+        self._process_output[process].append(ProcessOutput(cmd))
+
+    def append_process_stdout(
+        self, process: inst_process.FragmentProcess, lines: list[str]
+    ) -> None:
+        assert process in self._process_output
+        self._process_output[process][-1].append_stdout(lines)
+
+    def append_process_stderr(
+        self, process: inst_process.FragmentProcess, lines: list[str]
+    ) -> None:
+        assert process in self._process_output
+        self._process_output[process][-1].append_stderr(lines)
+
     def toJSON(self) -> dict:
         json_obj = {}
         json_obj["_sim_name"] = self._simulation_name
@@ -189,6 +208,11 @@ class SimulationOutput:
             for proc_out in proc_list:
                 json_obj_out_list.append(proc_out.toJSON())
             json_obj[proxy.name] = {"class": proxy.__class__.__name__, "output": json_obj_out_list}
+        for process, proc_list in self._process_output.items():
+            json_obj[process.name] = {
+                "class": process.__class__.__name__,
+                "output": [proc_out.toJSON() for proc_out in proc_list],
+            }
 
         return json_obj
 
