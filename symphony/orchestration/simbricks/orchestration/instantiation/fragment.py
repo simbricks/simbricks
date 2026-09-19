@@ -22,11 +22,13 @@
 from __future__ import annotations
 
 import functools
+import itertools
 import typing
 import uuid
 
 import typing_extensions as tpe
 
+from simbricks.orchestration.instantiation import process as inst_process
 from simbricks.orchestration.instantiation import proxy
 from simbricks.utils import base as utils_base
 
@@ -47,6 +49,8 @@ class Fragment(utils_base.IdObj):
         """Only execute this fragment on runner that has all given labels."""
         self._proxies: set[proxy.Proxy] = set()
         self._simulators: set[sim_base.Simulator] = set()
+        self._processes: set[inst_process.FragmentProcess] = set()
+        """Additional processes run next to the simulators, see `FragmentProcess`."""
         self._parameters: dict[typing.Any, typing.Any] = {}
 
         self.input_artifact_name: str = f"input-artifact-{str(uuid.uuid4())}.zip"
@@ -62,6 +66,7 @@ class Fragment(utils_base.IdObj):
             utils_base.has_attribute(prox, "toJSON")
             proxy_json.append(prox.toJSON())
         json_obj["proxies"] = proxy_json
+        json_obj["processes"] = [proc.toJSON() for proc in self._processes]
 
         json_obj["fragment_executor_tag"] = self.fragment_executor_tag
         json_obj["runner_tags"] = list(self.runner_tags)
@@ -104,6 +109,16 @@ class Fragment(utils_base.IdObj):
             utils_base.get_json_attr_top(json_obj, "parameters")
         )
 
+        instance._processes = set()
+        # instantiations stored before processes existed have no such list
+        for process_json in utils_base.get_json_attr_top_or_none(json_obj, "processes") or []:
+            process_class = utils_base.get_cls_by_json(process_json)
+            utils_base.has_attribute(process_class, "fromJSON")
+            instance._processes.add(process_class.fromJSON(process_json))
+        # references may point to other processes, so resolve once all are loaded
+        for process in instance._processes:
+            process.resolve_references(simulation, instance)
+
         instance.input_artifact_name = utils_base.get_json_attr_top(json_obj, "input_artifact_name")
         instance.input_artifact_paths = utils_base.get_json_attr_top(
             json_obj, "input_artifact_paths"
@@ -120,14 +135,27 @@ class Fragment(utils_base.IdObj):
     @property
     def cores_required(self) -> int:
         req_cores_per_sim = map(lambda sim: sim.resreq_cores(), self._simulators)
-        req_cores = functools.reduce(lambda x, y: x + y, req_cores_per_sim)
-        return req_cores
+        req_cores_per_proc = map(lambda proc: proc.resreq_cores, self._processes)
+        return functools.reduce(
+            lambda x, y: x + y, itertools.chain(req_cores_per_sim, req_cores_per_proc), 0
+        )
 
     @property
     def memory_required(self) -> int:
         req_mem_per_sim = map(lambda sim: sim.resreq_mem(), self._simulators)
-        req_mem = functools.reduce(lambda x, y: x + y, req_mem_per_sim)
-        return req_mem
+        req_mem_per_proc = map(lambda proc: proc.resreq_mem, self._processes)
+        return functools.reduce(
+            lambda x, y: x + y, itertools.chain(req_mem_per_sim, req_mem_per_proc), 0
+        )
+
+    def all_output_artifact_paths(self) -> list[str]:
+        """`output_artifact_paths` plus what the fragment's processes produce."""
+        paths = list(self.output_artifact_paths)
+        for process in self._processes:
+            for path in process.output_paths:
+                if path not in paths:
+                    paths.append(path)
+        return paths
 
     @staticmethod
     def merged(*fragments: Fragment) -> Fragment:
@@ -152,11 +180,14 @@ class Fragment(utils_base.IdObj):
         merged_fragment = Fragment(fragments[0].fragment_executor_tag, fragments[0].runner_tags)
         proxies = set()
         simulators = set()
+        processes = set()
         for fragment in fragments:
             proxies.update(fragment.all_proxies())
             simulators.update(fragment.all_simulators())
+            processes.update(fragment.all_processes())
         merged_fragment._proxies = proxies
         merged_fragment._simulators = simulators
+        merged_fragment._processes = processes
         return merged_fragment
 
     def add_simulators(self, *sims: sim_base.Simulator):
@@ -170,6 +201,18 @@ class Fragment(utils_base.IdObj):
 
     def all_proxies(self) -> set[proxy.Proxy]:
         return self._proxies
+
+    def add_processes(self, *processes: inst_process.FragmentProcess):
+        self._processes.update(processes)
+
+    def all_processes(self) -> set[inst_process.FragmentProcess]:
+        return self._processes
+
+    def get_process_by_id(self, id: int) -> inst_process.FragmentProcess:
+        for process in self._processes:
+            if process.id() == id:
+                return process
+        raise RuntimeError(f"there is no process with id {id}")
 
     def find_proxy_by_interface(self, interface: sys_base.Interface) -> proxy.Proxy | None:
         for prox in self._proxies:

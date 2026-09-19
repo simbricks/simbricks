@@ -49,3 +49,15 @@ __all__ += [
     "RDMAProxy",
     "ProxyPair",
 ]
+
+from simbricks.orchestration.instantiation.process import (
+    FragmentProcess,
+    ShellProcess,
+    StopPolicy,
+)
+
+__all__ += [
+    "FragmentProcess",
+    "ShellProcess",
+    "StopPolicy",
+]

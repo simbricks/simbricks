@@ -308,6 +308,11 @@ class Instantiation(utils_base.IdObj):
         """
         for source in _input_artifact_sources(self.simulation.system):
             self._add_input_artifacts(source.input_artifact_files())
+        for fragment in self.fragments:
+            for process in fragment.all_processes():
+                for path in process.input_artifact_files():
+                    if path not in fragment.input_artifact_paths:
+                        fragment.input_artifact_paths.append(path)
 
     @property
     def env(self) -> InstantiationEnvironment:
@@ -318,6 +323,24 @@ class Instantiation(utils_base.IdObj):
     @env.setter
     def env(self, new_val: InstantiationEnvironment | None) -> None:
         self._env = new_val
+
+    _SIM_OUTPUT_PLACEHOLDER_RE = re.compile(r"@\{SIMBRICKS_SIM_OUTPUT:(?P<id>\d+)\}@")
+
+    @staticmethod
+    def sim_output_placeholder(sim: sim_base.Simulator) -> str:
+        """Placeholder that is replaced with the output directory of @sim on the executor."""
+        return f"@{{SIMBRICKS_SIM_OUTPUT:{sim.id()}}}@"
+
+    def resolve_placeholders(self, text: str) -> str:
+        """Replace every path placeholder in @text, the environment's and the per-simulator
+        ones."""
+        text = self.env.resolve_path_placeholders(text)
+        return self._SIM_OUTPUT_PLACEHOLDER_RE.sub(
+            lambda match: self.env.get_simulator_output_dir(
+                self.simulation.get_simulator(int(match.group("id")))
+            ),
+            text,
+        )
 
     @property
     def command_executor(self) -> rt_cmd_exec.CommandExecutorFactory:
@@ -716,3 +739,23 @@ class Instantiation(utils_base.IdObj):
         same effect."""
         self._assign_interface_socktype()
         self._assign_proxy_socktype()
+        self._validate_processes()
+
+    def _validate_processes(self) -> None:
+        """Processes may only be ordered against components of their own fragment."""
+        for fragment in self.fragments:
+            members: set[typing.Any] = set(fragment.all_simulators())
+            members.update(fragment.all_proxies())
+            members.update(fragment.all_processes())
+            for process in fragment.all_processes():
+                for comp in itertools.chain(process.dependencies(), process.dependents()):
+                    if comp is process:
+                        raise exceptions.InstantiationConfigurationError(
+                            f"process {process.name} cannot be ordered against itself"
+                        )
+                    if comp not in members:
+                        raise exceptions.InstantiationConfigurationError(
+                            f"process {process.name} is ordered against {comp}, which is not part"
+                            " of the same fragment; processes can only depend on simulators,"
+                            " proxies and processes of their own fragment"
+                        )

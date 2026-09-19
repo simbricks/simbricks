@@ -19,8 +19,8 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""Module for building graph for determinining starting order of components like simulators and
-proxies that runner starts."""
+"""Module for building graph for determinining starting order of components like simulators,
+proxies and fragment processes that runner starts."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ import enum
 import typing
 
 from simbricks.orchestration.helpers import exceptions as exc
+from simbricks.orchestration.instantiation import process as inst_process
 from simbricks.orchestration.instantiation import proxy as inst_proxy
 from simbricks.orchestration.instantiation import socket as inst_socket
 
@@ -44,13 +45,15 @@ class SimulationDependencyNodeType(enum.Enum):
     """Proxy in assigned fragment."""
     EXTERNAL_PROXY = "external proxy"
     """Proxy outside assigned fragment."""
+    PROCESS = "process"
+    """Additional process in assigned fragment."""
 
 
 class SimulationDependencyNode:
     def __init__(
         self,
         type: SimulationDependencyNodeType,
-        value: sim_base.Simulator | inst_proxy.Proxy,
+        value: sim_base.Simulator | inst_proxy.Proxy | inst_process.FragmentProcess,
     ) -> None:
         self.type = type
         self.value = value
@@ -68,6 +71,11 @@ class SimulationDependencyNode:
             return typing.cast(inst_proxy.Proxy, self.value)
         raise RuntimeError("Value stored is not a proxy")
 
+    def get_process(self) -> inst_process.FragmentProcess:
+        if self.type == SimulationDependencyNodeType.PROCESS:
+            return typing.cast(inst_process.FragmentProcess, self.value)
+        raise RuntimeError("Value stored is not a process")
+
     def __repr__(self) -> str:
         match self.type:
             case SimulationDependencyNodeType.SIMULATOR:
@@ -76,6 +84,8 @@ class SimulationDependencyNode:
                 return str(("proxy", self.get_proxy()))
             case SimulationDependencyNodeType.EXTERNAL_PROXY:
                 return str(("external_proxy", self.get_proxy()))
+            case SimulationDependencyNodeType.PROCESS:
+                return str(("process", self.get_process()))
             case _:
                 raise RuntimeError("Unhandled type")
 
@@ -136,8 +146,9 @@ def build_simulation_dependency_graph(
     inst: inst_base.Instantiation,
 ) -> SimulationDependencyGraph:
     """
-    Build a dependency graph for the simulator and proxy starting order. The listening side of a
-    SimBricks connection has to be started first since it creates the SHM queue.
+    Build a dependency graph for the simulator, proxy and process starting order. The listening
+    side of a SimBricks connection has to be started first since it creates the SHM queue.
+    Processes are ordered by what they declare with `start_after()` and `start_before()`.
     """
     # the actual dependency graph
     dep_graph: SimulationDependencyGraph = SimulationDependencyGraph({})
@@ -212,5 +223,31 @@ def build_simulation_dependency_graph(
         # dependency for proxy_a if it is marked as connecting
         if proxy_a._connection_mode == inst_socket.SockType.CONNECT:
             _insert_dependency(dep_graph, node_a, node_b)
+
+    # add process dependencies, which only ever point to components of the assigned fragment
+    nodes_process: dict[inst_process.FragmentProcess, SimulationDependencyNode] = {}
+    for process in inst.assigned_fragment.all_processes():
+        nodes_process[process] = SimulationDependencyNode(
+            SimulationDependencyNodeType.PROCESS, process
+        )
+        dep_graph[nodes_process[process]] = set()
+
+    def node_of(comp: inst_process.FragmentComponent) -> SimulationDependencyNode | None:
+        if isinstance(comp, inst_process.FragmentProcess):
+            return nodes_process[comp]
+        if isinstance(comp, inst_proxy.Proxy):
+            # None if optimized out above because it connects within the (merged) fragment
+            return nodes_proxy.get(comp)
+        return nodes_sim[comp]
+
+    for process, node in nodes_process.items():
+        for dependency in process.dependencies():
+            dep_node = node_of(dependency)
+            if dep_node is not None:
+                _insert_dependency(dep_graph, node, dep_node)
+        for dependent in process.dependents():
+            dep_node = node_of(dependent)
+            if dep_node is not None:
+                _insert_dependency(dep_graph, dep_node, node)
 
     return dep_graph
