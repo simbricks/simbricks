@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import shlex
 import signal
 import typing
@@ -50,7 +51,11 @@ class CommandExecutor:
         stdout_callback: typing.Callable[[list[str]], typing.Awaitable[None]],
         stderr_callback: typing.Callable[[list[str]], typing.Awaitable[None]],
         message_callback: typing.Callable[[int, str], typing.Awaitable[None]],
+        process_group: bool = False,
     ):
+        """With @process_group, the command runs in a session of its own and signals go to the
+        whole group, so a shell pipeline is stopped along with the shell."""
+        self._process_group = process_group
         self._stdout_buf = bytearray()
         self._stderr_buf = bytearray()
         self._cmd_parts = shlex.split(cmd)
@@ -137,6 +142,7 @@ class CommandExecutor:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.DEVNULL,
+            start_new_session=self._process_group,
         )
         await self._started_cb()
         self._terminate_future = asyncio.create_task(self._waiter())
@@ -150,20 +156,28 @@ class CommandExecutor:
         """
         await asyncio.shield(self._terminate_future)
 
+    def _signal(self, sig: signal.Signals) -> None:
+        if self._proc.returncode is not None:
+            return
+        if self._process_group:
+            try:
+                os.killpg(self._proc.pid, sig)
+            except ProcessLookupError:
+                pass
+        else:
+            self._proc.send_signal(sig)
+
     async def interrupt(self) -> None:
         """Sends an interrupt signal."""
-        if self._proc.returncode is None:
-            self._proc.send_signal(signal.SIGINT)
+        self._signal(signal.SIGINT)
 
     async def terminate(self) -> None:
         """Sends a terminate signal."""
-        if self._proc.returncode is None:
-            self._proc.terminate()
+        self._signal(signal.SIGTERM)
 
     async def kill(self) -> None:
         """Sends a kill signal."""
-        if self._proc.returncode is None:
-            self._proc.kill()
+        self._signal(signal.SIGKILL)
 
     async def int_term_kill(self, delay: int = 5) -> None:
         """Attempts to stop this component by sending signals in the following
@@ -193,8 +207,11 @@ class CommandExecutor:
 
     async def sigusr1(self) -> None:
         """Sends an SIGUSR1 signal."""
-        if self._proc.returncode is None:
-            self._proc.send_signal(signal.SIGUSR1)
+        self._signal(signal.SIGUSR1)
+
+    @property
+    def exited(self) -> bool:
+        return self._proc.returncode is not None
 
 
 class CommandExecutorFactory:
