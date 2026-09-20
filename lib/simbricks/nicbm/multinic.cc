@@ -62,6 +62,17 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
   int start = 0;
   std::vector<Runner *> runners;
   std::vector<boost::fibers::fiber *> fibers;
+  DebugLog *debug_log = nullptr;
+  // one debug log for the whole process: `--debug-log=PATH` before the first
+  // runner's arguments
+  if (argc >= 2 && !strncmp(argv[1], "--debug-log=", 12)) {
+    debug_log = DebugLog::Open(argv[1] + 12);
+    if (!debug_log)
+      return -1;
+    argv[1] = argv[0];
+    argv++;
+    argc--;
+  }
   do {
     int end;
     for (end = start + 1; end < argc && strcmp(argv[end], "--"); end++) {
@@ -69,6 +80,8 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
     argv[start] = argv[0];
 
     CompRunner *r = new CompRunner(factory_.create());
+    if (debug_log)
+      r->SetDebugLog(debug_log, runners.size());
     if (r->ParseArgs(end - start, argv + start))
       return -1;
 
@@ -82,6 +95,7 @@ int MultiNicRunner::RunMain(int argc, char *argv[]) {
     f->join();
     delete (f);
   }
+  delete debug_log;
   return 0;
 }
 

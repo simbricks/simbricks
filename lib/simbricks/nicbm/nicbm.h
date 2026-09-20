@@ -60,6 +60,36 @@ class TimedEvent {
 };
 
 /**
+ * Per-process debug log, enabled with a leading `--debug-log=PATH` argument.
+ * One line per PCIe/Ethernet message the runner sends or receives, per DMA
+ * operation and interrupt, plus whatever the device model reports through
+ * `Runner::Debug()`. Parsed by simbricks-trace; format:
+ *
+ *   # simbricks-debug nicbm 1
+ *   # runner <idx> pci=<socket> eth=<socket> start=<ts> mac=<hex>
+ *   <main_time> <runner idx> <kind> <fields...>
+ *
+ * PATH may be a FIFO. The log is shared by all runners of a process (they are
+ * cooperative fibers, so no locking is needed).
+ */
+class DebugLog {
+ public:
+  static DebugLog *Open(const char *path);
+  ~DebugLog();
+
+  void RunnerInfo(unsigned idx, const char *pci_sock, const char *eth_sock,
+                  uint64_t start_ts, uint64_t mac);
+  void Emit(uint64_t ts, unsigned runner, const char *kind, const char *fmt,
+            ...) __attribute__((format(printf, 5, 6)));
+  void Flush();
+
+ protected:
+  explicit DebugLog(FILE *file) : file_(file) {
+  }
+  FILE *file_;
+};
+
+/**
  * The Runner drives the main simulation loop. It's initialized with a reference
  * to a device it should manage, and then once `runMain` is called, it will
  * start interacting with the PCI and Ethernet queue and forwarding calls to the
@@ -140,6 +170,9 @@ class Runner {
   struct SimbricksAdapterParams *netAdapterParams_;
 
   sim_log::LogPtT log_ = sim_log::Log::createLog();
+  DebugLog *debug_log_ = nullptr;
+  bool debug_log_owned_ = false;
+  unsigned runner_idx_ = 0;
 
   volatile union SimbricksProtoPcieD2H *D2HAlloc();
   volatile union SimbricksProtoNetMsg *D2NAlloc();
@@ -185,6 +218,19 @@ class Runner {
 
   uint64_t TimePs() const;
   uint64_t GetMacAddr() const;
+
+  /** Attach a debug log (shared between runners of a multi-NIC process). */
+  void SetDebugLog(DebugLog *log, unsigned idx, bool owned = false);
+  bool DebugEnabled() const {
+    return debug_log_ != nullptr;
+  }
+  void FlushDebugLog() {
+    if (debug_log_)
+      debug_log_->Flush();
+  }
+  /** Device models report internal events with this (no-op unless enabled). */
+  void Debug(const char *kind, const char *fmt, ...)
+      __attribute__((format(printf, 3, 4)));
   /**
    * Print baseif info
    *
