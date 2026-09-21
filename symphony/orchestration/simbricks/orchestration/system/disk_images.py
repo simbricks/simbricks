@@ -529,6 +529,94 @@ class DynamicDiskImage(DiskImage):
         return instance
 
 
+class FileDiskImage(DynamicDiskImage):
+    """An image already on the runner, at a path the user gives.
+
+    Given the same way as an ExternalDiskImage and treated the opposite way:
+    that one is a black box, handed to the simulator as it is, while this one is
+    a DynamicDiskImage, so its boot artifacts are extracted from the image and
+    cached like any other. Reach for ExternalDiskImage when an image should be
+    left alone, and for this when it should not.
+    """
+
+    def __init__(self, system: sys_base.System, path: StrPath) -> None:
+        super().__init__(system)
+        self._path = os.fspath(path)
+        self.formats = ["raw", "qcow2"]
+
+    def available_formats(self) -> list[str]:
+        return self.formats
+
+    def path(self, inst: inst_base.Instantiation, format: str) -> str:
+        # Not the dynamic_img_path a built image gets: this one is wherever it
+        # was put, whatever format a simulator asks for.
+        path = inst.env.work_dir_or_abs(self._path)
+        DiskImage.assert_is_file(path)
+        return path
+
+    def content_hash(self, inst: inst_base.Instantiation) -> str:
+        return hash_strings(["file", DiskImage.file_identity(self.path(inst, ""))])
+
+    async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
+        # Nothing to produce, so this only checks the image is there
+        self.path(inst, format)
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["path"] = self._path
+        json_obj["formats"] = self.formats
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance._path = utils_base.get_json_attr_top(json_obj, "path")
+        instance.formats = utils_base.get_json_attr_top(json_obj, "formats")
+        return instance
+
+
+class FileDiskImageArtifact(FileDiskImage, utils_base.InputArtifactSource):
+    """A disk image on the submitting machine, shipped to the runner with the run.
+
+    To ExternalDiskImageArtifact what FileDiskImage is to ExternalDiskImage: the
+    same way in, but its boot artifacts are extracted from the image rather than
+    having to be supplied.
+    """
+
+    def __init__(self, system: sys_base.System, path: StrPath) -> None:
+        super().__init__(system, pathlib.Path(path).resolve().as_posix())
+        # Name it has inside the artifact, which is currently packed flat
+        self.artifact_file_name: str = pathlib.PurePath(self._path).name
+
+    def input_artifact_files(self) -> list[str]:
+        return [self._path]
+
+    def path(self, inst: inst_base.Instantiation, format: str) -> str:
+        shipped = pathlib.Path(inst.env.input_artifacts_dir(), self.artifact_file_name)
+        if shipped.exists():
+            return shipped.as_posix()
+        # A local run builds no input artifact: the image is where it was picked up.
+        return super().path(inst, format)
+
+    def content_hash(self, inst: inst_base.Instantiation) -> str:
+        # By content rather than the usual size and mtime: this arrives unpacked
+        # afresh for every run, so its path and timestamps say nothing about
+        # whether it is the same image as last time.
+        with open(self.path(inst, ""), "rb") as handle:
+            return hash_strings(["file-artifact", hash_file(handle)])
+
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["artifact_file_name"] = self.artifact_file_name
+        return json_obj
+
+    @classmethod
+    def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
+        instance = super().fromJSON(system, json_obj)
+        instance.artifact_file_name = utils_base.get_json_attr_top(json_obj, "artifact_file_name")
+        return instance
+
+
 class HttpDiskImage(DynamicDiskImage):
     """A base image the runner downloads, rather than one it already has.
 
