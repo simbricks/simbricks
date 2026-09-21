@@ -347,6 +347,9 @@ class DynamicDiskImage(DiskImage):
         artifacts are named after."""
         self.virt_copy_out_exec = "virt-copy-out"
         """Copies the boot artifacts out of the built image."""
+        self.boot_artifact_paths: dict[BootArtifact, str] = {}
+        """Boot artifacts supplied as files on the runner, by kind, overriding
+        whatever the image itself would give. Not stored in the cache."""
 
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         return inst.env.dynamic_img_path(self, format)
@@ -357,25 +360,32 @@ class DynamicDiskImage(DiskImage):
         """Boot files for this image, from the cache when a previous run put them
         there. That is what makes them survive a cache hit, where no build runs
         and a backend that collects them while building never gets the chance.
+
+        Each kind is looked for in that order: boot_artifact_paths, then the
+        cache, then _produce_boot_artifacts.
         """
         if not kinds:
             return {}
         out_dir = pathlib.Path(inst.env.img_dir(f"boot.{self.id()}"))
         out_dir.mkdir(parents=True, exist_ok=True)
-        cache = image_cache.for_instantiation(inst)
-        digest = self.content_hash(inst) if cache is not None else ""
+
+        def collected() -> dict[BootArtifact, str]:
+            return {
+                k: (out_dir / k.value).as_posix() for k in kinds if (out_dir / k.value).is_file()
+            }
 
         async with inst.prepare_lock(out_dir.as_posix()):
             wanted = [k for k in kinds if not (out_dir / k.value).is_file()]
-            if cache is None:
-                if wanted:
-                    await self._produce_boot_artifacts(inst, wanted, out_dir)
-                return {
-                    k: (out_dir / k.value).as_posix()
-                    for k in kinds
-                    if (out_dir / k.value).is_file()
-                }
+            self._take_given_boot_artifacts(inst, wanted, out_dir)
+            if not wanted:
+                return collected()
 
+            cache = image_cache.for_instantiation(inst)
+            if cache is None:
+                await self._produce_boot_artifacts(inst, wanted, out_dir)
+                return collected()
+
+            digest = self.content_hash(inst)
             # Under the entry's lock: a sweep in another run may be evicting,
             # and it leaves alone whatever is held.
             async with cache.locked(digest):
@@ -388,6 +398,9 @@ class DynamicDiskImage(DiskImage):
                 if wanted:
                     await self._produce_boot_artifacts(inst, wanted, out_dir)
                 for kind in kinds:
+                    if kind in self.boot_artifact_paths:
+                        # Do not cache explicitly overridden boot artifacts
+                        continue
                     # Also for the ones the build itself collected, which is how
                     # a backend that only gets them while building survives a hit.
                     if (out_dir / kind.value).is_file() and cache.boot_artifact(
@@ -398,7 +411,29 @@ class DynamicDiskImage(DiskImage):
                         )
                 cache.used(digest)
 
-        return {k: (out_dir / k.value).as_posix() for k in kinds if (out_dir / k.value).is_file()}
+        return collected()
+
+    def _take_given_boot_artifacts(
+        self,
+        inst: inst_base.Instantiation,
+        wanted: list[BootArtifact],
+        out_dir: pathlib.Path,
+    ) -> None:
+        """Copy in what boot_artifact_paths supplies, dropping those kinds from
+        @wanted so nothing goes on to look them up anywhere else.
+        """
+        for kind in list(wanted):
+            given = self.boot_artifact_paths.get(kind)
+            if given is None:
+                continue
+            path = pathlib.Path(inst.env.work_dir_or_abs(given))
+            if not path.is_file():
+                raise RuntimeError(
+                    f"{type(self).__name__}-{self.id()}: boot artifact '{kind.value}' was given"
+                    f" as '{given}', which is not a file"
+                )
+            shutil.copyfile(path, out_dir / kind.value)
+            wanted.remove(kind)
 
     def _built_image(self, inst: inst_base.Instantiation) -> str:
         for format in self.available_formats():
@@ -477,6 +512,9 @@ class DynamicDiskImage(DiskImage):
         json_obj = super().toJSON()
         json_obj["virt_ls_exec"] = self.virt_ls_exec
         json_obj["virt_copy_out_exec"] = self.virt_copy_out_exec
+        json_obj["boot_artifact_paths"] = {
+            kind.value: path for kind, path in self.boot_artifact_paths.items()
+        }
         return json_obj
 
     @classmethod
@@ -484,6 +522,10 @@ class DynamicDiskImage(DiskImage):
         instance = super().fromJSON(system, json_obj)
         instance.virt_ls_exec = utils_base.get_json_attr_top(json_obj, "virt_ls_exec")
         instance.virt_copy_out_exec = utils_base.get_json_attr_top(json_obj, "virt_copy_out_exec")
+        instance.boot_artifact_paths = {
+            BootArtifact(kind): path
+            for kind, path in utils_base.get_json_attr_top(json_obj, "boot_artifact_paths").items()
+        }
         return instance
 
 
