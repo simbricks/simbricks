@@ -29,6 +29,7 @@ import hashlib
 import io
 import os
 import pathlib
+import re
 import shlex
 import shutil
 import tarfile
@@ -80,6 +81,34 @@ def hash_file(handle: tp.IO) -> str:
     while chunk := handle.read(1 << 20):
         digest.update(chunk)
     return digest.hexdigest()
+
+
+def guestfs_env() -> list[str]:
+    """Force the direct appliance backend unless one is already chosen.
+
+    'direct' needs no libvirt session. env(1) because commands run without a
+    shell, inheriting the executor's environment.
+    """
+    if os.environ.get("LIBGUESTFS_BACKEND"):
+        return []
+    return ["env", "LIBGUESTFS_BACKEND=direct"]
+
+
+def version_key(value: str) -> list[tuple[int, object]]:
+    """Sort key comparing digit runs numerically, so -100 beats -99."""
+    return [
+        (0, int(part)) if part.isdigit() else (1, part)
+        for part in re.split(r"(\d+)", value)
+        if part
+    ]
+
+
+_GUESTFS_HINT = (
+    "extracting boot artifacts needs libguestfs-tools and qemu-utils installed on the runner"
+)
+
+# Where in the guest the debug kernel's uncompressed ELF lives.
+VMLINUX_DIR = "/usr/lib/debug/boot"
 
 
 class DiskImage(utils_base.IdObj):
@@ -311,16 +340,151 @@ class ExternalDiskImageArtifact(ExternalDiskImage, utils_base.InputArtifactSourc
 
 # Abstract base class for dynamically generated images
 class DynamicDiskImage(DiskImage):
+    def __init__(self, system: sys_base.System) -> None:
+        super().__init__(system)
+        self.virt_ls_exec = "virt-ls"
+        """Lists /boot in the built image to find the kernel version its boot
+        artifacts are named after."""
+        self.virt_copy_out_exec = "virt-copy-out"
+        """Copies the boot artifacts out of the built image."""
+
     def path(self, inst: inst_base.Instantiation, format: str) -> str:
         return inst.env.dynamic_img_path(self, format)
+
+    async def boot_artifacts(
+        self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
+    ) -> dict[BootArtifact, str]:
+        """Boot files for this image, from the cache when a previous run put them
+        there. That is what makes them survive a cache hit, where no build runs
+        and a backend that collects them while building never gets the chance.
+        """
+        if not kinds:
+            return {}
+        out_dir = pathlib.Path(inst.env.img_dir(f"boot.{self.id()}"))
+        out_dir.mkdir(parents=True, exist_ok=True)
+        cache = image_cache.for_instantiation(inst)
+        digest = self.content_hash(inst) if cache is not None else ""
+
+        async with inst.prepare_lock(out_dir.as_posix()):
+            wanted = [k for k in kinds if not (out_dir / k.value).is_file()]
+            if cache is None:
+                if wanted:
+                    await self._produce_boot_artifacts(inst, wanted, out_dir)
+                return {
+                    k: (out_dir / k.value).as_posix()
+                    for k in kinds
+                    if (out_dir / k.value).is_file()
+                }
+
+            # Under the entry's lock: a sweep in another run may be evicting,
+            # and it leaves alone whatever is held.
+            async with cache.locked(digest):
+                for kind in list(wanted):
+                    cached = cache.boot_artifact(digest, kind.value)
+                    if cached is not None and cache.take_out(
+                        cached, (out_dir / kind.value).as_posix()
+                    ):
+                        wanted.remove(kind)
+                if wanted:
+                    await self._produce_boot_artifacts(inst, wanted, out_dir)
+                for kind in kinds:
+                    # Also for the ones the build itself collected, which is how
+                    # a backend that only gets them while building survives a hit.
+                    if (out_dir / kind.value).is_file() and cache.boot_artifact(
+                        digest, kind.value
+                    ) is None:
+                        cache.store_boot_artifact(
+                            digest, kind.value, (out_dir / kind.value).as_posix()
+                        )
+                cache.used(digest)
+
+        return {k: (out_dir / k.value).as_posix() for k in kinds if (out_dir / k.value).is_file()}
+
+    def _built_image(self, inst: inst_base.Instantiation) -> str:
+        for format in self.available_formats():
+            path = self.path(inst, format)
+            if pathlib.Path(path).is_file():
+                return path
+        raise RuntimeError(f"{type(self).__name__}-{self.id()}: image has not been built yet")
+
+    async def _kernel_version(self, image: str) -> str:
+        """Newest kernel installed in the image, read from /boot."""
+        proc = await asyncio.create_subprocess_exec(
+            *(
+                guestfs_env()
+                + [utils_base.require_exec(self.virt_ls_exec, _GUESTFS_HINT), "-a", image, "/boot"]
+            ),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"could not list /boot in '{image}': {stderr.decode(errors='replace')}"
+            )
+        versions = sorted(
+            (
+                line[len("vmlinuz-") :]
+                for line in stdout.decode(errors="replace").splitlines()
+                if line.startswith("vmlinuz-")
+            ),
+            key=version_key,
+        )
+        if not versions:
+            raise RuntimeError(f"no /boot/vmlinuz-* in '{image}'")
+        return versions[-1]
+
+    async def _produce_boot_artifacts(
+        self,
+        inst: inst_base.Instantiation,
+        kinds: list[BootArtifact],
+        out_dir: pathlib.Path,
+    ) -> None:
+        """Extract the boot artifacts from the built image with libguestfs.
+
+        Subclasses that get them another way -- collected while building, or
+        shipped alongside the image -- override this.
+        """
+        image = self._built_image(inst)
+        version = await self._kernel_version(image)
+        # What each kind is called inside the guest.
+        guest_names = {
+            BootArtifact.VMLINUZ: f"/boot/vmlinuz-{version}",
+            BootArtifact.INITRD: f"/boot/initrd.img-{version}",
+            BootArtifact.VMLINUX: f"{VMLINUX_DIR}/vmlinux-{version}",
+        }
+        # One copy-out for all: the appliance boot is the cost, not the number
+        # of files.
+        cmd = guestfs_env() + [
+            utils_base.require_exec(self.virt_copy_out_exec, _GUESTFS_HINT),
+            "-a",
+            image,
+        ]
+        cmd += [guest_names[k] for k in kinds]
+        cmd += [out_dir.as_posix()]
+        await inst.command_executor.exec_prepare_cmds([shlex.join(cmd)])
+        for kind in kinds:
+            src = out_dir / pathlib.PurePosixPath(guest_names[kind]).name
+            if not src.is_file():
+                continue
+            src.rename(out_dir / kind.value)
 
     @abc.abstractmethod
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         pass
 
+    def toJSON(self) -> dict:
+        json_obj = super().toJSON()
+        json_obj["virt_ls_exec"] = self.virt_ls_exec
+        json_obj["virt_copy_out_exec"] = self.virt_copy_out_exec
+        return json_obj
+
     @classmethod
     def fromJSON(cls, system: sys_base.System, json_obj: dict) -> tpe.Self:
-        return super().fromJSON(system, json_obj)
+        instance = super().fromJSON(system, json_obj)
+        instance.virt_ls_exec = utils_base.get_json_attr_top(json_obj, "virt_ls_exec")
+        instance.virt_copy_out_exec = utils_base.get_json_attr_top(json_obj, "virt_copy_out_exec")
+        return instance
 
 
 class HttpDiskImage(DynamicDiskImage):
@@ -336,7 +500,6 @@ class HttpDiskImage(DynamicDiskImage):
         url: str,
         checksum: str | None = None,
         format: str = "qcow2",
-        boot_dir: str | None = None,
         qemu_img_exec: str = "qemu-img",
     ) -> None:
         super().__init__(system)
@@ -347,7 +510,6 @@ class HttpDiskImage(DynamicDiskImage):
         # What the URL serves, which is not necessarily what a run is given: see
         # _fetch_as.
         self.format = format
-        self.boot_dir: str | None = boot_dir
         self.qemu_img_exec = qemu_img_exec
 
     def available_formats(self) -> list[str]:
@@ -359,19 +521,6 @@ class HttpDiskImage(DynamicDiskImage):
 
     def content_hash(self, inst: inst_base.Instantiation) -> str:
         return hash_strings(["http", self.url, self.checksum or ""])
-
-    async def boot_artifacts(
-        self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
-    ) -> dict[BootArtifact, str]:
-        if not kinds or self.boot_dir is None:
-            return {}
-        boot_dir = pathlib.Path(inst.env.work_dir_or_abs(self.boot_dir))
-        artifacts = {}
-        for kind in kinds:
-            path = boot_dir / kind.value
-            if path.is_file():
-                artifacts[kind] = path.as_posix()
-        return artifacts
 
     def _fetch(self, out: str) -> None:
         """Download to @out, hashing on the way through. Runs in a thread."""
@@ -478,7 +627,6 @@ class HttpDiskImage(DynamicDiskImage):
         json_obj["url"] = self.url
         json_obj["checksum"] = self.checksum
         json_obj["format"] = self.format
-        json_obj["boot_dir"] = self.boot_dir
         json_obj["qemu_img_exec"] = self.qemu_img_exec
         return json_obj
 
@@ -488,7 +636,6 @@ class HttpDiskImage(DynamicDiskImage):
         instance.url = utils_base.get_json_attr_top(json_obj, "url")
         instance.checksum = utils_base.get_json_attr_top_or_none(json_obj, "checksum")
         instance.format = utils_base.get_json_attr_top(json_obj, "format")
-        instance.boot_dir = utils_base.get_json_attr_top_or_none(json_obj, "boot_dir")
         instance.qemu_img_exec = utils_base.get_json_attr_top(json_obj, "qemu_img_exec")
         return instance
 
@@ -508,7 +655,6 @@ class DistroDiskImage(HttpDiskImage):
         image_name: str,
         image_version: str,
         format: str = "qcow2",
-        boot_dir: str | None = None,
         qemu_img_exec: str = "qemu-img",
     ) -> None:
         super().__init__(
@@ -517,7 +663,6 @@ class DistroDiskImage(HttpDiskImage):
             # Not known until the package is fetched: see _resolve_checksum.
             checksum=None,
             format=format,
-            boot_dir=boot_dir,
             qemu_img_exec=qemu_img_exec,
         )
         self.image_name = image_name
@@ -569,35 +714,23 @@ class DistroDiskImage(HttpDiskImage):
 
 
 class Ubuntu2204BaseDiskImage(DistroDiskImage):
-    def __init__(
-        self, system: sys_base.System, boot_dir: str | None = None, qemu_img_exec: str = "qemu-img"
-    ) -> None:
-        super().__init__(system, "ubuntu-22.04-base", "1.0.1", "qcow2", boot_dir, qemu_img_exec)
+    def __init__(self, system: sys_base.System, qemu_img_exec: str = "qemu-img") -> None:
+        super().__init__(system, "ubuntu-22.04-base", "1.0.1", "qcow2", qemu_img_exec)
 
 
 class Ubuntu2404BaseDiskImage(DistroDiskImage):
-    def __init__(
-        self, system: sys_base.System, boot_dir: str | None = None, qemu_img_exec: str = "qemu-img"
-    ) -> None:
-        super().__init__(system, "ubuntu-24.04-base", "1.0.1", "qcow2", boot_dir, qemu_img_exec)
+    def __init__(self, system: sys_base.System, qemu_img_exec: str = "qemu-img") -> None:
+        super().__init__(system, "ubuntu-24.04-base", "1.0.1", "qcow2", qemu_img_exec)
 
 
 class Ubuntu2204CustomKernelDiskImage(DistroDiskImage):
-    def __init__(
-        self, system: sys_base.System, boot_dir: str | None = None, qemu_img_exec: str = "qemu-img"
-    ) -> None:
-        super().__init__(
-            system, "ubuntu-22.04-custom-kernel", "1.0.1", "qcow2", boot_dir, qemu_img_exec
-        )
+    def __init__(self, system: sys_base.System, qemu_img_exec: str = "qemu-img") -> None:
+        super().__init__(system, "ubuntu-22.04-custom-kernel", "1.0.1", "qcow2", qemu_img_exec)
 
 
 class Ubuntu2404CustomKernelDiskImage(DistroDiskImage):
-    def __init__(
-        self, system: sys_base.System, boot_dir: str | None = None, qemu_img_exec: str = "qemu-img"
-    ) -> None:
-        super().__init__(
-            system, "ubuntu-24.04-custom-kernel", "1.0.1", "qcow2", boot_dir, qemu_img_exec
-        )
+    def __init__(self, system: sys_base.System, qemu_img_exec: str = "qemu-img") -> None:
+        super().__init__(system, "ubuntu-24.04-custom-kernel", "1.0.1", "qcow2", qemu_img_exec)
 
 
 # Builds the Tar with the commands to run etc.
@@ -609,6 +742,14 @@ class LinuxConfigDiskImage(DynamicDiskImage):
 
     def available_formats(self) -> list[str]:
         return ["raw"]
+
+    async def boot_artifacts(
+        self, inst: inst_base.Instantiation, kinds: list[BootArtifact]
+    ) -> dict[BootArtifact, str]:
+        """The LinuxConfigDiskImage does not provide any boot artifacts, since it is not a bootable
+        disk image.
+        """
+        return {}
 
     async def _prepare_format(self, inst: inst_base.Instantiation, format: str) -> None:
         path = self.path(inst, format)

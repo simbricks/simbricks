@@ -25,6 +25,7 @@ import enum
 import importlib
 import importlib.util
 import itertools
+import shutil
 import typing as tp
 
 import typing_extensions as tpe
@@ -101,6 +102,18 @@ def has_expected_type(obj, expected_type) -> None:
 def has_attribute(obj, attr: str) -> None:
     if not hasattr(obj, attr):
         raise Exception(f"obj of type {type(obj)} no attribute called {attr}")
+
+
+def require_exec(exe: str, hint: str | None = None) -> str:
+    """Check an external tool is on PATH, so a missing one is reported by name.
+
+    For tools that cannot be package dependencies -- anything not packaged for
+    conda -- where this being installed says nothing about them being
+    available. @hint says what needs the tool and where it comes from.
+    """
+    if shutil.which(exe) is None:
+        raise RuntimeError(f"'{exe}' not found" + (f": {hint}" if hint else ""))
+    return exe
 
 
 def get_json_attr_top_or_none(json_obj: dict, attr: str) -> tp.Any | None:

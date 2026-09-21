@@ -424,65 +424,6 @@ class LayeredDiskImage(disk_images.DynamicDiskImage, utils_base.InputArtifactSou
                 # After a store, the only moment the cache grows.
                 cache.evict(limit)
 
-    async def boot_artifacts(
-        self, inst: inst_base.Instantiation, kinds: list[disk_images.BootArtifact]
-    ) -> dict[disk_images.BootArtifact, str]:
-        """Boot files for this image, from the cache when a previous run put them
-        there. That is what makes them survive a cache hit, where no build runs
-        and a backend that collects them while building never gets the chance.
-        """
-        if not kinds:
-            return {}
-        out_dir = pathlib.Path(inst.env.img_dir(f"boot.{self.id()}"))
-        out_dir.mkdir(parents=True, exist_ok=True)
-        cache = image_cache.for_instantiation(inst)
-        digest = self.content_hash(inst) if cache is not None else ""
-
-        async with inst.prepare_lock(out_dir.as_posix()):
-            wanted = [k for k in kinds if not (out_dir / k.value).is_file()]
-            if cache is None:
-                if wanted:
-                    await self._produce_boot_artifacts(inst, wanted, out_dir)
-                return {
-                    k: (out_dir / k.value).as_posix()
-                    for k in kinds
-                    if (out_dir / k.value).is_file()
-                }
-
-            # Under the entry's lock: a sweep in another run may be evicting,
-            # and it leaves alone whatever is held.
-            async with cache.locked(digest):
-                for kind in list(wanted):
-                    cached = cache.boot_artifact(digest, kind.value)
-                    if cached is not None and cache.take_out(
-                        cached, (out_dir / kind.value).as_posix()
-                    ):
-                        wanted.remove(kind)
-                if wanted:
-                    await self._produce_boot_artifacts(inst, wanted, out_dir)
-                for kind in kinds:
-                    # Also for the ones the build itself collected, which is how
-                    # a backend that only gets them while building survives a hit.
-                    if (out_dir / kind.value).is_file() and cache.boot_artifact(
-                        digest, kind.value
-                    ) is None:
-                        cache.store_boot_artifact(
-                            digest, kind.value, (out_dir / kind.value).as_posix()
-                        )
-                cache.used(digest)
-
-        return {k: (out_dir / k.value).as_posix() for k in kinds if (out_dir / k.value).is_file()}
-
-    async def _produce_boot_artifacts(
-        self,
-        inst: inst_base.Instantiation,
-        kinds: list[disk_images.BootArtifact],
-        out_dir: pathlib.Path,
-    ) -> None:
-        """Put @kinds into @out_dir, named by kind. Called only for the ones
-        neither this run nor the cache already has."""
-        pass
-
     @abc.abstractmethod
     async def build(
         self,
