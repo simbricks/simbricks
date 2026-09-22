@@ -709,11 +709,15 @@ class HttpDiskImage(DynamicDiskImage):
         """Download, and put it in @format on the way in when that is not what
         the URL serves."""
         if not self._converts_to(format, compression):
+            await inst.command_executor.msg_info(f"Downloading disk image from {self.url}")
             await asyncio.to_thread(self._fetch, out)
             return
         # Checked against the checksum as served, before anything rewrites it.
         served = f"{out}.served"
         try:
+            await inst.command_executor.msg_info(
+                f"Downloading and converting disk image from {self.url}"
+            )
             await asyncio.to_thread(self._fetch, served)
             await self._convert(inst, served, out, format, compression)
         finally:
