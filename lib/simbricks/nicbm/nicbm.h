@@ -173,6 +173,7 @@ class Runner {
   DebugLog *debug_log_ = nullptr;
   bool debug_log_owned_ = false;
   unsigned runner_idx_ = 0;
+  uint64_t heartbeat_ts_ = 0;  // last `hb` line written to the debug log
 
   volatile union SimbricksProtoPcieD2H *D2HAlloc();
   volatile union SimbricksProtoNetMsg *D2NAlloc();

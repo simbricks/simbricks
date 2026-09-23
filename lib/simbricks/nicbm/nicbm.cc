@@ -637,6 +637,8 @@ int Runner::ParseArgs(int argc, char *argv[]) {
   return 0;
 }
 
+static const uint64_t kHeartbeatPs = 1000000000ULL;  // 1 ms simulated
+
 int Runner::RunMain() {
   uint64_t next_ts;
   uint64_t max_step = 10000;
@@ -693,6 +695,12 @@ int Runner::RunMain() {
         next_ts = ev_ts;
     } while (next_ts <= main_time_ && !exiting);
     main_time_ = next_ts;
+
+    // heartbeat: a reader of the debug log learns how far a quiet NIC got
+    if (debug_log_ && main_time_ - heartbeat_ts_ >= kHeartbeatPs) {
+      debug_log_->Emit(main_time_, runner_idx_, "hb", "%s", "");
+      heartbeat_ts_ = main_time_;
+    }
 
     YieldPoll();
   }
