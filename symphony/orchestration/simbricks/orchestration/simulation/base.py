@@ -219,6 +219,11 @@ class Simulator(utils_base.IdObj):
         # MM: assertion to make pyright happy; IMHO it is not needed, since the code above makes
         # sure that sync, latency, and sync_period are not None here.
         assert latency is not None and sync_period is not None
+        # While a checkpoint is created the hosts run unsynchronized (KVM), and
+        # so must every peer, or the introduction fails with "sync required
+        # locally, but peer offers no sync".
+        if inst.create_checkpoint:
+            sync = False
         sync_str = "true" if sync else "false"
         latency_ps = latency.picoseconds
         sync_period_ps = sync_period.picoseconds
