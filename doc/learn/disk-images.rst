@@ -69,17 +69,22 @@ hosts with ``host.add_disk()``:
 
 The image types that reference an existing image are:
 
-- ``DistroDiskImage(system, image_name, image_version, format="qcow2", boot_dir=None)``: an image
+- ``DistroDiskImage(system, image_name, image_version, format="qcow2")``: an image
   distributed by SimBricks, downloaded by the Runner from the image registry — see
   :ref:`sec-disk-images-distro`. In scripts you normally use one of the named subclasses above,
   which pin a name and a version.
 - ``ExternalDiskImage(system, path, boot_dir=None)``: an image at an explicit path **on the
-  machine that executes the run**.
+  machine that executes the run**, handed to the simulator as it is. Its boot artifacts come only
+  from ``boot_dir=`` (:ref:`sec-disk-images-boot-artifacts`).
 - ``ExternalDiskImageArtifact(system, path, boot_dir=None)``: an image on the machine you *submit*
   from, shipped to the Runner with the run. Input artifacts travel inside the run event, so this
   suits a small image; anything sizeable belongs in an ``HttpDiskImage`` or the global input
   directory.
-- ``HttpDiskImage(system, url, checksum=None, format="qcow2", boot_dir=None)``: an image the
+- ``FileDiskImage(system, path)`` and ``FileDiskImageArtifact(system, path)``: the same two ways
+  in, but the boot artifacts are extracted from the image and cached, as for a downloaded or
+  built image, rather than having to be supplied. Use these unless the image should be left
+  alone.
+- ``HttpDiskImage(system, url, checksum=None, format="qcow2")``: an image the
   Runner downloads. ``format`` says what the URL serves, and the checksum is verified against
   those bytes before anything else touches them (``"sha256:..."``, or any algorithm ``hashlib``
   knows). The download is cached, so a URL is fetched once however many runs use it, and it is
@@ -154,9 +159,8 @@ carries, or to use an image that has no class yet.
 .. note::
   A distro image is qcow2, and that is the only format it offers, so it cannot be handed to gem5
   directly. Build a layered image on it (:ref:`sec-disk-images-building`) — the build produces
-  raw as well, and the result is cached. The same applies to boot artifacts: a package holds the
-  image and its checksum and nothing else, so a simulator that needs a kernel handed to it gets
-  it from a layered image, from ``boot_dir=``, or from its own ``kernel_path`` — see
+  raw as well, and the result is cached. A package holds the image and its checksum and nothing
+  else; the boot artifacts a simulator needs are extracted from the image on the Runner — see
   :ref:`sec-disk-images-boot-artifacts`.
 
 .. _sec-disk-images-building:
@@ -306,16 +310,30 @@ Boot artifacts
 
 Simulators that boot a kernel directly cannot read it out of the image, so they need the kernel,
 initrd, or uncompressed ``vmlinux`` handed to them separately. They ask the image for what they
-need, and where those files come from depends on the image type:
+need, and where those files come from depends on the image type.
 
-- ``ExternalDiskImage``, ``ExternalDiskImageArtifact``, ``HttpDiskImage``, ``DistroDiskImage``:
-  from the directory given as ``boot_dir=``, if you have prebuilt ones. It is a path on the
-  Runner, so it can point into the global input directory
-  (:ref:`sec-disk-images-global-input`), e.g.
-  ``boot_dir="global_input/images/my-image/boot"``.
-- Layered images: extracted from the image that was just built — offline with libguestfs, or
-  downloaded from the guest over SSH by the packer builder while the machine is still up. They are
-  cached with the image, so a cache hit does not have to boot anything.
+``ExternalDiskImage`` and ``ExternalDiskImageArtifact`` are left alone: their boot artifacts come
+only from the directory given as ``boot_dir=``, named ``vmlinuz``, ``initrd`` and ``vmlinux``. It
+is a path on the Runner, so it can point into the global input directory
+(:ref:`sec-disk-images-global-input`), e.g. ``boot_dir="global_input/images/my-image/boot"``.
+
+Every other image — ``HttpDiskImage``, ``DistroDiskImage``, ``FileDiskImage``,
+``FileDiskImageArtifact`` and layered images — looks for each kind in this order:
+
+1. ``image.boot_artifact_paths``, a dict from ``BootArtifact`` to a file on the Runner, for when
+   you want to supply one yourself. A path given there must exist, and what it names is not put
+   in the image cache.
+2. What this run, or a previous one via the image cache (:ref:`sec-disk-images-caching`), already
+   has, so a cache hit does not have to extract or boot anything.
+3. What the image itself provides. The packer builder downloads them from the guest over SSH
+   while the machine is still up. Everything else extracts them offline with libguestfs, which
+   needs ``libguestfs-tools`` on the Runner but no booted guest: the kernel version is the newest
+   ``/boot/vmlinuz-*``, and the files are ``/boot/vmlinuz-<version>``,
+   ``/boot/initrd.img-<version>`` and ``/usr/lib/debug/boot/vmlinux-<version>``. An uncompressed
+   ``vmlinux`` (which gem5 boots) comes from the kernel's debug package, so for a stock cloud
+   image add a layer that installs it.
+
+A kind that is not found is simply not provided; the simulator that needs it then says so.
 
 Setting a simulator's kernel path explicitly (e.g. ``QemuSim.kernel_path``) overrides all of this
 and skips the lookup.
@@ -345,7 +363,8 @@ once per execution environment rather than per run. Nothing is required to be in
 SimBricks publishes are downloaded (:ref:`sec-disk-images-distro`) and built images are cached
 (:ref:`sec-disk-images-caching`) — but it is where an image of your own belongs when it is too
 big to ship with a run and you would rather place it on the Runner once. Referencing it is a
-matter of pointing ``ExternalDiskImage`` and ``boot_dir=`` at paths inside it; the layout that
+matter of pointing ``ExternalDiskImage`` and ``boot_dir=`` at paths inside it (or
+``FileDiskImage`` at the image alone, which then needs no ``boot`` directory); the layout that
 :image-builder:`\ ` produces is:
 
 .. code-block:: text
