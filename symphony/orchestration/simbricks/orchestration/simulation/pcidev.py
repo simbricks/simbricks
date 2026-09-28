@@ -94,7 +94,9 @@ class NICSim(PCIDevSim):
             raise Exception(
                 "currently using different synchronization values for pci and eth is not supported"
             )
-        run_sync = eth_run_sync
+        # While a checkpoint is created the host runs unsynchronised (KVM), so its
+        # peers must not require synchronisation either.
+        run_sync = eth_run_sync and not inst.create_checkpoint
         sync_period = min(pci_sync_period, eth_sync_period)
 
         cmd = f"{self._executable} "
