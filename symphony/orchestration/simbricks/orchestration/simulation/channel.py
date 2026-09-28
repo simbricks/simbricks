@@ -34,8 +34,8 @@ class Channel(utils_base.IdObj):
     def __init__(self, chan: system_base.Channel):
         super().__init__()
         self._synchronized: bool = False
-        self._sync_period = utils_time.TimeInterval.ns(500)
-        assert self._sync_period <= chan.latency
+        # Default to 500ns, but never more than the link's latency.
+        self._sync_period = min(utils_time.TimeInterval.ns(500), chan.latency)
         self.sys_channel: system_base.Channel = chan
 
     @property
