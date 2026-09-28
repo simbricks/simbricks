@@ -248,7 +248,12 @@ class SimulationExecutor:
         await self._instantiation.prepare()
 
         for sim in self._instantiation.simulation.all_simulators():
-            if sim.wait_terminate:
+            # while a checkpoint is created every simulator that writes one has to finish it,
+            # not only the ones with a waited-for application: killing a gem5 that is still
+            # writing its checkpoint leaves a truncated one behind
+            if sim.wait_terminate or (
+                self._instantiation.create_checkpoint and sim.supports_checkpointing()
+            ):
                 self._wait_sims[sim.id()] = asyncio.Event()
 
         if not self._wait_sims:
