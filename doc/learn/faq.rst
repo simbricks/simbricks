@@ -70,12 +70,14 @@ just slower.
 **gem5 complains about the disk image or kernel.**
 
 gem5 only supports **raw** disk images, and boots the ELF ``vmlinux``. A layered image is built
-in whichever format the simulator needs and extracts the boot artifacts, so building one on top
-of a distro image is the way to run gem5 on it — a downloaded image is qcow2 only and has no boot
-artifacts (:ref:`sec-disk-images-distro`). For a prebuilt image of your own, make sure the raw
-variant and the boot artifacts are in place (``images/<name>/<name>.raw`` and
-``images/<name>/boot/vmlinux``, see :ref:`sec-disk-images-global-input`), and point ``boot_dir=``
-at them. Also note that gem5 needs to run
+in whichever format the simulator needs, so building one on top of a distro image is the way to
+run gem5 on it — a downloaded image is qcow2 only (:ref:`sec-disk-images-distro`). The
+``vmlinux`` is extracted from the image with libguestfs, which needs ``libguestfs-tools`` on the
+Runner and the kernel's debug package in the image (:ref:`sec-disk-images-boot-artifacts`). For a
+prebuilt image of your own, make sure the raw variant is in place (``images/<name>/<name>.raw``,
+see :ref:`sec-disk-images-global-input`) and use ``FileDiskImage`` so the ``vmlinux`` is
+extracted too, or put it at ``images/<name>/boot/vmlinux`` and point an ``ExternalDiskImage``'s
+``boot_dir=`` at it. Also note that gem5 needs to run
 with ``kernel.perf_event_paranoid`` set to 1 or lower on the host (``sudo sysctl -w
 kernel.perf_event_paranoid=1``); in Docker this typically requires ``--privileged``.
 
