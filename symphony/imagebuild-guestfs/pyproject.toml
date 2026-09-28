@@ -27,7 +27,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "simbricks-imagebuild-guestfs"
 version = "0.5.2"
-description = "Offline SimBricks disk image builds with libguestfs, and extraction of the boot artifacts simulators need"
+description = "Offline SimBricks disk image builds with libguestfs"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
 ]
