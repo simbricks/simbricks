@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from simbricks.client import (
@@ -20,12 +21,13 @@ from simbricks.client import (
 from simbricks.client import (
     simb_client as client_simb_client,
 )
-from simbricks.client.settings import ClientSettings
+from simbricks.client.settings import ClientSettings, client_settings
 from simbricks.telemetry.config import TelemetryConfig
 
 
 class CliSettings(BaseSettings):
-    client: ClientSettings = ClientSettings()
+    # Alias to the simbricks.client package's own settings singleton, not a separate instance
+    client: ClientSettings = Field(default_factory=client_settings)
     telemetry: TelemetryConfig = TelemetryConfig()
 
     model_config = SettingsConfigDict(
