@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import subprocess
 import typing as tp
 
@@ -49,8 +50,13 @@ class SimbricksLocalPlugin(plugin.FragmentRunnerPlugin):
         port = self.server.sockets[0].getsockname()[1]
 
         proxy_host_ip = settings.runner_settings().external_runner_ip
+        # "env" in this executor's `settings:` block (runner_config*.yaml) extends the runner
+        # process's own environment for the fragment executor and everything it in turn spawns
+        extra_env = config_params.get("env", {})
+        subprocess_env = {**os.environ, **extra_env}
         self.executor = subprocess.Popen(
-            ["simbricks-executor-local", "127.0.0.1", str(port), proxy_host_ip]
+            ["simbricks-executor-local", "127.0.0.1", str(port), proxy_host_ip],
+            env=subprocess_env,
         )
 
         # wait for the fragment executor to connect
