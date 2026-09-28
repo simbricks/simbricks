@@ -93,11 +93,18 @@ def validate_no_response_model(response_model: object | None) -> None:
 
 @contextlib.asynccontextmanager
 async def base_client(
-    base_url: str = client_settings().base_url, timeout_sec: int = client_settings().timeout_sec
+    base_url: str = client_settings().base_url, timeout_sec: int = client_settings().timeout_sec,
+    auth: httpx.Auth | None = None,
 ) -> typing.AsyncIterator[AuthenticatedClient]:
+    """@auth overrides the process-global ``simbricks_httpx_auth()`` singleton (the same
+    ``TokenProvider``-backed ``httpx.Auth`` every caller gets by default) for this one client --
+    optional, so every existing caller is unaffected. A server handling more than one caller's
+    identity on the same event loop needs this: the global singleton has no way to carry a
+    different bearer token per concurrent request.
+    """
 
     # custom httpx client using our authentication class
-    sb_auth = simbricks_httpx_auth()
+    sb_auth = auth if auth is not None else simbricks_httpx_auth()
     httpx_client = httpx.AsyncClient(base_url=base_url, auth=sb_auth, timeout=timeout_sec)
 
     # create the auto generated client instance to pass on
