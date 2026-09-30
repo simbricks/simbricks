@@ -26,7 +26,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-client"
-version = "0.5.2"
+version = "0.6.0"
 description = "simbricks client lib to send and retrieve experiments"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -37,7 +37,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = ">=3.12"
 aiohttp = "3.14.1"
 pydantic-settings = "2.14.1"
 httpx = "0.28.1"
@@ -45,5 +45,5 @@ attrs = "26.1.0"
 python-dateutil = "2.9.0"
 requests = "2.34.2"
 rich = "15.0.0"
-simbricks-orchestration = ">=0.5.0"
-simbricks-utils = ">=0.5.0"
+simbricks-orchestration = ">=0.6.0"
+simbricks-utils = ">=0.6.0"

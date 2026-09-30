@@ -38,7 +38,7 @@ c_stdlib_version:
 
 # custom variables
 simbricks_version:
-  - "0.5.2"
+  - "0.6.0"
 homepage:
   - "https://simbricks.io"
 github_org:

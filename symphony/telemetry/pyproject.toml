@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-telemetry"
-version = "0.5.2"
+version = "0.6.0"
 description = "simbricks telemetry tool for instrumenting and collecting OTEL traces in SimBricks python"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -16,11 +16,11 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = ">=3.12"
 opentelemetry-api = "1.42.1"
 opentelemetry-sdk = "1.42.1"
 opentelemetry-exporter-otlp-proto-http = "1.42.1"
 opentelemetry-instrumentation-httpx = "0.63b1"
 pydantic = "2.13.4"
 requests = "2.34.2"
-simbricks-client = ">=0.5.0"
+simbricks-client = ">=0.6.0"

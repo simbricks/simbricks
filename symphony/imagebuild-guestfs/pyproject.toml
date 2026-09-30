@@ -26,7 +26,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-imagebuild-guestfs"
-version = "0.5.2"
+version = "0.6.0"
 description = "Offline SimBricks disk image builds with libguestfs"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -37,7 +37,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = ">=3.12"
 typing-extensions = ">=4.14.1"
-simbricks-orchestration = ">=0.5.2"
-simbricks-utils = ">=0.5.0"
+simbricks-orchestration = ">=0.6.0"
+simbricks-utils = ">=0.6.0"

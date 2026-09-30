@@ -36,16 +36,16 @@ build:
 
 requirements:
   host:
-    - python >=3.10
+    - python >=3.12
     - poetry-core >=1.0.0
     - pip
   run:
-    - python >=3.10
-    - simbricks-orchestration >=0.5.2
+    - python >=3.12
+    - simbricks-orchestration >=0.6.0
     # NOTE: libguestfs is not packaged for conda, so virt-customize and
     # virt-copy-out cannot be listed here -- they come from the libguestfs-tools
     # system package. GuestfsImage checks for them and says so if missing.
-    - simbricks-utils >=0.5.0
+    - simbricks-utils >=0.6.0
 
 test:
   imports:

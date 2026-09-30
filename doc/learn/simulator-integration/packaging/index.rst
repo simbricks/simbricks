@@ -104,11 +104,11 @@ This is what lets independently installed component packages merge into the sing
 
   [tool.poetry]
   name = "simbricks-i40e-sys-py"
-  version = "0.5.0"
+  version = "0.6.0"
   packages = [ { include = "simbricks" } ]
 
   [tool.poetry.dependencies]
-  simbricks-orchestration = ">=0.5.0"
+  simbricks-orchestration = ">=0.6.0"
 
 Versioning
 ----------

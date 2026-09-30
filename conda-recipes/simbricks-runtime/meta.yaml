@@ -36,13 +36,13 @@ build:
 
 requirements:
   host:
-    - python >=3.10
+    - python >=3.12
     - poetry-core >=1.0.0
     - pip
   run:
-    - python >=3.10
-    - simbricks-orchestration >=0.5.0
-    - simbricks-utils >=0.5.0
+    - python >=3.12
+    - simbricks-orchestration >=0.6.0
+    - simbricks-utils >=0.6.0
 
 test:
   imports:

@@ -26,7 +26,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "simbricks-imagebuild-packer"
-version = "0.5.2"
+version = "0.6.0"
 description = "SimBricks disk image builds in a booted guest with packer, and extraction of the boot artifacts simulators need"
 authors  = [
   "Team SimBricks <team@simbricks.io>"
@@ -40,7 +40,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = ">=3.12"
 typing-extensions = ">=4.14.1"
-simbricks-orchestration = ">=0.5.2"
-simbricks-utils = ">=0.5.0"
+simbricks-orchestration = ">=0.6.0"
+simbricks-utils = ">=0.6.0"
