@@ -55,7 +55,7 @@ packages are installed automatically and you can skip straight ahead to
 Option 2: Manual setup with a Python virtual environment
 ========================================================
 
-Alternatively, set up a `Python Virtual Environment <https://docs.python.org/3/tutorial/venv.html>`_ (Python 3.10 or newer).
+Alternatively, set up a `Python Virtual Environment <https://docs.python.org/3/tutorial/venv.html>`_ (Python 3.12 or newer).
 You can create and activate a virtual environment as follows:
 
 .. code-block:: bash

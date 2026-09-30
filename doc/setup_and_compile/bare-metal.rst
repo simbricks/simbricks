@@ -58,7 +58,7 @@ Python packages (symphony)
 ==========================
 
 The Python packages all live under ``symphony/``. For development, install them editable into your
-current environment (virtualenv or conda environment, Python >= 3.10):
+current environment (virtualenv or conda environment, Python >= 3.12):
 
 .. code-block:: bash
 

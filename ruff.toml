@@ -1,6 +1,6 @@
 # Ruff configuration for the SimBricks Python packages (symphony/, experiments/, doc/).
 # Replaces the previous pylint + isort + yapf setup; type checking stays separate (pyright).
-target-version = "py310"
+target-version = "py312"
 line-length = 100
 extend-exclude = [
     "symphony/utils/simbricks/utils/graphlib.py",
