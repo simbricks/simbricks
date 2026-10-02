@@ -20,24 +20,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-header_dir := $(CONDA_PREFIX)/include/simbricks
+# doxygen reads the simbricks-lib headers of the active conda environment
+documentation: doxygen
+	sphinx-build . _build
 
-doxygen_outdir := doxygen
-doxygen_srcs := $(wildcard $(header_dir)/*/*.h $(header_dir)/*/*.hh $(header_dir)/*/*.hpp)
-
-sphinx_outdir := _build
-sphinx_srcs := $(wildcard ./*.rst ./*/*.rst)
-
-documentation: $(doxygen_outdir)/ready $(sphinx_outdir)/ready
-.PHONY: documentation clean
-
-$(doxygen_outdir)/ready: $(d)Doxyfile $(doxygen_srcs)
-	cd $(base_dir). && doxygen Doxyfile
-	touch $@
-
-$(sphinx_outdir)/ready: $(d)conf.py $(sphinx_srcs)
-	cd $(base_dir). && sphinx-build . $(sphinx_outdir)
-	touch $@
+doxygen:
+	test -d "$(CONDA_PREFIX)/include/simbricks" || \
+		{ echo "no simbricks-lib headers in CONDA_PREFIX='$(CONDA_PREFIX)'" >&2; exit 1; }
+	doxygen Doxyfile
 
 clean:
-	rm -r $(doxygen_outdir) $(sphinx_outdir)
+	rm -rf doxygen _build
+
+.PHONY: documentation doxygen clean

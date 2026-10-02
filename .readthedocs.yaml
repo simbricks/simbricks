@@ -6,13 +6,17 @@ submodules:
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.12"
+    python: "miniforge3-latest"
   apt_packages:
     - graphviz 
+  jobs:
+    pre_build:
+      # RTD does not activate the conda environment, so CONDA_PREFIX (where doxygen
+      # finds the simbricks-lib headers) has to be set here
+      - CONDA_PREFIX=$CONDA_ENVS_PATH/$CONDA_DEFAULT_ENV make -C doc doxygen
 
 sphinx:
   configuration: doc/conf.py
 
-python:
-   install:
-   - requirements: doc/requirements.txt
+conda:
+  environment: doc/environment.yml

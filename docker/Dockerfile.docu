@@ -7,6 +7,8 @@ USER simbricks
 COPY --chown=simbricks . /tmp/doc
 WORKDIR /tmp/doc
 
-# cerate environment and build docs
-RUN micromamba create --file environment.yml -n bld-doc-env
+# create environment and build docs, with the SimBricks packages from this image's channel
+RUN sed "s|conda.simbricks.io/stable|conda.simbricks.io/${SB_CONDA_CHANNEL}|" environment.yml \
+      > /tmp/environment.yml \
+ && micromamba create --file /tmp/environment.yml -n bld-doc-env
 RUN micromamba run -n bld-doc-env make documentation

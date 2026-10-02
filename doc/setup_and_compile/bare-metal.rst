@@ -86,7 +86,7 @@ are autodoc'ed in the reference) are installed as conda packages from ``doc/envi
 
   micromamba env create -f doc/environment.yml
   micromamba activate simbricks-docs
-  make documentation
+  make -C doc documentation
 
 The result lands in ``doc/_build``. The checked-in environment resolves the SimBricks packages
 from the ``stable`` channel — the same channel released documentation is built against on
@@ -99,4 +99,4 @@ create the environment from the ``latest`` channel instead by swapping the chann
   sed 's|conda.simbricks.io/stable|conda.simbricks.io/latest|' doc/environment.yml \
       | micromamba env create -n simbricks-docs-latest -f /dev/stdin
   micromamba activate simbricks-docs-latest
-  make documentation
+  make -C doc documentation
