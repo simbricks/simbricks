@@ -198,24 +198,3 @@ epub_exclude_files = ["search.html"]
 
 breathe_projects = {"simbricks": "doxygen/xml/"}
 breathe_default_project = "simbricks"
-
-import os
-
-#################################################################################
-# For RTD
-import subprocess
-
-# Check if we're running on Read the Docs' servers
-read_the_docs_build = os.environ.get("READTHEDOCS", None) == "True"
-
-if read_the_docs_build:
-    conf_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.dirname(conf_dir)
-    subprocess.call("doxygen Doxyfile", shell=True, cwd=repo_root)
-    subprocess.call(
-        "cp -r "
-        + os.path.join(conf_dir, "doxygen", "html")
-        + " "
-        + os.path.join(conf_dir, "_static", "doxygen"),
-        shell=True,
-    )
